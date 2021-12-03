@@ -605,7 +605,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
         probe_positions_file = os.path.join(acquisitions_folder, measurement_file[:-5]+'.txt')  # change .hdf5 to .txt extension
         print('probe_positions_file = ', probe_positions_file)
 
-        probe_positions = sscCdi.read_probe_positions(ibira_datafolder+probe_positions_file, measurement_filepath)
+        probe_positions = read_probe_positions(ibira_datafolder+probe_positions_file, measurement_filepath)
 
         if first_iteration:
             t1 = time()
@@ -616,7 +616,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
             print('Begin Restauration')
             if jason['OldRestauration'] == True:
                 print(ibira_datafolder, measurement_file)
-                difpads = sscCdi.caterete.restauration.cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
+                difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
 
                 if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
                     difpads = difpads[1:]
@@ -654,13 +654,13 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
             if jason["CircularMask"] != []:  # Circular central mask
                 print("Applying circular mask to central pixels")
                 radius, center_row, center_col = jason["CircularMask"]
-                central_mask = sscCdi.caterete.restauration.create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
+                central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
                 difpads[:, central_mask > 0] = -1
 
             if 0:  # low pass
                 print("Applying lowpass filter")
                 radius, center_row, center_col = 300, 320, 321
-                central_mask = sscCdi.caterete.restauration.create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
+                central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
                 difpads[:, central_mask == 0] = -1
 
             if jason["DetectorExposure"][0]:
@@ -752,7 +752,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 # padding = 600
                 # obj2 = np.pad(datapack['obj'],((padding,padding),(padding,padding)))
                 # resolution = resolution_frc(obj2, dx)
-                resolution = sscCdi.resolution_frc(datapack['obj'], dx)
+                resolution = resolution_frc(datapack['obj'], dx)
                 print('\tResolution for frame ' + str(current_frame) + ':', resolution['halfbit'])
 
             if jason['Preview']:  # Preview Reconstruction:
