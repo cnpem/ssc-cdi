@@ -4,7 +4,9 @@ Sirius Scientic Computing approach for ptychographic reconstruction
 -------------------------------------------------------------------
 
 Authors:
-	Paola Ferraz Cunha	Scientific Computing Group/LNLS/CNPEM
+	Scientific Computing Group / LNLS / CNPEM
+	
+	Paola Ferraz Cunha	-
 
 	Yuri Rossi Tonin	-
 
