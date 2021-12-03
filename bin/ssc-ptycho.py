@@ -270,7 +270,7 @@ def set_initial_parameters(jason,difpads,probe_positions,radius,center_x,center_
         probe = set_modes(probe,jason)
 
         # GPUs selection:
-        sscPtycho.set_gpus(jason)
+        set_gpus(jason)
 
         # Object initial guess:
         obj = set_initial_obj(jason,hsize,maxroi,probe,difpads)
