@@ -556,8 +556,8 @@ if jason['InitialBkg'] != "":
 ibira_datafolder = jason['ProposalPath']
 print('ibira_datafolder = ', ibira_datafolder)
 
-# empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0,0,:,:] # raw shape is (1,1,3072,3072)
-# plotshow_cmap2(empty_detector,title=f"{jason['EmptyFrame'].split('/')[-1]}",savepath=jason["PreviewFolder"]+'/00_empty.png')
+empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0,0,:,:] # raw shape is (1,1,3072,3072)
+sscCdi.caterete.misc.plotshow_cmap2(empty_detector,title=f"{jason['EmptyFrame'].split('/')[-1]}",savepath=jason["PreviewFolder"]+'/00_empty.png')
 
 flatfield = np.load(jason["FlatField"])
 flatfield[np.isnan(flatfield)] = -1
@@ -597,7 +597,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
         if first_iteration:  # plot only for first iteration
             difpad_number = 0
             raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
-            sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :],title=f'Raw Diffraction Pattern #{difpad_number}', savepath='./' + jason['PreviewFolder'] + '/03_difpad_raw.png')
+            sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :],title=f'Raw Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/03_difpad_raw.png')
 
         print('Raw difpad shape',raw_difpads.shape)
         print(raw_difpads[0].shape,raw_difpads[1].shape)
@@ -642,9 +642,9 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
             if first_iteration:
                 sscCdi.caterete.misc.plotshow_cmap2(
-                    difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath='./' + jason['PreviewFolder'] + '/04_difpad_restaured.png')
+                    difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/04_difpad_restaured.png')
                 sscCdi.caterete.misc.plotshow_cmap2(np.mean(
-                    difpads, axis=0), title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath='./' + jason['PreviewFolder'] + '/04_difpad_restaured_mean.png')
+                    difpads, axis=0), title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/04_difpad_restaured_mean.png')
                 if jason["SaveDifpadPath"] != "":
                     np.save(jason["SaveDifpadPath"], np.mean(difpads, axis=0))
 
@@ -679,10 +679,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 difpads[:, mask > 0] = -1
 
             if first_iteration:
-                sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath='./' + jason['PreviewFolder'] + '/05_difpad_processed.png')
+                sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/05_difpad_processed.png')
                 sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0), title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason["PreviewFolder"]+'/05_difpad_processed_mean.png')
-
-            # np.save('difpads.npy',difpads)
 
             probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 
@@ -760,18 +758,18 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 plt.figure()
                 plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
                 plt.scatter(datapack['rois'][:, 0, 0],datapack['rois'][:, 0, 1])
-                plt.savefig('./' + jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
+                plt.savefig( jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
                 plt.clf()
                 plt.close()
                 # '''
                 # Show probe:
-                plotshow([abs(Prop(p, jason['f1'])) for p in datapack['probe']]+[p for p in datapack['probe']],file='./' + jason['PreviewFolder'] + '/probe_2d_' + str(current_frame), nlines=2)
+                plotshow([abs(Prop(p, jason['f1'])) for p in datapack['probe']]+[p for p in datapack['probe']],file= jason['PreviewFolder'] + '/probe_2d_' + str(current_frame), nlines=2)
 
                 # Show object:
                 ango = np.angle(datapack['obj'])
                 abso = np.clip(abs(datapack['obj']), 0.0, np.max( abs(datapack['obj'][hsize:maxroi, hsize:maxroi])))
 
-                plotshow([ango, abso], subplot_title=['Phase', 'Magnitude'], file='./' + jason['PreviewFolder'] + '/object_2d_' + str(current_frame), cmap='gray', nlines=1)
+                plotshow([ango, abso], subplot_title=['Phase', 'Magnitude'], file= jason['PreviewFolder'] + '/object_2d_' + str(current_frame), cmap='gray', nlines=1)
         else:
             continue
 
@@ -797,13 +795,9 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
 t5 = time()
 
-print(
-    f'\nElapsed time for reconstruction of 1st frame: {t4-t0:.2f} seconds = {(t4-t0)/60:.2f} minutes')
+print( f'\nElapsed time for reconstruction of 1st frame: {t4-t0:.2f} seconds = {(t4-t0)/60:.2f} minutes')
 print(f'Reading percentual time for 1st frame: {100*(t1-t0)/(t4-t0):.2f}%')
-print(
-    f'Restauration percentual time for 1st frame: {100*(t2-t1)/(t4-t0):.2f}%')
-print(
-    f'Pre-Processing percentual time for 1st frame: {100*(t3-t2)/(t4-t0):.2f}% ')
-print(
-    f'Reconstruction percentual time for 1st frame: {100*(t4-t3)/(t4-t0):.2f}% ')
+print(f'Restauration percentual time for 1st frame: {100*(t2-t1)/(t4-t0):.2f}%')
+print(  f'Pre-Processing percentual time for 1st frame: {100*(t3-t2)/(t4-t0):.2f}% ')
+print(f'Reconstruction percentual time for 1st frame: {100*(t4-t3)/(t4-t0):.2f}% ')
 print(f'Total time: {t5-t0:.2f} seconds = {(t5-t0)/60:.2f} minutes')
