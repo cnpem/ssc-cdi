@@ -103,19 +103,17 @@ def RemoveGrad(img,mask):
     return img + gradient[0]*xx + gradient[1]*yy + gradient[2]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
-
-
-def tt(img,R):
+def phase_unwrap(img,iterations,non_negativity=True,remove_gradient = True):
     zernike = unwrap_phase(img)
-    
+
     mask = zernike < 0
-    
-    for j in range(R):
+    for j in range(iterations):
         zernike = RemoveGrad(zernike,mask=mask)
         mask = abs(zernike) < 2**-j
-        # Show([zernike,mask],cmap='gray')
 
-    # zernike[zernike<0] = 0
-    # zernike = RemoveGrad(zernike,mask=mask)
-    
+    if non_negativity == True:    
+        zernike[zernike<0] = 0
+
+    if remove_gradient == True:
+        zernike = RemoveGrad(zernike,mask=mask)
     return zernike

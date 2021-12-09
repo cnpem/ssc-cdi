@@ -736,8 +736,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 print('Cropped object shape:', datapack['obj'].shape)
 
                 tt_parameter = jason['Phaseunwrap'][1] # number of iterations to remove gradient from unwrapped image
-                absolute = sscCdi.unwrap.tt(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),tt_parameter)
-                angle = sscCdi.unwrap.tt(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),tt_parameter)
+                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),tt_parameter)
+                angle = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),tt_parameter)
                 datapack['obj'] = absolute*np.exp(-1j*angle)
             else: 
                 pass
