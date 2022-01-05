@@ -736,8 +736,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                 print('Phase unwrapping the cropped image')
                 n_iterations = jason['Phaseunwrap'][1] # number of iterations to remove gradient from unwrapped image
-                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations)
-                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations)
+                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=True,remove_gradient = True)
+                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=True,remove_gradient = True)
                 datapack['obj'] = absolute*np.exp(-1j*angle)
 
                 if 1: # plot original and cropped object phase and save!
