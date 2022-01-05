@@ -18,6 +18,6 @@ Authors:
 
 Install:
 
-	python3 setup install --cuda --user
+	python3 setup.py install --cuda --user
 	
 
