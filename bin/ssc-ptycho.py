@@ -829,7 +829,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                 print('Cropping data and performing Phase Unwrap')
                 """ Crop reconstruction for a proper phase unwrap """
-                slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],jason['Phaseunwrap'][2][1]), slice(jason['Phaseunwrap'][3][0],jason['Phaseunwrap'][3][1])
+                slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],-jason['Phaseunwrap'][2][1]), slice(jason['Phaseunwrap'][3][0],-jason['Phaseunwrap'][3][1])
                 # slice_rows, slice_columns = slice(1*hsize//2,-1*hsize//2), slice(1*hsize//2,-1*hsize//2)
                 datapack['obj'] = datapack['obj'][slice_rows,slice_columns]
                 print('Cropped object shape:', datapack['obj'].shape)
