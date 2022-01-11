@@ -525,6 +525,100 @@ def resolution_frc(data,pixel,plot_output_folder="./outputs"):
 
         return resolution
 
+def fit_2d_lorentzian(dataset,fit_guess=(1,1,1,1,1,1)):
+
+    from scipy.optimize import curve_fit    
+
+    x = np.arange(0,dataset.shape[0])
+    y = np.arange(0,dataset.shape[1])
+    X, Y = np.meshgrid(x, y)
+    size_to_reshape = X.shape
+    
+    params, pcov = curve_fit(lorentzian2d, (X, Y), np.ravel(dataset), fit_guess)
+    lorentzian2d_fit = lorentzian2d(np.array([X, Y]), params[0],params[1],params[2],params[3],params[4],params[5])
+    lorentzian2d_fit = lorentzian2d_fit.reshape(size_to_reshape)
+
+    return lorentzian2d_fit, params
+
+
+def get_central_region(difpad,center_estimate,radius):
+    center_estimate = np.round(center_estimate)
+    center_r, center_c = int(center_estimate[0]), int(center_estimate[1])
+    region_around_center = difpad[center_r-radius:center_r+radius+1,center_c-radius:center_c+radius+1]
+    return region_around_center
+
+
+def refine_center_estimate(difpad,center_estimate,radius=20):
+    from scipy.ndimage import center_of_mass
+    
+    """
+    Finds a region o radius 20 around center of mass estimate. Then fits a Lorentzian peak to this region.
+    The position of the peak gives a displacement to correct the center of mass estimate
+    """
+
+    region_around_center = get_central_region(difpad,center_estimate,int(radius))
+    fit_guess = np.max(difpad), center_estimate[0], center_estimate[1], 5, 5, 0
+    
+    try:
+        lorentzian2d_fit, fit_params = fit_2d_lorentzian(region_around_center,fit_guess=fit_guess)
+        amplitude, centerx, centery, sigmax, sigmay, rotation = fit_params
+        
+        # print(f'Lorentzian center: ({centerx},{centery})')
+    
+        deltaX, deltaY = (region_around_center.shape[0]//2-round(centerx)+1), (1+region_around_center.shape[1]//2-round(centery)),
+    except:
+        print('Fit failed')
+    # print(np.where(region_around_center==np.max(region_around_center)))
+    # print(np.where(lorentzian2d_fit==np.max(lorentzian2d_fit)))
+
+    if 1: # plot for debugging
+        figure, subplot = plt.subplots(1,2)
+        subplot[0].imshow(region_around_center,cmap='jet',norm=LogNorm())
+        subplot[0].set_title('Central region preview')
+        subplot[1].imshow(lorentzian2d_fit,cmap='jet')
+        subplot[1].set_title('Lorentzian fit')
+        
+    center = (round(center_estimate[0]) - deltaX,round(center_estimate[1]) - deltaY)
+        
+    return center 
+
+def refine_center_estimate2(difpad,center_estimate,radius=20):
+    from scipy.ndimage import center_of_mass
+    
+    """
+    Finds a region of radius around center of mass estimate. 
+    The position of the max gives a displacement to correct the center of mass estimate
+    """
+
+    region_around_center = get_central_region(difpad,center_estimate,int(radius))
+    
+    center_displaced = np.where(region_around_center == np.max(region_around_center))
+    centerx, centery = center_displaced[0][0], center_displaced[1][0]
+    
+    deltaX, deltaY = (region_around_center.shape[0]//2-round(centerx)), (region_around_center.shape[1]//2-round(centery)),
+
+    if 0: # plot for debugging
+        figure, subplot = plt.subplots(1,2)
+        subplot[0].imshow(region_around_center,cmap='jet',norm=LogNorm())
+        subplot[0].set_title('Central region preview')
+        region_around_center[centerx, centery ] = 1e9
+        subplot[1].imshow(region_around_center,cmap='jet',norm=LogNorm())
+        
+    center = (round(center_estimate[0]) - deltaX,round(center_estimate[1]) - deltaY)
+        
+    return center 
+
+def get_difpad_center(difpad,refine=True,fit=False,radius = 20):
+    from scipy.ndimage import center_of_mass
+    center_estimate = center_of_mass(difpad)
+    if refine:
+        if fit:
+            center  = refine_center_estimate(difpad,center_estimate,radius=radius)
+        else:
+            center  = refine_center_estimate2(difpad,center_estimate,radius=radius)
+    else:
+        center = (round(center_estimate[0]) ,round(center_estimate[1]))
+    return center
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++
 #
@@ -636,6 +730,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 difpads, elapsed_time = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
             
             print('Difraction pattern shape (post restauration):',difpads.shape)
+            np.save('difpads.npy',difpads)
 
             if first_iteration:
                 sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/04_difpad_restaured.png')
@@ -646,9 +741,15 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
             print('Finished Restauration')
             if first_iteration: t2 = time()
 
-            if jason["CircularMask"] != []:  # Circular central mask
+            if jason["AutomaticCentralMask"] != []:  # circular central mask
                 print("Applying circular mask to central pixels")
-                radius, center_row, center_col = jason["CircularMask"]
+                
+                if jason["AutomaticCentralMask"][0]: # automatically finds the center of the first difpad
+                    _, radius, _, _, which_difpad = jason["AutomaticCentralMask"]
+                    center_row, center_col = get_difpad_center(difpads[which_difpad])
+                else: # use manual input center positions
+                    _, radius, center_row, center_col, _ = jason["AutomaticCentralMask"]
+                
                 central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
                 difpads[:, central_mask > 0] = -1
 
@@ -726,7 +827,6 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                 original_object = datapack['obj'] # create copy of object
 
-
                 print('Cropping data and performing Phase Unwrap')
                 """ Crop reconstruction for a proper phase unwrap """
                 slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],jason['Phaseunwrap'][2][1]), slice(jason['Phaseunwrap'][3][0],jason['Phaseunwrap'][3][1])
@@ -736,8 +836,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                 print('Phase unwrapping the cropped image')
                 n_iterations = jason['Phaseunwrap'][1] # number of iterations to remove gradient from unwrapped image
-                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=True,remove_gradient = True)
-                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=True,remove_gradient = True)
+                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
+                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
                 datapack['obj'] = absolute*np.exp(-1j*angle)
 
                 if 1: # plot original and cropped object phase and save!
