@@ -68,12 +68,9 @@ def RemoveZernike(img,mask):
 def RemoveGrad(img,mask):
     hs1 = img.shape[-1]//2
     hs2 = img.shape[-2]//2 
-    # print(hs1,hs2)
-    #hs = 256
     xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
     #img = 3*xx**2 + 2*yy**2 + 4*xx + 7 * yy - 1
     
-    # print('xxm shape:',xx.shape)
     xxm = xx[mask]
     yym = yy[mask]
     dLdD2 = np.average(xxm**2)
@@ -99,7 +96,6 @@ def RemoveGrad(img,mask):
     dLdF = np.average(Res)
 
     gradient = -np.matmul(inv,[dLdD,dLdE,dLdF])
-    # print(gradient)
     return img + gradient[0]*xx + gradient[1]*yy + gradient[2]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
@@ -107,7 +103,7 @@ def RemoveGrad(img,mask):
 
 def phase_unwrap(img,iterations,non_negativity=True,remove_gradient = True):
     zernike = unwrap_phase(img)
-
+    
     mask = zernike < 0
     for j in range(iterations):
         zernike = RemoveGrad(zernike,mask=mask)

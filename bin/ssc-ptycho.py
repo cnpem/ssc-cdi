@@ -110,11 +110,11 @@ def pre_processing_Giovanni(img,args):
         while binning%2 == 0 and binning > 0:
                 avg = img+np.roll(img,-1,-1)+np.roll(img,-1,-2)+np.roll(np.roll(img,-1,-1),-1,-2) # sum 4 neigboors at the top-left value
 
-                div = 1*(img>=0)+np.roll(1*(img>=0),-1,-1)+np.roll(1*(img>=0),-1,-2)+np.roll(np.roll(1*(img>=0),-1,-1),-1,-2) # Boolean array! Resulta in the n of valid points in the 2x2 neighborhood
+                div = 1*(img>=0)+np.roll(1*(img>=0),-1,-1)+np.roll(1*(img>=0),-1,-2)+np.roll(np.roll(1*(img>=0),-1,-1),-1,-2) # Boolean array! Results in the n of valid points in the 2x2 neighborhood
 
                 avg = avg + 4 - div # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
 
-                avgmask = (img<0) & (div>0) # div > 0 means at least 1 neighbor is valid. 
+                avgmask = (img<0) & (div>0) # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
                 
                 img[avgmask] = avg[avgmask]/div[avgmask] # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
 
@@ -123,7 +123,7 @@ def pre_processing_Giovanni(img,args):
 
                 img[img<0] = -1
 
-                img[div[0::2,0::2]<3] = -1 # why div < 3 ?
+                img[div[0::2,0::2]<3] = -1 # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
 
                 binning = binning//2
 
@@ -307,7 +307,7 @@ def set_parameters(difpads,jason,probe_positions):
         probe_positions[:,0] -= np.min(probe_positions[:,0])
         probe_positions[:,1] -= np.min(probe_positions[:,1])
 
-        offset_topleft = 10 
+        offset_topleft = 20 
         offset_bottomright = offset_topleft 
         probe_positions[:,0] = 1E-6*probe_positions[:,0]/dx + offset_topleft 
         probe_positions[:,1] = 1E-6*probe_positions[:,1]/dx + offset_topleft 
@@ -620,6 +620,57 @@ def get_difpad_center(difpad,refine=True,fit=False,radius = 20):
         center = (round(center_estimate[0]) ,round(center_estimate[1]))
     return center
 
+def auto_crop_noise_borders(complex_array):
+    import skimage.filters
+    from skimage.morphology import disk
+    
+    img = np.angle(complex_array) # get phase to perform cropping analysis
+
+    img_gradient = skimage.filters.scharr(img)
+    img_gradient = skimage.util.img_as_ubyte(img_gradient/img_gradient.max())
+    local_entropy_map = skimage.filters.rank.entropy(img_gradient,disk(5))
+    
+    smallest_img_dimension = 200
+    max_crop = img.shape[0]//2 - smallest_img_dimension//2 # smallest image after cropping will have 2*100 pixels in each direction
+    
+    crop_sizes = range(1,max_crop,10)
+
+    mean_list = []
+    for c in (crop_sizes):
+        """
+        mean is a good metric since we expect it to decrease as high entropy border
+        gets cropped, and increase again as the low entropy smooth background gets cropped.
+        it may become an issue if the sample is displaced from the center, though
+        """
+        mean = (local_entropy_map[c:-c,c:-c].ravel()).mean()
+        mean_list.append(mean)
+        
+    best_crop = crop_sizes[np.where(mean_list == min(mean_list))[0][0]]
+    
+    cropped_array = complex_array[best_crop:-best_crop,best_crop:-best_crop] # crop original complex image
+    
+    if 1: # debug / see results
+        figure, subplot = plt.subplots(1,3,figsize=(10,10),dpi=200)
+        subplot[0].imshow(img)
+        subplot[1].imshow(local_entropy_map)
+        subplot[2].imshow(np.angle(cropped_array))
+        subplot[0].set_title('Original')
+        subplot[1].set_title('Local entropy')
+        subplot[2].set_title('Cropped')
+        
+        figure, subplot = plt.subplots()
+        subplot.plot(crop_sizes,mean_list)
+        subplot.set_xlabel('Crop size')
+        subplot.set_ylabel('Mean')
+        subplot.grid()
+    
+    if cropped_array.shape[0]%2 != 0: # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+        cropped_array = cropped_array[0:-1,:]
+    if cropped_array.shape[1]%2 != 0:
+        cropped_array = cropped_array[:,0:-1]
+
+    return cropped_array
+
 #+++++++++++++++++++++++++++++++++++++++++++++++++
 #
 #
@@ -823,19 +874,37 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
             if first_iteration: t4 = time()
 
+            if jason['AutoCrop'] == True:
+                cropped_image = auto_crop_noise_borders(datapack['obj'])
+
+                if 1: # plot original and cropped object phase and save!
+                    print(jason['PreviewFolder'] + '/06_crop_and_unwrap.png')
+                    figure, subplot = plt.subplots(1,2)
+                    subplot[0].imshow(-np.angle(datapack['obj']))
+                    subplot[1].imshow(-np.angle(cropped_image))
+                    subplot[0].set_title('Original')
+                    subplot[1].set_title('Cropped and Unwrapped')
+                    figure.savefig( jason['PreviewFolder'] + '/06_autocrop.png')
+
+                datapack['obj'] = cropped_image
+
             if jason['Phaseunwrap'][0] == True:
 
                 original_object = datapack['obj'] # create copy of object
 
-                print('Cropping data and performing Phase Unwrap')
-                """ Crop reconstruction for a proper phase unwrap """
-                slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],-jason['Phaseunwrap'][2][1]), slice(jason['Phaseunwrap'][3][0],-jason['Phaseunwrap'][3][1])
-                # slice_rows, slice_columns = slice(1*hsize//2,-1*hsize//2), slice(1*hsize//2,-1*hsize//2)
-                datapack['obj'] = datapack['obj'][slice_rows,slice_columns]
-                print('Cropped object shape:', datapack['obj'].shape)
+                if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
+                    print('Manual cropping of the data')
+                    """ Fine manual crop of the reconstruction for a proper phase unwrap
+                    jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
+                    jason['Phaseunwrap'][2] = [left_crop,right_crop] """
+                    slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],-jason['Phaseunwrap'][2][1]), slice(jason['Phaseunwrap'][3][0],-jason['Phaseunwrap'][3][1])
+                    datapack['obj'] = datapack['obj'][slice_rows,slice_columns]
+                    print('Cropped object shape:', datapack['obj'].shape)
 
                 print('Phase unwrapping the cropped image')
                 n_iterations = jason['Phaseunwrap'][1] # number of iterations to remove gradient from unwrapped image
+                print(type(datapack['obj']))
+                print(datapack['obj'].shape)
                 absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
                 angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
                 datapack['obj'] = absolute*np.exp(-1j*angle)
@@ -847,22 +916,21 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                     subplot[1].imshow(angle)
                     subplot[0].set_title('Original')
                     subplot[1].set_title('Cropped and Unwrapped')
-                    figure.savefig( jason['PreviewFolder'] + '/06_crop_and_unwrap.png')
+                    figure.savefig( jason['PreviewFolder'] + '/06_manualcrop_and_unwrap.png')
 
-
-                if jason['FRC'] == True:
-                    print('Estimating resolution via Fourier Ring Correlation')
-                    resolution = resolution_frc(datapack['obj'], object_pixel_size)
-                    try:
-                        print('\tResolution for frame ' + str(current_frame) + ':', resolution['halfbit'])
-                        jason["hafbitResolution"] = resolution['halfbit']
-                    except:
-                        print('Could not calculate halfbit FRC resolution')
-                    try:
-                        print('\tResolution for frame ' + str(current_frame) + ':', resolution['3sigma'])
-                        jason["3sigmaResolution"] = resolution['3sigma']    
-                    except:
-                        print('Could not calculate 3sigma FRC resolution')
+            if jason['FRC'] == True:
+                print('Estimating resolution via Fourier Ring Correlation')
+                resolution = resolution_frc(datapack['obj'], object_pixel_size)
+                try:
+                    print('\tResolution for frame ' + str(current_frame) + ':', resolution['halfbit'])
+                    jason["hafbitResolution"] = resolution['halfbit']
+                except:
+                    print('Could not calculate halfbit FRC resolution')
+                try:
+                    print('\tResolution for frame ' + str(current_frame) + ':', resolution['3sigma'])
+                    jason["3sigmaResolution"] = resolution['3sigma']    
+                except:
+                    print('Could not calculate 3sigma FRC resolution')
 
                 if jason["LogfilePath"] != "" and first_iteration: # save logfile with new values (object_pixel_size and resolution) for first iteration only
                     sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
@@ -880,6 +948,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 plt.clf()
                 plt.close()
                 # '''
+
                 # Show probe:
                 plotshow([abs(Prop(p, jason['f1'])) for p in datapack['probe']]+[p for p in datapack['probe']],file= jason['PreviewFolder'] + '/probe_2d_' + str(current_frame), nlines=2)
 
