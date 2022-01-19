@@ -167,22 +167,16 @@ def cat_restauration(jason,path,name):
         import os
         fullpath = os.path.join(path,name) 
 
-        # Here comes the distance Geometry(Z1):
-        z1 = float(jason["DetDistance"])
-        z1 = z1*1000
-
+        z1 = float(jason["DetDistance"])*1000 # Here comes the distance Geometry(Z1):
         geometry = Geometry(z1)
 
         empty = np.asarray(h5py.File(jason['EmptyFrame'],'r')['/entry/data/data']).squeeze().astype(np.float32)
         # empty = np.load('masks/empty_zeros.npy')
-        
         sscCdi.caterete.misc.plotshow_cmap2(empty,title=f"{jason['EmptyFrame'].split('/')[-1]}",savepath=jason["PreviewFolder"]+'/00_empty.png')
 
-        em = empty > 0
-        
         cx = 1419 
         cy = 1395 
-        hsize = 1280 #(2560/2)
+        hsize = jason['DetectorROI'] #(2560/2)
 
         Binning = int(jason['Binning'])
 
@@ -291,7 +285,7 @@ def set_initial_parameters(jason,difpads,probe_positions,radius,center_x,center_
 
         return datapack,probe_positionsi,sigmask,hsize,maxroi, probe_positions
 
-def set_parameters(difpads,jason,probe_positions):
+def set_parameters(difpads,jason,probe_positions,offset_topleft = 20):
         print('Setting parameters hsize, dx and maxroi ...')
         # Compute half size of diffraction patterns:
         hsize = difpads.shape[-1]//2
@@ -307,7 +301,6 @@ def set_parameters(difpads,jason,probe_positions):
         probe_positions[:,0] -= np.min(probe_positions[:,0])
         probe_positions[:,1] -= np.min(probe_positions[:,1])
 
-        offset_topleft = 20 
         offset_bottomright = offset_topleft 
         probe_positions[:,0] = 1E-6*probe_positions[:,0]/dx + offset_topleft 
         probe_positions[:,1] = 1E-6*probe_positions[:,1]/dx + offset_topleft 
@@ -499,7 +492,7 @@ def resolution_fsc(data,pixel):
         return resolution
 
 
-def resolution_frc(data,pixel,plot_output_folder="./outputs"):
+def resolution_frc(data,pixel,plot_output_folder="./outputs/preview"):
         print('Calculating resolution by Fourier Ring Correlation...')
         # Fourier Ring Correlation for 2D images:
         # The routine inputs are besides the two images for correlation
@@ -562,16 +555,12 @@ def refine_center_estimate(difpad,center_estimate,radius=20):
     try:
         lorentzian2d_fit, fit_params = fit_2d_lorentzian(region_around_center,fit_guess=fit_guess)
         amplitude, centerx, centery, sigmax, sigmay, rotation = fit_params
-        
         # print(f'Lorentzian center: ({centerx},{centery})')
-    
         deltaX, deltaY = (region_around_center.shape[0]//2-round(centerx)+1), (1+region_around_center.shape[1]//2-round(centery)),
     except:
         print('Fit failed')
-    # print(np.where(region_around_center==np.max(region_around_center)))
-    # print(np.where(lorentzian2d_fit==np.max(lorentzian2d_fit)))
 
-    if 1: # plot for debugging
+    if 0: # plot for debugging
         figure, subplot = plt.subplots(1,2)
         subplot[0].imshow(region_around_center,cmap='jet',norm=LogNorm())
         subplot[0].set_title('Central region preview')
@@ -649,13 +638,14 @@ def auto_crop_noise_borders(complex_array):
     
     cropped_array = complex_array[best_crop:-best_crop,best_crop:-best_crop] # crop original complex image
     
-    if 1: # debug / see results
+    if 0: # debug / see results
         figure, subplot = plt.subplots(1,3,figsize=(10,10),dpi=200)
         subplot[0].imshow(img)
         subplot[1].imshow(local_entropy_map)
         subplot[2].imshow(np.angle(cropped_array))
         subplot[0].set_title('Original')
         subplot[1].set_title('Local entropy')
+
         subplot[2].set_title('Cropped')
         
         figure, subplot = plt.subplots()
@@ -689,8 +679,7 @@ jason = json.load(open(argv[1]))  # Open jason file
 if jason["LogfilePath"] != "":
     sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
 
-# define seed for generation of the same random values
-np.random.seed(jason['Seed'])
+np.random.seed(jason['Seed']) # define seed for generation of the same random values
 
 if jason['InitialObj'] != "":
     jason['InitialObj'] = jason['ObjPath']+jason['InitialObj']
@@ -718,8 +707,7 @@ probe3d = []
 backg3d = []
 first_iteration = True  # flag to save only in the first loop iteration
 
-# loop when multiple acquisitions were performed for a 3D recon
-for acquisitions_folder in jason['3D_Acquisition_Folders']:
+for acquisitions_folder in jason['3D_Acquisition_Folders']: # loop when multiple acquisitions were performed for a 3D recon
 
     print('Starting reconstructiom for acquisition: ', acquisitions_folder)
 
@@ -730,21 +718,19 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
     else:  # otherwise, use directly the .hdf5 measurement file in the proposal path
         filepaths, filenames = [os.path.join(ibira_datafolder, jason["SingleMeasurement"])], [jason["SingleMeasurement"]]
 
-    # loop through each hdf5, one for each sample angle
-    for measurement_file, measurement_filepath in zip(filenames, filepaths):
+    for measurement_file, measurement_filepath in zip(filenames, filepaths):     # loop through each hdf5, one for each sample angle
 
         if first_iteration:
-            current_frame = str(0).zfill(4)
+            current_frame = str(0).zfill(4) # start at 0
         else:
-            current_frame = str(int(current_frame)+1).zfill(4)
+            current_frame = str(int(current_frame)+1).zfill(4) # increment one
 
         if first_iteration:  # plot only for first iteration
             difpad_number = 0
             raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
             sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :],title=f'Raw Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/03_difpad_raw.png')
 
-        print('Raw difpad shape',raw_difpads.shape)
-        print(raw_difpads[0].shape,raw_difpads[1].shape)
+        print('Raw difpad shape: ',raw_difpads.shape)
 
         probe_positions_file = os.path.join(acquisitions_folder, measurement_file[:-5]+'.txt')  # change .hdf5 to .txt extension
         print('probe_positions_file = ', probe_positions_file)
@@ -753,8 +739,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
         if first_iteration: t1 = time()
 
-        # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
-        run_ptycho = np.any(probe_positions)
+        run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
+
         if run_ptycho == True:
             print('Begin Restauration')
             if jason['OldRestauration'] == True:
@@ -762,7 +748,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
 
                 if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
-                    difpads = difpads[1:]
+                    difpads = difpads[1:] #TODO: why does this difference of 1 positions happens?
             
             else:
                 print('Entering Miqueles Restauration.')
@@ -781,7 +767,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 difpads, elapsed_time = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
             
             print('Difraction pattern shape (post restauration):',difpads.shape)
-            np.save('difpads.npy',difpads)
+            # np.save('difpads.npy',difpads) # DELETE
 
             if first_iteration:
                 sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath= jason['PreviewFolder'] + '/04_difpad_restaured.png')
@@ -804,13 +790,13 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
                 difpads[:, central_mask > 0] = -1
 
-            if 0:
+            if 0: # still being tested
                 print("Applying lowpass filter")
                 radius, center_row, center_col = 300, 320, 321
                 central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
                 difpads[:, central_mask == 0] = -1
 
-            if jason["DetectorExposure"][0]:
+            if jason["DetectorExposure"][0]: # still being tested
                 print("Removing pixels above detector pile-up threshold")
                 #TODO: apply threshold only in the chip of interest around central peak
                 detector_pileup_count = 300000  # counts/sec; value according to Kalile
@@ -819,10 +805,8 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
                 difpads[difpads_rescaled > detector_pileup_count] = -1
 
             if jason["Mask"] != "":
-                print('Applying mask from file to Diffraction Pattern')
+                print('Applying mask from file to diffraction pattern')
                 mask = np.load(jason['Mask'])
-                print(difpads.shape)
-                print(mask.shape)
                 difpads[:, mask > 0] = -1
 
             if first_iteration:
@@ -843,7 +827,7 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
             run_algorithms = True
             loop_counter = 1
-            while run_algorithms:  # Run Ptycho:
+            while run_algorithms: # run Ptycho:
                 try:
                     algorithm = jason['Algorithm'+str(loop_counter)]
                 except:
@@ -868,7 +852,6 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                     loop_counter += 1
                     RF = datapack['error']
-                    # print(RF[0:algorithm['Iterations']:max(algorithm['Iterations']//10, 1)]/np.sqrt(np.sum(difpads)))
 
             print('Original object shape:', datapack['obj'].shape)
 
@@ -903,14 +886,11 @@ for acquisitions_folder in jason['3D_Acquisition_Folders']:
 
                 print('Phase unwrapping the cropped image')
                 n_iterations = jason['Phaseunwrap'][1] # number of iterations to remove gradient from unwrapped image
-                print(type(datapack['obj']))
-                print(datapack['obj'].shape)
                 absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
                 angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),n_iterations,non_negativity=0,remove_gradient = 0)
                 datapack['obj'] = absolute*np.exp(-1j*angle)
 
                 if 1: # plot original and cropped object phase and save!
-                    print(jason['PreviewFolder'] + '/06_crop_and_unwrap.png')
                     figure, subplot = plt.subplots(1,2)
                     subplot[0].imshow(-np.angle(original_object))
                     subplot[1].imshow(angle)

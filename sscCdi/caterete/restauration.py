@@ -71,8 +71,8 @@ def cat_preproc_ptycho_measurement( data, args ):
     where = (back == -1)
     back = set_binning ( back, dic['binning'] )
     back[where] = -1
-    backroi  = _get_roi( back, dic['roi'], [xc, yc],dic['binning'])
     
+    backroi  = _get_roi( back, dic['roi'], [xc, yc],dic['binning'])
     where = _get_roi( where, dic['roi'], [xc, yc],dic['binning'])
     backroi[where] = -1
 
