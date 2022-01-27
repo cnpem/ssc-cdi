@@ -79,6 +79,12 @@ def select_specific_angles(frames,filepaths,filenames):
     return filepaths, filenames
 
 def save_json_logfile(path,jason):
+    """Save a copy of the json input file with datetime at the filename
+
+    Args:
+        path (string): output folder path 
+        jason (dic): jason dictionary
+    """    
     import json, os
     from datetime import datetime
     now = datetime.now()
