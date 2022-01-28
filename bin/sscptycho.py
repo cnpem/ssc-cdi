@@ -37,8 +37,7 @@ from numpy.fft import ifft2 as ifft2
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
-def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False,
-             interpolation='bilinear'):  # legend = plot titles
+def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
     num = len(imgs)
 
     for j in range(num):
@@ -732,130 +731,108 @@ if __name__ == '__main__':
 
     jason = json.load(open(argv[1]))  # Open jason file
 
-    if jason["LogfilePath"] != "":
+    if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
         sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
 
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
-    if jason['InitialObj'] != "":
+    if jason['InitialObj'] != "": # definition of paths for initial guesses
         jason['InitialObj'] = jason['ObjPath'] + jason['InitialObj']
     if jason['InitialProbe'] != "":
         jason['InitialProbe'] = jason['ProbePath'] + jason['InitialProbe']
     if jason['InitialBkg'] != "":
         jason['InitialBkg'] = jason['BkgPath'] + jason['InitialBkg']
 
-    ibira_datafolder = jason['ProposalPath']
+    ibira_datafolder = jason['ProposalPath'] 
     print('ibira_datafolder = ', ibira_datafolder)
 
-    empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0, 0, :,
-                     :]  # raw shape is (1,1,3072,3072)
-    sscCdi.caterete.misc.plotshow_cmap2(empty_detector, title=f"{jason['EmptyFrame'].split('/')[-1]}",
-                                        savepath=jason["PreviewFolder"] + '/00_empty.png')
+    empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0, 0, :, :]  # raw shape is (1,1,3072,3072)
+    sscCdi.caterete.misc.plotshow_cmap2(empty_detector, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
     flatfield = np.load(jason["FlatField"])
-    flatfield[np.isnan(flatfield)] = -1
-    sscCdi.caterete.misc.plotshow_cmap2(flatfield, title=f"{jason['FlatField'].split('/')[-1]}",
-                                        savepath=jason["PreviewFolder"] + '/01_flatfield.png')
+    flatfield[np.isnan(flatfield)] = -1 # invalid flatfield points are converted to -1, according to our convention
+    sscCdi.caterete.misc.plotshow_cmap2(flatfield, title=f"{jason['FlatField'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/01_flatfield.png')
 
-    if jason["Mask"] != "":
+    if jason["Mask"] != "": # load manual mask defined in a separate file
         initial_mask = np.load(jason["Mask"])
-        sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}",
-                                            savepath=jason["PreviewFolder"] + '/02_mask.png')
+        sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
 
     sinogram = []
     probe3d = []
     backg3d = []
     first_iteration = True  # flag to save only in the first loop iteration
 
-    for acquisitions_folder in jason[
-        '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+    for acquisitions_folder in jason[ '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
         print('Starting reconstructiom for acquisition: ', acquisitions_folder)
 
-        if jason["3D_Acquisition_Folders"] != [
-            ""]:  # if data inside subfolder, list all hdf5 and select the ones you want
-            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(
-                os.path.join(ibira_datafolder, acquisitions_folder), look_for_extension=".hdf5")
+        if jason["3D_Acquisition_Folders"] != [ ""]:  # if data inside subfolder, list all hdf5 and select the ones you want
+            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder), look_for_extension=".hdf5")
             if jason['Frames'] != []:
-                filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,
-                                                                                   filenames)
+                filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         else:  # otherwise, use directly the .hdf5 measurement file in the proposal path
-            filepaths, filenames = [os.path.join(ibira_datafolder, jason["SingleMeasurement"])], [
-                jason["SingleMeasurement"]]
+            filepaths, filenames = [os.path.join(ibira_datafolder, jason["SingleMeasurement"])], [ jason["SingleMeasurement"]]
 
-        for measurement_file, measurement_filepath in zip(filenames,
-                                                          filepaths):  # loop through each hdf5, one for each sample angle
+        for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
 
             if first_iteration:
-                current_frame = str(0).zfill(4)  # start at 0
+                current_frame = str(0).zfill(4)  # start at 0. this variable will name the output preview images of the object and probe
             else:
                 current_frame = str(int(current_frame) + 1).zfill(4)  # increment one
 
             if first_iteration:  # plot only for first iteration
-                difpad_number = 0
+                difpad_number = 0 # selects which difpad to preview
                 raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
-                sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :],
-                                                    title=f'Raw Diffraction Pattern #{difpad_number}',
-                                                    savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
+                sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
 
             print('Raw difpad shape: ', raw_difpads.shape)
 
-            probe_positions_file = os.path.join(acquisitions_folder,
-                                                measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
+            probe_positions_file = os.path.join(acquisitions_folder, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
             print('probe_positions_file = ', probe_positions_file)
 
             probe_positions = read_probe_positions(ibira_datafolder + probe_positions_file, measurement_filepath)
 
             if first_iteration: t1 = time()
 
-            run_ptycho = np.any(
-                probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
+            run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
             if run_ptycho == True:
                 print('Begin Restauration')
-                if jason['OldRestauration'] == True:
+                if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
-                    difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder),
-                                               measurement_file)
+                    difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
 
                     if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
-                        difpads = difpads[1:]  # TODO: why does this difference of 1 positions happens?
+                        difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
 
                 else:
                     print('Entering Miqueles Restauration.')
                     dic = {}
                     dic['susp'] = jason["ChipBorderRemoval"]  # parameter to ignore borders of the detector chip
-                    dic['roi'] = jason[
-                        "DetectorROI"]  # radius of the diffraction pattern wrt to center. Changes according to the binning value!
+                    dic['roi'] = jason["DetectorROI"]  # radius of the diffraction pattern wrt to center. Changes according to the binning value!
                     dic['binning'] = jason['Binning']
                     dic['distance'] = jason['DetDistance'] * 1e+3
                     dic['nproc'] = jason["Threads"]
                     dic['data'] = ibira_datafolder + measurement_file
                     dic['empty'] = jason['EmptyFrame']
                     dic['flat'] = jason['FlatField']
-                    dic['order'] = 'only'
+                    dic['order'] = 'only' #TODO: ask Miqueles what this 'order' is about! 
                     dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
 
                     difpads, elapsed_time = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
 
                 print('Difraction pattern shape (post restauration):', difpads.shape)
-                # np.save('difpads.npy',difpads) # DELETE
 
-                if first_iteration:
-                    sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :],
-                                                        title=f'Restaured Diffraction Pattern #{difpad_number}',
-                                                        savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
-                    sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0),
-                                                        title=f'Mean Restaured Diffraction Pattern #{difpad_number}',
-                                                        savepath=jason[
-                                                                     'PreviewFolder'] + '/04_difpad_restaured_mean.png')
+                if first_iteration: # save plots of restaured difpad and mean of all restaured difpads
+                    sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
+                    sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0),  title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
                     if jason["SaveDifpadPath"] != "":
                         np.save(jason["SaveDifpadPath"], np.mean(difpads, axis=0))
 
                 print('Finished Restauration')
                 if first_iteration: t2 = time()
 
-                if jason["AutomaticCentralMask"] != []:  # circular central mask
+                if jason["AutomaticCentralMask"] != []:  # circular central mask to block center of the difpad
                     print("Applying circular mask to central pixels")
 
                     if jason["AutomaticCentralMask"][0]:  # automatically finds the center of the first difpad
@@ -886,14 +863,9 @@ if __name__ == '__main__':
                     mask = np.load(jason['Mask'])
                     difpads[:, mask > 0] = -1
 
-                if first_iteration:
-                    sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :],
-                                                        title=f'Restaured + Processed Diffraction Pattern #{difpad_number}',
-                                                        savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
-                    sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0),
-                                                        title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}",
-                                                        savepath=jason[
-                                                                     "PreviewFolder"] + '/05_difpad_processed_mean.png')
+                if first_iteration: # save plots of processed difpad and mean of all processed difpads
+                    sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
+                    sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0), title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason[ "PreviewFolder"] + '/05_difpad_processed_mean.png')
 
                 probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 
@@ -931,20 +903,16 @@ if __name__ == '__main__':
 
                         elif algorithm['Name'] == 'positioncorrection':
                             datapack['bkg'] = None
-                            datapack = sscPtycho.PosCorrection(iter=algorithm['Iterations'],
-                                                               objbeta=algorithm['ObjBeta'],
-                                                               probebeta=algorithm['ProbeBeta'],
-                                                               batch=algorithm['Batch'], epsilon=algorithm['Epsilon'],
-                                                               tvmu=algorithm['TV'], sigmask=sigmask,
+                            datapack = sscPtycho.PosCorrection(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
+                                                               probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'], 
+                                                               epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
                                                                probef1=jason['f1'], data=datapack)
 
                         elif algorithm['Name'] == 'Mixed':
-                            datapack = sscPtycho.CoherentModes(iter=algorithm['Iterations'],
-                                                               objbeta=algorithm['ObjBeta'],
-                                                               probebeta=algorithm['ProbeBeta'],
-                                                               batch=algorithm['Batch'], epsilon=algorithm['Epsilon'],
-                                                               tvmu=algorithm['TV'], sigmask=sigmask, weights=weights,
-                                                               probef1=jason['f1'], data=datapack)
+                            datapack = sscPtycho.CoherentModes(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
+                                                               probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'], 
+                                                               epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask, 
+                                                               weights=weights, probef1=jason['f1'], data=datapack)
 
                         elif algorithm['Name'] == 'RAAR':
                             datapack = sscPtycho.RAAR(iter=algorithm['Iterations'], beta=algorithm['Beta'],
@@ -965,10 +933,10 @@ if __name__ == '__main__':
 
                 if first_iteration: t4 = time()
 
-                if jason['AutoCrop'] == True:
+                if jason['AutoCrop'] == True: # automatically crop borders with noise
                     cropped_image = auto_crop_noise_borders(datapack['obj'])
 
-                    if 1:  # plot original and cropped object phase and save!
+                    if 1:  # plot original and cropped object phase and save! 
                         print(jason['PreviewFolder'] + '/06_crop_and_unwrap.png')
                         figure, subplot = plt.subplots(1, 2)
                         subplot[0].imshow(-np.angle(datapack['obj']))
@@ -988,19 +956,15 @@ if __name__ == '__main__':
                         """ Fine manual crop of the reconstruction for a proper phase unwrap
                         jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
                         jason['Phaseunwrap'][2] = [left_crop,right_crop] """
-                        slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0],
-                                                          -jason['Phaseunwrap'][2][1]), slice(
-                            jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
+                        slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0], -jason['Phaseunwrap'][2][1]), slice( jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
                         datapack['obj'] = datapack['obj'][slice_rows, slice_columns]
                         print('Cropped object shape:', datapack['obj'].shape)
 
                     print('Phase unwrapping the cropped image')
-                    n_iterations = jason['Phaseunwrap'][
-                        1]  # number of iterations to remove gradient from unwrapped image
-                    absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])),
-                                                          n_iterations, non_negativity=0, remove_gradient=0)
-                    angle = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])),
-                                                       n_iterations, non_negativity=0, remove_gradient=0)
+                    n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
+                    #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
+                    absolute = sscCdi.unwrap.phase_unwrap(  -np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])), n_iterations, non_negativity=0, remove_gradient=0)
+                    angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])), n_iterations, non_negativity=0, remove_gradient=0)
                     datapack['obj'] = absolute * np.exp(-1j * angle)
 
                     if 1:  # plot original and cropped object phase and save!
@@ -1044,15 +1008,13 @@ if __name__ == '__main__':
                     # '''
 
                     # Show probe:
-                    plotshow([abs(Prop(p, jason['f1'])) for p in datapack['probe']] + [p for p in datapack['probe']],
-                             file=jason['PreviewFolder'] + '/probe_2d_' + str(current_frame), nlines=2)
+                    plotshow([abs(Prop(p, jason['f1'])) for p in datapack['probe']] + [p for p in datapack['probe']], file=jason['PreviewFolder'] + '/probe_2d_' + str(current_frame), nlines=2)
 
                     # Show object:
                     ango = np.angle(datapack['obj'])
                     abso = np.clip(abs(datapack['obj']), 0.0, np.max(abs(datapack['obj'][hsize:maxroi, hsize:maxroi])))
 
-                    plotshow([ango, abso], subplot_title=['Phase', 'Magnitude'],
-                             file=jason['PreviewFolder'] + '/object_2d_' + str(current_frame), cmap='gray', nlines=1)
+                    plotshow([ango, abso], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(current_frame), cmap='gray', nlines=1)
             else:
                 continue
 
@@ -1066,8 +1028,7 @@ if __name__ == '__main__':
 
         if jason['SaveProbe'] == True:
             if jason['SaveProbename'] != "":
-                save_variable(probe3d, jason['ProbePath'] + 'probe',
-                              savename=jason['ProbePath'] + jason['SaveProbename'])
+                save_variable(probe3d, jason['ProbePath'] + 'probe', savename=jason['ProbePath'] + jason['SaveProbename'])
             else:
                 save_variable(probe3d, jason['ProbePath'] + 'probe')
 
