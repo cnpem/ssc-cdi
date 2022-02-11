@@ -101,7 +101,7 @@ def pre_processing_Giovanni(img, args):
 
     Args:
         img (array): image to be restaured and binned
-        args (type): [description]
+        args (list): the itens of the list are, respectively: binning value (int), empty image (2D-array), flatfield (2D-array), diffraction patterns x coordinate of the center (int), y coordinate of the center (int),  half of the size (int) and restauration geometry  
     """    
     def Restaurate(img, geom):
         return pi540D.backward540D(img, geom)
@@ -291,14 +291,14 @@ def create_squared_mask(start_row, start_column, height, width, mask_shape):
     """ Create squared mask. Start position is the top-left corner. All values in pixels!
 
     Args:
-        start_row ([type]): [description]
-        start_column ([type]): [description]
-        height ([type]): [description]
-        width ([type]): [description]
-        mask_shape ([type]): [description]
+        start_row (int): first mask row 
+        start_column (int): first mask column
+        height (int): number of rows
+        width (int): number of columns
+        mask_shape (array): shape of the mask
 
     Returns:
-        [type]: [description]
+        mask (array): the mask is filled with zeros except at the squared delimited area, in which the elements equals to 1
     """
     mask = np.zeros(mask_shape)
     mask[start_row:start_row + height, start_column:start_column + width] = 1
@@ -312,7 +312,7 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
         center_row (int): Center position in the vertical dimension
         center_col (int): Center position in the horizontal dimension
         radius (int): Radius of the circular mask in pixels
-        mask_shape ([tuple]): [description]
+        mask_shape ([tuple]): shape of the mask
 
     Returns:
         [2-dimensional ndarrya]: array containing 1s within the disk, 0 otherwise
@@ -431,7 +431,7 @@ def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
         z (int, optional): [description]. Defaults to 1.
 
     Returns:
-        [type]: [description]
+        Fresnel number (float): related to bram propagation
     """    
     print('Setting Fresnel number automatically...')
     c = 299792458  # Velocity of Light [m/s]
@@ -501,10 +501,10 @@ def set_modes(probe, jason):
 
 
 def set_gpus(jason):
-    """[summary]
+    """Set 4 GPUs to proccess the reconstruction
 
     Args:
-        jason ([type]): [description]
+        jason (json file): stores the variable inputs
     """    
     print('Setting GPUs...')
     if jason['GPUs'][0] < 0:

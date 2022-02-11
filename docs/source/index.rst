@@ -11,7 +11,13 @@ Welcome to ssc-cdi's documentation!
 Getting started
 ***************
 
-This page documents the ssc-cdi API from Sirius Scientific Computing Group. 
+Sirius Scientific Computing Group approach for Coherent Diffraction Imaging reconstructions.
+
+**Author (s)**
+
+	Yuri Tonin (yuri.tonin@lnls.br) 
+	
+	Júlia Carvalho (julia.carvalho@lnls.br)
 
 =====================================
 
