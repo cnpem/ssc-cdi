@@ -38,6 +38,18 @@ from numpy.fft import ifft2 as ifft2
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
+    """[summary]
+
+    Args:
+        imgs ([type]): [description]
+        file ([type]): [description]
+        subplot_title (list, optional): [description]. Defaults to [].
+        legend (list, optional): [description]. Defaults to [].
+        cmap (str, optional): [description]. Defaults to 'jet'.
+        nlines (int, optional): [description]. Defaults to 1.
+        bLog (bool, optional): [description]. Defaults to False.
+        interpolation (str, optional): [description]. Defaults to 'bilinear'.
+    """    
     num = len(imgs)
 
     for j in range(num):
@@ -71,8 +83,7 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
     plt.close()
 
 
-def Geometry(L):
-    #     det = pi540D.get_detector_dictionary( L )
+def Geometry(L): 
     xdet = pi540D.get_project_values_geometry()
     det = pi540D.get_detector_dictionary(xdet, L)
     geo = pi540D.geometry540D(det)
@@ -80,6 +91,12 @@ def Geometry(L):
 
 
 def pre_processing_Giovanni(img, args):
+    """Restaurate and process the binning on the diffraction patterns
+
+    Args:
+        img (array): image to be restaured and binned
+        args (type): [description]
+    """    
     def Restaurate(img, geom):
         return pi540D.backward540D(img, geom)
 
@@ -169,6 +186,18 @@ def pre_processing_Giovanni(img, args):
 
 
 def cat_restauration(jason, path, name):
+    """Extracts the data from json and manipulate it according G restauration input format
+        Then, call G restauration
+
+
+    Args:
+        jason (json file): json object
+        path (list of dtrings): list of complete paths to all files
+        name (list of strings): list of all file names
+
+    Returns:
+        3D array: restaured difpads
+    """    
     import os
     fullpath = os.path.join(path, name)
 
@@ -180,8 +209,8 @@ def cat_restauration(jason, path, name):
     sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}",
                                         savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    cx = 1419
-    cy = 1395
+    cx = 1419 #magic number
+    cy = 1395 #magic number
     hsize = jason['DetectorROI']  # (2560/2)
 
     Binning = int(jason['Binning'])
@@ -200,7 +229,16 @@ def cat_restauration(jason, path, name):
     return output
 
 
-def read_probe_positions(probe_positions_filepath, measure):
+def read_probe_positions(probe_positions_filepath, measurement):
+    """Read probe positions from .txt data file
+
+    Args:
+        probe_positions_filepath (string): path to file storing the probe positions
+        measurement (string): path to measurement folder
+
+    Returns:
+        probe_positions: array, each item is an array with [x position, y position, 1, 1]
+    """    
     print('Reading probe positions (probe_positions)...')
     probe_positions = []
     positions_file = open(probe_positions_filepath)
@@ -222,11 +260,10 @@ def read_probe_positions(probe_positions_filepath, measure):
     pshape = pd.read_csv(probe_positions_filepath,
                          sep=' ').shape  # why read pshape from file? can it be different from probe_positions.shape+1?
 
-    with h5py.File(measure, 'r') as file:
+    with h5py.File(measurement, 'r') as file:
         mshape = file['entry/data/data'].shape
 
-    if pshape[0] == mshape[
-        0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
+    if pshape[0] == mshape[0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
         print('\tSuccess in read positions file:' + probe_positions_filepath)
         print("\tShape probe_positions:", probe_positions.shape, pshape, mshape)
     else:
@@ -282,6 +319,21 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
 
 
 def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, center_y, maxroi, dx):
+    """Defines the structure to get started with the reconstruction
+
+    Args:
+        jason (json file): json with the input parameter
+        difpads (3D array)): measured diffraction patterns
+        probe_positions (array): probe positions in x and y directions
+        radius (int): probe support radius in pixels
+        center_x (int): probe support center at x coordinate
+        center_y (int): probe support center at y coordinate
+        maxroi (int): total object size plus padding
+        dx (int): pixel size
+
+    Returns:
+        initial data for reconstruction
+    """    
     hsize = difpads.shape[-1] // 2
 
     if jason['f1'] == -1:  # Manually choose wether to find Fresnel number automatically or not
@@ -317,8 +369,18 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
 
     return datapack, probe_positionsi, sigmask, hsize, maxroi, probe_positions
 
+def set_parameters(difpads, jason, probe_positions, offset_topleft = 20):
+    """Set probe positions considering maxroi and effective pixel size
 
-def set_parameters(difpads, jason, probe_positions, offset_topleft=20):
+    Args:
+        difpads (3D array): measured diffraction patterns
+        jason (json file): file with the setted parameters and directories for reconstruction
+        probe_positions (array): each element is an 2-array with x and y probe positions
+        offset_topleft (int, optional): [description]. Defaults to 20.
+
+    Returns:
+        object pixel size (float), maximum roi (int), probe positions (array)
+    """    
     print('Setting parameters hsize, dx and maxroi ...')
     # Compute half size of diffraction patterns:
     hsize = difpads.shape[-1] // 2
@@ -331,24 +393,35 @@ def set_parameters(difpads, jason, probe_positions, offset_topleft=20):
                 jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
     print('\tConverted to pixel size:', dx)
 
-    # Get probe_positions minimum and a threshold.
+    # Subtract the probe positions minimum to start at 0
     probe_positions[:, 0] -= np.min(probe_positions[:, 0])
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
 
-    offset_bottomright = offset_topleft
-    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft
-    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft
+    offset_bottomright = offset_topleft #define padding width
+    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
+    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
 
-    # Compute max probe_positions and size object (2*hsize+maxroi)
+    # Compute max probe_positions and object size (2*hsize+maxroi)
     maxroi = int(np.max(probe_positions)) + offset_bottomright
 
     print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
-    print("\tObject shape: 2*hsize+maxroi=", 2 * hsize + maxroi)
+    print("\tObject shape: 2*hsize+maxroi = ", 2 * hsize + maxroi)
 
     return dx, maxroi, probe_positions
 
 
 def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
+    """Calculate Fresnel number
+
+    Args:
+        dx (int, optional): effective pixel size. Defaults to 1.
+        pixel (float, optional): pixel size. Defaults to 55.55E-6.
+        energy (float, optional): beam energy. Defaults to 3.8E3.
+        z (int, optional): [description]. Defaults to 1.
+
+    Returns:
+        [type]: [description]
+    """    
     print('Setting Fresnel number automatically...')
     c = 299792458  # Velocity of Light [m/s]
     plank = 4.135667662E-15  # Plank constant [ev*s]
@@ -366,6 +439,15 @@ def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
 
 
 def set_initial_probe(difpads, jason):
+    """Create initial guess for the probe
+
+    Args:
+        difpads (array): measured diffraction patterns
+        jason (json): file with inputs
+
+    Returns:
+        probe (array)
+    """    
     print('Setting initial probe...')
     # Compute probe: initial guess:
     if jason['InitialProbe'] == "":
@@ -383,6 +465,15 @@ def set_initial_probe(difpads, jason):
 
 
 def set_modes(probe, jason):
+    """[summary]
+
+    Args:
+        probe ([type]): [description]
+        jason ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """    
     print('Setting modes...')
     mode = probe.shape[0]
     print('\tNumber of modes:', mode)
@@ -399,6 +490,11 @@ def set_modes(probe, jason):
 
 
 def set_gpus(jason):
+    """[summary]
+
+    Args:
+        jason ([type]): [description]
+    """    
     print('Setting GPUs...')
     if jason['GPUs'][0] < 0:
         jason['GPUs'] = [0, 1, 2, 3]
@@ -406,6 +502,18 @@ def set_gpus(jason):
 
 
 def set_initial_obj(jason, hsize, maxroi, probe, difpads):
+    """Create initial guess for the object
+
+    Args:
+        jason (json file): file with inputs
+        hsize (int): half size of the object
+        maxroi (int): size of the padding object
+        probe (array): probe
+        difpads (array): measured data
+
+    Returns:
+        obj (array)
+    """    
     print('Setting initial guess for Object...')
     # Object initial guess:
     if jason['InitialObj'] == "":
@@ -419,6 +527,15 @@ def set_initial_obj(jason, hsize, maxroi, probe, difpads):
 
 
 def set_sigmask(difpads):
+    """Create a mask for invalid pixels
+
+    Args:
+        difpads (array): measured diffraction patterns
+
+    Returns:
+        sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels
+        0 for negative values, intensity measured elsewhere
+    """    
     # Mask of 1 and 0:
     sigmask = np.ones(difpads[0].shape)
     sigmask[difpads[0] < 0] = 0
@@ -427,6 +544,15 @@ def set_sigmask(difpads):
 
 
 def set_background(difpads, jason):
+    """Creates background mask: constant signal on detector, for instance, the illumination of the room
+
+    Args:
+        difpads (array): measured intensities 
+        jason (json file): json file with the inputs for reconstruction
+
+    Returns:
+        background (array): mask for take into account the background
+    """    
     print('Setting background...')
     # Background: better not use any for now.
     if jason['InitialBkg'] == "":
@@ -440,8 +566,19 @@ def set_background(difpads, jason):
 
     return background
 
-
 def probe_support(probe, hsize, radius, center_x, center_y):
+    """Create a support for probe
+
+    Args:
+        probe (array): initial guess for the probe
+        hsize (int): half difraction pattern size
+        radius (): probe support radius
+        center_x (int): probe support center in x
+        center_y (int): probe support center in y
+
+    Returns:
+        probesupp (array): probe support
+    """    
     print('Setting probe support...')
     # Compute probe support:
     ar = np.arange(-hsize, hsize)
@@ -457,6 +594,15 @@ def probe_support(probe, hsize, radius, center_x, center_y):
 
 # Propagation:
 def Prop(img, f1):
+    """[summary]
+
+    Args:
+        img (array): probe
+        f1 (float): Fresnel number
+
+    Returns:
+        [type]: [description]
+    """    
     # See paper "Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations". Are terms missing after convolution?
     hs = img.shape[-1] // 2
     ar = np.arange(-hs, hs) / float(2 * hs)
@@ -466,6 +612,19 @@ def Prop(img, f1):
 
 
 def set_datapack(obj, probe, probe_positions, difpads, background, probesupp):
+    """Create a dictionary to store the data needed for reconstruction
+
+    Args:
+        obj (array): guess for ibject
+        probe (array): guess for probe
+        probe_positions (array): position in x and y directions
+        difpads (array): intensities (diffraction patterns) measured
+        background (array): background
+        probesupp (array): probe support
+
+    Returns:
+        datapack (dictionary)
+    """    
     print('Creating datapack...')
     # Set data for Ptycho algorithms:
     datapack = {}
@@ -480,6 +639,17 @@ def set_datapack(obj, probe, probe_positions, difpads, background, probesupp):
 
 
 def get_pixel_size(N, du, energy, z):
+    """[summary]
+
+    Args:
+        N ([type]): [description]
+        du ([type]): [description]
+        energy ([type]): [description]
+        z ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """    
     energy_ = energy * 1000  # ev
     cvel = 299792458  # m/s
     planck = 4.135667662e-15  # ev * s
@@ -491,11 +661,18 @@ def get_pixel_size(N, du, energy, z):
 
 
 def save_variable(variable, predefined_name, savename=""):
+    """[summary]
+
+    Args:
+        variable ([type]): [description]
+        predefined_name ([type]): [description]
+        savename (str, optional): [description]. Defaults to "".
+    """    
     print(f'Saving variable {predefined_name}...')
     print(len(variable))
     variable = np.asarray(variable, dtype=object)
     for i in range(variable.shape[0]):
-        print('shapes', variable[i].shape)
+        print('shapes', variable[i].shape)[summary]
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
         if math.isnan(variable[i][:, :].imag.sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
@@ -511,6 +688,15 @@ def save_variable(variable, predefined_name, savename=""):
 
 
 def resolution_fsc(data, pixel):
+    """[summary]
+
+    Args:
+        data ([type]): [description]
+        pixel ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """    
     print('Calculating resolution by Fourier Shell Correlation...')
     # Fourier Shell Correlation for 3D images:
     # The routine inputs are besides the two images for correlation
@@ -537,6 +723,16 @@ def resolution_fsc(data, pixel):
 
 
 def resolution_frc(data, pixel, plot_output_folder="./outputs/preview"):
+    """[summary]
+
+    Args:
+        data ([type]): [description]
+        pixel ([type]): [description]
+        plot_output_folder (str, optional): [description]. Defaults to "./outputs/preview".
+
+    Returns:
+        [type]: [description]
+    """    
     print('Calculating resolution by Fourier Ring Correlation...')
     # Fourier Ring Correlation for 2D images:
     # The routine inputs are besides the two images for correlation
@@ -565,6 +761,15 @@ def resolution_frc(data, pixel, plot_output_folder="./outputs/preview"):
 
 
 def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
+    """[summary]
+
+    Args:
+        dataset ([type]): [description]
+        fit_guess (tuple, optional): [description]. Defaults to (1, 1, 1, 1, 1, 1).
+
+    Returns:
+        [type]: [description]
+    """    
     from scipy.optimize import curve_fit
 
     x = np.arange(0, dataset.shape[0])
@@ -580,6 +785,16 @@ def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
 
 
 def get_central_region(difpad, center_estimate, radius):
+    """[summary]
+
+    Args:
+        difpad ([type]): [description]
+        center_estimate ([type]): [description]
+        radius ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """    
     center_estimate = np.round(center_estimate)
     center_r, center_c = int(center_estimate[0]), int(center_estimate[1])
     region_around_center = difpad[center_r - radius:center_r + radius + 1, center_c - radius:center_c + radius + 1]
@@ -587,6 +802,16 @@ def get_central_region(difpad, center_estimate, radius):
 
 
 def refine_center_estimate(difpad, center_estimate, radius=20):
+    """[summary]
+
+    Args:
+        difpad ([type]): [description]
+        center_estimate ([type]): [description]
+        radius (int, optional): [description]. Defaults to 20.
+
+    Returns:
+        [type]: [description]
+    """    
     from scipy.ndimage import center_of_mass
 
     """
@@ -619,6 +844,16 @@ def refine_center_estimate(difpad, center_estimate, radius=20):
 
 
 def refine_center_estimate2(difpad, center_estimate, radius=20):
+    """[summary]
+
+    Args:
+        difpad ([type]): [description]
+        center_estimate ([type]): [description]
+        radius (int, optional): [description]. Defaults to 20.
+
+    Returns:
+        [type]: [description]
+    """    
     from scipy.ndimage import center_of_mass
 
     """
@@ -647,6 +882,17 @@ def refine_center_estimate2(difpad, center_estimate, radius=20):
 
 
 def get_difpad_center(difpad, refine=True, fit=False, radius=20):
+    """[summary]
+
+    Args:
+        difpad ([type]): [description]
+        refine (bool, optional): [description]. Defaults to True.
+        fit (bool, optional): [description]. Defaults to False.
+        radius (int, optional): [description]. Defaults to 20.
+
+    Returns:
+        [type]: [description]
+    """    
     from scipy.ndimage import center_of_mass
     center_estimate = center_of_mass(difpad)
     if refine:
@@ -660,6 +906,14 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
 
 
 def auto_crop_noise_borders(complex_array):
+    """[summary]
+
+    Args:
+        complex_array ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """    
     import skimage.filters
     from skimage.morphology import disk
 
@@ -727,6 +981,8 @@ def auto_crop_noise_borders(complex_array):
 
 if __name__ == '__main__':
 
+    first_iteration = True  # flag to save only in the first loop iteration
+
     t0 = time()
 
     jason = json.load(open(argv[1]))  # Open jason file
@@ -760,8 +1016,7 @@ if __name__ == '__main__':
     sinogram = []
     probe3d = []
     backg3d = []
-    first_iteration = True  # flag to save only in the first loop iteration
-
+    
     for acquisitions_folder in jason[ '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
         print('Starting reconstructiom for acquisition: ', acquisitions_folder)
@@ -796,9 +1051,9 @@ if __name__ == '__main__':
 
             run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
-            if run_ptycho == True:
+            if run_ptycho:
                 print('Begin Restauration')
-                if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
+                if jason['OldRestauration']: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
                     difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
 
