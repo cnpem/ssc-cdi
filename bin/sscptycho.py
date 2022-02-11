@@ -83,11 +83,17 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
     plt.close()
 
 
-def Geometry(L): 
-    xdet = pi540D.get_project_values_geometry()
-    det = pi540D.get_detector_dictionary(xdet, L)
-    geo = pi540D.geometry540D(det)
+def Geometry(L):
+    project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
+    geo = pi540D.geometry540D( project )
+    # project = pi540D.get_detector_dictionary( distance, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
+    # geometry = pi540D.geometry540D( project )
+    #     det = pi540D.get_detector_dictionary( L )
+    # xdet = pi540D.get_project_values_geometry()
+    # det = pi540D.get_detector_dictionary(xdet, L)
+    # geo = pi540D.geometry540D(det)
     return geo
+
 
 
 def pre_processing_Giovanni(img, args):
@@ -106,53 +112,56 @@ def pre_processing_Giovanni(img, args):
     Binning, empty, flat, cx, cy, hsize, geometry = args
 
     binning = Binning + 0
-    img[empty > 1] = -1
+    img[empty > 1] = -1 # apply empty 
 
-    img = img * flat
+    img = img * flat # apply flatfield
 
-    img = img.astype(np.float32)
-    img = Restaurate(img, geometry)
-    img0 = img + 0
+    img = img.astype(np.float32) # convert to float
+    img = Restaurate(img, geometry) # restaurate
 
-    img[img < 0] = -1
-    img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize]
+    img[img < 0] = -1 # all invalid values must be -1 by convention
 
-    ###### Binning
+    # np.save('difpadfull.npy',img)
+
+    if 0:
+        # pass
+        #TODO: FIND CENTER AUTOMATICALLY HERE
+        cy, cx = get_difpad_center(img)
+        # central_mask = create_circular_mask(cy, cx, 5, img.shape)
+        # img[central_mask > 0] = -1
+        from matplotlib.colors import LogNorm
+        img2 = img.copy()
+        # img2[cx,cy] = np.max(img2)
+        figure, subplot = plt.subplots(figsize=(20,20),dpi=300)
+        subplot.imshow(img2,cmap='jet',norm=LogNorm())
+        figure.savefig('difpadcenter.png')
+
+    img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+
+    # Binning
     while binning % 2 == 0 and binning > 0:
-        avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1,
-                                                                          -2)  # sum 4 neigboors at the top-left value
+        avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
 
-        div = 1 * (img >= 0) + np.roll(1 * (img >= 0), -1, -1) + np.roll(1 * (img >= 0), -1, -2) + np.roll(
-            np.roll(1 * (img >= 0), -1, -1), -1,
-            -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
+        div = 1 * (img >= 0) + np.roll(1 * (img >= 0), -1, -1) + np.roll(1 * (img >= 0), -1, -2) + np.roll( np.roll(1 * (img >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
 
         avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
 
-        avgmask = (img < 0) & (
-                    div > 0)  # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
+        avgmask = (img < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
 
-        img[avgmask] = avg[avgmask] / div[
-            avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
+        img[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
 
         img = img[:, 0::2] + img[:, 1::2]  # Binning columns
         img = img[0::2] + img[1::2]  # Binning lines
 
         img[img < 0] = -1
 
-        img[div[0::2,
-            0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
+        img[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
 
         binning = binning // 2
 
     while binning % 3 == 0 and binning > 0:
-        avg = np.roll(img, 1, -1) + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(img, 1, -2) + np.roll(
-            np.roll(img, 1, -2), 1, -1) + np.roll(np.roll(img, 1, -2), -1, -1) + np.roll(np.roll(img, -1, -2), 1,
-                                                                                         -1) + np.roll(
-            np.roll(img, -1, -2), -1, -1)
-        div = np.roll(img > 0, 1, -1) + np.roll(img > 0, -1, -1) + np.roll(img > 0, -1, -2) + np.roll(img > 0, 1,
-                                                                                                      -2) + np.roll(
-            np.roll(img > 0, 1, -2), 1, -1) + np.roll(np.roll(img > 0, 1, -2), -1, -1) + np.roll(
-            np.roll(img > 0, -1, -2), 1, -1) + np.roll(np.roll(img > 0, -1, -2), -1, -1)
+        avg = np.roll(img, 1, -1) + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(img, 1, -2) + np.roll( np.roll(img, 1, -2), 1, -1) + np.roll(np.roll(img, 1, -2), -1, -1) + np.roll(np.roll(img, -1, -2), 1, -1) + np.roll( np.roll(img, -1, -2), -1, -1)
+        div = np.roll(img > 0, 1, -1) + np.roll(img > 0, -1, -1) + np.roll(img > 0, -1, -2) + np.roll(img > 0, 1, -2) + np.roll( np.roll(img > 0, 1, -2), 1, -1) + np.roll(np.roll(img > 0, 1, -2), -1, -1) + np.roll( np.roll(img > 0, -1, -2), 1, -1) + np.roll(np.roll(img > 0, -1, -2), -1, -1)
 
         avgmask = (img < 0) & (div > 0) / div[avgmask]
 
@@ -185,6 +194,7 @@ def pre_processing_Giovanni(img, args):
     return img
 
 
+
 def cat_restauration(jason, path, name):
     """Extracts the data from json and manipulate it according G restauration input format
         Then, call G restauration
@@ -206,11 +216,10 @@ def cat_restauration(jason, path, name):
 
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
     # empty = np.load('masks/empty_zeros.npy')
-    sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}",
-                                        savepath=jason["PreviewFolder"] + '/00_empty.png')
+    sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    cx = 1419 #magic number
-    cy = 1395 #magic number
+    # centerx = 1419
+    # centery = 1395
     hsize = jason['DetectorROI']  # (2560/2)
 
     Binning = int(jason['Binning'])
@@ -220,11 +229,13 @@ def cat_restauration(jason, path, name):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    # h5f,_ = sscIO.io.read_volume(fullpath,'numpy', use_MPI=True, nprocs=32)
+    h5f,_ = sscIO.io.read_volume(fullpath,'numpy', use_MPI=True, nprocs=32)
 
-    r_params = (Binning, empty, flat, cx, cy, hsize, geometry)
-    output, _ = pi540D.backward540D_batch(h5f, z1, jason['Threads'], [hsize // 2, hsize // 2], pre_processing_Giovanni,
-                                          r_params, 'only')
+    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry)
+
+    # _ = pre_processing_Giovanni(img, r_params)
+
+    output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
 
     return output
 
@@ -981,8 +992,6 @@ def auto_crop_noise_borders(complex_array):
 
 if __name__ == '__main__':
 
-    first_iteration = True  # flag to save only in the first loop iteration
-
     t0 = time()
 
     jason = json.load(open(argv[1]))  # Open jason file
@@ -1016,7 +1025,8 @@ if __name__ == '__main__':
     sinogram = []
     probe3d = []
     backg3d = []
-    
+    first_iteration = True  # flag to save only in the first loop iteration
+
     for acquisitions_folder in jason[ '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
         print('Starting reconstructiom for acquisition: ', acquisitions_folder)
@@ -1051,9 +1061,9 @@ if __name__ == '__main__':
 
             run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
-            if run_ptycho:
+            if run_ptycho == True:
                 print('Begin Restauration')
-                if jason['OldRestauration']: # OldRestauration is Giovanni's
+                if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
                     difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
 
@@ -1117,6 +1127,8 @@ if __name__ == '__main__':
                     print('Applying mask from file to diffraction pattern')
                     mask = np.load(jason['Mask'])
                     difpads[:, mask > 0] = -1
+
+                np.save('difpads.npy',difpads)
 
                 if first_iteration: # save plots of processed difpad and mean of all processed difpads
                     sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
@@ -1210,7 +1222,7 @@ if __name__ == '__main__':
                         print('Manual cropping of the data')
                         """ Fine manual crop of the reconstruction for a proper phase unwrap
                         jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
-                        jason['Phaseunwrap'][2] = [left_crop,right_crop] """
+                        jason['Phaseunwrap'][3] = [left_crop,right_crop] """
                         slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0], -jason['Phaseunwrap'][2][1]), slice( jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
                         datapack['obj'] = datapack['obj'][slice_rows, slice_columns]
                         print('Cropped object shape:', datapack['obj'].shape)
@@ -1244,8 +1256,7 @@ if __name__ == '__main__':
                     except:
                         print('Could not calculate 3sigma FRC resolution')
 
-                    if jason[
-                        "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
+                    if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
                         sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
 
                 sinogram.append(datapack['obj'])  # build 3D Sinogram
