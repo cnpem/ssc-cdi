@@ -16,12 +16,14 @@ This page documents the ssc-cdi API from Sirius Scientific Computing Group.
 =====================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :numbered:
-
-   usage
-   dev/developer
-
+   :caption: Contents:
+   
+   public
+   private
+   install
+   examples
 
 Indices and tables
 ==================

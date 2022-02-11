@@ -1,5 +1,5 @@
-Usage (Python)
-=====
+Public
+==============
 
 Here we manually list functions. Is it really necessary?
 
