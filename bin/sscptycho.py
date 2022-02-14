@@ -38,7 +38,7 @@ from numpy.fft import ifft2 as ifft2
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
-    """[summary]
+    """ Show plot in a specific format 
 
     Args:
         imgs ([type]): [description]
@@ -84,14 +84,17 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
 
 
 def Geometry(L):
+    """ Detector geometry parameters for sscPimega restauration
+
+    Args:
+        L : sample-detector distance
+
+    Returns:
+        geo : geometry 
+    """    
+
     project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
     geo = pi540D.geometry540D( project )
-    # project = pi540D.get_detector_dictionary( distance, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
-    # geometry = pi540D.geometry540D( project )
-    #     det = pi540D.get_detector_dictionary( L )
-    # xdet = pi540D.get_project_values_geometry()
-    # det = pi540D.get_detector_dictionary(xdet, L)
-    # geo = pi540D.geometry540D(det)
     return geo
 
 
@@ -101,7 +104,6 @@ def pre_processing_Giovanni(img, args):
 
     Args:
         img (array): image to be restaured and binned
-        args (list): the itens of the list are, respectively: binning value (int), empty image (2D-array), flatfield (2D-array), diffraction patterns x coordinate of the center (int), y coordinate of the center (int),  half of the size (int) and restauration geometry  
     """    
     def Restaurate(img, geom):
         return pi540D.backward540D(img, geom)
@@ -291,14 +293,14 @@ def create_squared_mask(start_row, start_column, height, width, mask_shape):
     """ Create squared mask. Start position is the top-left corner. All values in pixels!
 
     Args:
-        start_row (int): first mask row 
-        start_column (int): first mask column
-        height (int): number of rows
-        width (int): number of columns
-        mask_shape (array): shape of the mask
+        start_row ([type]): [description]
+        start_column ([type]): [description]
+        height ([type]): [description]
+        width ([type]): [description]
+        mask_shape ([type]): [description]
 
     Returns:
-        mask (array): the mask is filled with zeros except at the squared delimited area, in which the elements equals to 1
+        [type]: [description]
     """
     mask = np.zeros(mask_shape)
     mask[start_row:start_row + height, start_column:start_column + width] = 1
@@ -312,7 +314,7 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
         center_row (int): Center position in the vertical dimension
         center_col (int): Center position in the horizontal dimension
         radius (int): Radius of the circular mask in pixels
-        mask_shape ([tuple]): shape of the mask
+        mask_shape ([tuple]): [description]
 
     Returns:
         [2-dimensional ndarrya]: array containing 1s within the disk, 0 otherwise
@@ -431,7 +433,7 @@ def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
         z (int, optional): [description]. Defaults to 1.
 
     Returns:
-        Fresnel number (float): related to bram propagation
+        [type]: [description]
     """    
     print('Setting Fresnel number automatically...')
     c = 299792458  # Velocity of Light [m/s]
@@ -476,14 +478,14 @@ def set_initial_probe(difpads, jason):
 
 
 def set_modes(probe, jason):
-    """[summary]
+    """ Set number of probe modes
 
     Args:
-        probe ([type]): [description]
-        jason ([type]): [description]
+        probe : probe matrix
+        jason : jason input dictionary
 
     Returns:
-        [type]: [description]
+        probe : probe with different modes
     """    
     print('Setting modes...')
     mode = probe.shape[0]
@@ -501,10 +503,10 @@ def set_modes(probe, jason):
 
 
 def set_gpus(jason):
-    """Set 4 GPUs to proccess the reconstruction
+    """ Function to set all 4 GPUs if json input value is negative
 
     Args:
-        jason (json file): stores the variable inputs
+        jason : json input dictionary
     """    
     print('Setting GPUs...')
     if jason['GPUs'][0] < 0:
@@ -605,7 +607,9 @@ def probe_support(probe, hsize, radius, center_x, center_y):
 
 # Propagation:
 def Prop(img, f1):
-    """[summary]
+    """ Frunction for free space propagation of the probe in the Fraunhoffer regime
+
+    See paper "Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations". Are terms missing after convolution?
 
     Args:
         img (array): probe
@@ -614,7 +618,6 @@ def Prop(img, f1):
     Returns:
         [type]: [description]
     """    
-    # See paper "Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations". Are terms missing after convolution?
     hs = img.shape[-1] // 2
     ar = np.arange(-hs, hs) / float(2 * hs)
     xx, yy = np.meshgrid(ar, ar)
@@ -650,7 +653,7 @@ def set_datapack(obj, probe, probe_positions, difpads, background, probesupp):
 
 
 def get_pixel_size(N, du, energy, z):
-    """[summary]
+    """ Get pixel size for experiment configuration
 
     Args:
         N ([type]): [description]
@@ -659,8 +662,9 @@ def get_pixel_size(N, du, energy, z):
         z ([type]): [description]
 
     Returns:
-        [type]: [description]
+        effective pixel size: 
     """    
+    
     energy_ = energy * 1000  # ev
     cvel = 299792458  # m/s
     planck = 4.135667662e-15  # ev * s
@@ -672,18 +676,20 @@ def get_pixel_size(N, du, energy, z):
 
 
 def save_variable(variable, predefined_name, savename=""):
-    """[summary]
+    """ Function to save reconstruction object, probe and/or background. 
+    
+    This function presents some redundancy. Should be improved!
 
     Args:
-        variable ([type]): [description]
-        predefined_name ([type]): [description]
-        savename (str, optional): [description]. Defaults to "".
+        variable : variable to be saved (e.g. sinogram, probe reconstruction and/or background)
+        predefined_name: predefined name for saving the output variable
+        savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
     """    
     print(f'Saving variable {predefined_name}...')
     print(len(variable))
     variable = np.asarray(variable, dtype=object)
     for i in range(variable.shape[0]):
-        print('shapes', variable[i].shape)[summary]
+        print('shapes', variable[i].shape)
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
         if math.isnan(variable[i][:, :].imag.sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
@@ -698,64 +704,15 @@ def save_variable(variable, predefined_name, savename=""):
     print('\t', savename, variable.shape)
 
 
-def resolution_fsc(data, pixel):
-    """[summary]
-
-    Args:
-        data ([type]): [description]
-        pixel ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """    
-    print('Calculating resolution by Fourier Shell Correlation...')
-    # Fourier Shell Correlation for 3D images:
-    # The routine inputs are besides the two images for correlation
-    # Resolution threshold curves desired: "half" for halfbit, "sigma" for 3sigma, "both" for them both
-    # Pixelsize of the object
-
-    sizex = data.shape[-1]
-    sizey = data.shape[-2]
-    sizez = data.shape[0]
-
-    # For this case we will use the odd/odd even/even divisions of one image in a dataset
-    data1 = data[0:sizez:2, 0:sizey:2, 0:sizex:2]  # even
-    data2 = data[1:sizez:2, 1:sizey:2, 1:sizex:2]  # odd
-
-    # Output is a dictionary with the resolution values in the object pixelsize unit, and the FSC, frequency and threshold arrays
-    # resolution['halfbit'] :  resolution values in the object pixelsize unit
-    # resolution['curve']   :  FSC array
-    # resolution['freq']    :  frequency array
-    # resolution['sthresh'] :  threshold array
-    # resolution['hthresh'] :  threshold array
-    resolution = sscResolution.fshell(data1, data2, 'both', pixel)
-
-    return resolution
 
 
-def resolution_frc(data, pixel, plot_output_folder="./outputs/preview"):
-    """[summary]
 
-    Args:
-        data ([type]): [description]
-        pixel ([type]): [description]
-        plot_output_folder (str, optional): [description]. Defaults to "./outputs/preview".
-
-    Returns:
-        [type]: [description]
-    """    
-    print('Calculating resolution by Fourier Ring Correlation...')
-    # Fourier Ring Correlation for 2D images:
-    # The routine inputs are besides the two images for correlation
-    # Resolution threshold curves desired: "half" for halfbit, "sigma" for 3sigma, "both" for them both
-    # Pixelsize of the object
-
-    sizex = data.shape[-1]
-    sizey = data.shape[-2]
-
-    # For this case we will use the odd/odd even/even divisions of one image in a dataset
-    data1 = data[0:sizey:2, 0:sizex:2]  # even
-    data2 = data[1:sizey:2, 1:sizex:2]  # odd
+def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
+    """     
+    Fourier Ring Correlation for 2D images:
+    The routine inputs are besides the two images for correlation
+    Resolution threshold curves desired: "half" for halfbit, "sigma" for 3sigma, "both" for them both
+    Pixelsize of the object
 
     # Output is a dictionary with the resolution values in the object pixelsize unit, and the FRC, frequency and threshold arrays
     # resolution['halfbit'] :  resolution values in the object pixelsize unit
@@ -764,19 +721,52 @@ def resolution_frc(data, pixel, plot_output_folder="./outputs/preview"):
     # resolution['sthresh'] :  threshold array
     # resolution['hthresh'] :  threshold array
 
-    resolution = sscResolution.fring(data1, data2, 'both', pixel)
-    sscResolution.display(resolution['curve'], resolution['hthresh'], resolution['sthresh'], resolution['freq'],
-                          plot_output_folder, pixel, 'both', "ring", plot=False)
+    Args:
+        data : image to calculate resolution
+        pixel : effective pixel size of the object
+        plot_output_folder (str, optional): _description_. Defaults to "./outputs/preview".
+        savepath : folder to save FRC dictionary with outputs. Defaults to './outputs/reconstruction'.
+
+    Returns:
+        resolution: FRC output dictionary
+    """    
+    
+    print('Calculating resolution by Fourier Ring Correlation...')
+
+    sizex = data.shape[-1]
+    sizey = data.shape[-2]
+
+    data = data.reshape((1,sizey,sizex)) # reshape so that fourier_ring_correlation interprets data correctly
+
+    # For this case we will use the odd/odd even/even divisions of one image in a dataset
+    data1 = data[:,0:sizey:2, 0:sizex:2]  # even
+    data2 = data[:,1:sizey:2, 1:sizex:2]  # odd
+
+    resolution = sscResolution.fourier_ring_correlation(data1,data2,pixel)
+    sscResolution.get_fourier_correlation_fancy_plot(resolution, plot_output_folder, plot=False)
+
+    if savepath != '':
+        export_json(resolution,savepath+'/frc_outputs.txt')
 
     return resolution
 
+def export_json(params,output_path):
+    import json, numpy
+    export = {}
+    for key in params:
+        export[key] = params[key]
+        if isinstance(params[key], numpy.ndarray):
+            export[key] = export[key].tolist()
+    json.dumps(export)
+    json.dump(export,output_path)
+    return 0
 
 def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
-    """[summary]
+    """ Fit of 2d lorentzian to a matrix
 
     Args:
-        dataset ([type]): [description]
-        fit_guess (tuple, optional): [description]. Defaults to (1, 1, 1, 1, 1, 1).
+        dataset : matrix to be fitted with a Lorentzian curve
+        fit_guess: tuple with initial fit guesses. Defaults to (1, 1, 1, 1, 1, 1).
 
     Returns:
         [type]: [description]
