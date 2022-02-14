@@ -5,6 +5,13 @@ from sscPtycho import Show, RemovePhaseGrad
 from skimage.restoration import unwrap_phase
 
 def RemoveZernike(img,mask):
+    """ Giovanni's function for removing zernikes. Not well understood yet.
+
+    Args:
+        img 
+        mask 
+
+    """    
     hs1 = img.shape[-1]//2
     hs2 = img.shape[-2]//2
     #hs = 256
@@ -66,6 +73,12 @@ def RemoveZernike(img,mask):
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
 def RemoveGrad(img,mask):
+    """ Giovanni's function for removing a gradient. Not yet understood.
+
+    Args:
+        img 
+        mask 
+    """    
     hs1 = img.shape[-1]//2
     hs2 = img.shape[-2]//2 
     xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
@@ -102,6 +115,18 @@ def RemoveGrad(img,mask):
 
 
 def phase_unwrap(img,iterations,non_negativity=True,remove_gradient = True):
+    """ Function for phase unwrapping reconstructed object. 
+
+    Args:
+        img : 2d image data
+        iterations : number of iterations for gradient removal. If 0, no removal happens.
+        non_negativity (bool, optional): boolean to make all negative values zero.
+        remove_gradient (bool, optional): _description_. boolean to select gradient removal of final unwrapped image
+
+    Returns:
+        zernike: phase unwrapped image
+    """
+
     zernike = unwrap_phase(img)
     
     mask = zernike < 0

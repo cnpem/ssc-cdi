@@ -11,6 +11,15 @@ from sscIO import io
 #################
 
 def cat_preproc_ptycho_measurement( data, args ):
+    """ Miqueles function for new restauration approach. Passed as an argument (part of dictionary) to cat_preproc_ptycho_projections 
+
+    Args:
+        data (_type_): _description_
+        args (_type_): _description_
+    Returns:
+        backroi : restaured diffraction pattern with binning
+    """    
+
     def _get_center(dbeam, project):
         aimg = pi540D._worker_annotation_image ( numpy.clip( dbeam, 0, 100) )
         aimg = ndimage.gaussian_filter( aimg, sigma=0.95, order=0 )
@@ -79,6 +88,15 @@ def cat_preproc_ptycho_measurement( data, args ):
     return backroi
 ##############
 def cat_preproc_ptycho_projections( dic ):
+    """ Miqueles' function call to new restauration approach
+
+    Args:
+        dic (_type_): _description_
+
+    Returns:
+        output : restaured diffraction patterns
+        elapsed_time : restauration time
+    """    
     #-----------------------
     #read data using ssc-io:
     empty     = h5py.File(dic['empty'], 'r')['entry/data/data/'][0,0,:,:]

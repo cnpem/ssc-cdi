@@ -1,20 +1,6 @@
 Public
 ==============
 
-***************
-Getting started
-***************
-
-Sirius Scientific Computing Group approach for Coherent Diffraction Imaging reconstructions.
-
-**Author (s)**
-
-	Yuri Tonin (yuri.tonin@lnls.br) 
-    Júlia Carvalho (julia.carvalho@lnls.br)
-
-Currently, the ssc-cdi module performs Ptycography reconstructions for the Cateretê and Carnaúba beamlines. The reconsutruction codes were developed by Giovanni Baraldi and should be replaced in the future by newer and properly documented versions. In the future, this module will also contain Plane-wave coherent diffraction imaging codes for Cateretê.
-
-
 Main references
 ****************
 
