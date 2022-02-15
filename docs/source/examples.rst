@@ -5,6 +5,8 @@ Examples
 JSON input file
 ****************
 
+We explain below all the inputs present in the Json file. 
+
     - LogfilePath: a path to save a json logfile when the sscptycho script is run. The json contains all the inputs from the logfile, plus a few extra ones calculated during runtime, such as object pixel size and object FRC resolution.
     - ProposalPath: path to the folder where data is located
     - Mask: path to a predefined mask to ignore bad pixels
@@ -39,3 +41,4 @@ JSON input file
     - AlgorithmX: X -> integer value. Dictionary with all algorithms to be used for reconstruction (in order). Examples for RAAR an GL (Alternate Projections Griffin-Lim):
          - "Algorithm1": {"Name": "RAAR", "Iterations": 100, "TV": 0, "Epsilon": 1E-2, "Beta": 0.995, "ProbeCycles": 4, "Batch": 64 }
          - "Algorithm2": {"Name": "GL", "Iterations": 150,  "TV": 1E-4, "Epsilon": 1E-2, "ObjBeta": 0.97, "ProbeBeta": 0.95, "Batch": 64 }
+

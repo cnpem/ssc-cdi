@@ -605,12 +605,11 @@ def probe_support(probe, hsize, radius, center_x, center_y):
     return probesupp
 
 
-# Propagation:
-def Prop(img, f1):
+def Prop(img, f1): # Probe propagation
     """ Frunction for free space propagation of the probe in the Fraunhoffer regime
 
-    See paper "Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations". Are terms missing after convolution?
-
+    See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_. Are terms missing after convolution?
+    
     Args:
         img (array): probe
         f1 (float): Fresnel number
@@ -751,6 +750,12 @@ def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath=
     return resolution
 
 def export_json(params,output_path):
+    """ Exports a dictionary to a json file
+
+    Args:
+        params : dictionary
+        output_path : path to output file
+    """    
     import json, numpy
     export = {}
     for key in params:
@@ -769,7 +774,8 @@ def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
         fit_guess: tuple with initial fit guesses. Defaults to (1, 1, 1, 1, 1, 1).
 
     Returns:
-        [type]: [description]
+        lorentzian2d_fit : fitted surface
+        params : best fit parameters
     """    
     from scipy.optimize import curve_fit
 
@@ -786,15 +792,15 @@ def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
 
 
 def get_central_region(difpad, center_estimate, radius):
-    """[summary]
+    """ Extract central region of a diffraction pattern
 
     Args:
-        difpad ([type]): [description]
-        center_estimate ([type]): [description]
-        radius ([type]): [description]
+        difpad : 2d diffraction pattern data
+        center_estimate : the center of the image to be extracted
+        radius : size of the squared region to be extracted
 
     Returns:
-        [type]: [description]
+        region_around_center : extracted 2d region
     """    
     center_estimate = np.round(center_estimate)
     center_r, center_c = int(center_estimate[0]), int(center_estimate[1])
@@ -803,22 +809,18 @@ def get_central_region(difpad, center_estimate, radius):
 
 
 def refine_center_estimate(difpad, center_estimate, radius=20):
-    """[summary]
+    """
+    Finds a region of radius around center of mass estimate. Then fits a Lorentzian peak to this region.
+    The position of the peak gives a displacement to correct the center of mass estimate
 
     Args:
-        difpad ([type]): [description]
-        center_estimate ([type]): [description]
-        radius (int, optional): [description]. Defaults to 20.
+        difpad : 2d diffraction pattern 
+        center_estimate : initial estimate of the center
+        radius : size of the squared region around the center to consider
 
     Returns:
-        [type]: [description]
+        center : refined center position of the difpad
     """    
-    from scipy.ndimage import center_of_mass
-
-    """
-    Finds a region o radius 20 around center of mass estimate. Then fits a Lorentzian peak to this region.
-    The position of the peak gives a displacement to correct the center of mass estimate
-    """
 
     region_around_center = get_central_region(difpad, center_estimate, int(radius))
     fit_guess = np.max(difpad), center_estimate[0], center_estimate[1], 5, 5, 0
@@ -833,6 +835,7 @@ def refine_center_estimate(difpad, center_estimate, radius=20):
         print('Fit failed')
 
     if 0:  # plot for debugging
+        from matplotlib.colors import LogNorm
         figure, subplot = plt.subplots(1, 2)
         subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
         subplot[0].set_title('Central region preview')
@@ -845,22 +848,18 @@ def refine_center_estimate(difpad, center_estimate, radius=20):
 
 
 def refine_center_estimate2(difpad, center_estimate, radius=20):
-    """[summary]
+    """     Finds a region of radius around center of mass estimate. 
+    The position of the max gives a displacement to correct the center of mass estimate
 
     Args:
-        difpad ([type]): [description]
-        center_estimate ([type]): [description]
-        radius (int, optional): [description]. Defaults to 20.
+        difpad : 2d diffraction pattern 
+        center_estimate : initial estimate of the center
+        radius : size of the squared region around the center to consider
 
     Returns:
-        [type]: [description]
+        center : refined center position of the difpad
     """    
     from scipy.ndimage import center_of_mass
-
-    """
-    Finds a region of radius around center of mass estimate. 
-    The position of the max gives a displacement to correct the center of mass estimate
-    """
 
     region_around_center = get_central_region(difpad, center_estimate, int(radius))
 
@@ -883,16 +882,16 @@ def refine_center_estimate2(difpad, center_estimate, radius=20):
 
 
 def get_difpad_center(difpad, refine=True, fit=False, radius=20):
-    """[summary]
+    """ Get central position of the difpad
 
     Args:
-        difpad ([type]): [description]
-        refine (bool, optional): [description]. Defaults to True.
-        fit (bool, optional): [description]. Defaults to False.
-        radius (int, optional): [description]. Defaults to 20.
+        difpad : diffraction pattern data
+        refine (bool): Choose whether to refine the initial central position estimate. Defaults to True.
+        fit (bool, optional): if true, refines using a lorentzian surface fit; else, gets the maximum. Defaults to False.
+        radius (int, optional): size of the squared region around center used to refine the center estimate. Defaults to 20.
 
     Returns:
-        [type]: [description]
+        center : diffraction pattern center
     """    
     from scipy.ndimage import center_of_mass
     center_estimate = center_of_mass(difpad)
@@ -907,13 +906,13 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
 
 
 def auto_crop_noise_borders(complex_array):
-    """[summary]
+    """ Crop noisy borders of the reconstructed object using a local entropy map of the phase
 
     Args:
-        complex_array ([type]): [description]
+        complex_array : reconstructed object
 
     Returns:
-        [type]: [description]
+        cropped_array : object without noisy borders
     """    
     import skimage.filters
     from skimage.morphology import disk

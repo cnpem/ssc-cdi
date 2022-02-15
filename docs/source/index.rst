@@ -8,9 +8,9 @@ Welcome to ssc-cdi's documentation!
 ###################################
 
 
-Sirius Scientific Computing Group codes for Coherent Diffraction Imaging reconstructions.
+Sirius Scientific Computing Group codes for Coherent Diffractive Imaging reconstructions.
 
-Currently, the ssc-cdi module performs Ptycography reconstructions for the Cateretê and Carnaúba beamlines. The reconsutruction codes in CUDA were developed by Giovanni Baraldi and should be replaced in the future by newer and properly documented versions. In the future, this module will also contain Plane-wave coherent diffraction imaging codes for Cateretê.
+Currently, the ssc-cdi module performs Ptycography reconstructions for the Cateretê and Carnaúba beamlines. The reconsutruction codes in CUDA were developed by Giovanni Baraldi and should be replaced in the future by newer and properly documented versions. In the future, this module will also contain Plane-wave CDI codes for Cateretê.
 
 **Author (s)**
 	

@@ -1,7 +1,7 @@
 Install
 =======
 
-The prerequisite for installing sscFizeau is ``Python 3``.  It can be done using the ssc-cdi ``git`` repository. 
+The prerequisite for installing ssc-cdi is ``Python 3``.  It can be done using the ssc-cdi ``git`` repository. 
 
 The following Python packages need to be installed:
     - scipy
