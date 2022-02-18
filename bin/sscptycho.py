@@ -94,7 +94,8 @@ def Geometry(L):
     """    
 
     project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
-    geo = pi540D.geometry540D( project )
+    geo = pi540D.geometry540D( project )\
+    # geo['pxlsize']
     return geo
 
 
@@ -220,8 +221,8 @@ def cat_restauration(jason, path, name):
     # empty = np.load('masks/empty_zeros.npy')
     sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    # centerx = 1419
-    # centery = 1395
+    centerx = 1419
+    centery = 1395
     hsize = jason['DetectorROI']  # (2560/2)
 
     Binning = int(jason['Binning'])
@@ -239,7 +240,7 @@ def cat_restauration(jason, path, name):
 
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
 
-    return output
+    return output, geometry
 
 
 def read_probe_positions(probe_positions_filepath, measurement):
@@ -270,8 +271,7 @@ def read_probe_positions(probe_positions_filepath, measurement):
 
     probe_positions = np.asarray(probe_positions)
 
-    pshape = pd.read_csv(probe_positions_filepath,
-                         sep=' ').shape  # why read pshape from file? can it be different from probe_positions.shape+1?
+    pshape = pd.read_csv(probe_positions_filepath,sep=' ').shape  # why read pshape from file? can it be different from probe_positions.shape+1?
 
     with h5py.File(measurement, 'r') as file:
         mshape = file['entry/data/data'].shape
@@ -402,8 +402,7 @@ def set_parameters(difpads, jason, probe_positions, offset_topleft = 20):
     planck = 4.135667662E-18  # Plank constant [keV*s]
 
     # Compute/convert pixel size:
-    dx = planck * c / jason['Energy'] * jason['DetDistance'] / (
-                jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
+    dx = planck * c / jason['Energy'] * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
     print('\tConverted to pixel size:', dx)
 
     # Subtract the probe positions minimum to start at 0
@@ -763,7 +762,9 @@ def export_json(params,output_path):
         if isinstance(params[key], numpy.ndarray):
             export[key] = export[key].tolist()
     json.dumps(export)
-    json.dump(export,output_path)
+
+    out_file = open(output_path, "w")
+    json.dump(export,out_file)
     return 0
 
 def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
@@ -1054,7 +1055,8 @@ if __name__ == '__main__':
                 print('Begin Restauration')
                 if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
-                    difpads = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
+                    difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
+
 
                     if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
                         difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
@@ -1073,7 +1075,13 @@ if __name__ == '__main__':
                     dic['order'] = 'only' #TODO: ask Miqueles what this 'order' is about! 
                     dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
 
-                    difpads, elapsed_time = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
+                    difpads, elapsed_time,geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
+
+
+                print(geometry.keys(),'pixelsize')
+
+                jason['RestauredPixelSize'] = geometry['pxlsize']
+                sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
 
                 print('Difraction pattern shape (post restauration):', difpads.shape)
 
@@ -1117,7 +1125,7 @@ if __name__ == '__main__':
                     mask = np.load(jason['Mask'])
                     difpads[:, mask > 0] = -1
 
-                np.save('difpads.npy',difpads)
+                # np.save('difpads.npy',difpads)
 
                 if first_iteration: # save plots of processed difpad and mean of all processed difpads
                     sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')

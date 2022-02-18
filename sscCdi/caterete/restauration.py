@@ -115,5 +115,5 @@ def cat_preproc_ptycho_projections( dic ):
     start = time.time()
     output,_ = pi540D.backward540D_batch( measure[1:], dic['distance'], dic['nproc'], [2*dic['roi']//dic['binning'], 2*dic['roi']//dic['binning']], dic['function'], params, dic['order'] )
     elapsed = time.time() - start
-    return output, elapsed
+    return output, elapsed,geometry
 #################
