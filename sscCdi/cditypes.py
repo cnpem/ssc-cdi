@@ -27,7 +27,6 @@ else:
     ext = '.so'
 
 _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + _lib + ext
-_path = '/ibira/lnls/labs/tepui/proposals/20210062/yuri/ssc-cdi/build/lib.linux-x86_64-3.9/sscCdi/lib/libssccdi.cpython-39-x86_64-linux-gnu.so'
 print(os.path.dirname(os.path.abspath(__file__)))
 libradon  = ctypes.CDLL(_path)
 

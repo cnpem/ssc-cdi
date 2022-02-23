@@ -221,8 +221,7 @@ def cat_restauration(jason, path, name):
     # empty = np.load('masks/empty_zeros.npy')
     sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    centerx = 1419
-    centery = 1395
+    centerx, centery = jason['DifpadCenter']
     hsize = jason['DetectorROI']  # (2560/2)
 
     Binning = int(jason['Binning'])
@@ -1078,9 +1077,9 @@ if __name__ == '__main__':
                     difpads, elapsed_time,geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
 
 
-                print(geometry.keys(),'pixelsize')
+                print(geometry.keys(),'pixelsize',geometry['pxlsize'])
 
-                jason['RestauredPixelSize'] = geometry['pxlsize']
+                jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
                 sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
 
                 print('Difraction pattern shape (post restauration):', difpads.shape)
