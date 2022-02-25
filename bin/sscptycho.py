@@ -94,8 +94,7 @@ def Geometry(L):
     """    
 
     project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
-    geo = pi540D.geometry540D( project )\
-    # geo['pxlsize']
+    geo = pi540D.geometry540D( project )
     return geo
 
 
@@ -966,6 +965,19 @@ def auto_crop_noise_borders(complex_array):
 
     return cropped_array
 
+def create_directory_if_doesnt_exist(path):
+    if os.path.isdir(path) == False:
+        os.mkdir(path)
+
+def create_output_directories(jason):
+    if jason["PreviewFolder"] != "":
+        create_directory_if_doesnt_exist(jason["PreviewFolder"])
+    if jason["ObjPath"] != "":
+        create_directory_if_doesnt_exist(jason["ObjPath"])
+    if jason["ProbePath"] != "":
+        create_directory_if_doesnt_exist(jason["ProbePath"])
+    if jason["BkgPath"] != "":
+        create_directory_if_doesnt_exist(jason["BkgPath"])
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 #
@@ -978,11 +990,14 @@ def auto_crop_noise_borders(complex_array):
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
+
 if __name__ == '__main__':
 
     t0 = time()
 
     jason = json.load(open(argv[1]))  # Open jason file
+
+    create_output_directories(jason)
 
     if jason["Energy"] == 0: # if energy == 0, we assume we are dealing with the new input data standard
         scans_string = 'scans'
@@ -1082,7 +1097,7 @@ if __name__ == '__main__':
             probe_positions_file = os.path.join(acquisitions_folder, positions_string,measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
             print('probe_positions_file = ', probe_positions_file)
 
-            probe_positions = read_probe_positions(ibira_datafolder + probe_positions_file, measurement_filepath)
+            probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
 
             if first_iteration: t1 = time()
 
@@ -1113,9 +1128,6 @@ if __name__ == '__main__':
                     dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
 
                     difpads, elapsed_time,geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
-
-
-                print(geometry.keys(),'pixelsize',geometry['pxlsize'])
 
                 jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
                 sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
