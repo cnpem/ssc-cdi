@@ -127,7 +127,7 @@ def pre_processing_Giovanni(img, args):
     # np.save('difpadfull.npy',img)
 
     if 0:
-        # pass
+        # passproject
         #TODO: FIND CENTER AUTOMATICALLY HERE
         cy, cx = get_difpad_center(img)
         # central_mask = create_circular_mask(cy, cx, 5, img.shape)
@@ -198,7 +198,7 @@ def pre_processing_Giovanni(img, args):
 
 
 
-def cat_restauration(jason, path, name):
+def cat_restauration(jason, path, name,flat):
     """Extracts the data from json and manipulate it according G restauration input format
         Then, call G restauration
 
@@ -226,7 +226,6 @@ def cat_restauration(jason, path, name):
 
     Binning = int(jason['Binning'])
 
-    flat = np.load(jason['FlatField'])
     flat = np.array(flat)
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
@@ -985,8 +984,12 @@ if __name__ == '__main__':
 
     jason = json.load(open(argv[1]))  # Open jason file
 
-    if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
-        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
+    if jason["Energy"] == 0: # if energy == 0, we assume we are dealing with the new input data standard
+        scans_string = 'scans'
+        positions_string = 'positions'
+    else:
+        scans_string = ""
+        positions_string = ""
 
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
@@ -1000,20 +1003,48 @@ if __name__ == '__main__':
     ibira_datafolder = jason['ProposalPath'] 
     print('ibira_datafolder = ', ibira_datafolder)
 
+    images_folder    = os.path.join(ibira_datafolder,'images')
+    positions_folder = os.path.join(ibira_datafolder,'positions')
+    scans_folder     = os.path.join(ibira_datafolder,'scans')
+
+    input_dict = json.load(open(os.path.join(ibira_datafolder,'mdata.json')))
+
+    if jason["Energy"] == 0:
+        jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
+    if jason["DetDistance"] == 0:
+        jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+    if jason["RestauredPixelSize"] == 0:
+        jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+
+    if jason["EmptyFrame"] == "": # if empty, get from standard folder convention
+        jason["EmptyFrame"] = os.path.join(ibira_datafolder,'images','empty.hdf5')
     empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0, 0, :, :]  # raw shape is (1,1,3072,3072)
     sscCdi.caterete.misc.plotshow_cmap2(empty_detector, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    flatfield = np.load(jason["FlatField"])
+
+    if jason["FlatField"] == "": # if empty, get from standard folder convention
+        jason["FlatField"] = os.path.join(ibira_datafolder,'images','flat.hdf5')
+        flatfield = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
+    else:
+        flatfield = np.load(jason["FlatField"])
     flatfield[np.isnan(flatfield)] = -1 # invalid flatfield points are converted to -1, according to our convention
     sscCdi.caterete.misc.plotshow_cmap2(flatfield, title=f"{jason['FlatField'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/01_flatfield.png')
 
-    if jason["Mask"] != "": # load manual mask defined in a separate file
+    if jason["Mask"] == 0: # if null, won't use a mask
+        pass
+    elif jason["Mask"] == "":
+        jason["Mask"] = os.path.join(ibira_datafolder,'images','mask.hdf5')
+        initial_mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
+    else:
         initial_mask = np.load(jason["Mask"])
-        sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
+    sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
+
+    if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
+        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
 
     sinogram = []
-    probe3d = []
-    backg3d = []
+    probe3d  = []
+    backg3d  = []
     first_iteration = True  # flag to save only in the first loop iteration
 
     for acquisitions_folder in jason[ '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
@@ -1025,7 +1056,7 @@ if __name__ == '__main__':
             if jason['Frames'] != []:
                 filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         else:  # otherwise, use directly the .hdf5 measurement file in the proposal path
-            filepaths, filenames = [os.path.join(ibira_datafolder, jason["SingleMeasurement"])], [ jason["SingleMeasurement"]]
+            filepaths, filenames = [os.path.join(ibira_datafolder, scans_string,jason["SingleMeasurement"])], [ jason["SingleMeasurement"]]
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
 
@@ -1041,7 +1072,7 @@ if __name__ == '__main__':
 
             print('Raw difpad shape: ', raw_difpads.shape)
 
-            probe_positions_file = os.path.join(acquisitions_folder, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
+            probe_positions_file = os.path.join(acquisitions_folder, positions_string,measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
             print('probe_positions_file = ', probe_positions_file)
 
             probe_positions = read_probe_positions(ibira_datafolder + probe_positions_file, measurement_filepath)
@@ -1054,7 +1085,7 @@ if __name__ == '__main__':
                 print('Begin Restauration')
                 if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
-                    difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder), measurement_file)
+                    difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, scans_string, acquisitions_folder), measurement_file,flatfield)
 
 
                     if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
@@ -1119,10 +1150,11 @@ if __name__ == '__main__':
                     difpads_rescaled = difpads / detector_exposure_time
                     difpads[difpads_rescaled > detector_pileup_count] = -1
 
-                if jason["Mask"] != "":
+                if jason["Mask"] == 0: # if null, won't use a mask
+                    pass
+                else:
                     print('Applying mask from file to diffraction pattern')
-                    mask = np.load(jason['Mask'])
-                    difpads[:, mask > 0] = -1
+                    difpads[:, initial_mask > 0] = -1
 
                 # np.save('difpads.npy',difpads)
 
@@ -1280,7 +1312,8 @@ if __name__ == '__main__':
             else:
                 continue
 
-            first_iteration = False
+            if "t4" in locals(): # check if variable t4 exists. if not, it's because first frame was skipped
+                first_iteration = False
 
         if jason['SaveObj'] == True:
             if jason['SaveObjname'] != "":
