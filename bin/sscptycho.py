@@ -1003,11 +1003,16 @@ if __name__ == '__main__':
     ibira_datafolder = jason['ProposalPath'] 
     print('ibira_datafolder = ', ibira_datafolder)
 
-    images_folder    = os.path.join(ibira_datafolder,'images')
-    positions_folder = os.path.join(ibira_datafolder,'positions')
-    scans_folder     = os.path.join(ibira_datafolder,'scans')
+    if jason["3D_Acquisition_Folders"] != []:
+        extra_folder3D = jason["3D_Acquisition_Folders"][0]
+        print(extra_folder3D)
+    else:
+        extra_folder3D = ""
 
-    input_dict = json.load(open(os.path.join(ibira_datafolder,'mdata.json')))
+    input_dict = json.load(open(os.path.join(ibira_datafolder,extra_folder3D,'mdata.json')))
+    images_folder    = os.path.join(extra_folder3D,'images')
+    positions_folder = os.path.join(ibira_datafolder,extra_folder3D,'positions')
+    scans_folder     = os.path.join(ibira_datafolder,extra_folder3D,'scans')
 
     if jason["Energy"] == 0:
         jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
@@ -1017,13 +1022,13 @@ if __name__ == '__main__':
         jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
 
     if jason["EmptyFrame"] == "": # if empty, get from standard folder convention
-        jason["EmptyFrame"] = os.path.join(ibira_datafolder,'images','empty.hdf5')
+        jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
     empty_detector = h5py.File(jason["EmptyFrame"], 'r')['entry/data/data'][()][0, 0, :, :]  # raw shape is (1,1,3072,3072)
     sscCdi.caterete.misc.plotshow_cmap2(empty_detector, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
 
     if jason["FlatField"] == "": # if empty, get from standard folder convention
-        jason["FlatField"] = os.path.join(ibira_datafolder,'images','flat.hdf5')
+        jason["FlatField"] = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
         flatfield = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
     else:
         flatfield = np.load(jason["FlatField"])
@@ -1033,7 +1038,7 @@ if __name__ == '__main__':
     if jason["Mask"] == 0: # if null, won't use a mask
         pass
     elif jason["Mask"] == "":
-        jason["Mask"] = os.path.join(ibira_datafolder,'images','mask.hdf5')
+        jason["Mask"] = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
         initial_mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
     else:
         initial_mask = np.load(jason["Mask"])
@@ -1052,11 +1057,13 @@ if __name__ == '__main__':
         print('Starting reconstructiom for acquisition: ', acquisitions_folder)
 
         if jason["3D_Acquisition_Folders"] != [ ""]:  # if data inside subfolder, list all hdf5 and select the ones you want
-            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder), look_for_extension=".hdf5")
+            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
             if jason['Frames'] != []:
                 filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         else:  # otherwise, use directly the .hdf5 measurement file in the proposal path
             filepaths, filenames = [os.path.join(ibira_datafolder, scans_string,jason["SingleMeasurement"])], [ jason["SingleMeasurement"]]
+
+        print(os.path.join(ibira_datafolder, acquisitions_folder))
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
 
@@ -1085,7 +1092,7 @@ if __name__ == '__main__':
                 print('Begin Restauration')
                 if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
-                    difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, scans_string, acquisitions_folder), measurement_file,flatfield)
+                    difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,flatfield)
 
 
                     if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
