@@ -211,7 +211,27 @@ def cat_restauration(jason, path, name,flat):
         3D array: restaured difpads
     """    
     import os
+    from scipy import ndimage
+
+    def _get_center(dbeam, project):
+        aimg = pi540D._worker_annotation_image ( np.clip( dbeam, 0, 100) )
+        aimg = ndimage.gaussian_filter( aimg, sigma=0.95, order=0 )
+        aimg = aimg/aimg.max()
+        aimg = 1.0 * ( aimg > 0.98 )    
+        u = np.array(range(3072))
+        xx,yy = np.meshgrid(u,u)
+        xc = ((aimg * xx).sum() / aimg.sum() ).astype(int)
+        yc = ((aimg * yy).sum() / aimg.sum() ).astype(int)
+        annotation = np.array([ [xc, yc] ])
+        tracking = pi540D.annotation_points_standard ( annotation )
+        tracking = pi540D.tracking540D_vec_standard ( project, tracking ) 
+        xc = int( tracking[0][2] )
+        yc = int( tracking[0][3] ) 
+        return xc, yc
+
     fullpath = os.path.join(path, name)
+    h5f,_ = sscIO.io.read_volume(fullpath,'numpy', use_MPI=True, nprocs=32)
+
 
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
     geometry = Geometry(z1)
@@ -220,7 +240,14 @@ def cat_restauration(jason, path, name,flat):
     # empty = np.load('masks/empty_zeros.npy')
     sscCdi.caterete.misc.plotshow_cmap2(empty, title=f"{jason['EmptyFrame'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/00_empty.png')
 
-    centerx, centery = jason['DifpadCenter']
+
+    if jason['DifpadCenter'] == []:
+        xdet  = pi540D.get_project_values_geometry()
+        proj  = pi540D.get_detector_dictionary(  jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'}  )
+        centerx, centery = _get_center(h5f[0,:,:], proj)
+    else:
+        centerx, centery = jason['DifpadCenter']
+
     hsize = jason['DetectorROI']  # (2560/2)
 
     Binning = int(jason['Binning'])
@@ -228,8 +255,6 @@ def cat_restauration(jason, path, name,flat):
     flat = np.array(flat)
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
-
-    h5f,_ = sscIO.io.read_volume(fullpath,'numpy', use_MPI=True, nprocs=32)
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry)
 
@@ -1108,7 +1133,6 @@ if __name__ == '__main__':
                 if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
                     difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,flatfield)
-
 
                     if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
                         difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
