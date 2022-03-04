@@ -123,7 +123,7 @@ def pre_processing_Giovanni(img, args):
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
-    # np.save('difpadfull.npy',img)
+    np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadfull.npy',img)
 
     if 0:
         # passproject
@@ -139,7 +139,6 @@ def pre_processing_Giovanni(img, args):
         figure.savefig('difpadcenter.png')
 
     img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
-
     # Binning
     while binning % 2 == 0 and binning > 0:
         avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
@@ -243,12 +242,15 @@ def cat_restauration(jason, path, name,flat):
 
     if jason['DifpadCenter'] == []:
         xdet  = pi540D.get_project_values_geometry()
-        proj  = pi540D.get_detector_dictionary(  jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'}  )
+        proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
         centerx, centery = _get_center(h5f[0,:,:], proj)
+        jason['DifpadCenter'] = [centerx, centery]
     else:
         centerx, centery = jason['DifpadCenter']
 
-    hsize = jason['DetectorROI']  # (2560/2)
+    print(f'Raw difpad center: (cx,cy) = ({centerx},{centery})')
+
+    hsize = jason['DetectorROI']  # (2560/2) 
 
     Binning = int(jason['Binning'])
 
@@ -257,8 +259,6 @@ def cat_restauration(jason, path, name,flat):
     flat[flat == 0] = 1
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry)
-
-    # _ = pre_processing_Giovanni(img, r_params)
 
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
 
@@ -1080,9 +1080,10 @@ if __name__ == '__main__':
     elif jason["Mask"] == "":
         jason["Mask"] = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
         initial_mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
+        sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
     else:
         initial_mask = np.load(jason["Mask"])
-    sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
+        sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
 
     if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
         sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
@@ -1102,8 +1103,6 @@ if __name__ == '__main__':
                 filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         else:  # otherwise, use directly the .hdf5 measurement file in the proposal path
             filepaths, filenames = [os.path.join(ibira_datafolder, scans_string,jason["SingleMeasurement"])], [ jason["SingleMeasurement"]]
-
-        print(os.path.join(ibira_datafolder, acquisitions_folder))
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
 
@@ -1157,6 +1156,8 @@ if __name__ == '__main__':
                 sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
 
                 print('Difraction pattern shape (post restauration):', difpads.shape)
+
+                # np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadssum.npy', np.sum(difpads, axis=0))
 
                 if first_iteration: # save plots of restaured difpad and mean of all restaured difpads
                     sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
@@ -1275,10 +1276,9 @@ if __name__ == '__main__':
                     cropped_image = auto_crop_noise_borders(datapack['obj'])
 
                     if 1:  # plot original and cropped object phase and save! 
-                        print(jason['PreviewFolder'] + '/06_crop_and_unwrap.png')
-                        figure, subplot = plt.subplots(1, 2)
-                        subplot[0].imshow(-np.angle(datapack['obj']))
-                        subplot[1].imshow(-np.angle(cropped_image))
+                        figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+                        subplot[0].imshow(-np.angle(datapack['obj']),cmap='gray')
+                        subplot[1].imshow(-np.angle(cropped_image),cmap='gray')
                         subplot[0].set_title('Original')
                         subplot[1].set_title('Cropped and Unwrapped')
                         figure.savefig(jason['PreviewFolder'] + '/06_autocrop.png')
@@ -1306,9 +1306,9 @@ if __name__ == '__main__':
                     datapack['obj'] = absolute * np.exp(-1j * angle)
 
                     if 1:  # plot original and cropped object phase and save!
-                        figure, subplot = plt.subplots(1, 2)
-                        subplot[0].imshow(-np.angle(original_object))
-                        subplot[1].imshow(angle)
+                        figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+                        subplot[0].imshow(-np.angle(original_object),cmap='gray')
+                        subplot[1].imshow(angle,cmap='gray')
                         subplot[0].set_title('Original')
                         subplot[1].set_title('Cropped and Unwrapped')
                         figure.savefig(jason['PreviewFolder'] + '/06_manualcrop_and_unwrap.png')
