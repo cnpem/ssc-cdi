@@ -724,9 +724,6 @@ def save_variable(variable, predefined_name, savename=""):
     print('\t', savename, variable.shape)
 
 
-
-
-
 def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
     """     
     Fourier Ring Correlation for 2D images:
@@ -1049,12 +1046,12 @@ if __name__ == '__main__':
     else:
         extra_folder3D = ""
 
-    input_dict = json.load(open(os.path.join(ibira_datafolder,extra_folder3D,'mdata.json')))
     images_folder    = os.path.join(extra_folder3D,'images')
     positions_folder = os.path.join(ibira_datafolder,extra_folder3D,'positions')
     scans_folder     = os.path.join(ibira_datafolder,extra_folder3D,'scans')
 
     if jason["Energy"] == 0:
+        input_dict = json.load(open(os.path.join(ibira_datafolder,extra_folder3D,'mdata.json')))
         jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
     if jason["DetDistance"] == 0:
         jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
@@ -1122,13 +1119,16 @@ if __name__ == '__main__':
             print('probe_positions_file = ', probe_positions_file)
 
             probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
-
-            if first_iteration: t1 = time()
-
             run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
+            
+            if first_iteration: 
+                t1 = time()
+
             if run_ptycho == True:
+
                 print('Begin Restauration')
+            
                 if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
                     print(ibira_datafolder, measurement_file)
                     difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,flatfield)
@@ -1151,6 +1151,7 @@ if __name__ == '__main__':
                     dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
 
                     difpads, elapsed_time,geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
+
 
                 jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
                 sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
@@ -1199,6 +1200,16 @@ if __name__ == '__main__':
                 else:
                     print('Applying mask from file to diffraction pattern')
                     difpads[:, initial_mask > 0] = -1
+                    # difpads[:,320,320] = -1
+                    # difpads[:,321,321] = -1
+                    # difpads[:,321,320] = -1
+                    # difpads[:,320,321] = -1
+                    # difpads[:,320,319] = -1
+                    # difpads[:,321,319] = -1
+                    # difpads[:,322,321] = -1
+                    # difpads[:,322,320] = -1
+                    # difpads[:,322,319] = -1
+                    # difpads[:,324,350:415] = -1
 
                 # np.save('difpads.npy',difpads)
 
@@ -1211,6 +1222,7 @@ if __name__ == '__main__':
                 if first_iteration == True:  # maxroi from the first 2D frame will be used to define object size. otherwise, it may vary by 1 pixel and result in bug
                     object_pixel_size, maxroi, probe_positions = set_parameters(difpads, jason, probe_positions)
                     jason["Object_effective_pixel"] = object_pixel_size
+                    print('Maxroi first iteration:',maxroi)
                 else:
                     _, _, probe_positions = set_parameters(difpads, jason, probe_positions)
 
@@ -1353,7 +1365,10 @@ if __name__ == '__main__':
 
                     plotshow([ango, abso], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(current_frame), cmap='gray', nlines=1)
             else:
-                continue
+                print('CAUTION! Zeroing frame:',current_frame,' for error in position file.')
+                sinogram.append(np.zeros((2 * (difpads.shape[-1] // 2) + maxroi,2 * (difpads.shape[-1] // 2) + maxroi)))  # build 3D Sinogram
+                probe3d.append(np.zeros((1,difpads.shape[-2],difpads.shape[-1])))
+                backg3d.append(np.zeros(difpads[0].shape))
 
             if "t4" in locals(): # check if variable t4 exists. if not, it's because first frame was skipped
                 first_iteration = False
