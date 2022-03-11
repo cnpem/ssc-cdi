@@ -43,6 +43,72 @@ from numpy.fft import ifft2 as ifft2
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
+def crop_sinogram(sinogram, jason): 
+
+    min_crop_value = []
+
+    if jason['AutoCrop'] == True: # automatically crop borders with noise
+        for frame in range(sinogram.shape[0]):
+            _, best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
+            min_crop_value.append(best_crop)
+
+        min_crop = min(min_crop_value)
+        sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
+
+    return sinogram
+
+def apply_phase_unwrap(sinogram, jason):
+
+    if jason['Phaseunwrap'][0] == True:
+        for frame in range(sinogram.shape[0]):
+            original_object = sinogram[frame,:,:]  # create copy of object
+
+            if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
+                print('Manual cropping of the data')
+                """ Fine manual crop of the reconstruction for a proper phase unwrap
+                jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
+                jason['Phaseunwrap'][3] = [left_crop,right_crop] """
+                #sinogram[frame,:,:] = sinogram[frame,:,:][jason['Phaseunwrap'][2][0]: -jason['Phaseunwrap'][2][1], jason['Phaseunwrap'][3][0]: -jason['Phaseunwrap'][3][1]]
+                print('Cropped object shape:', sinogram[frame,:,:].shape)
+
+                print('Phase unwrapping the cropped image')
+                n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
+                #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
+                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+                sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
+
+                if 1:  # plot original and cropped object phase and save!
+                    figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+                    subplot[0].imshow(-np.angle(original_object),cmap='gray')
+                    subplot[1].imshow(angle,cmap='gray')
+                    subplot[0].set_title('Original')
+                    subplot[1].set_title('Cropped and Unwrapped')
+                    figure.savefig(jason['PreviewFolder'] + f'/autocrop_and_unwrap_{frame}.png')
+
+    return sinogram
+
+
+def calculate_FRC(sinogram, jason):
+
+    object_pixel_size = jason["Object_effective_pixel"] 
+
+    if jason['FRC'] == True:
+        for frame in range(sinogram.shape[0]):
+                print('Estimating resolution via Fourier Ring Correlation')
+                resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size)
+                try:
+                    print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit'])
+                    jason["hafbitResolution"] = resolution['halfbit']
+                except:
+                    print('Could not calculate halfbit FRC resolution')
+                try:
+                    print('\tResolution for frame ' + str(frame) + ':', resolution['3sigma'])
+                    jason["3sigmaResolution"] = resolution['3sigma']
+                except:
+                    print('Could not calculate 3sigma FRC resolution')
+
+
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
     """ Show plot in a specific format 
 
@@ -131,7 +197,7 @@ def pre_processing_Giovanni(img, args):
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
-    img[mask ==1] = -1
+    #img[mask ==1] = -1
 
     # np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadfull.npy',img)
 
@@ -206,9 +272,7 @@ def pre_processing_Giovanni(img, args):
         img[img < 0] = -1
 
     t1 = time()
-    print(f'\nElapsed time for binning difpads: {t1 - t2:.2f} seconds = {(t1 - t2) / 60:.2f} minutes')
-    print(f'\nElapsed time for restauration difpads: {t2 - t0:.2f} seconds = {(t2 - t0) / 60:.2f} minutes')
-
+   
     return img
 
 def cat_restauration(jason, path, name, flat, empty):
@@ -281,9 +345,6 @@ def cat_restauration(jason, path, name, flat, empty):
     t0 = time()
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
     t1 = time()
-
-    print(f'\nElapsed time for thread difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
-
 
     return output, geometry
 
@@ -972,8 +1033,7 @@ def auto_crop_noise_borders(complex_array):
     local_entropy_map = skimage.filters.rank.entropy(img_gradient, disk(5))
 
     smallest_img_dimension = 200
-    max_crop = img.shape[
-                   0] // 2 - smallest_img_dimension // 2  # smallest image after cropping will have 2*100 pixels in each direction
+    max_crop = img.shape[0] // 2 - smallest_img_dimension // 2  # smallest image after cropping will have 2*100 pixels in each direction
 
     crop_sizes = range(1, max_crop, 10)
 
@@ -1007,13 +1067,12 @@ def auto_crop_noise_borders(complex_array):
         subplot.set_ylabel('Mean')
         subplot.grid()
 
-    if cropped_array.shape[
-        0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+    if cropped_array.shape[0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
         cropped_array = cropped_array[0:-1, :]
     if cropped_array.shape[1] % 2 != 0:
         cropped_array = cropped_array[:, 0:-1]
 
-    return cropped_array
+    return cropped_array, best_crop
 
 def create_directory_if_doesnt_exist(path):
     if os.path.isdir(path) == False:
@@ -1130,15 +1189,11 @@ def restauration(args,first_iteration = True):
 
         param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,flatfield,empty)
         difpads.append(difpads_restauration(param))
-        t1 = time()
-
-        print(f'\nElapsed time for 1 frame difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
+        t1 = time()        
     
     t0 = time()
     difpads = np.asarray(difpads)
     t1 = time()
-
-    print(f'\nElapsed time for asarray difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
 
     return difpads
 
@@ -1298,64 +1353,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
 
             if i == 0: t4 = time()
 
-            if jason['AutoCrop'] == True: # automatically crop borders with noise
-                cropped_image = auto_crop_noise_borders(datapack['obj'])
-
-                if 1:  # plot original and cropped object phase and save! 
-                    figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
-                    subplot[0].imshow(-np.angle(datapack['obj']),cmap='gray')
-                    subplot[1].imshow(-np.angle(cropped_image),cmap='gray')
-                    subplot[0].set_title('Original')
-                    subplot[1].set_title('Cropped and Unwrapped')
-                    figure.savefig(jason['PreviewFolder'] + '/06_autocrop.png')
-
-                datapack['obj'] = cropped_image
-
-            if jason['Phaseunwrap'][0] == True:
-
-                original_object = datapack['obj']  # create copy of object
-
-                if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
-                    print('Manual cropping of the data')
-                    """ Fine manual crop of the reconstruction for a proper phase unwrap
-                    jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
-                    jason['Phaseunwrap'][3] = [left_crop,right_crop] """
-                    slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0], -jason['Phaseunwrap'][2][1]), slice( jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
-                    datapack['obj'] = datapack['obj'][slice_rows, slice_columns]
-                    print('Cropped object shape:', datapack['obj'].shape)
-
-                print('Phase unwrapping the cropped image')
-                n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
-                #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
-                absolute = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(datapack['obj'])), n_iterations, non_negativity=0, remove_gradient=0)
-                angle    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(datapack['obj'])), n_iterations, non_negativity=0, remove_gradient=0)
-                datapack['obj'] = absolute * np.exp(-1j * angle)
-
-                if 1:  # plot original and cropped object phase and save!
-                    figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
-                    subplot[0].imshow(-np.angle(original_object),cmap='gray')
-                    subplot[1].imshow(angle,cmap='gray')
-                    subplot[0].set_title('Original')
-                    subplot[1].set_title('Cropped and Unwrapped')
-                    figure.savefig(jason['PreviewFolder'] + '/06_manualcrop_and_unwrap.png')
-
-            if jason['FRC'] == True:
-                print('Estimating resolution via Fourier Ring Correlation')
-                resolution = resolution_frc(datapack['obj'], object_pixel_size)
-                try:
-                    print('\tResolution for frame ' + str(current_frame) + ':', resolution['halfbit'])
-                    jason["hafbitResolution"] = resolution['halfbit']
-                except:
-                    print('Could not calculate halfbit FRC resolution')
-                try:
-                    print('\tResolution for frame ' + str(current_frame) + ':', resolution['3sigma'])
-                    jason["3sigmaResolution"] = resolution['3sigma']
-                except:
-                    print('Could not calculate 3sigma FRC resolution')
-
-                if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
-                    sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
-
+            
             sinogram[frame, :, :] = datapack['obj']  # build 3D Sinogram
             probe3d[frame, :, :]  = datapack['probe']
             backg3d[frame, :, :]  = datapack['bkg']
@@ -1548,11 +1546,16 @@ if __name__ == '__main__':
 
     first_iteration = True  # flag to save only in the first loop iteration
 
-    for acquisitions_folder in jason[ '3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+    sinogram = []
+    probe = []
+    bkg = []
 
+    for acquisitions_folder in jason['3D_Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+
+    
         print('Starting reconstructiom for acquisition: ', acquisitions_folder)
 
-        if jason["3D_Acquisition_Folders"] != [ ""]:  # if data inside subfolder, list all hdf5 and select the ones you want
+        if jason["3D_Acquisition_Folders"] != [""]:  # if data inside subfolder, list all hdf5 and select the ones you want
             filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
             if jason['Frames'] != []:
                 filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
@@ -1594,35 +1597,50 @@ if __name__ == '__main__':
         else:
             threads = total_frames
 
-        sinogram,probe3d,backg3d = ptycho3d_batch( difpads, threads, params)
+        sinogram3d ,probe3d, bkg3d = ptycho3d_batch( difpads, threads, params)
+        sinogram.append(sinogram3d)
+        probe.append(probe3d)
+        bkg.append(bkg3d)
 
         t4 = time()
         # sinogram,probe3d,backg3d = ptycho_main(difpads, sinogram, probe3d, backg3d, params)
 
         '''
          END MAIN PTYCHO RUN
-        ''' 
+        '''
+    
+    sinogram = np.concatenate(sinogram, axis = 0)
+    probe = np.concatenate(probe, axis = 0)
+    bkg = np.concatenate(bkg, axis = 0)
 
+    sinogram_cropped = crop_sinogram(sinogram, jason)
+    sinogram_cropped = apply_phase_unwrap(sinogram_cropped, jason)
+    calculate_FRC(sinogram_cropped, jason)
 
-        if jason['SaveObj'] == True:
-            if jason['SaveObjname'] != "":
+        
+    if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
+                sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
+            
+    if jason['SaveObj'] == True:
+        if jason['SaveObjname'] != "":
                 save_variable(sinogram, jason['ObjPath'] + 'sino', savename=jason['ObjPath'] + jason['SaveObjname'])
-            else:
+                save_variable(sinogram_cropped, jason['ObjPath'] + 'sino', savename=jason['ObjPath'] + 'cropped_' + jason['SaveObjname'])
+        else:
                 save_variable(sinogram, jason['ObjPath'] + 'sino')
 
-        if jason['SaveProbe'] == True:
-            if jason['SaveProbename'] != "":
+    if jason['SaveProbe'] == True:
+        if jason['SaveProbename'] != "":
                 save_variable(probe3d, jason['ProbePath'] + 'probe', savename=jason['ProbePath'] + jason['SaveProbename'])
-            else:
+        else:
                 save_variable(probe3d, jason['ProbePath'] + 'probe')
 
-        if jason['SaveBkg'] == True:
-            if jason['SaveBkgname'] != "":
+    if jason['SaveBkg'] == True:
+        if jason['SaveBkgname'] != "":
                 save_variable(backg3d, jason['BkgPath'] + 'bkg', savename=jason['BkgPath'] + jason['SaveBkgname'])
-            else:
+        else:
                 save_variable(backg3d, jason['BkgPath'] + 'bkg')
 
-        t5 = time()
+    t5 = time()
 
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
     print(f'Application Mask on all difpads: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
