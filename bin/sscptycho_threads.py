@@ -103,7 +103,94 @@ def Geometry(L):
     geo = pi540D.geometry540D( project )
     return geo
 
+def restauration(args,first_iteration = False):
+    jason               = args[0]
+    filenames           = args[1]
+    filepaths           = args[2]
+    ibira_datafolder    = args[3]
+    acquisitions_folder = args[4]
+    scans_string        = args[5]
+    flatfield           = args[6]
+    empty               = args[7]
+    
+    difpads = []
 
+    for measurement_file, measurement_filepath in zip(filenames, filepaths):
+
+        t0 = time()
+        if first_iteration:  # plot only for first iteration
+            difpad_number = 0 # selects which difpad to preview
+            raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
+            sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
+
+            print('Raw difpad shape: ', raw_difpads.shape)
+
+        param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,flatfield,empty)
+        difpads.append(difpads_restauration(param))
+        t1 = time()
+
+        # print(f'\nElapsed time for 1 frame difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
+    
+    t0 = time()
+    difpads = np.asarray(difpads)
+    t1 = time()
+
+    # print(f'\nElapsed time for asarray difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
+
+    return difpads
+
+def difpads_restauration(args, first_iteration = True):
+    
+    jason               = args[0]
+    ibira_datafolder    = args[1]
+    measurement_file    = args[2]
+    acquisitions_folder = args[3]
+    scans_string        = args[4]
+    flatfield           = args[5]
+    empty               = args[6]
+
+    print('Begin Restauration')
+            
+    if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
+        print(ibira_datafolder, measurement_file)
+        difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,flatfield, empty)
+
+        if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
+            difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
+
+    else:
+        print('Entering Miqueles Restauration.')
+        dic = {}
+        dic['susp'] = jason["ChipBorderRemoval"]  # parameter to ignore borders of the detector chip
+        dic['roi'] = jason["DetectorROI"]  # radius of the diffraction pattern wrt to center. Changes according to the binning value!
+        dic['binning'] = jason['Binning']
+        dic['distance'] = jason['DetDistance'] * 1e+3
+        dic['nproc'] = jason["Threads"]
+        dic['data'] = ibira_datafolder + measurement_file
+        dic['empty'] = jason['EmptyFrame']
+        dic['flat'] = jason['FlatField']
+        dic['order'] = 'only' #TODO: ask Miqueles what this 'order' is about! 
+        dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
+
+        difpads, elapsed_time, geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
+
+        jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
+        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
+
+        print('Difraction pattern shape (post restauration):', difpads.shape)
+
+        # np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadssum.npy', np.sum(difpads, axis=0))
+
+        if first_iteration: # save plots of restaured difpad and mean of all restaured difpads
+            difpad_number = 0
+            sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
+            sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0),  title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
+            if jason["SaveDifpadPath"] != "":
+                np.save(jason["SaveDifpadPath"], np.mean(difpads, axis=0))
+
+        print('Finished Restauration')
+
+    return difpads
 
 def pre_processing_Giovanni(img, args):
     """Restaurate and process the binning on the diffraction patterns
@@ -206,8 +293,8 @@ def pre_processing_Giovanni(img, args):
         img[img < 0] = -1
 
     t1 = time()
-    print(f'\nElapsed time for binning difpads: {t1 - t2:.2f} seconds = {(t1 - t2) / 60:.2f} minutes')
-    print(f'\nElapsed time for restauration difpads: {t2 - t0:.2f} seconds = {(t2 - t0) / 60:.2f} minutes')
+    # print(f'\nElapsed time for binning difpads: {t1 - t2:.2f} seconds = {(t1 - t2) / 60:.2f} minutes')
+    # print(f'\nElapsed time for restauration difpads: {t2 - t0:.2f} seconds = {(t2 - t0) / 60:.2f} minutes')
 
     return img
 
@@ -282,7 +369,7 @@ def cat_restauration(jason, path, name, flat, empty):
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
     t1 = time()
 
-    print(f'\nElapsed time for thread difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
+    # print(f'\nElapsed time for thread difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
 
 
     return output, geometry
@@ -1106,95 +1193,7 @@ def set_object_shape(difpads,args,offset_topleft = 20):
 
     return object_shape, maxroi, hsize, dx
 
-def restauration(args,first_iteration = True):
-    jason               = args[0]
-    filenames           = args[1]
-    filepaths           = args[2]
-    ibira_datafolder    = args[3]
-    acquisitions_folder = args[4]
-    scans_string        = args[5]
-    flatfield           = args[6]
-    empty               = args[7]
-    
-    difpads = []
 
-    for measurement_file, measurement_filepath in zip(filenames, filepaths):
-
-        t0 = time()
-        if first_iteration:  # plot only for first iteration
-            difpad_number = 0 # selects which difpad to preview
-            raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
-            sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
-
-        print('Raw difpad shape: ', raw_difpads.shape)
-
-        param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,flatfield,empty)
-        difpads.append(difpads_restauration(param))
-        t1 = time()
-
-        print(f'\nElapsed time for 1 frame difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
-    
-    t0 = time()
-    difpads = np.asarray(difpads)
-    t1 = time()
-
-    print(f'\nElapsed time for asarray difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
-
-    return difpads
-
-def difpads_restauration(args, first_iteration = True):
-    
-    jason               = args[0]
-    ibira_datafolder    = args[1]
-    measurement_file    = args[2]
-    acquisitions_folder = args[3]
-    scans_string        = args[4]
-    flatfield           = args[5]
-    empty               = args[6]
-
-    print('Begin Restauration')
-            
-    if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
-        print(ibira_datafolder, measurement_file)
-        difpads, geometry = cat_restauration(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,flatfield, empty)
-
-        if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
-            difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
-
-    else:
-        print('Entering Miqueles Restauration.')
-        dic = {}
-        dic['susp'] = jason["ChipBorderRemoval"]  # parameter to ignore borders of the detector chip
-        dic['roi'] = jason["DetectorROI"]  # radius of the diffraction pattern wrt to center. Changes according to the binning value!
-        dic['binning'] = jason['Binning']
-        dic['distance'] = jason['DetDistance'] * 1e+3
-        dic['nproc'] = jason["Threads"]
-        dic['data'] = ibira_datafolder + measurement_file
-        dic['empty'] = jason['EmptyFrame']
-        dic['flat'] = jason['FlatField']
-        dic['order'] = 'only' #TODO: ask Miqueles what this 'order' is about! 
-        dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
-
-        difpads, elapsed_time, geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
-
-
-        jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
-        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
-
-        print('Difraction pattern shape (post restauration):', difpads.shape)
-
-        # np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadssum.npy', np.sum(difpads, axis=0))
-
-        if first_iteration: # save plots of restaured difpad and mean of all restaured difpads
-            difpad_number = 0
-            sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
-            sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0),  title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
-            if jason["SaveDifpadPath"] != "":
-                np.save(jason["SaveDifpadPath"], np.mean(difpads, axis=0))
-
-        print('Finished Restauration')
-
-    return difpads
 
 def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
     t0 = time()
@@ -1386,8 +1385,8 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
 
         if i == 0: t5 = time()
 
-    print(f'\nElapsed time for reconstruction of 1st frame: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
-    print(f'Total time iteration: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
+    # print(f'\nElapsed time for reconstruction of 1st frame: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
+    # print(f'Total time iteration: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
 
     return sinogram, probe3d, backg3d
 
@@ -1590,7 +1589,7 @@ if __name__ == '__main__':
 
         # Main ptycho iteration on ALL frames in threads
         if jason['Threads'] <= total_frames:
-            threads = jason['Threads']
+            threads = 32  #jason['Threads']
         else:
             threads = total_frames
 
