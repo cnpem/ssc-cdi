@@ -1593,6 +1593,9 @@ if __name__ == '__main__':
 
         difpads = restauration(args)
 
+        # Save difpads
+        save_variable(difpads, jason['ObjPath'] + 'difpads', savename=jason['ObjPath'] + 'difpads_' + jason['SaveObjname'])
+
         t2 = time()
 
         difpads = masks_application(difpads, jason)
