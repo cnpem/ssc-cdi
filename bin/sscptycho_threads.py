@@ -64,36 +64,34 @@ def crop_sinogram(sinogram, jason):
 
 def apply_phase_unwrap(sinogram, jason):
 
-    if jason['Phaseunwrap'][0] == True:
+    if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
+        print('Manual cropping of the data')
+        """ Fine manual crop of the reconstruction for a proper phase unwrap
+        jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
+        jason['Phaseunwrap'][3] = [left_crop,right_crop] """
+        sinogram = sinogram[:,jason['Phaseunwrap'][2][0]: -jason['Phaseunwrap'][2][1], jason['Phaseunwrap'][3][0]: -jason['Phaseunwrap'][3][1]]
+        print('Cropped object shape:', sinogram.shape)
 
-        if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
-            print('Manual cropping of the data')
-            """ Fine manual crop of the reconstruction for a proper phase unwrap
-            jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
-            jason['Phaseunwrap'][3] = [left_crop,right_crop] """
-            sinogram = sinogram[:,jason['Phaseunwrap'][2][0]: -jason['Phaseunwrap'][2][1], jason['Phaseunwrap'][3][0]: -jason['Phaseunwrap'][3][1]]
-            print('Cropped object shape:', sinogram.shape)
+        print('Phase unwrapping the cropped image')
+        n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
+            #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
+        
+        phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
+        absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
 
-            print('Phase unwrapping the cropped image')
-            n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
-                #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
-            
-            phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
-            absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
+        for frame in range(sinogram.shape[0]):
+            original_object = sinogram[frame,:,:]  # create copy of object
+            absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+            phase[frame,:,:]    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+            # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
 
-            for frame in range(sinogram.shape[0]):
-                original_object = sinogram[frame,:,:]  # create copy of object
-                absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-                phase[frame,:,:]    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-                # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
-
-                if 1:  # plot original and cropped object phase and save!
-                    figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
-                    subplot[0].imshow(-np.angle(original_object),cmap='gray')
-                    subplot[1].imshow(phase[frame,:,:],cmap='gray')
-                    subplot[0].set_title('Original')
-                    subplot[1].set_title('Cropped and Unwrapped')
-                    figure.savefig(jason['PreviewFolder'] + f'/autocrop_and_unwrap_{frame}.png')
+            if 1:  # plot original and cropped object phase and save!
+                figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+                subplot[0].imshow(-np.angle(original_object),cmap='gray')
+                subplot[1].imshow(phase[frame,:,:],cmap='gray')
+                subplot[0].set_title('Original')
+                subplot[1].set_title('Cropped and Unwrapped')
+                figure.savefig(jason['PreviewFolder'] + f'/autocrop_and_unwrap_{frame}.png')
 
     return phase,absol
 
@@ -1642,7 +1640,9 @@ if __name__ == '__main__':
     
 
     sinogram_cropped = crop_sinogram(sinogram, jason)
-    phase,absol = apply_phase_unwrap(sinogram_cropped, jason)
+    
+    if jason['Phaseunwrap'][0] == True:
+        phase,absol = apply_phase_unwrap(sinogram_cropped, jason)
     # calculate_FRC(sinogram_cropped, jason)
 
         
