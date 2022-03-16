@@ -111,7 +111,7 @@ def pre_processing_Giovanni(img, args):
     def UnRestaurate(img, geom):
         return pi540D._worker_annotation_image(pi540D.forward540D(img, geom))
 
-    Binning, empty, flat, cx, cy, hsize, geometry = args
+    Binning, empty, flat, cx, cy, hsize, geometry, mask = args
 
     binning = Binning + 0
     img[empty > 1] = -1 # apply empty 
@@ -121,9 +121,11 @@ def pre_processing_Giovanni(img, args):
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
+    img[mask ==1] = -1
+
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
-    np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadfull.npy',img)
+    # np.save('/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/difpadfull.npy',img)
 
     if 0:
         # passproject
@@ -258,7 +260,9 @@ def cat_restauration(jason, path, name,flat):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry)
+    mask = np.load(jason['Mask'])
+
+    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask)
 
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], pre_processing_Giovanni,  r_params, 'only')
 
@@ -979,8 +983,7 @@ def auto_crop_noise_borders(complex_array):
         subplot.set_ylabel('Mean')
         subplot.grid()
 
-    if cropped_array.shape[
-        0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+    if cropped_array.shape[0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
         cropped_array = cropped_array[0:-1, :]
     if cropped_array.shape[1] % 2 != 0:
         cropped_array = cropped_array[:, 0:-1]
@@ -1195,11 +1198,11 @@ if __name__ == '__main__':
                     difpads_rescaled = difpads / detector_exposure_time
                     difpads[difpads_rescaled > detector_pileup_count] = -1
 
-                if jason["Mask"] == 0: # if null, won't use a mask
-                    pass
-                else:
-                    print('Applying mask from file to diffraction pattern')
-                    difpads[:, initial_mask > 0] = -1
+                # if jason["Mask"] == 0: # if null, won't use a mask
+                #     pass
+                # else:
+                #     print('Applying mask from file to diffraction pattern')
+                #     difpads[:, initial_mask > 0] = -1
                     # difpads[:,320,320] = -1
                     # difpads[:,321,321] = -1
                     # difpads[:,321,320] = -1
@@ -1306,7 +1309,7 @@ if __name__ == '__main__':
                         """ Fine manual crop of the reconstruction for a proper phase unwrap
                         jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
                         jason['Phaseunwrap'][3] = [left_crop,right_crop] """
-                        slice_rows, slice_columns = slice(jason['Phaseunwrap'][2][0], -jason['Phaseunwrap'][2][1]), slice( jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
+                        slice_rows, slice_columns =     slice(jason['Phaseunwrap'][2][0], -jason['Phaseunwrap'][2][1]), slice( jason['Phaseunwrap'][3][0], -jason['Phaseunwrap'][3][1])
                         datapack['obj'] = datapack['obj'][slice_rows, slice_columns]
                         print('Cropped object shape:', datapack['obj'].shape)
 
