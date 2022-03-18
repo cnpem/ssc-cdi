@@ -1,0 +1,265 @@
+from concurrent.futures import thread
+import sscResolution
+import sscPtycho
+import sscCdi
+import sscIO
+from sscPimega import pi540D
+
+from sys import argv
+import os
+from time import time
+import h5py
+import pandas as pd
+import json
+import numpy as np
+import math
+from PIL import Image
+import uuid
+import SharedArray as sa
+import multiprocessing
+import multiprocessing.sharedctypes
+from threading import Thread
+
+import matplotlib.pyplot as plt
+import matplotlib
+# matplotlib.use('Agg')
+
+from operator import sub
+
+from numpy.fft import fftshift as shift
+from numpy.fft import ifftshift as ishift
+from numpy.fft import fft2 as fft2
+from numpy.fft import ifft2 as ifft2
+
+# from sscptycho_functions import *
+from sscptycho_restauration import *
+
+#+++++++++++++++++++++++++++++++++++++++++++++++++
+#
+# MAIN APPLICATION (for Sirius/caterete beamline)
+#
+# +++++++++++++++++++++++++++++++++++++++++++++++++
+
+def preview_ptycho(jason, phase, absol, probe, frame = 0):
+    if jason['Preview']:  # Preview Reconstruction:
+        # # '''
+        # plt.figure()
+        # plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
+        # plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
+        # plt.savefig(jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
+        # plt.clf()
+        # plt.close()
+        # # '''
+
+        # Show probe:
+        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_2d_' + str(frame), nlines=2)
+
+        # Show object:
+        # ango = np.angle(sinogram[frame])
+        # abso = np.clip(abs(sinogram[frame]), 0.0, np.max(abs(sinogram[frame][hsize:maxroi, hsize:maxroi])))
+        # abso = abs(sinogram[frame])
+
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(frame), cmap='gray', nlines=1)
+        
+
+def cat_ptycho_3d(difpads,args):
+
+    jason, ibira_datafolder, scans_string, positions_string = args
+
+    sinogram = []
+    probe = []
+    bkg = [] 
+
+    '''
+        BEGIN MAIN PTYCHO RUN
+    '''  
+    count = -1
+    for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+
+        count += 1
+
+        print('Starting restauration for acquisition: ', acquisitions_folder)
+
+        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
+        if jason['Frames'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+        
+        total_frames = len(filenames)
+        args = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string, positions_string)
+
+        # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+        if count == 0:
+            object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads[count],args)
+            jason["Object_effective_pixel"] = object_pixel_size
+
+        params = (args,maxroi,hsize,object_shape,total_frames)
+
+        if total_frames <= 10:
+            threads = total_frames
+        else:
+            threads = jason['PtychoThreads']
+        
+        # Main ptycho iteration on ALL frames in threads
+        sinogram3d ,probe3d, bkg3d = ptycho3d_batch(difpads[count], threads, params)
+
+        sinogram.append(sinogram3d)
+        probe.append(probe3d)
+        bkg.append(bkg3d)
+
+
+    '''
+        END MAIN PTYCHO RUN
+    '''
+    return sinogram,probe,bkg
+
+
+def cat_ptycho_2d(difpads,args):
+    print('DDifpadshape:',difpads.shape)
+
+    jason, ibira_datafolder, scans_string, positions_string = args
+
+    sinogram = []
+    probe = []
+    bkg = [] 
+
+    '''
+        BEGIN MAIN PTYCHO RUN
+    '''  
+
+    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
+        
+    total_frames = len(filenames)
+    args = (jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string)
+
+    # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+    object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads,args)
+    jason["Object_effective_pixel"] = object_pixel_size
+
+    params = (args,maxroi,hsize,object_shape,total_frames)
+    
+    sinogram = np.zeros((1,object_shape,object_shape),dtype = complex) # build 3D Sinogram
+    probe    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
+    bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
+    
+    # Main ptycho iteration on ALL frames in threads
+    sinogram, probe, bkg = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1)
+
+    '''
+        END MAIN PTYCHO RUN
+    '''
+
+    return sinogram,probe,bkg
+    
+
+if __name__ == '__main__':
+
+    t0 = time()
+
+    jason = json.load(open(argv[1]))  # Open jason file
+    create_output_directories(jason)
+
+    np.random.seed(jason['Seed'])  # define seed for generation of the same random values
+
+    #=========== Set Parameters and Folders =====================
+    scans_string = 'scans'
+    positions_string = 'positions'
+
+    if jason['InitialObj'] != "": # definition of paths for initial guesses
+        jason['InitialObj'] = jason['ObjPath'] + jason['InitialObj']
+    if jason['InitialProbe'] != "":
+        jason['InitialProbe'] = jason['ProbePath'] + jason['InitialProbe']
+    if jason['InitialBkg'] != "":
+        jason['InitialBkg'] = jason['BkgPath'] + jason['InitialBkg']
+
+    ibira_datafolder = jason['ProposalPath'] 
+    print('ibira_datafolder = ', ibira_datafolder)
+
+    aquisition_folder = jason["Acquisition_Folders"][0]
+    print(aquisition_folder)
+ 
+    images_folder    = os.path.join(aquisition_folder,'images')
+    positions_folder = os.path.join(ibira_datafolder,aquisition_folder,'positions')
+    scans_folder     = os.path.join(ibira_datafolder,aquisition_folder,'scans')
+
+    input_dict = json.load(open(os.path.join(ibira_datafolder,aquisition_folder,'mdata.json')))
+    jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
+    jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+    jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+
+    jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
+    jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
+    # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+
+    if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
+        save_json_logfile2(jason["LogfilePath"], jason)
+    
+    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
+
+    args = (jason, ibira_datafolder, scans_string, positions_string)
+
+    #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
+
+    if len(filenames) > 1: # 3D
+        
+        difpads,_        = restauration_cat_3d(args,jason['Preview'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
+        object,probe,bkg =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
+        
+        if len(object) > 1: # Concatenate if projections are divided into more than one folder (All projections in each folder are resolved together, and put on a list of size len(Aquisition_folders))
+            object = np.concatenate(object, axis = 0)
+            probe  = np.concatenate(probe, axis = 0)
+            bkg    = np.concatenate(bkg, axis = 0)
+        else: # If one folder, get the first (and only) item on list
+            object = object[0]
+            probe  = probe[0]
+            bkg    = bkg[0]
+            print('Final object shape:', object.shape)
+    else:
+        difpads,_        = restauration_cat_2d(args,jason['Preview'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+        object,probe,bkg = cat_ptycho_2d(difpads,args) # Ptycho of 2D Projection (object - complex, probe - complex, bkg - real, are a ndarray of size (1,:,:), (1,:,:,:), (1,:,:) )
+
+    object_cropped = crop_sinogram(object, jason)
+    
+    if jason['Phaseunwrap'][0]: # Apply phase unwrap no dado
+        phase,absol = apply_phase_unwrap(object_cropped, jason) # phase = np.angle(object), absol = np.abs(object)
+
+    preview_ptycho(jason, phase, absol, probe, frame=0)
+    
+    # To do!!
+    # calculate_FRC(sinogram_cropped, jason)
+
+        
+    if jason[ "LogfilePath"] != "":  # save logfile with new values (object_pixel_size and resolution) for first iteration only
+        save_json_logfile2(jason["LogfilePath"], jason)
+            
+    if jason['SaveObj']:
+        if jason['SaveObjname'] != "":
+            save_variable2(phase, jason['ObjPath'] + 'phase_' + aquisition_folder, savename=jason['ObjPath'] + 'phase_' + aquisition_folder + '_' + jason['SaveObjname'])
+            save_variable2(absol, jason['ObjPath'] + 'absol_' + aquisition_folder, savename=jason['ObjPath'] + 'absol_' + aquisition_folder + '_' + jason['SaveObjname'])
+            if jason['SaveComplexObject']:
+                save_variable(object, jason['ObjPath'] + 'object_' + aquisition_folder, savename=jason['ObjPath'] + aquisition_folder + '_' + jason['SaveObjname'])
+
+        else:
+            save_variable2(phase, jason['ObjPath'] + 'phase_' + aquisition_folder)
+            save_variable2(absol, jason['ObjPath'] + 'absol_' + aquisition_folder)
+            if jason['SaveComplexObject']:    
+                save_variable(object, jason['ObjPath'] + 'object_' + aquisition_folder)
+
+    if jason['SaveProbe']:
+        if jason['SaveProbename'] != "":
+            save_variable(probe, jason['ProbePath'] + 'probe_' + aquisition_folder, savename=jason['ProbePath'] + aquisition_folder + '_' + jason['SaveProbename'])
+        else:
+            save_variable(probe, jason['ProbePath'] + 'probe_' + aquisition_folder)
+
+    if jason['SaveBkg']:
+        if jason['SaveBkgname'] != "":
+            save_variable(bkg, jason['BkgPath'] + 'bkg_' + aquisition_folder, savename=jason['BkgPath'] + aquisition_folder + '_' + jason['SaveBkgname'])
+        else:
+            save_variable(bkg, jason['BkgPath'] + 'bkg_' + aquisition_folder)
+
+
+    # print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
+    # print(f'Application Mask on all difpads: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
+    # print(f'Ptycho batch total time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
+    # print(f'Reconstruction percentual time for difpads: {100 * (t2 - t1) / (t5 - t0):.2f}% ')
+    # print(f'Reconstruction percentual time for ptycho: {100 * (t4 - t3) / (t5 - t0):.2f}% ')
+    # print(f'Total time: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')

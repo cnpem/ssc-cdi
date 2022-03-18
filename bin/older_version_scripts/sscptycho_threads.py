@@ -43,6 +43,29 @@ from numpy.fft import ifft2 as ifft2
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
+def save_json_logfile2(path,jason):
+    """Save a copy of the json input file with datetime at the filename
+
+    Args:
+        path (string): output folder path 
+        jason (dic): jason dictionary
+    """    
+    import json, os
+    from datetime import datetime
+    now = datetime.now()
+
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    
+    name = jason["3D_Acquisition_Folders"][0]
+
+
+    name = dt_string + "_" + name.split('.')[0]+".json"
+
+    filepath = os.path.join(path,name)
+    file = open(filepath,"w")
+    file.write(json.dumps(jason))
+    file.close()
+
 def crop_sinogram(sinogram, jason): 
 
     min_crop_value = []
@@ -55,10 +78,10 @@ def crop_sinogram(sinogram, jason):
         min_crop = min(min_crop_value)
         sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
-        if sinogram.shape[0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-            sinogram = sinogram[0:-1, :]
-        if sinogram.shape[1] % 2 != 0:
-            sinogram = sinogram[:, 0:-1]
+        if sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+            sinogram = sinogram[:,0:-1, :]
+        if sinogram.shape[2] % 2 != 0:
+            sinogram = sinogram[:,:, 0:-1]
 
     return sinogram
 
@@ -70,28 +93,29 @@ def apply_phase_unwrap(sinogram, jason):
         jason['Phaseunwrap'][2] = [upper_crop,lower_crop]
         jason['Phaseunwrap'][3] = [left_crop,right_crop] """
         sinogram = sinogram[:,jason['Phaseunwrap'][2][0]: -jason['Phaseunwrap'][2][1], jason['Phaseunwrap'][3][0]: -jason['Phaseunwrap'][3][1]]
-        print('Cropped object shape:', sinogram.shape)
+    
+    print('Cropped object shape:', sinogram.shape)
 
-        print('Phase unwrapping the cropped image')
-        n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
-            #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
-        
-        phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
-        absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
+    print('Phase unwrapping the cropped image')
+    n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
+        #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
+    
+    phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
+    absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
 
-        for frame in range(sinogram.shape[0]):
-            original_object = sinogram[frame,:,:]  # create copy of object
-            absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-            phase[frame,:,:]    = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-            # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
+    for frame in range(sinogram.shape[0]):
+        original_object = sinogram[frame,:,:]  # create copy of object
+        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+        # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
 
-            if 1:  # plot original and cropped object phase and save!
-                figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
-                subplot[0].imshow(-np.angle(original_object),cmap='gray')
-                subplot[1].imshow(phase[frame,:,:],cmap='gray')
-                subplot[0].set_title('Original')
-                subplot[1].set_title('Cropped and Unwrapped')
-                figure.savefig(jason['PreviewFolder'] + f'/autocrop_and_unwrap_{frame}.png')
+        if 1:  # plot original and cropped object phase and save!
+            figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+            subplot[0].imshow(-np.angle(original_object),cmap='gray')
+            subplot[1].imshow(phase[frame,:,:],cmap='gray')
+            subplot[0].set_title('Original')
+            subplot[1].set_title('Cropped and Unwrapped')
+            figure.savefig(jason['PreviewFolder'] + f'/autocrop_and_unwrap_{frame}.png')
 
     return phase,absol
 
@@ -199,7 +223,10 @@ def restauration(args,first_iteration = False):
             print('Raw difpad shape: ', raw_difpads.shape)
 
         param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,flatfield,empty)
-        difpads.append(difpads_restauration(param))
+        difpad = difpads_restauration(param)
+        path = '/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/3D_hf4/difpads/'
+        np.save(path + measurement_file,difpad)
+        difpads.append(difpad)
         t1 = time()
 
         # print(f'\nElapsed time for 1 frame difpads: {t1 - t0:.2f} seconds = {(t1 - t0) / 60:.2f} minutes')
@@ -249,7 +276,7 @@ def difpads_restauration(args, first_iteration = True):
         difpads, elapsed_time, geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
 
         jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
-        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # save json again for new pixel size value
+        save_json_logfile2(jason["LogfilePath"], jason) # save json again for new pixel size value
 
         print('Difraction pattern shape (post restauration):', difpads.shape)
 
@@ -912,6 +939,34 @@ def save_variable(variable, predefined_name, savename=""):
 
     print('\t', savename, variable.shape)
 
+def save_variable2(variable, predefined_name, savename=""):
+    """ Function to save reconstruction object, probe and/or background. 
+    
+    This function presents some redundancy. Should be improved!
+
+    Args:
+        variable : variable to be saved (e.g. sinogram, probe reconstruction and/or background)
+        predefined_name: predefined name for saving the output variable
+        savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
+    """    
+    print(f'Saving variable {predefined_name}...')
+    print(len(variable))
+    variable = np.asarray(variable, dtype=object)
+    for i in range(variable.shape[0]):
+        print('shapes', variable[i].shape)
+    for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
+        if math.isnan(variable[i][:, :].sum()):
+            variable[i][:, :] = np.zeros(variable[i][:, :].shape)
+
+    variable = np.asarray(variable, dtype=np.float32)
+
+    if savename != "":
+        np.save(savename, variable)
+    else:
+        np.save(predefined_name, variable)
+
+    print('\t', savename, variable.shape)
+
 
 def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
     """     
@@ -1557,7 +1612,7 @@ if __name__ == '__main__':
         sscCdi.caterete.misc.plotshow_cmap2(initial_mask, title=f"{jason['Mask'].split('/')[-1]}", savepath=jason["PreviewFolder"] + '/02_mask.png')
 
     if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
-        sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
+        save_json_logfile2(jason["LogfilePath"], jason)
 
     first_iteration = True  # flag to save only in the first loop iteration
 
@@ -1592,89 +1647,87 @@ if __name__ == '__main__':
         difpads = restauration(args)
 
         # Save difpads
-        save_variable(difpads, jason['ObjPath'] + 'difpads', savename=jason['ObjPath'] + 'difpads_' + jason['SaveObjname'])
+        # save_variable2(difpads, jason['ObjPath'] + 'difpads', savename=jason['ObjPath'] + 'difpads_' + jason['SaveObjname'])
 
         t2 = time()
 
-        difpads = masks_application(difpads, jason)
+    #     difpads = masks_application(difpads, jason)
 
-        t3 = time()
+    #     t3 = time()
 
-        # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-        if count == 0:
-            object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads,args)
-            jason["Object_effective_pixel"] = object_pixel_size
-        
-        # sinogram = np.zeros((total_frames,object_shape,object_shape)).astype(complex)
-        # probe3d  = np.zeros((total_frames,1,difpads.shape[-2],difpads.shape[-1])).astype(complex)
-        # backg3d  = np.zeros((total_frames, difpads.shape[-2],difpads.shape[-1]))
+    #     # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+    #     if count == 0:
+    #         object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads,args)
+    #         jason["Object_effective_pixel"] = object_pixel_size
 
-        params = (args,maxroi,hsize,object_shape,total_frames)
+    #     params = (args,maxroi,hsize,object_shape,total_frames)
 
-        # Main ptycho iteration on ALL frames in threads
-        if jason['Threads'] <= total_frames:
-            threads = 32  #jason['Threads']
-        else:
-            threads = total_frames
+    #     # Main ptycho iteration on ALL frames in threads
+    #     if jason['Threads'] <= total_frames:
+    #         threads = 32  #jason['Threads']
+    #     else:
+    #         threads = total_frames
 
-        sinogram3d ,probe3d, bkg3d = ptycho3d_batch( difpads, threads, params)
-        sinogram.append(sinogram3d)
-        probe.append(probe3d)
-        bkg.append(bkg3d)
+    #     sinogram3d ,probe3d, bkg3d = ptycho3d_batch( difpads, threads, params)
+    #     sinogram.append(sinogram3d)
+    #     probe.append(probe3d)
+    #     bkg.append(bkg3d)
 
-        t4 = time()
-        # sinogram,probe3d,backg3d = ptycho_main(difpads, sinogram, probe3d, backg3d, params)
+    #     t4 = time()
 
-        '''
-         END MAIN PTYCHO RUN
-        '''
-    if len(sinogram) > 1:
-        sinogram = np.concatenate(sinogram, axis = 0)
-        probe = np.concatenate(probe, axis = 0)
-        bkg = np.concatenate(bkg, axis = 0)
-    else:
-        sinogram = sinogram[0]
-        probe = probe[0]
-        bkg = bkg[0]
-        print('sinogram',sinogram.shape)
+    #     '''
+    #      END MAIN PTYCHO RUN
+    #     '''
+    
+    # if len(sinogram) > 1:
+    #     sinogram = np.concatenate(sinogram, axis = 0)
+    #     probe = np.concatenate(probe, axis = 0)
+    #     bkg = np.concatenate(bkg, axis = 0)
+    # else:
+    #     sinogram = sinogram[0]
+    #     probe = probe[0]
+    #     bkg = bkg[0]
+    #     print('sinogram',sinogram.shape)
     
 
-    sinogram_cropped = crop_sinogram(sinogram, jason)
+    # sinogram_cropped = crop_sinogram(sinogram, jason)
     
-    if jason['Phaseunwrap'][0] == True:
-        phase,absol = apply_phase_unwrap(sinogram_cropped, jason)
-    # calculate_FRC(sinogram_cropped, jason)
+    # if jason['Phaseunwrap'][0] == True:
+    #     phase,absol = apply_phase_unwrap(sinogram_cropped, jason)
+    # # calculate_FRC(sinogram_cropped, jason)
 
         
-    if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
-                sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
+    # if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
+    #             save_json_logfile2(jason["LogfilePath"], jason)
             
-    if jason['SaveObj'] == True:
-        if jason['SaveObjname'] != "":
-                save_variable(sinogram, jason['ObjPath'] + 'sino', savename=jason['ObjPath'] + jason['SaveObjname'])
-                save_variable(phase, jason['ObjPath'] + 'cropped_phase', savename=jason['ObjPath'] + 'cropped_phase_' + jason['SaveObjname'])
-                save_variable(absol, jason['ObjPath'] + 'cropped_absol', savename=jason['ObjPath'] + 'cropped_absol_' + jason['SaveObjname'])
+    # if jason['SaveObj'] == True:
+    #     if jason['SaveObjname'] != "":
+    #             save_variable(sinogram, jason['ObjPath'] + 'sino', savename=jason['ObjPath'] + jason['SaveObjname'])
+    #             save_variable2(phase, jason['ObjPath'] + 'cropped_phase', savename=jason['ObjPath'] + 'cropped_phase_' + jason['SaveObjname'])
+    #             save_variable2(absol, jason['ObjPath'] + 'cropped_absol', savename=jason['ObjPath'] + 'cropped_absol_' + jason['SaveObjname'])
 
-        else:
-                save_variable(sinogram, jason['ObjPath'] + 'sino')
+    #     else:
+    #             save_variable(sinogram, jason['ObjPath'] + 'sino')
+    #             save_variable2(phase, jason['ObjPath'] + 'cropped_phase')
+    #             save_variable2(absol, jason['ObjPath'] + 'cropped_absol')
 
-    if jason['SaveProbe'] == True:
-        if jason['SaveProbename'] != "":
-                save_variable(probe3d, jason['ProbePath'] + 'probe', savename=jason['ProbePath'] + jason['SaveProbename'])
-        else:
-                save_variable(probe3d, jason['ProbePath'] + 'probe')
+    # if jason['SaveProbe'] == True:
+    #     if jason['SaveProbename'] != "":
+    #             save_variable(probe3d, jason['ProbePath'] + 'probe', savename=jason['ProbePath'] + jason['SaveProbename'])
+    #     else:
+    #             save_variable(probe3d, jason['ProbePath'] + 'probe')
 
-    if jason['SaveBkg'] == True:
-        if jason['SaveBkgname'] != "":
-                save_variable(bkg, jason['BkgPath'] + 'bkg', savename=jason['BkgPath'] + jason['SaveBkgname'])
-        else:
-                save_variable(bkg, jason['BkgPath'] + 'bkg')
+    # if jason['SaveBkg'] == True:
+    #     if jason['SaveBkgname'] != "":
+    #             save_variable(bkg, jason['BkgPath'] + 'bkg', savename=jason['BkgPath'] + jason['SaveBkgname'])
+    #     else:
+    #             save_variable(bkg, jason['BkgPath'] + 'bkg')
 
-    t5 = time()
+    # t5 = time()
 
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
-    print(f'Application Mask on all difpads: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
-    print(f'Ptycho batch total time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
-    print(f'Reconstruction percentual time for difpads: {100 * (t2 - t1) / (t5 - t0):.2f}% ')
-    print(f'Reconstruction percentual time for ptycho: {100 * (t4 - t3) / (t5 - t0):.2f}% ')
-    print(f'Total time: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
+    # print(f'Application Mask on all difpads: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
+    # print(f'Ptycho batch total time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
+    # print(f'Reconstruction percentual time for difpads: {100 * (t2 - t1) / (t5 - t0):.2f}% ')
+    # print(f'Reconstruction percentual time for ptycho: {100 * (t4 - t3) / (t5 - t0):.2f}% ')
+    # print(f'Total time: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')

@@ -78,10 +78,18 @@ def RemoveGrad(img,mask):
     Args:
         img 
         mask 
-    """    
+    """  
+    
     hs1 = img.shape[-1]//2
     hs2 = img.shape[-2]//2 
-    xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
+    if img.shape[-1] % 2 == 0 and img.shape[-2] % 2 == 0:  
+        xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
+    elif img.shape[-1] % 2 == 0 and img.shape[-2] % 2 != 0:
+        xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2-1,hs2) / float(hs2))
+    elif img.shape[-1] % 2 != 0 and img.shape[-2] % 2 == 0:
+        xx,yy = np.meshgrid(np.arange(-hs1-1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
+    else:
+        xx,yy = np.meshgrid(np.arange(-hs1-1,hs1) / float(hs1),np.arange(-hs2-1,hs2) / float(hs2))
     #img = 3*xx**2 + 2*yy**2 + 4*xx + 7 * yy - 1
     
     xxm = xx[mask]
