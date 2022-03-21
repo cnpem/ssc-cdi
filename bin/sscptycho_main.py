@@ -198,12 +198,14 @@ if __name__ == '__main__':
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
     #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
+    t1 = time()
 
     if len(filenames) > 1: # 3D
         
         difpads,_        = restauration_cat_3d(args,jason['Preview'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
+        t2 = time()
         object,probe,bkg =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
-        
+        t3 = time()
         if len(object) > 1: # Concatenate if projections are divided into more than one folder (All projections in each folder are resolved together, and put on a list of size len(Aquisition_folders))
             object = np.concatenate(object, axis = 0)
             probe  = np.concatenate(probe, axis = 0)
@@ -212,22 +214,31 @@ if __name__ == '__main__':
             object = object[0]
             probe  = probe[0]
             bkg    = bkg[0]
-            print('Final object shape:', object.shape)
     else:
         difpads,_        = restauration_cat_2d(args,jason['Preview'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+        t2 = time()
         object,probe,bkg = cat_ptycho_2d(difpads,args) # Ptycho of 2D Projection (object - complex, probe - complex, bkg - real, are a ndarray of size (1,:,:), (1,:,:,:), (1,:,:) )
+        t3 = time()
+
+    print('Finished Ptycho reconstruction!')
 
     object_cropped = crop_sinogram(object, jason)
     
+    t4 = time()
+    
+    phase = np.angle(object_cropped)
+    absol = np.abs(object_cropped)
+
     if jason['Phaseunwrap'][0]: # Apply phase unwrap no dado
         phase,absol = apply_phase_unwrap(object_cropped, jason) # phase = np.angle(object), absol = np.abs(object)
-
+    
+    t5 = time()
     preview_ptycho(jason, phase, absol, probe, frame=0)
     
     # To do!!
     # calculate_FRC(sinogram_cropped, jason)
 
-        
+    print('Saving Object, Probe and Background!')
     if jason[ "LogfilePath"] != "":  # save logfile with new values (object_pixel_size and resolution) for first iteration only
         save_json_logfile2(jason["LogfilePath"], jason)
             
@@ -256,10 +267,9 @@ if __name__ == '__main__':
         else:
             save_variable(bkg, jason['BkgPath'] + 'bkg_' + aquisition_folder)
 
-
-    # print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
-    # print(f'Application Mask on all difpads: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
-    # print(f'Ptycho batch total time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
-    # print(f'Reconstruction percentual time for difpads: {100 * (t2 - t1) / (t5 - t0):.2f}% ')
-    # print(f'Reconstruction percentual time for ptycho: {100 * (t4 - t3) / (t5 - t0):.2f}% ')
-    # print(f'Total time: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
+    t6 = time()
+    print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
+    print(f'Ptycho batch total time: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
+    print(f'Auto Crop object time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
+    print(f'Phase unwrap object time: {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f}')
+    print(f'Total time: {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
