@@ -231,12 +231,10 @@ if __name__ == '__main__':
     
     t5 = time()
     preview_ptycho(jason, phase, absol, probe, frame=0)
-    preview_ptycho(jason, phase, absol, probe, frame=1)
-    preview_ptycho(jason, phase, absol, probe, frame=2)
-    preview_ptycho(jason, phase, absol, probe, frame=3)
-
-
-    
+    # preview_ptycho(jason, phase, absol, probe, frame=1)
+    # preview_ptycho(jason, phase, absol, probe, frame=2)
+    # preview_ptycho(jason, phase, absol, probe, frame=3)
+  
     # To do!!
     # calculate_FRC(sinogram_cropped, jason)
 
