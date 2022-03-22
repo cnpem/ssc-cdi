@@ -269,7 +269,7 @@ if __name__ == '__main__':
 
     t6 = time()
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
-    print(f'Ptycho batch total time: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f}%')
-    print(f'Auto Crop object time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f}')
-    print(f'Phase unwrap object time: {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f}')
+    print(f'Ptycho batch total time: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f} minutes')
+    print(f'Auto Crop object time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
+    print(f'Phase unwrap object time: {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
     print(f'Total time: {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
