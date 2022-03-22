@@ -1,0 +1,8 @@
+sscPtycho/__init__.py,sha256=d65vXbjEaB7WVwaemMZH9yeUYOqJgEcoOL-tXbgH4tY,28427
+sscPtycho/libpsicc_ppc.so,sha256=BZ0hs8c2SrJmvLafLUhRViqzJQ2vY1O-O4NXC3YlqUA,1959840
+sscPtycho/libpsicc_x86_dgx.so,sha256=RLeJtfFz3Zg5dbHOrjasv2w84qTOODlBkgA3GrXQ-cE,2120992
+sscPtycho/libpsicc_x86_upc.so,sha256=29LvQiEaTE8VsWxqwmxKUDAqWH8ZprXycxb-mhCoRhE,3770536
+sscPtycho-1.0.2.dist-info/METADATA,sha256=60oBr5dwCGKm7Sepv73KcmJAl8t8xZRXOOoww9To4nM,244
+sscPtycho-1.0.2.dist-info/WHEEL,sha256=g4nMs7d-Xl9-xC9XovUrsDHGXt-FT0E17Yqo92DEfvY,92
+sscPtycho-1.0.2.dist-info/top_level.txt,sha256=tqqii1vmr6_KueRBHcoBx8gH0TedQG3aMcglbv8Xaws,10
+sscPtycho-1.0.2.dist-info/RECORD,,
