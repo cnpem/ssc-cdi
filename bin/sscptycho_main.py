@@ -89,15 +89,12 @@ def cat_ptycho_3d(difpads,args):
 
         # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
         if count == 0:
-            object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads[count],args)
+            object_shapey, object_shapex, maxroi, hsize, object_pixel_size = set_object_shape(difpads[count],args)
             jason["Object_effective_pixel"] = object_pixel_size
 
-        params = (args,maxroi,hsize,object_shape,total_frames)
+        params = (args,maxroi,hsize,(object_shapey,object_shapex),total_frames)
 
-        if total_frames <= 10:
-            threads = total_frames
-        else:
-            threads = jason['PtychoThreads']
+        threads = len(jason['GPUs'])
         
         # Main ptycho iteration on ALL frames in threads
         sinogram3d ,probe3d, bkg3d = ptycho3d_batch(difpads[count], threads, params)
@@ -132,12 +129,12 @@ def cat_ptycho_2d(difpads,args):
     args = (jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string)
 
     # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-    object_shape, maxroi, hsize, object_pixel_size = set_object_shape(difpads,args)
+    object_shapey, object_shapex, maxroi, hsize, object_pixel_size = set_object_shape(difpads,args)
     jason["Object_effective_pixel"] = object_pixel_size
 
-    params = (args,maxroi,hsize,object_shape,total_frames)
+    params = (args,maxroi,hsize,(object_shapey,object_shapex),total_frames)
     
-    sinogram = np.zeros((1,object_shape,object_shape),dtype = complex) # build 3D Sinogram
+    sinogram = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
     probe    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
     bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
     
@@ -234,6 +231,11 @@ if __name__ == '__main__':
     
     t5 = time()
     preview_ptycho(jason, phase, absol, probe, frame=0)
+    preview_ptycho(jason, phase, absol, probe, frame=1)
+    preview_ptycho(jason, phase, absol, probe, frame=2)
+    preview_ptycho(jason, phase, absol, probe, frame=3)
+
+
     
     # To do!!
     # calculate_FRC(sinogram_cropped, jason)

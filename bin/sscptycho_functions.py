@@ -227,7 +227,6 @@ def read_probe_positions(probe_positions_filepath, measurement):
         print('\t\t Setting object as null array with correct shape.')
         # probe_positions = np.zeros([1,1,1,1])
         probe_positions = np.zeros((mshape[0], 4))
-
     return probe_positions
 
 
@@ -475,7 +474,7 @@ def set_initial_obj(jason, object_shape, probe, difpads):
     print('Setting initial guess for Object...')
     # Object initial guess:
     if jason['InitialObj'] == "":
-        obj = np.random.rand(object_shape, object_shape) * (
+        obj = np.random.rand(object_shape[0], object_shape[1]) * (
             np.sqrt(np.average(difpads) / np.average(abs(np.fft.fft2(probe)) ** 2)))
         # obj = np.random.rand(2048,2048) * (np.sqrt(np.average(difpads)/np.average(abs(np.fft.fft2(probe))**2)))
     else:
@@ -632,8 +631,8 @@ def save_variable(variable, predefined_name, savename=""):
     print(f'Saving variable {predefined_name}...')
     print(len(variable))
     variable = np.asarray(variable, dtype=object)
-    for i in range(variable.shape[0]):
-        print('shapes', variable[i].shape)
+    # for i in range(variable.shape[0]):
+    #     print('shapes', variable[i].shape)
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
         if math.isnan(variable[i][:, :].imag.sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
@@ -660,8 +659,8 @@ def save_variable2(variable, predefined_name, savename=""):
     print(f'Saving variable {predefined_name}...')
     print(len(variable))
     variable = np.asarray(variable, dtype=object)
-    for i in range(variable.shape[0]):
-        print('shapes', variable[i].shape)
+    # for i in range(variable.shape[0]):
+    #     print('shapes', variable[i].shape)
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
         if math.isnan(variable[i][:, :].sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
@@ -1022,16 +1021,21 @@ def set_object_shape(difpads,args,offset_topleft = 20):
     probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
 
     # Compute max probe_positions and object size (2*hsize+maxroi)
-    maxroi       = int(np.max(probe_positions)) + offset_bottomright
-    object_shape = 2 * hsize + maxroi
+    maxroiy       = int(np.max(probe_positions[:, 0])) + offset_bottomright
+    maxroix       = int(np.max(probe_positions[:, 1])) + offset_bottomright
+    object_shapey = 2 * hsize + maxroiy
+    object_shapex = 2 * hsize + maxroix
 
-    print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
-    print("\tObject shape: 2*hsize+maxroi = ", 2 * hsize + maxroi)
+    maxroi        = int(np.max(probe_positions)) + offset_bottomright
+    object_shape  = 2 * hsize + maxroi
+    print('Object shape:',object_shapey,object_shapex)
 
-    return object_shape, maxroi, hsize, dx
+    # print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
+    # print("\tObject shape: 2*hsize+maxroi = ", 2 * hsize + maxroi)
 
+    return object_shape,object_shape, maxroi, hsize, dx
 
-def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
+def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
     t0 = time()
     
     jason               = args[0][0]
@@ -1066,6 +1070,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
         print('probe_positions_file = ', probe_positions_file)
 
         probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
+        print("O que esta acontecendo?")
         print(measurement_file,measurement_filepath, probe_positions_file)
 
         run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
@@ -1088,6 +1093,8 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
 
             datapack, _, sigmask = set_initial_parameters(jason,difpads[frame],probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,object_shape,jason["Object_effective_pixel"])
 
+            param = {'device':gpu}
+
             if i == 0: t3 = time()
 
             run_algorithms = True
@@ -1103,32 +1110,26 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
                         datapack = sscPtycho.GL(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                     probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'],
                                                     epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                    probef1=jason['f1'], data=datapack)
+                                                    probef1=jason['f1'], data=datapack,params=param)
 
                     elif algorithm['Name'] == 'positioncorrection':
                         datapack['bkg'] = None
                         datapack = sscPtycho.PosCorrection(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                                probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'], 
                                                                epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                               probef1=jason['f1'], data=datapack)
-
-                    elif algorithm['Name'] == 'Mixed':
-                        datapack = sscPtycho.CoherentModes(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
-                                                               probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'], 
-                                                               epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask, 
-                                                               weights=weights, probef1=jason['f1'], data=datapack)
+                                                               probef1=jason['f1'], data=datapack,params=param)
 
                     elif algorithm['Name'] == 'RAAR':
                         datapack = sscPtycho.RAAR(iter=algorithm['Iterations'], beta=algorithm['Beta'],
                                                       probecycles=algorithm['ProbeCycles'], batch=algorithm['Batch'],
                                                       epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'],
-                                                      sigmask=sigmask, probef1=jason['f1'], data=datapack)
+                                                      sigmask=sigmask, probef1=jason['f1'], data=datapack,params=param)
 
                     elif algorithm['Name'] == 'GLL':
                         datapack = sscPtycho.GL(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                     probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'],
                                                     epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                    probef1=jason['f1'], data=datapack)
+                                                    probef1=jason['f1'], data=datapack,params=param)
 
                     loop_counter += 1
                     RF = datapack['error']
@@ -1143,7 +1144,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
 
         else:
             print('CAUTION! Zeroing frame:',frame,' for error in position file.')
-            sinogram[frame, :, :]   = np.zeros((object_shape,object_shape)) # build 3D Sinogram
+            sinogram[frame, :, :]   = np.zeros((object_shape[0],object_shape[1])) # build 3D Sinogram
             probe3d[frame, :, :, :] = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
             backg3d[frame, :, :]    = np.zeros((difpads.shape[-2],difpads.shape[-1]))
 
@@ -1154,8 +1155,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_):
 
     return sinogram, probe3d, backg3d
 
-
-def _worker_batch_frames_(params, idx_start, idx_end):
+def _worker_batch_frames_(params, idx_start, idx_end, gpu):
     
     output_object = params[0]
     output_probe  = params[1]
@@ -1166,7 +1166,7 @@ def _worker_batch_frames_(params, idx_start, idx_end):
     _start_ = idx_start
     _end_   = idx_end
 
-    output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:] = ptycho_main( difpads, output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:], args, _start_, _end_)
+    output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:] = ptycho_main( difpads[_start_:_end_,:,:,:], output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:], args, _start_, _end_, gpu)
     
 def _build_batch_of_frames_(params):
 
@@ -1179,8 +1179,9 @@ def _build_batch_of_frames_(params):
     for k in range( threads ):
         begin_ = k*b
         end_   = min( (k+1)*b, total_frames )
+        gpu = [k]
 
-        p = multiprocessing.Process(target=_worker_batch_frames_, args=(params, begin_, end_))
+        p = multiprocessing.Process(target=_worker_batch_frames_, args=(params, begin_, end_, gpu))
         processes.append(p)
     
     for p in processes:
@@ -1188,6 +1189,7 @@ def _build_batch_of_frames_(params):
 
     for p in processes:
         p.join()
+    
 
 def ptycho3d_batch( difpads, threads, args):
     
@@ -1211,7 +1213,7 @@ def ptycho3d_batch( difpads, threads, args):
     except:
         pass
             
-    output_object = sa.create(name,[total_frames, object_shape, object_shape], dtype=np.complex64)
+    output_object = sa.create(name,[total_frames, object_shape[0], object_shape[1]], dtype=np.complex64)
     output_probe  = sa.create(name1,[total_frames, 1, difpads.shape[-2],difpads.shape[-1]], dtype=np.complex64)
     output_backg  = sa.create(name2,[total_frames, difpads.shape[-2],difpads.shape[-1]], dtype=np.float32)
 
