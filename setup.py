@@ -128,9 +128,9 @@ if CUDA:
     import subprocess
 
     if compile_sudo:
-        cmd = "pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py3-none-any.whl"
+        cmd = "sudo pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl"
     else:
-        cmd = "pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py3-none-any.whl --user"
+        cmd = "pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl --user"
         
     subprocess.call(cmd, shell=True)
     #-----------------------------------------------------
