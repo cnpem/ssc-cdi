@@ -139,7 +139,7 @@ def cat_ptycho_2d(difpads,args):
     bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
     
     # Main ptycho iteration on ALL frames in threads
-    sinogram, probe, bkg = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1)
+    sinogram, probe, bkg = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1, jason['GPUs'])
 
     '''
         END MAIN PTYCHO RUN

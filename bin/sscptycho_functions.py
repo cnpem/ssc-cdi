@@ -302,7 +302,7 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     probe = set_modes(probe, jason)
 
     # GPUs selection:
-    set_gpus(jason)
+    # set_gpus(jason)
 
     # Object initial guess:
     obj = set_initial_obj(jason, object_size, probe, difpads)
