@@ -86,7 +86,10 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
         param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string)
         difpad, elapsedtime_one_difpad = pi540_restauration_cat(param,savepath,preview,save)
         
-        difpads.append(difpad)
+        if difpads == [] or difpads[0].shape == difpad.shape:
+            difpads.append(difpad)
+        else:
+            difpads.append(np.zeros(difpads[0].shape))
     
     difpads = np.asarray(difpads)
     print('difpads shape after restauration and binning of', jason['Binning'], ':', difpads.shape)
