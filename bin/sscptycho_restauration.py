@@ -115,6 +115,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False):
             
     if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
         print(ibira_datafolder, measurement_file, acquisitions_folder)
+        print('\nMeasurement file in pi540_restauration_cat: ', measurement_file)
         difpads, geometry, _ = get_restaurated_difpads_old_format(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file)
 
         if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
@@ -177,15 +178,25 @@ def get_restaurated_difpads_old_format(jason, path, name):
     geometry = Geometry(z1)
 
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
-    flat = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
+    
+    if 'OldFormat' not in jason:
+        flat = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
+    else:
+        flat = np.load(jason["FlatField"])
 
     flat = np.array(flat)
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    mask = np.load(jason['Mask'])
-    # mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-    mask = np.flip(mask,0)
+    if 'Mask' in jason:
+        if jason['Mask'] != 0:
+            mask = np.load(jason['Mask'])
+        else:
+            mask = np.zeros_like(h5f[0])
+    else:
+        mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
+        #mask = np.flip(mask,0)
+    
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
@@ -311,6 +322,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
         if jason['Frames'] != []:
             filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+            print('\nMeasurement file in restauration_cat_3d: ', filenames)
         
         params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
