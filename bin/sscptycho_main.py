@@ -172,7 +172,7 @@ if __name__ == '__main__':
     print('ibira_datafolder = ', ibira_datafolder)
 
     aquisition_folder = jason["Acquisition_Folders"][0]
-    print(aquisition_folder)
+    print('acquisition_folder = ',aquisition_folder)
  
     images_folder    = os.path.join(aquisition_folder,'images')
     positions_folder = os.path.join(ibira_datafolder,aquisition_folder,'positions')
@@ -223,19 +223,16 @@ if __name__ == '__main__':
     
     t4 = time()
     
-    phase = np.angle(object_cropped)
-    absol = np.abs(object_cropped)
-
-    if jason['Phaseunwrap'][0]: # Apply phase unwrap no dado
+    if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
         phase,absol = apply_phase_unwrap(object_cropped, jason) # phase = np.angle(object), absol = np.abs(object)
-    
+    else:
+        phase = np.angle(object_cropped)
+        absol = np.abs(object_cropped)
+
     t5 = time()
     preview_ptycho(jason, phase, absol, probe, frame=0)
-    # preview_ptycho(jason, phase, absol, probe, frame=1)
-    # preview_ptycho(jason, phase, absol, probe, frame=2)
-    # preview_ptycho(jason, phase, absol, probe, frame=3)
   
-    # To do!!
+    #TODO
     # calculate_FRC(sinogram_cropped, jason)
 
     print('Saving Object, Probe and Background!')

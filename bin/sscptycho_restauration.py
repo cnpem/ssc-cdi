@@ -204,6 +204,16 @@ def get_restaurated_difpads_old_format(jason, path, name):
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask)
 
+    #TODO: preview_full_difpad
+    if 1:
+        # print("type h5f ",type(h5f),h5f.shape)
+        img = h5f[0,:,:]
+        print('Restaurating single difpad to save preview of pattern of 3072^2 shape')
+        img = img.astype(np.float32) # convert to float
+        img = Restaurate(img, geometry) # restaurate
+        
+
+
     t0 = time()
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restauration_processing_binning,  r_params, 'only')
     t1 = time()
@@ -218,7 +228,6 @@ def restauration_processing_binning(img, args):
     Args:
         img (array): image to be restaured and binned
     """    
-    t0 = time()
 
     Binning, empty, flat, cx, cy, hsize, geometry, mask = args
 
@@ -232,11 +241,13 @@ def restauration_processing_binning(img, args):
     img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
-    t2 = time()
+
+    np.save('difpad_3072.npy',img)
 
     # select ROI from the center (cx,cy)
     img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
-    
+
+
     # Binning
     while binning % 2 == 0 and binning > 0:
         avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
@@ -331,7 +342,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
     return diffractionpattern, time_difpads
 
 def restauration_cat_2d(args,preview = False,save = False,read = False):
-    
+    print('previewwwwwwwwwwwww',preview)
     jason, ibira_datafolder, scans_string, _ = args
     time_difpads = 0
 
