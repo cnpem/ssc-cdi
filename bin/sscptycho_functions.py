@@ -139,6 +139,10 @@ def calculate_FRC(sinogram, jason):
                 except:
                     print('Could not calculate 3sigma FRC resolution')
 
+        # if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
+            # sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
+
+
 
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
     """ Show plot in a specific format 
