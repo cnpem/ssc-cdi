@@ -85,6 +85,7 @@ def cat_ptycho_3d(difpads,args):
             filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         
         total_frames = len(filenames)
+        print('\nFilenames in cat_ptycho_3d: ', filenames)
         args = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string, positions_string)
 
         # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
@@ -111,7 +112,7 @@ def cat_ptycho_3d(difpads,args):
 
 
 def cat_ptycho_2d(difpads,args):
-    print('DDifpadshape:',difpads.shape)
+    print('Difpadshape:',difpads.shape)
 
     jason, ibira_datafolder, scans_string, positions_string = args
 
@@ -148,6 +149,8 @@ def cat_ptycho_2d(difpads,args):
     return sinogram,probe,bkg
     
 
+#TODO: if you put one frame, it will be done by 2d code and it will be set as frame 0, always
+
 if __name__ == '__main__':
 
     t0 = time()
@@ -158,9 +161,7 @@ if __name__ == '__main__':
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
     #=========== Set Parameters and Folders =====================
-    scans_string = 'scans'
-    positions_string = 'positions'
-
+    
     if jason['InitialObj'] != "": # definition of paths for initial guesses
         jason['InitialObj'] = jason['ObjPath'] + jason['InitialObj']
     if jason['InitialProbe'] != "":
@@ -174,23 +175,41 @@ if __name__ == '__main__':
     aquisition_folder = jason["Acquisition_Folders"][0]
     print('acquisition_folder = ',aquisition_folder)
  
-    images_folder    = os.path.join(aquisition_folder,'images')
-    positions_folder = os.path.join(ibira_datafolder,aquisition_folder,'positions')
-    scans_folder     = os.path.join(ibira_datafolder,aquisition_folder,'scans')
+    if 'OldFormat' not in jason:
 
-    input_dict = json.load(open(os.path.join(ibira_datafolder,aquisition_folder,'mdata.json')))
-    jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
-    jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
-    jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+        scans_string = 'scans'
+        positions_string = 'positions'
 
-    jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
-    jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
-    # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+        images_folder    = os.path.join(aquisition_folder,'images')
+        positions_folder = os.path.join(ibira_datafolder,aquisition_folder,'positions')
+        scans_folder     = os.path.join(ibira_datafolder,aquisition_folder,'scans')
+
+        input_dict = json.load(open(os.path.join(ibira_datafolder,aquisition_folder,'mdata.json')))
+        jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
+        jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+        jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+
+        jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
+        jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
+         # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+
+    else:
+        scans_string = ''
+        positions_string = ''
+        flatfield = np.load(jason["FlatField"])
+        empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
+        
+
 
     if jason["LogfilePath"] != "": # save a logfile with start datetime containing the json inputs used
         save_json_logfile2(jason["LogfilePath"], jason)
     
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
+
+    if jason['Frames'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
+    
+    print('\nFilenames in main: ', filenames)
 
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
