@@ -105,28 +105,24 @@ def select_specific_angles(frames,filepaths,filenames):
 
     return filepaths, filenames
 
-# def save_json_logfile(path,jason):
-#     """Save a copy of the json input file with datetime at the filename
+def save_json_logfile(path,jason):
+    """Save a copy of the json input file with datetime at the filename
 
-#     Args:
-#         path (string): output folder path 
-#         jason (dic): jason dictionary
-#     """    
-#     import json, os
-#     from datetime import datetime
-#     now = datetime.now()
+    Args:
+        path (string): output folder path 
+        jason (dic): jason dictionary
+    """    
+    import json, os
+    from datetime import datetime
+    now = datetime.now()
 
-#     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
     
-#     if jason["3D_Acquisition_Folders"] != [""]:
-#         name = jason["3D_Acquisition_Folders"][0]
-#     else:
-#         name = jason[ "SingleMeasurement"]
-    
-#     name = dt_string + "_" + name.split('.')[0]+".json"
+    name = jason["Acquisition_Folders"][0]
 
-#     filepath = os.path.join(path,name)
-#     file = open(filepath,"w")
-#     file.write(json.dumps(jason))
-#     file.close()
-    
+    name = dt_string + "_" + name.split('.')[0]+".json"
+
+    filepath = os.path.join(path,name)
+    file = open(filepath,"w")
+    file.write(json.dumps(jason))
+    file.close()

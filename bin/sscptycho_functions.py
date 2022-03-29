@@ -1,4 +1,5 @@
 from concurrent.futures import thread
+import wave
 import sscResolution
 import sscPtycho
 import sscCdi
@@ -42,29 +43,6 @@ from numpy.fft import ifft2 as ifft2
 #
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
-
-def save_json_logfile2(path,jason):
-    """Save a copy of the json input file with datetime at the filename
-
-    Args:
-        path (string): output folder path 
-        jason (dic): jason dictionary
-    """    
-    import json, os
-    from datetime import datetime
-    now = datetime.now()
-
-    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
-    
-    name = jason["Acquisition_Folders"][0]
-
-
-    name = dt_string + "_" + name.split('.')[0]+".json"
-
-    filepath = os.path.join(path,name)
-    file = open(filepath,"w")
-    file.write(json.dumps(jason))
-    file.close()
 
 def crop_sinogram(sinogram, jason): 
 
@@ -122,27 +100,25 @@ def apply_phase_unwrap(sinogram, jason):
 
 def calculate_FRC(sinogram, jason):
 
-    object_pixel_size = jason["Object_effective_pixel"] 
+    object_pixel_size = jason["object_pixel"] 
+
+    frame = 0 # selects first frame of the sinogram to calculate resolution
 
     if jason['FRC'] == True:
-        for frame in range(sinogram.shape[0]):
-                print('Estimating resolution via Fourier Ring Correlation')
-                resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size)
-                try:
-                    print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit'])
-                    jason["hafbitResolution"] = resolution['halfbit']
-                except:
-                    print('Could not calculate halfbit FRC resolution')
-                try:
-                    print('\tResolution for frame ' + str(frame) + ':', resolution['3sigma'])
-                    jason["3sigmaResolution"] = resolution['3sigma']
-                except:
-                    print('Could not calculate 3sigma FRC resolution')
+        print('Estimating resolution via Fourier Ring Correlation')
+        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size)
+        try:
+            print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit'])
+            jason["hafbitResolution"] = resolution['halfbit']
+        except:
+            print('Could not calculate halfbit FRC resolution')
+        try:
+            print('\tResolution for frame ' + str(frame) + ':', resolution['3sigma'])
+            jason["3sigmaResolution"] = resolution['3sigma']
+        except:
+            print('Could not calculate 3sigma FRC resolution')
 
-        # if jason[ "LogfilePath"] != "" and first_iteration:  # save logfile with new values (object_pixel_size and resolution) for first iteration only
-            # sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason)
-
-
+    return jason
 
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
     """ Show plot in a specific format 
@@ -327,49 +303,16 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
 
     return datapack, probe_positionsi, sigmask
 
-def set_parameters_probe_positions(dx, probe_positions, offset_topleft = 20):
-    """Set probe positions considering maxroi and effective pixel size
-
-    Args:
-        difpads (3D array): measured diffraction patterns
-        jason (json file): file with the setted parameters and directories for reconstruction
-        probe_positions (array): each element is an 2-array with x and y probe positions
-        offset_topleft (int, optional): [description]. Defaults to 20.
-
-    Returns:
-        object pixel size (float), maximum roi (int), probe positions (array)
-    """    
-    print('Setting parameters hsize, dx and maxroi ...')
-    # Compute half size of diffraction patterns:
-    # hsize = difpads.shape[-1] // 2
-
-    # Compute/convert pixel size:
-    # dx = set_object_pixel_size(jason,hsize)
-
-    # Subtract the probe positions minimum to start at 0
-    probe_positions[:, 0] -= np.min(probe_positions[:, 0])
-    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
-
-    offset_bottomright = offset_topleft #define padding width
-    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
-    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
-
-    # Compute max probe_positions and object size (2*hsize+maxroi)
-    maxroi = int(np.max(probe_positions)) + offset_bottomright
-
-    print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
-
-    return probe_positions
 
 def set_object_pixel_size(jason,hsize):
     c = 299792458  # Velocity of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
-
+    wavelength = planck * c / jason['Energy'] # meters
+    jason["wavelength"] = wavelength
     # Compute/convert pixel size:
-    dx = planck * c / jason['Energy'] * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
-    # print('\tConverted to pixel size:', dx)
+    dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
 
-    return dx
+    return dx, jason
 
 def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
     """Calculate Fresnel number
@@ -597,29 +540,6 @@ def set_datapack(obj, probe, probe_positions, difpads, background, probesupp):
     datapack['probesupp'] = probesupp
 
     return datapack
-
-
-def get_pixel_size(N, du, energy, z):
-    """ Get pixel size for experiment configuration
-
-    Args:
-        N ([type]): [description]
-        du ([type]): [description]
-        energy ([type]): [description]
-        z ([type]): [description]
-
-    Returns:
-        effective pixel size: 
-    """    
-    
-    energy_ = energy * 1000  # ev
-    cvel = 299792458  # m/s
-    planck = 4.135667662e-15  # ev * s
-    wavelength = cvel * planck / (energy_)
-
-    # N * dx * du = dist * lambda
-
-    return (z * wavelength) / ((du * 1e-6) * N)
 
 
 def save_variable(variable, predefined_name, savename=""):
@@ -993,6 +913,29 @@ def masks_application(difpads, jason):
         
     return difpads
 
+def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
+    """Set probe positions considering maxroi and effective pixel size
+
+    Args:
+        difpads (3D array): measured diffraction patterns
+        jason (json file): file with the setted parameters and directories for reconstruction
+        probe_positions (array): each element is an 2-array with x and y probe positions
+        offset_topleft (int, optional): [description]. Defaults to 20.
+
+    Returns:
+        object pixel size (float), maximum roi (int), probe positions (array)
+    """    
+
+    # Subtract the probe positions minimum to start at 0
+    probe_positions[:, 0] -= np.min(probe_positions[:, 0])
+    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
+
+    offset_bottomright = offset_topleft #define padding width
+    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
+    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
+
+    return probe_positions, offset_bottomright
+
 def set_object_shape(difpads,args,offset_topleft = 20):
 
     jason               = args[0]
@@ -1010,34 +953,24 @@ def set_object_shape(difpads,args,offset_topleft = 20):
     hsize = difpads.shape[-1] // 2
 
     # Compute/convert pixel size:
-    dx = set_object_pixel_size(jason,hsize)
+    dx, jason = set_object_pixel_size(jason,hsize)
 
     probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
-    print(measurement_file,measurement_filepath, probe_positions_file)
     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
-    
-    # Subtract the probe positions minimum to start at 0
-    probe_positions[:, 0] -= np.min(probe_positions[:, 0])
-    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
+    probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = 20)
 
-    offset_bottomright = offset_topleft #define padding width
-    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
-    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
-
-    # Compute max probe_positions and object size (2*hsize+maxroi)
-    maxroiy       = int(np.max(probe_positions[:, 0])) + offset_bottomright
-    maxroix       = int(np.max(probe_positions[:, 1])) + offset_bottomright
-    object_shapey = 2 * hsize + maxroiy
-    object_shapex = 2 * hsize + maxroix
+    if 0: #TODO: test to compute object of rectangular size
+        maxroiy       = int(np.max(probe_positions[:, 0])) + offset_bottomright
+        maxroix       = int(np.max(probe_positions[:, 1])) + offset_bottomright
+        object_shapey = 2 * hsize + maxroiy
+        object_shapex = 2 * hsize + maxroix
 
     maxroi        = int(np.max(probe_positions)) + offset_bottomright
     object_shape  = 2 * hsize + maxroi
-    print('Object shape:',object_shapey,object_shapex)
-
+    print('Object shape:',object_shape,object_shape)
     # print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
-    # print("\tObject shape: 2*hsize+maxroi = ", 2 * hsize + maxroi)
 
-    return object_shape,object_shape, maxroi, hsize, dx
+    return object_shape,object_shape, maxroi, hsize, dx, jason
 
 def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
     t0 = time()
@@ -1053,10 +986,6 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
     hsize               = args[2]
     object_shape        = args[3]
 
-    # sinogram = []
-    # probe3d  = []
-    # backg3d  = []
-    
     for i in range(_end_ - _start_):
     # for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
         
@@ -1071,11 +1000,8 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
         frame = int(current_frame)
 
         probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
-        print('probe_positions_file = ', probe_positions_file)
-
         probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
-        print("O que esta acontecendo?")
-        print(measurement_file,measurement_filepath, probe_positions_file)
+        probe_positions, _ = convert_probe_positions(jason["object_pixel"], probe_positions)
 
         run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
@@ -1092,10 +1018,9 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
 
             probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 
-            probe_positions = set_parameters_probe_positions(jason["Object_effective_pixel"], probe_positions)
-            print('Obj shape:',object_shape,hsize)
+            print(f'Object shape: {object_shape}. Detector half-size: {hsize}')
 
-            datapack, _, sigmask = set_initial_parameters(jason,difpads[frame],probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,object_shape,jason["Object_effective_pixel"])
+            datapack, _, sigmask = set_initial_parameters(jason,difpads[frame],probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,object_shape,jason["object_pixel"])
 
             param = {'device':gpu}
 
