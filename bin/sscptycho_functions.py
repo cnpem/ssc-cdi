@@ -180,15 +180,9 @@ def read_probe_positions(probe_positions_filepath, measurement):
     positions_file = open(probe_positions_filepath)
 
     line_counter = 0
-    lines_in_header = 0
-
-    for line in positions_file:
-        if 'Piezo' in line:
-            lines_in_header = line + 1
-
     for line in positions_file:
         line = str(line)
-        if line_counter > lines_in_header:  # skip first line, which is the header
+        if line_counter > 1:  # skip first line, which is the header
             T = -3E-3  # why rotate by this amount?
             pxl = float(line.split()[1])
             pyl = float(line.split()[0])
@@ -204,16 +198,16 @@ def read_probe_positions(probe_positions_filepath, measurement):
     with h5py.File(measurement, 'r') as file:
         mshape = file['entry/data/data'].shape
 
-    if pshape[0] + lines_in_header-1 == mshape[0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
+    if pshape[0] == mshape[0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
         print('\tSuccess in read positions file:' + probe_positions_filepath)
         print("\tShape probe_positions:", probe_positions.shape, pshape, mshape)
     else:
-        print("\tError in probe_positions shape. {0} is different from diffraction pattern shape {1}".format(
-            probe_positions.shape, mshape))
+        print("\tError in probe_positions shape. {0} is different from diffraction pattern shape {1}".format(probe_positions.shape, mshape))
         print('\npshape: ', pshape)
         print('\t\t Setting object as null array with correct shape.')
         # probe_positions = np.zeros([1,1,1,1])
         probe_positions = np.zeros((mshape[0], 4))
+        print('teste',probe_positions.shape)
     return probe_positions
 
 
