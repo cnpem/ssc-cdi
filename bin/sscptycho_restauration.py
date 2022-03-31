@@ -108,33 +108,44 @@ def restauration_cat_3d(args,preview  = False,save  = False, read = True):
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
-        print('\tFilepaths in restauration_cat_3d: ', filepaths)
         
-        # if jason['Frames'] != []:
-        #     filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+        # if jason['Projections'] != []:
+        #     filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
 
         params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
         if read:
-            # n = len(filenames) #n refers to the amount of angles (projections)
-            # difpads = 0
-            # # for i in range(n):
-            # if i == 0:
-            #     difpads = difpad
-            # else:
-            #     difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
-            #     difpads = np.concatenate(difpad, axis = 0)
+            if jason['Projections'] != []:
+                n = jason['Projections'] #n refers to the amount of angles (projections)
+                difpads = 0
+                for i in n:
+                    difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                    difpads = np.concatenate(difpad, axis = 0)
+                frames = difpad.shape[0]
+
+            else:
+                n = len(filenames)
+                difpads = 0
+                for i in range(n):
+                    difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                    difpads = np.concatenate(difpad, axis = 0)
+                frames = difpad.shape[0]
+
             
             # difpads = np.asarray(difpads)
-            difpads = np.load(jason['SaveDifpadPath'] + filenames + '.npy')
-            print('\tdifpads.shape: ', difpads.shape)
+            #difpads = np.load(jason['SaveDifpadPath'] + filenames + '.npy')
+            print('\tdifpads.shape (after 1st for): ', difpads.shape)
+
         else: 
             difpads, time_difpads, _, jason, frames, bad_projections = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
+
         
         if diffractionpattern == 0:
             diffractionpattern = difpads
         else:
             diffractionpattern = np.concatenate(difpads)
+        
+        print('\tdifpads.shape: ', difpads.shape)
     
     difpads = split_angles(diffractionpattern, frames) #returns 4D structure for difpads as: [angles, frames, rows, columns]
 
@@ -161,8 +172,8 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
     bad_projections = []
     cont = -1
 
-    if jason['Frames'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
 
     for measurement_file, measurement_filepath in zip(filenames, filepaths):
         cont += 1

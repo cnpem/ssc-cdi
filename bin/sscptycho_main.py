@@ -81,8 +81,8 @@ def cat_ptycho_3d(difpads,args):
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
-        if jason['Frames'] != []:
-            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+        if jason['Projections'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
         
         total_frames = len(filenames)
         print('\nFilenames in cat_ptycho_3d: ', filenames)
@@ -174,10 +174,10 @@ if __name__ == '__main__':
         jason['InitialBkg'] = jason['BkgPath'] + jason['InitialBkg']
 
     ibira_datafolder = jason['ProposalPath'] 
-    print('ibira_datafolder = ', ibira_datafolder)
+    print('\nibira_datafolder = ', ibira_datafolder)
 
     aquisition_folder = jason["Acquisition_Folders"][0]
-    print('acquisition_folder = ',aquisition_folder)
+    print('\nacquisition_folder = ',aquisition_folder)
  
     if 'OldFormat' not in jason: # flag to indicate if we are working with old or new input file format. Old format will be deprecated in the future.
 
@@ -205,10 +205,9 @@ if __name__ == '__main__':
     
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
 
-    if jason['Frames'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
     
-    print('\nFilenames in main: ', filenames)
 
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
