@@ -884,18 +884,18 @@ def masks_application(difpads, jason):
 
         if jason["AutomaticCentralMask"][0]:  # automatically finds the center of the first difpad
             _, radius, _, _, which_difpad = jason["AutomaticCentralMask"]
-            center_row, center_col = get_difpad_center(difpads[0, which_difpad,:,:])
+            center_row, center_col = get_difpad_center(difpads[which_difpad,:,:])
         else:  # use manual input center positions
             _, radius, center_row, center_col, _ = jason["AutomaticCentralMask"]
 
-        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0,0, :, :].shape)
+        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
         # print('shapes:',difpads.shape, central_mask.shape,difpads[0,0, :, :].shape)
         difpads[:,:, central_mask > 0] = -1
 
     if 0:  # still being tested
         print("Applying lowpass filter")
         radius, center_row, center_col = 300, 320, 321
-        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0,0, :, :].shape)
+        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0, :, :].shape)
         difpads[:,:, central_mask == 0] = -1
 
     if jason["DetectorExposure"][0]:  # still being tested
