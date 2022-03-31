@@ -127,8 +127,8 @@ def cat_ptycho_2d(difpads,args):
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
         
-    if jason['Frames'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
 
     total_frames = len(filenames)
     args = [jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string]
