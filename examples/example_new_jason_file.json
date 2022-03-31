@@ -16,7 +16,6 @@
     "ProbeSupport": [300,0,0],
     "GPUs": [0],
     "Threads": 32,
-    "PtychoThreads":32,
     "Binning": 4,
     "Seed": 10,
     "Modes": 0,

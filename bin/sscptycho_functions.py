@@ -63,7 +63,7 @@ def crop_sinogram(sinogram, jason):
 
     return sinogram
 
-def apply_phase_unwrap(sinogram, jason):
+def apply_phase_unwrap(sinogram, jason,non_negativity=False,remove_gradient=False):
 
     if jason['Phaseunwrap'][2] != [] and jason['Phaseunwrap'][3] != []:
         print('Manual cropping of the data')
@@ -83,12 +83,12 @@ def apply_phase_unwrap(sinogram, jason):
 
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
-        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs((sinogram[frame,:,:])), n_iterations, non_negativity, remove_gradient)
+        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle((sinogram[frame,:,:])), n_iterations, non_negativity, remove_gradient)
         # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
 
         if 1:  # plot original and cropped object phase and save!
-            figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
+            figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(15,15))
             subplot[0].imshow(-np.angle(original_object),cmap='gray')
             subplot[1].imshow(phase[frame,:,:],cmap='gray')
             subplot[0].set_title('Original')
@@ -108,13 +108,13 @@ def calculate_FRC(sinogram, jason):
         print('Estimating resolution via Fourier Ring Correlation')
         resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size)
         try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit'])
-            jason["hafbitResolution"] = resolution['halfbit']
+            print('\tHalfbit resolution for frame ' + str(frame) + ':', resolution['halfbit_resolution'])
+            jason["hafbitResolution"] = resolution['halfbit_resolution']
         except:
             print('Could not calculate halfbit FRC resolution')
         try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['3sigma'])
-            jason["3sigmaResolution"] = resolution['3sigma']
+            print('\t3sigma resolution for frame ' + str(frame) + ':', resolution['sigma_resolution'])
+            jason["3sigmaResolution"] = resolution['sigma_resolution']
         except:
             print('Could not calculate 3sigma FRC resolution')
 
@@ -993,12 +993,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
         measurement_file     = filenames[_start_ + i]
         measurement_filepath = filepaths[_start_ + i]
         
-        if i == 0:
-            current_frame = str(0).zfill(4)  # start at 0. this variable will name the output preview images of the object and probe
-        else:
-            current_frame = str(int(current_frame) + 1).zfill(4)  # increment one
-        
-        frame = int(current_frame)
+        frame = i
 
         probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
         probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
@@ -1100,14 +1095,17 @@ def _worker_batch_frames_(params, idx_start, idx_end, gpu):
     
 def _build_batch_of_frames_(params):
 
+    print('aaaaaaaaaaaaa',params[5][0][0])
+    print(params[5],[0])
     total_frames = params[5][4]
     threads      = params[4]
-    
+    initial_frame = params[5][0][0][0]
+
     b = int( np.ceil( total_frames/threads )  ) 
     
     processes = []
     for k in range( threads ):
-        begin_ = k*b
+        begin_ = k*b 
         end_   = min( (k+1)*b, total_frames )
         gpu = [k]
 
