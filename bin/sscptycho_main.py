@@ -81,6 +81,7 @@ def cat_ptycho_3d(difpads,args):
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
+        
         if jason['Frames'] != []:
             filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         
@@ -127,6 +128,9 @@ def cat_ptycho_2d(difpads,args):
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
         
+    if jason['Frames'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
+
     total_frames = len(filenames)
     args = [jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string]
 
@@ -242,7 +246,7 @@ if __name__ == '__main__':
     t4 = time()
     
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
-        phase,absol = apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
+        phase,absol = apply_phase_unwrap(cropped_sinogram, jason,False,False) # phase = np.angle(object), absol = np.abs(object)
     else:
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
