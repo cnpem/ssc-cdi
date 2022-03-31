@@ -119,16 +119,22 @@ def restauration_cat_3d(args,preview  = False,save  = False, read = True):
                 n = jason['Projections'] #n refers to the amount of angles (projections)
                 difpads = 0
                 for i in n:
-                    difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
-                    difpads = np.concatenate(difpad, axis = 0)
+                    if i == 0:
+                        difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
+                    else:
+                        difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                        difpads = np.concatenate((difpads, difpad), axis = 0)
                 frames = difpad.shape[0]
 
             else:
                 n = len(filenames)
                 difpads = 0
                 for i in range(n):
-                    difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
-                    difpads = np.concatenate(difpad, axis = 0)
+                    if i == 0:
+                        difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
+                    else:
+                        difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                        difpads = np.concatenate((difpads, difpad), axis = 0)
                 frames = difpad.shape[0]
 
             
@@ -445,8 +451,9 @@ def restauration_cat_2d(args,preview = False,save = False,read = True):
     
     if read:
         difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
-    else:   
-        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
+    else:  
+        difpad = load_2d_data(jason, filepaths[0]) 
+        difpads, time_difpads, jason = pi540_restauration_cat(difpad, params,jason['SaveDifpadPath'],preview,save)
     
     difpads = np.expand_dims(difpads,axis=0)
     difpads = masks_application(difpads, jason)
