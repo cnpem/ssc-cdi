@@ -884,7 +884,7 @@ def masks_application(difpads, jason):
 
         if jason["AutomaticCentralMask"][0]:  # automatically finds the center of the first difpad
             _, radius, _, _, which_difpad = jason["AutomaticCentralMask"]
-            center_row, center_col = get_difpad_center(difpads[0,which_difpad,:,:])
+            center_row, center_col = get_difpad_center(difpads[0, which_difpad,:,:])
         else:  # use manual input center positions
             _, radius, center_row, center_col, _ = jason["AutomaticCentralMask"]
 
