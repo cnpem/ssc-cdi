@@ -166,7 +166,7 @@ if __name__ == '__main__':
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
     if 'PreviewGCC' not in jason: jason['PreviewGCC'] = False # flag to save previews of interest only to GCC, not to the beamline user
-    print(jason['PreviewGCC'])
+
     #=========== Set Parameters and Folders =====================
     
     if jason['InitialObj'] != "": # definition of paths for initial guesses
@@ -198,7 +198,7 @@ if __name__ == '__main__':
 
         jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
         jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
-         # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+        jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
 
     else:
         scans_string = ''
