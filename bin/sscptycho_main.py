@@ -81,8 +81,8 @@ def cat_ptycho_3d(difpads,args):
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
-        if jason['Projections'] != []:
-            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
+        if jason['Frames'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
         
         total_frames = len(filenames)
         print('\nFilenames in cat_ptycho_3d: ', filenames)
@@ -127,9 +127,6 @@ def cat_ptycho_2d(difpads,args):
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
         
-    if jason['Projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
-
     total_frames = len(filenames)
     args = [jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string]
 
@@ -166,7 +163,7 @@ if __name__ == '__main__':
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
     if 'PreviewGCC' not in jason: jason['PreviewGCC'] = False # flag to save previews of interest only to GCC, not to the beamline user
-
+    print(jason['PreviewGCC'])
     #=========== Set Parameters and Folders =====================
     
     if jason['InitialObj'] != "": # definition of paths for initial guesses
@@ -177,10 +174,10 @@ if __name__ == '__main__':
         jason['InitialBkg'] = jason['BkgPath'] + jason['InitialBkg']
 
     ibira_datafolder = jason['ProposalPath'] 
-    print('\nibira_datafolder = ', ibira_datafolder)
+    print('ibira_datafolder = ', ibira_datafolder)
 
     aquisition_folder = jason["Acquisition_Folders"][0]
-    print('\nacquisition_folder = ',aquisition_folder)
+    print('acquisition_folder = ',aquisition_folder)
  
     if 'OldFormat' not in jason: # flag to indicate if we are working with old or new input file format. Old format will be deprecated in the future.
 
@@ -198,7 +195,7 @@ if __name__ == '__main__':
 
         jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
         jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
-        jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+         # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
 
     else:
         scans_string = ''
@@ -208,9 +205,10 @@ if __name__ == '__main__':
     
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
 
-    if jason['Projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
+    if jason['Frames'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
     
+    print('\nFilenames in main: ', filenames)
 
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
@@ -244,7 +242,7 @@ if __name__ == '__main__':
     t4 = time()
     
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
-        phase,absol = apply_phase_unwrap(cropped_sinogram, jason,False,False) # phase = np.angle(object), absol = np.abs(object)
+        phase,absol = apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
     else:
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
