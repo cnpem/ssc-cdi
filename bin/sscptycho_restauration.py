@@ -364,12 +364,16 @@ def restauration_processing_binning(img, args):
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
-    img = img * flat # Apply flatfield
+    img = img * np.squeeze(flat) # Apply flatfield
+
+    if 1: # if mask after restauration with 3072x3072 size
+        img[mask ==1] = -1 # Apply Mask
 
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
-    img[mask ==1] = -1 # Apply Mask
+    if 0: # if mask after restauration with 640x640 size
+        img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
