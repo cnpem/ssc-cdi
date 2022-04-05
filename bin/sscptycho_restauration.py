@@ -109,8 +109,8 @@ def restauration_cat_3d(args,preview  = False,save  = False, read = True):
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
         
-        # if jason['Projections'] != []:
-        #     filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
+        if jason['Projections'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
 
         params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
@@ -308,15 +308,14 @@ def get_restaurated_difpads(h5f, jason):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    if 'Mask' in jason:
+    if "OldFormat" in jason:
         if jason['Mask'] != 0:
             mask = np.load(jason['Mask'])
         else:
             mask = np.zeros_like(h5f[0])
     else:
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-    
-    mask = np.flip(mask,0)
+    # mask = np.flip(mask,0)
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
