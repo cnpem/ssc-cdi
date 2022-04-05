@@ -81,8 +81,8 @@ def cat_ptycho_3d(difpads,args):
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
-        if jason['Frames'] != []:
-            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+        if jason['Projections'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
         
         total_frames = len(filenames)
         print('\nFilenames in cat_ptycho_3d: ', filenames)
@@ -126,7 +126,10 @@ def cat_ptycho_2d(difpads,args):
     '''  
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
-        
+
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
+
     total_frames = len(filenames)
     args = [jason, filenames, filepaths, ibira_datafolder, jason['Acquisition_Folders'][0], scans_string, positions_string]
 
@@ -195,7 +198,7 @@ if __name__ == '__main__':
 
         jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
         jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')
-         # jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
+        jason["Mask"]       = os.path.join(ibira_datafolder,images_folder,'mask.hdf5')
 
     else:
         scans_string = ''
@@ -205,8 +208,8 @@ if __name__ == '__main__':
     
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
 
-    if jason['Frames'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths, filenames)
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
     
     print('\nFilenames in main: ', filenames)
 

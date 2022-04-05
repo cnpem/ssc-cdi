@@ -906,12 +906,6 @@ def masks_application(difpads, jason):
         difpads_rescaled = difpads / detector_exposure_time
         difpads[difpads_rescaled > detector_pileup_count] = -1
 
-    # if jason["Mask"] == 0: # if null, won't use a mask
-    #     pass
-    # else:
-    #     print('Applying mask from file to diffraction pattern, shape difpad:',difpads.shape)
-    #     difpads[:,:, initial_mask > 0] = -1
-        
     return difpads
 
 def convert_probe_positions(dx, probe_positions, offset_topleft = 20):

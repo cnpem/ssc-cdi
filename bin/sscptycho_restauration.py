@@ -190,7 +190,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    if 'Mask' in jason:
+    if 'OldFormat' in jason:
         if jason['Mask'] != 0:
             mask = np.load(jason['Mask'])
         else:
@@ -244,12 +244,16 @@ def restauration_processing_binning(img, args):
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
-    img = img * flat # Apply flatfield
+    img = img * np.squeeze(flat) # Apply flatfield
+
+    if 1: # if mask after restauration with 3072x3072 size
+        img[mask ==1] = -1 # Apply Mask
 
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
-    img[mask ==1] = -1 # Apply Mask
+    if 0: # if mask after restauration with 640x640 size
+        img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
@@ -329,8 +333,8 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
         
-        if jason['Frames'] != []:
-            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+        if jason['Projections'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
             print('\nMeasurement file in restauration_cat_3d: ', filenames)
         
         params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
@@ -357,7 +361,10 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
     time_difpads = 0
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
-        
+    
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)  
+
     params = (jason, ibira_datafolder, filenames[0], jason['Acquisition_Folders'][0], scans_string, filepaths[0])
     
     if read:
