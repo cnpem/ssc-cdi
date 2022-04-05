@@ -28,26 +28,6 @@ from sscptycho_functions import *
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
-def split_angles(diffractionpattern, frames):
-
-    difpads = np.asarray(np.array_split(diffractionpattern, int(diffractionpattern.shape[0]/frames), axis = 0))
-    print('\tDifpads shape after split angles: ', difpads.shape)
-
-    return difpads
-
-
-def load_2d_data(jason, filepaths):
-
-    
-    fullpath = os.path.join(filepaths)
-    h5f,_ = sscIO.io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
-
-    if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
-        h5f = h5f[1:]  # TODO: why does this difference of 1 position happens? Fix it!
-
-    return h5f
-
-
 def Geometry(L):
     """ Detector geometry parameters for sscPimega restauration
 
@@ -84,85 +64,6 @@ def _get_center(dbeam, project):
     yc = int( tracking[0][3] ) 
     return xc, yc
 
-
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-def restauration_cat_3d(args,preview  = False,save  = False, read = True):
-    
-    """_summary_
-
-    Returns:
-        _type_: _description_
-    """    
-    
-    jason, ibira_datafolder, scans_string, _ = args
-
-    diffractionpattern = 0 #dummy, necessary because of the first iteration
-    count = -1
-    time_difpads = 0
-
-    for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
-
-        count += 1
-
-        print('Starting restauration for acquisition: ', acquisitions_folder)
-
-        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
-        
-        if jason['Projections'] != []:
-            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
-
-        params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
-
-        if read:
-            if jason['Projections'] != []:
-                n = jason['Projections'] #n refers to the amount of angles (projections)
-                difpads = 0
-                for i in n:
-                    if i == 0:
-                        difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
-                    else:
-                        difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
-                        difpads = np.concatenate((difpads, difpad), axis = 0)
-                frames = difpad.shape[0]
-
-            else:
-                n = len(filenames)
-                difpads = 0
-                for i in range(n):
-                    if i == 0:
-                        difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
-                    else:
-                        difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
-                        difpads = np.concatenate((difpads, difpad), axis = 0)
-                frames = difpad.shape[0]
-
-            
-            # difpads = np.asarray(difpads)
-            #difpads = np.load(jason['SaveDifpadPath'] + filenames + '.npy')
-            print('\tdifpads.shape (after 1st for): ', difpads.shape)
-
-        else: 
-            difpads, time_difpads, _, jason, frames, bad_projections = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
-
-        
-        if diffractionpattern == 0:
-            diffractionpattern = difpads
-        else:
-            diffractionpattern = np.concatenate(difpads)
-        
-        print('\tdifpads.shape: ', difpads.shape)
-    
-    difpads = split_angles(diffractionpattern, frames) #returns 4D structure for difpads as: [angles, frames, rows, columns]
-
-    difpads = masks_application(difpads, jason)
-
-    return diffractionpattern, time_difpads, jason
-
-
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 def pi540_restauration_cat_block(args, savepath = '', preview = False, save = False):
     jason               = args[0]
     filenames           = args[1]
@@ -175,50 +76,30 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
     t0 = time()
 
     first_iteration = True
-    bad_projections = []
-    cont = -1
-
-    if jason['Projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
-
     for measurement_file, measurement_filepath in zip(filenames, filepaths):
-        cont += 1
 
         param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,measurement_filepath)
-        difpad = load_2d_data(jason, measurement_filepath)
-        #difpad, elapsedtime_one_difpad, jason = pi540_restauration_cat(param,savepath,preview,save, first_iteration)
+        difpad, elapsedtime_one_difpad, jason = pi540_restauration_cat(param,savepath,preview,save, first_iteration)
         
-        if first_iteration: 
-            print('\ndifpad shape: ', difpad.shape)
-            difpads = difpad
-            difpads = np.asarray(difpads)
-            frames = difpad.shape[0]
-            first_iteration = False
-
-        elif difpads.shape[0] != frames:
-            bad_difpad = np.zeros((frames, difpads.shape[1], difpads.shape[2]))
-            print('\nbad difpad shape: ', bad_difpad.shape)
-            difpads = np.concatenate((difpads, bad_difpad), axis=0)
-            bad_projections.append(cont)
-            
+        if difpads == [] or difpads[0].shape == difpad.shape:
+            difpads.append(difpad)
         else:
-            difpads = np.concatenate((difpads, difpad), axis=0)
-    
-    difpads, elapsedtime_one_difpad, jason = pi540_restauration_cat(difpads, param,savepath,preview,save, first_iteration) #calls restauration function
-    print('difpads shape before restauration and binning of ', jason['Binning'], ':', difpads.shape)
+            difpads.append(np.zeros(difpads[0].shape))
 
+        if first_iteration == True: first_iteration == False
+
+    difpads = np.asarray(difpads)
+    print('difpads shape after restauration and binning of', jason['Binning'], ':', difpads.shape)
+    
     # if save:
     #     np.save(savepath + measurement_file, difpad)
 
     t1 = time()
     elapsedtime = t1-t0
 
-    return difpads, elapsedtime, elapsedtime_one_difpad, jason, frames, bad_projections
+    return difpads, elapsedtime, elapsedtime_one_difpad, jason
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-def pi540_restauration_cat(difpads, args, savepath = '', preview = False, save = False, first_iteration = True):
+def pi540_restauration_cat(args, savepath = '', preview = False, save = False, first_iteration = True):
     
     jason               = args[0]
     ibira_datafolder    = args[1]
@@ -234,12 +115,14 @@ def pi540_restauration_cat(difpads, args, savepath = '', preview = False, save =
         print('Raw diffraction pattern shape: ', raw_difpads.shape)
 
     t0 = time()
-
     print('Begin Restauration')
             
     if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
         print('\nMeasurement file in pi540_restauration_cat: ', measurement_file)
-        difpads, geometry, _, jason = get_restaurated_difpads(difpads, jason)
+        difpads, geometry, _, jason = get_restaurated_difpads_old_format(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file)
+
+        if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
+            difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
 
     else:
         print('Entering Miqueles Restauration.')
@@ -277,11 +160,7 @@ def pi540_restauration_cat(difpads, args, savepath = '', preview = False, save =
     return difpads, elapsedtime, jason
 
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-def get_restaurated_difpads(h5f, jason):
-    print('\th5f shape in get_restaurated_difpads: ', h5f.shape)
+def get_restaurated_difpads_old_format(jason, path, name):
     """Extracts the data from json and manipulate it according G restauration input format
         Then, call G restauration
 
@@ -294,13 +173,16 @@ def get_restaurated_difpads(h5f, jason):
         3D array: restaured difpads
     """    
 
+    fullpath = os.path.join(path, name)
+    h5f,_ = sscIO.io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
+
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
     geometry = Geometry(z1)
 
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
     
     if 'OldFormat' not in jason:
-        flat = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, :, :]
+        flat = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
     else:
         flat = np.load(jason["FlatField"])
 
@@ -308,14 +190,15 @@ def get_restaurated_difpads(h5f, jason):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
-    if "OldFormat" in jason:
+    if 'Mask' in jason:
         if jason['Mask'] != 0:
             mask = np.load(jason['Mask'])
         else:
             mask = np.zeros_like(h5f[0])
     else:
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-    # mask = np.flip(mask,0)
+        #mask = np.flip(mask,0)
+    
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
@@ -350,9 +233,6 @@ def get_restaurated_difpads(h5f, jason):
 
     return output, geometry, elapsedtime, jason
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 def restauration_processing_binning(img, args):
     """Restaurate and process the binning on the diffraction patterns
 
@@ -364,16 +244,12 @@ def restauration_processing_binning(img, args):
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
-    img = img * np.squeeze(flat) # Apply flatfield
-
-    if 1: # if mask after restauration with 3072x3072 size
-        img[mask ==1] = -1 # Apply Mask
+    img = img * flat # Apply flatfield
 
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
-    if 0: # if mask after restauration with 640x640 size
-        img[mask ==1] = -1 # Apply Mask
+    img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
@@ -437,29 +313,60 @@ def restauration_processing_binning(img, args):
 
     return img
 
-#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+def restauration_cat_3d(args,preview  = False,save  = False,read = False):
+    
+    jason, ibira_datafolder, scans_string, _ = args
 
+    diffractionpattern = []
+    count = -1
+    time_difpads = 0
 
-def restauration_cat_2d(args,preview = False,save = False,read = True):
+    for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+
+        count += 1
+
+        print('Starting restauration for acquisition: ', acquisitions_folder)
+
+        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
+        
+        if jason['Frames'] != []:
+            filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Frames'], filepaths,  filenames)
+            print('\nMeasurement file in restauration_cat_3d: ', filenames)
+        
+        params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
+
+        if read:
+            n = len(filenames)
+            difpads = []
+            for i in range(n):
+                difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                difpads.append(difpad)
+            difpads = np.asarray(difpads)
+        else: 
+            difpads, time_difpads, _, jason = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
+
+        difpads = masks_application(difpads, jason)
+
+        diffractionpattern.append(difpads)
+
+    return diffractionpattern, time_difpads, jason
+
+def restauration_cat_2d(args,preview = False,save = False,read = False):
 
     jason, ibira_datafolder, scans_string, _ = args
     time_difpads = 0
 
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
-    
-    if jason['Projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
-
+        
     params = (jason, ibira_datafolder, filenames[0], jason['Acquisition_Folders'][0], scans_string, filepaths[0])
     
     if read:
         difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
-    else:  
-        difpad = load_2d_data(jason, filepaths[0]) 
-        difpads, time_difpads, jason = pi540_restauration_cat(difpad, params,jason['SaveDifpadPath'],preview,save)
+    else:   
+        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
     
     difpads = np.expand_dims(difpads,axis=0)
+
     difpads = masks_application(difpads, jason)
 
     return difpads, time_difpads, jason
-
