@@ -1,1 +1,2 @@
 docs/build/*
+bin/__pycache__/*
