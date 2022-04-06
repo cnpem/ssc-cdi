@@ -196,9 +196,10 @@ def get_restaurated_difpads_old_format(jason, path, name):
         else:
             mask = np.zeros_like(h5f[0])
     else:
+        # mask = np.load(jason['Mask'])
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-        #mask = np.flip(mask,0)
-    
+        mask = np.flip(mask,0)
+    sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
@@ -215,13 +216,14 @@ def get_restaurated_difpads_old_format(jason, path, name):
 
     Binning = int(jason['Binning'])
 
-    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask)
+    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
     if 1: # under test -> preview_full_difpad
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
         img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
         np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
+        img[mask ==1] = -1 # Apply Mask
         sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
 
 
@@ -240,19 +242,18 @@ def restauration_processing_binning(img, args):
         img (array): image to be restaured and binned
     """    
 
-    Binning, empty, flat, cx, cy, hsize, geometry, mask = args
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason = args
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
     img = img * np.squeeze(flat) # Apply flatfield
 
-    if 1: # if mask after restauration with 3072x3072 size
-        img[mask ==1] = -1 # Apply Mask
-
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
-    if 0: # if mask after restauration with 640x640 size
+    if 1: # if mask after restauration with 3072x3072 size
+        img[mask ==1] = -1 # Apply Mask
+    else: # if mask after restauration with 640x640 size
         img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
@@ -325,6 +326,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
     count = -1
     time_difpads = 0
 
+    print('FOLDEEEEEEERS',jason['Acquisition_Folders'])
     for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
         count += 1
