@@ -146,6 +146,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
 
     if preview: # save plots of restaured difpad and mean of all restaured difpads
         difpad_number = 0
+        np.save(jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.npy',np.mean(difpads, axis=0))
         sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
         sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0), title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
 
@@ -190,6 +191,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = 1
 
+    print('Loading Mask from: ',jason['Mask'])
     if 'OldFormat' in jason:
         if jason['Mask'] != 0:
             mask = np.load(jason['Mask'])
@@ -223,7 +225,6 @@ def get_restaurated_difpads_old_format(jason, path, name):
         difpad_number = 0
         img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
         np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
-        img[mask ==1] = -1 # Apply Mask
         sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
 
 
@@ -251,9 +252,8 @@ def restauration_processing_binning(img, args):
     img = img.astype(np.float32) # convert to float
     img = Restaurate(img, geometry) # restaurate
 
-    if 1: # if mask after restauration with 3072x3072 size
-        img[mask ==1] = -1 # Apply Mask
-    else: # if mask after restauration with 640x640 size
+    unbinned_mask = True
+    if unbinned_mask: # if mask after restauration with 3072x3072 size
         img[mask ==1] = -1 # Apply Mask
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
@@ -314,6 +314,9 @@ def restauration_processing_binning(img, args):
 
         img[img < 0] = -1
 
+    if unbinned_mask == False: # if mask after restauration with 640x640 size
+        img[mask ==1] = -1 # Apply Mask
+
     t1 = time()
 
     return img
@@ -326,7 +329,6 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
     count = -1
     time_difpads = 0
 
-    print('FOLDEEEEEEERS',jason['Acquisition_Folders'])
     for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
         count += 1
