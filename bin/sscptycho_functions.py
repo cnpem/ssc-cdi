@@ -106,15 +106,15 @@ def calculate_FRC(sinogram, jason):
 
     if jason['FRC'] == True:
         print('Estimating resolution via Fourier Ring Correlation')
-        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size)
+        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size, plot=True,plot_output_folder=jason["PreviewFolder"],savepath=jason["PreviewFolder"])
         try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit'])
-            jason["hafbitResolution"] = resolution['halfbit']
+            print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit_resolution'])
+            jason["halfbit_resolution"] = resolution['halfbit_resolution']
         except:
             print('Could not calculate halfbit FRC resolution')
         try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['3sigma'])
-            jason["3sigmaResolution"] = resolution['3sigma']
+            print('\tResolution for frame ' + str(frame) + ':', resolution['sigma_resolution'])
+            jason["3sigma_resolution"] = resolution['sigma_resolution']
         except:
             print('Could not calculate 3sigma FRC resolution')
 
@@ -600,7 +600,7 @@ def save_variable2(variable, predefined_name, savename=""):
     print('\t', savename, variable.shape)
 
 
-def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
+def resolution_frc(data, pixel, plot=False,plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
     """     
     Fourier Ring Correlation for 2D images:
     The routine inputs are besides the two images for correlation
@@ -635,8 +635,11 @@ def resolution_frc(data, pixel, plot_output_folder="./outputs/preview",savepath=
     data1 = data[:,0:sizey:2, 0:sizex:2]  # even
     data2 = data[:,1:sizey:2, 1:sizex:2]  # odd
 
+    
+
     resolution = sscResolution.fourier_ring_correlation(data1,data2,pixel)
-    sscResolution.get_fourier_correlation_fancy_plot(resolution, plot_output_folder, plot=False)
+    if plot:
+        sscResolution.get_fourier_correlation_fancy_plot(resolution, plot_output_folder, plot=True)
 
     if savepath != '':
         export_json(resolution,savepath+'/frc_outputs.txt')
