@@ -111,7 +111,11 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
     if preview and first_iteration:  # preview only 
         difpad_number = 0 # selects which difpad to preview
         raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
+        mean_raw_difpads = np.mean(raw_difpads, axis=0)
         sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
+        sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/03_difpad_raw_mean.png')
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_mean.npy',mean_raw_difpads)
+
         print('Raw diffraction pattern shape: ', raw_difpads.shape)
 
     t0 = time()
@@ -156,7 +160,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
     elapsedtime = t1-t0
 
     if save:
-        np.save(savepath + measurement_file, difpads)
+        np.save( os.path.join(savepath, measurement_file), difpads)
 
     return difpads, elapsedtime, jason
 
@@ -226,7 +230,6 @@ def get_restaurated_difpads_old_format(jason, path, name):
         img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
         np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
         sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
-
 
     t0 = time()
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restauration_processing_binning,  r_params, 'only')
