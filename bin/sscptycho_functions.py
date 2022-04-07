@@ -292,7 +292,10 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     sigmask = set_sigmask(difpads)
 
     # Background: better not use any for now.
-    background = set_background(difpads, jason)
+    if 0:
+        background = set_background(difpads, jason)
+    else:
+        background = np.ones(difpads[0].shape) # dummy
 
     # Compute probe support:
     probesupp = probe_support(probe, hsize, radius, center_x, center_y)
@@ -362,7 +365,6 @@ def set_initial_probe(difpads, jason):
         probe = np.sqrt(shift(ifft2(shift(ft))))
     else:
         # Load probe:
-        print(jason['InitialProbe'])
         probe = np.load(jason['InitialProbe'])[0]
 
     print("\tProbe shape:", probe.shape)
@@ -869,14 +871,18 @@ def create_directory_if_doesnt_exist(path):
         os.mkdir(path)
 
 def create_output_directories(jason):
+    try:
+        create_directory_if_doesnt_exist(jason["PreviewGCC"][1])
+    except:
+        print('ERROR: COULD NOT CREATE OUTPUT DIRECTORY')
+    if jason["LogfilePath"] != "":
+        create_directory_if_doesnt_exist(jason["LogfilePath"])
     if jason["PreviewFolder"] != "":
         create_directory_if_doesnt_exist(jason["PreviewFolder"])
     if jason["ObjPath"] != "":
         create_directory_if_doesnt_exist(jason["ObjPath"])
     if jason["ProbePath"] != "":
         create_directory_if_doesnt_exist(jason["ProbePath"])
-    if jason["BkgPath"] != "":
-        create_directory_if_doesnt_exist(jason["BkgPath"])
     if jason["SaveDifpadPath"] != "":
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
 

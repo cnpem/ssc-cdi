@@ -21,8 +21,6 @@ import multiprocessing.sharedctypes
 from threading import Thread
 
 import matplotlib.pyplot as plt
-import matplotlib
-# matplotlib.use('Agg')
 
 from operator import sub
 
@@ -161,37 +159,49 @@ if __name__ == '__main__':
     t0 = time()
 
     jason = json.load(open(argv[1]))  # Open jason file
-    create_output_directories(jason)
 
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
-    if 'PreviewGCC' not in jason: jason['PreviewGCC'] = False # flag to save previews of interest only to GCC, not to the beamline user
-    print(jason['PreviewGCC'])
-    #=========== Set Parameters and Folders =====================
+    if 'PreviewGCC' not in jason: jason['PreviewGCC'][0] = False # flag to save previews of interest only to GCC, not to the beamline user
     
-    if jason['InitialObj'] != "": # definition of paths for initial guesses
-        jason['InitialObj'] = jason['ObjPath'] + jason['InitialObj']
-    if jason['InitialProbe'] != "":
-        jason['InitialProbe'] = jason['ProbePath'] + jason['InitialProbe']
-    if jason['InitialBkg'] != "":
-        jason['InitialBkg'] = jason['BkgPath'] + jason['InitialBkg']
-
+    #=========== Set Parameters and Folders =====================
     ibira_datafolder = jason['ProposalPath'] 
-    print('ibira_datafolder = ', ibira_datafolder)
-
-    aquisition_folder = jason["Acquisition_Folders"][0]
-    print('acquisition_folder = ',aquisition_folder)
+    acquisition_folder = jason["Acquisition_Folders"][0]
+    print('ibira_datafolder   : ', ibira_datafolder)
+    print('acquisition_folder : ', acquisition_folder)
  
+    if jason["PreviewGCC"][0] == True: # path convention for GCC users
+        jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],acquisition_folder)
+        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1],'preview')
+        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1],'difpads')
+        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+    else:
+        beamline_outputs_path = os.path.join(ibira_datafolder.rsplit('/',3), 'proc','recons',acquisition_folder) # standard folder chosen by CAT for their outputs
+        jason["LogfilePath"]    = beamline_outputs_path
+        jason["PreviewFolder"]  = beamline_outputs_path
+        jason["SaveDifpadPath"] = beamline_outputs_path
+        jason["ObjPath"]        = beamline_outputs_path
+        jason["ProbePath"]      = beamline_outputs_path
+        jason["BkgPath"]        = beamline_outputs_path
+
+    create_output_directories(jason) # create all output directories of interest
+
+    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ObjPath'],   jason['InitialObj']) # append initialObj filename to path
+    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ProbePath'], jason['InitialProbe'])
+    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['BkgPath'],   jason['InitialBkg'])
+
     if 'OldFormat' not in jason: # flag to indicate if we are working with old or new input file format. Old format will be deprecated in the future.
 
         scans_string = 'scans'
         positions_string = 'positions'
 
-        images_folder    = os.path.join(aquisition_folder,'images')
-        positions_folder = os.path.join(ibira_datafolder,aquisition_folder,'positions')
-        scans_folder     = os.path.join(ibira_datafolder,aquisition_folder,'scans')
+        images_folder    = os.path.join(acquisition_folder,'images')
+        positions_folder = os.path.join(ibira_datafolder,acquisition_folder,'positions')
+        scans_folder     = os.path.join(ibira_datafolder,acquisition_folder,'scans')
 
-        input_dict = json.load(open(os.path.join(ibira_datafolder,aquisition_folder,'mdata.json')))
+        input_dict = json.load(open(os.path.join(ibira_datafolder,acquisition_folder,'mdata.json')))
         jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
         jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
         jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
@@ -206,13 +216,11 @@ if __name__ == '__main__':
         flatfield = np.load(jason["FlatField"])
         empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
     
-    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, aquisition_folder,scans_string), look_for_extension=".hdf5")
+    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisition_folder,scans_string), look_for_extension=".hdf5")
 
     if jason['Projections'] != []:
         filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
     
-    print('\nFilenames in main: ', filenames)
-
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
     #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
@@ -245,6 +253,7 @@ if __name__ == '__main__':
     t4 = time()
     
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
+        print('Unwrapping sinogram...')
         phase,absol = apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
     else:
         phase = np.angle(cropped_sinogram)
@@ -260,29 +269,13 @@ if __name__ == '__main__':
     print('Saving Object, Probe and Background!')
             
     if jason['SaveObj']:
-        if jason['SaveObjname'] != "":
-            save_variable2(phase, jason['ObjPath'] + 'phase_' + aquisition_folder, savename=jason['ObjPath'] + 'phase_' + aquisition_folder + '_' + jason['SaveObjname'])
-            save_variable2(absol, jason['ObjPath'] + 'absol_' + aquisition_folder, savename=jason['ObjPath'] + 'absol_' + aquisition_folder + '_' + jason['SaveObjname'])
-            if jason['SaveComplexObject']:
-                save_variable(object, jason['ObjPath'] + 'object_' + aquisition_folder, savename=jason['ObjPath'] + aquisition_folder + '_' + jason['SaveObjname'])
-
-        else:
-            save_variable2(phase, jason['ObjPath'] + 'phase_' + aquisition_folder)
-            save_variable2(absol, jason['ObjPath'] + 'absol_' + aquisition_folder)
-            if jason['SaveComplexObject']:    
-                save_variable(object, jason['ObjPath'] + 'object_' + aquisition_folder)
+        save_variable2(phase, os.path.join(jason['ObjPath'],'phase_' + acquisition_folder))
+        save_variable2(absol, os.path.join(jason['ObjPath'], 'absol_' + acquisition_folder))
+        if jason['SaveComplexObject']:    
+            save_variable(object, os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
 
     if jason['SaveProbe']:
-        if jason['SaveProbename'] != "":
-            save_variable(probe, jason['ProbePath'] + 'probe_' + aquisition_folder, savename=jason['ProbePath'] + aquisition_folder + '_' + jason['SaveProbename'])
-        else:
-            save_variable(probe, jason['ProbePath'] + 'probe_' + aquisition_folder)
-
-    if jason['SaveBkg']:
-        if jason['SaveBkgname'] != "":
-            save_variable(bkg, jason['BkgPath'] + 'bkg_' + aquisition_folder, savename=jason['BkgPath'] + aquisition_folder + '_' + jason['SaveBkgname'])
-        else:
-            save_variable(bkg, jason['BkgPath'] + 'bkg_' + aquisition_folder)
+        save_variable(probe, os.path.join(jason['ProbePath'], 'probe_' + acquisition_folder))
 
     t6 = time()
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
