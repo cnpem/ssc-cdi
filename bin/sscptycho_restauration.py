@@ -151,6 +151,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
     if preview: # save plots of restaured difpad and mean of all restaured difpads
         difpad_number = 0
         np.save(jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.npy',np.mean(difpads, axis=0))
+        np.save(jason[ 'PreviewFolder'] + '/04_difpad_restaured.npy',difpads[difpad_number, :, :])
         sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
         sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0), title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
 
@@ -350,7 +351,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
             n = len(filenames)
             difpads = []
             for i in range(n):
-                difpad = np.load(jason['SaveDifpadPath'] + filenames[i] + '.npy')
+                difpad = np.load( os.path.join(jason['SaveDifpadPath'], filenames[i] + '.npy'))
                 difpads.append(difpad)
             difpads = np.asarray(difpads)
         else: 
