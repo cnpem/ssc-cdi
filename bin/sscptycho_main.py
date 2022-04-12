@@ -228,7 +228,7 @@ if __name__ == '__main__':
 
     if len(filenames) > 1: # 3D
         
-        difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
+        difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
         t2 = time()
         object,probe,bkg  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
         t3 = time()
@@ -241,7 +241,7 @@ if __name__ == '__main__':
             probe  = probe[0]
             bkg    = bkg[0]
     else:
-        difpads,_ , jason = restauration_cat_2d(args,jason['PreviewGCC'],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+        difpads,_ , jason = restauration_cat_2d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
         t2 = time()
         object,probe,bkg  = cat_ptycho_2d(difpads,args) # Ptycho of 2D Projection (object - complex, probe - complex, bkg - real, are a ndarray of size (1,:,:), (1,:,:,:), (1,:,:) )
         t3 = time()

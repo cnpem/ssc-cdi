@@ -206,7 +206,8 @@ def get_restaurated_difpads_old_format(jason, path, name):
         # mask = np.load(jason['Mask'])
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
         mask = np.flip(mask,0)
-    sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
+    
+    # sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
@@ -225,7 +226,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
-    if 1: # under test -> preview_full_difpad
+    if jason["PreviewGCC"]: # under test -> preview_full_difpad
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
         img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
@@ -376,7 +377,7 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
     params = (jason, ibira_datafolder, filenames[0], jason['Acquisition_Folders'][0], scans_string, filepaths[0])
     
     if read:
-        difpads = np.load(jason['SaveDifpadPath'] + filenames[0] + '.npy')
+        difpads = np.load( os.path.join(jason['SaveDifpadPath'],filenames[0] + '.npy'))
     else:   
         difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
     
