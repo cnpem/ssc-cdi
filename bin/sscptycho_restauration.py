@@ -108,13 +108,14 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
     scans_string        = args[4]
     measurement_filepath= args[5]
 
-    if preview and first_iteration:  # preview only 
+    if first_iteration:  # preview only 
         difpad_number = 0 # selects which difpad to preview
         raw_difpads = h5py.File(measurement_filepath, 'r')['entry/data/data'][()][:, 0, :, :]
         mean_raw_difpads = np.mean(raw_difpads, axis=0)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_mean.npy',mean_raw_difpads)
+    if preview and first_iteration:
         sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
         sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/03_difpad_raw_mean.png')
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_mean.npy',mean_raw_difpads)
 
         print('Raw diffraction pattern shape: ', raw_difpads.shape)
 
@@ -226,7 +227,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
-    if jason["PreviewGCC"]: # under test -> preview_full_difpad
+    if jason["PreviewGCC"][0]: # under test -> preview_full_difpad
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
         img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate

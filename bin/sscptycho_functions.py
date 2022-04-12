@@ -2,7 +2,6 @@ from concurrent.futures import thread
 import wave
 import sscResolution
 import sscPtycho
-from sympy import preview
 import sscCdi
 import sscIO
 from sscPimega import pi540D
@@ -1017,7 +1016,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
                 
             if i == 0: t2 = time()
 
-            if jason["PreviewGCC"] and i == 0: # save plots of processed difpad and mean of all processed difpads
+            if jason["PreviewGCC"][0] and i == 0: # save plots of processed difpad and mean of all processed difpads
                 difpad_number = 0
                 sscCdi.caterete.misc.plotshow_cmap2(difpads[frame,difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
                 sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads[frame], axis=0),    title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason[ "PreviewFolder"] + '/05_difpad_processed_mean.png')
