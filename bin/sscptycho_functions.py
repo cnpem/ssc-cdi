@@ -1018,7 +1018,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
             if i == 0: # save plots of processed difpad and mean of all processed difpads
                 difpad_number = 0
                 sscCdi.caterete.misc.plotshow_cmap2(difpads[frame,difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
-                sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads[frame], axis=0), title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason[ "PreviewFolder"] + '/05_difpad_processed_mean.png')
+                sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads[frame], axis=0),    title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason[ "PreviewFolder"] + '/05_difpad_processed_mean.png')
 
             probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 

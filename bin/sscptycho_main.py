@@ -178,7 +178,7 @@ if __name__ == '__main__':
         jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1],'reconstruction')
         jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
     else:
-        beamline_outputs_path = os.path.join(ibira_datafolder.rsplit('/',3), 'proc','recons',acquisition_folder) # standard folder chosen by CAT for their outputs
+        beamline_outputs_path = os.path.join(ibira_datafolder.rsplit('/',3)[0], 'proc','recons',acquisition_folder) # standard folder chosen by CAT for their outputs
         jason["LogfilePath"]    = beamline_outputs_path
         jason["PreviewFolder"]  = beamline_outputs_path
         jason["SaveDifpadPath"] = beamline_outputs_path
