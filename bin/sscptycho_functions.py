@@ -229,28 +229,7 @@ def create_squared_mask(start_row, start_column, height, width, mask_shape):
     return mask
 
 
-def create_circular_mask(center_row, center_col, radius, mask_shape):
-    """Create a circular mask to block the center of the diffraction pattern
 
-    Args:
-        center_row (int): Center position in the vertical dimension
-        center_col (int): Center position in the horizontal dimension
-        radius (int): Radius of the circular mask in pixels
-        mask_shape ([tuple]): [description]
-
-    Returns:
-        [2-dimensional ndarrya]: array containing 1s within the disk, 0 otherwise
-    """
-    print('Using manually set circular mask to the diffraction pattern...')
-    """ All values in pixels """
-    mask = np.zeros(mask_shape)
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-
-    mask = np.where((Xmesh - center_col) ** 2 + (Ymesh - center_row) ** 2 <= radius ** 2, 1, 0)
-    return mask
 
 
 def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, center_y, object_size, dx):
@@ -636,9 +615,7 @@ def resolution_frc(data, pixel, plot=False,plot_output_folder="./outputs/preview
     # For this case we will use the odd/odd even/even divisions of one image in a dataset
     data1 = data[:,0:sizey:2, 0:sizex:2]  # even
     data2 = data[:,1:sizey:2, 1:sizex:2]  # odd
-
     
-
     resolution = sscResolution.fourier_ring_correlation(data1,data2,pixel)
     if plot:
         sscResolution.get_fourier_correlation_fancy_plot(resolution, plot_output_folder, plot=True)
@@ -667,144 +644,6 @@ def export_json(params,output_path):
     json.dump(export,out_file)
     return 0
 
-def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
-    """ Fit of 2d lorentzian to a matrix
-
-    Args:
-        dataset : matrix to be fitted with a Lorentzian curve
-        fit_guess: tuple with initial fit guesses. Defaults to (1, 1, 1, 1, 1, 1).
-
-    Returns:
-        lorentzian2d_fit : fitted surface
-        params : best fit parameters
-    """    
-    from scipy.optimize import curve_fit
-
-    x = np.arange(0, dataset.shape[0])
-    y = np.arange(0, dataset.shape[1])
-    X, Y = np.meshgrid(x, y)
-    size_to_reshape = X.shape
-
-    params, pcov = curve_fit(lorentzian2d, (X, Y), np.ravel(dataset), fit_guess)
-    lorentzian2d_fit = lorentzian2d(np.array([X, Y]), params[0], params[1], params[2], params[3], params[4], params[5])
-    lorentzian2d_fit = lorentzian2d_fit.reshape(size_to_reshape)
-
-    return lorentzian2d_fit, params
-
-
-def get_central_region(difpad, center_estimate, radius):
-    """ Extract central region of a diffraction pattern
-
-    Args:
-        difpad : 2d diffraction pattern data
-        center_estimate : the center of the image to be extracted
-        radius : size of the squared region to be extracted
-
-    Returns:
-        region_around_center : extracted 2d region
-    """    
-    center_estimate = np.round(center_estimate)
-    center_r, center_c = int(center_estimate[0]), int(center_estimate[1])
-    region_around_center = difpad[center_r - radius:center_r + radius + 1, center_c - radius:center_c + radius + 1]
-    return region_around_center
-
-
-def refine_center_estimate(difpad, center_estimate, radius=20):
-    """
-    Finds a region of radius around center of mass estimate. Then fits a Lorentzian peak to this region.
-    The position of the peak gives a displacement to correct the center of mass estimate
-
-    Args:
-        difpad : 2d diffraction pattern 
-        center_estimate : initial estimate of the center
-        radius : size of the squared region around the center to consider
-
-    Returns:
-        center : refined center position of the difpad
-    """    
-
-    region_around_center = get_central_region(difpad, center_estimate, int(radius))
-    fit_guess = np.max(difpad), center_estimate[0], center_estimate[1], 5, 5, 0
-
-    try:
-        lorentzian2d_fit, fit_params = fit_2d_lorentzian(region_around_center, fit_guess=fit_guess)
-        amplitude, centerx, centery, sigmax, sigmay, rotation = fit_params
-        # print(f'Lorentzian center: ({centerx},{centery})')
-        deltaX, deltaY = (region_around_center.shape[0] // 2 - round(centerx) + 1), (
-                    1 + region_around_center.shape[1] // 2 - round(centery)),
-    except:
-        print('Fit failed')
-
-    if 0:  # plot for debugging
-        from matplotlib.colors import LogNorm
-        figure, subplot = plt.subplots(1, 2)
-        subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
-        subplot[0].set_title('Central region preview')
-        subplot[1].imshow(lorentzian2d_fit, cmap='jet')
-        subplot[1].set_title('Lorentzian fit')
-
-    center = (round(center_estimate[0]) - deltaX, round(center_estimate[1]) - deltaY)
-
-    return center
-
-
-def refine_center_estimate2(difpad, center_estimate, radius=20):
-    """     Finds a region of radius around center of mass estimate. 
-    The position of the max gives a displacement to correct the center of mass estimate
-
-    Args:
-        difpad : 2d diffraction pattern 
-        center_estimate : initial estimate of the center
-        radius : size of the squared region around the center to consider
-
-    Returns:
-        center : refined center position of the difpad
-    """    
-    from scipy.ndimage import center_of_mass
-
-    region_around_center = get_central_region(difpad, center_estimate, int(radius))
-
-    center_displaced = np.where(region_around_center == np.max(region_around_center))
-    centerx, centery = center_displaced[0][0], center_displaced[1][0]
-
-    deltaX, deltaY = (region_around_center.shape[0] // 2 - round(centerx)), (
-                region_around_center.shape[1] // 2 - round(centery)),
-
-    if 0:  # plot for debugging
-        figure, subplot = plt.subplots(1, 2)
-        subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
-        subplot[0].set_title('Central region preview')
-        region_around_center[centerx, centery] = 1e9
-        subplot[1].imshow(region_around_center, cmap='jet', norm=LogNorm())
-
-    center = (round(center_estimate[0]) - deltaX, round(center_estimate[1]) - deltaY)
-
-    return center
-
-
-def get_difpad_center(difpad, refine=True, fit=False, radius=20):
-    """ Get central position of the difpad
-
-    Args:
-        difpad : diffraction pattern data
-        refine (bool): Choose whether to refine the initial central position estimate. Defaults to True.
-        fit (bool, optional): if true, refines using a lorentzian surface fit; else, gets the maximum. Defaults to False.
-        radius (int, optional): size of the squared region around center used to refine the center estimate. Defaults to 20.
-
-    Returns:
-        center : diffraction pattern center
-    """    
-    from scipy.ndimage import center_of_mass
-    center_estimate = center_of_mass(difpad)
-    if refine:
-        if fit:
-            center = refine_center_estimate(difpad, center_estimate, radius=radius)
-        else:
-            center = refine_center_estimate2(difpad, center_estimate, radius=radius)
-    else:
-        center = (round(center_estimate[0]), round(center_estimate[1]))
-    return center
-
 
 def auto_crop_noise_borders(complex_array):
     """ Crop noisy borders of the reconstructed object using a local entropy map of the phase
@@ -822,7 +661,7 @@ def auto_crop_noise_borders(complex_array):
 
     img_gradient = skimage.filters.scharr(img)
     img_gradient = skimage.util.img_as_ubyte(img_gradient / img_gradient.max())
-    local_entropy_map = skimage.filters.rank.entropy(img_gradient, disk(5))
+    local_entropy_map = skimage.filters.rank.entropy(img_gradient, disk(5)) # disk gives size of the region used to calculate local entropy
 
     smallest_img_dimension = 200
     max_crop = img.shape[0] // 2 - smallest_img_dimension // 2  # smallest image after cropping will have 2*100 pixels in each direction
@@ -887,36 +726,7 @@ def create_output_directories(jason):
     if jason["SaveDifpadPath"] != "":
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
 
-def masks_application(difpads, jason):
-    # Apply masks to difpad: To be removed soon
-    if jason["AutomaticCentralMask"] != []:  # circular central mask to block center of the difpad
-        print("Applying circular mask to central pixels")
 
-        if jason["AutomaticCentralMask"][0]:  # automatically finds the center of the first difpad
-            _, radius, _, _, which_difpad = jason["AutomaticCentralMask"]
-            center_row, center_col = get_difpad_center(difpads[0,which_difpad,:,:])
-        else:  # use manual input center positions
-            _, radius, center_row, center_col, _ = jason["AutomaticCentralMask"]
-
-        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0,0, :, :].shape)
-        # print('shapes:',difpads.shape, central_mask.shape,difpads[0,0, :, :].shape)
-        difpads[:,:, central_mask > 0] = -1
-
-    if 0:  # still being tested
-        print("Applying lowpass filter")
-        radius, center_row, center_col = 300, 320, 321
-        central_mask = create_circular_mask(center_row, center_col, radius, difpads[0,0, :, :].shape)
-        difpads[:,:, central_mask == 0] = -1
-
-    if jason["DetectorExposure"][0]:  # still being tested
-        print("Removing pixels above detector pile-up threshold")
-        # TODO: apply threshold only in the chip of interest around central peak
-        detector_pileup_count = 300000  # counts/sec; value according to Kalile
-        detector_exposure_time = jason["DetectorExposure"][1]
-        difpads_rescaled = difpads / detector_exposure_time
-        difpads[difpads_rescaled > detector_pileup_count] = -1
-
-    return difpads
 
 def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
     """Set probe positions considering maxroi and effective pixel size

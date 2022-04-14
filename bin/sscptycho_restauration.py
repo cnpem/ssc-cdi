@@ -21,6 +21,7 @@ from numpy.fft import ifft2 as ifft2
 from scipy import ndimage
 from sscptycho_functions import *
 
+
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 #
 # MODULES FOR THE RESTAURATION APPLICATION 
@@ -214,7 +215,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
         centerx, centery = _get_center(h5f[0,:,:], proj)
         jason['DifpadCenter'] = (centerx, centery)
-        cx, cy = get_difpad_center(h5f[0,:,:]) #TODO: under test! 
+        cx, cy = sscCdi.functions.get_difpad_center(h5f[0,:,:]) #TODO: under test! 
         print('Yuri Automatic Difpad Center :', cx, cy)
         print('sscPimega Automatic Difpad Center:',centerx, centery)
     else:
@@ -359,7 +360,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
         else: 
             difpads, time_difpads, _, jason = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
 
-        difpads = masks_application(difpads, jason)
+        difpads = sscCdi.functions.masks_application(difpads, jason)
 
         diffractionpattern.append(difpads)
 
@@ -384,6 +385,6 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
     
     difpads = np.expand_dims(difpads,axis=0)
 
-    difpads = masks_application(difpads, jason)
+    difpads = sscCdi.functions.masks_application(difpads, jason)
 
     return difpads, time_difpads, jason
