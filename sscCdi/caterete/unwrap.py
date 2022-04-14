@@ -3,6 +3,10 @@ import numpy as np
 from skimage.restoration import unwrap_phase
 import numpy
 
+from ipywidgets import *
+from skimage.io import imsave
+
+
 def RemoveZernike(img,mask):
     """ Giovanni's function for removing zernikes. Not well understood yet.
 
@@ -149,13 +153,12 @@ def phase_unwrap(img,iterations,non_negativity=True,remove_gradient = True):
     return zernike
 
 
-from ipywidgets import *
-from sscCdi import unwrap
-from skimage.io import imsave
 
-def unwrapInterface(recon_folder,recon_filename):
+def unwrapInterface(recon_folder,recon_filename,frame_number):
+
     path_to_recon = os.path.join(recon_folder,recon_filename)
-    image = numpy.load(path_to_recon)[0]
+    image = numpy.load(path_to_recon)[frame_number]
+    
     vsize, hsize = image.shape[0], image.shape[1]
 
     fig = plt.figure(figsize=(10,5))
@@ -175,7 +178,7 @@ def unwrapInterface(recon_folder,recon_filename):
 
     def on_button_clicked(b):
         global unwrapped_image 
-        unwrapped_image = unwrap.phase_unwrap(image[top.value:-bottom.value,left.value:-right.value],iterations.value,non_negativity=non_negativity_checkbox,remove_gradient = remove_gradient_checkbox)
+        unwrapped_image = phase_unwrap(image[top.value:-bottom.value,left.value:-right.value],iterations.value,non_negativity=non_negativity_checkbox,remove_gradient = remove_gradient_checkbox)
         ax2.imshow(unwrapped_image)
         return unwrapped_image
 

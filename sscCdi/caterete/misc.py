@@ -124,5 +124,5 @@ def save_json_logfile(path,jason):
 
     filepath = os.path.join(path,name)
     file = open(filepath,"w")
-    file.write(json.dumps(jason))
+    file.write(json.dumps(jason,indent=3,sort_keys=True))
     file.close()
