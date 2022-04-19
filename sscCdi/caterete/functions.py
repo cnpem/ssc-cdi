@@ -1,6 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+
+import ipywidgets as widgets 
+from ipywidgets import fixed
+
+from .misc import miqueles_colormap
 
 def masks_application(difpad, jason):
 
@@ -12,17 +20,16 @@ def masks_application(difpad, jason):
         difpad_region = np.zeros_like(difpad)
         half_size = 128 # 128 pixels halfsize mean the region has 256^2, i.e. the size of a single chip
         mask[center_row-half_size:center_row+half_size,center_col-half_size:center_col+half_size] = 1
-        difpad_region[mask] = difpad[mask]
-        detector_pileup_count = 350000  # counts/sec; value according to Kalile
+        difpad_region = np.where(mask>0,difpad,0)        
+        detector_pileup_count = 50  # counts/sec; value according to Kalile
         detector_exposure_time = jason["DetectorExposure"][1]
         difpad_rescaled = difpad_region / detector_exposure_time # apply threshold
         difpad[difpad_rescaled > detector_pileup_count] = -1
-    else:
-        if jason["CentralMask"][0]:  # circular central mask to block center of the difpad
-                print("Applying circular mask to central pixels")
-                radius = jason["CentralMask"][1] # pixels
-                central_mask = create_circular_mask(center_row, center_col, radius, difpad.shape)
-                difpad[central_mask > 0] = -1
+    elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
+        print("Applying circular mask to central pixels")
+        radius = jason["CentralMask"][1] # pixels
+        central_mask = create_circular_mask(center_row, center_col, radius, difpad.shape)
+        difpad[central_mask > 0] = -1
 
     return difpad, jason
 
@@ -183,3 +190,54 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
     else:
         center = (round(center_estimate[0]), round(center_estimate[1]))
     return center
+
+def plotshow(figure,subplot,image,title=None,figsize=(10,10),savepath=None,show=False):
+    subplot.clear()
+    cmap, colors, bounds, norm = miqueles_colormap(image)
+    handle = subplot.imshow(image, interpolation='nearest', cmap = cmap, norm=norm)
+    if title != None:
+        subplot.set_title(title)
+    if show:
+        plt.show()
+    figure.canvas.draw_idle()
+    
+def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,radius):
+    output_dictionary[key1] = [cx,cy]
+    output_dictionary[key2] = [button,radius]
+    output_dictionary[key3] = [exposure,0.15]
+    if exposure == True or button == True:
+        image2, _ = masks_application(np.copy(image), output_dictionary)
+        plotshow(figure,subplot,image2)
+    else:
+        plotshow(figure,subplot,image)
+
+def deploy_interface(path_to_diffraction_pattern_file,output_dictionary):
+        
+    image = np.load(path_to_diffraction_pattern_file)
+
+    figure, subplot = plt.subplots(figsize=(10,10))
+    plotshow(figure,subplot,image)
+
+    """ Difpad center boxes """
+    centered_box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
+    center_x_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Row pixel:', disabled=False,layout=centered_box_layout)
+    center_y_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Column pixel:', disabled=False,layout=centered_box_layout)
+
+    """ Central mask radius box """
+    mask_size_box = widgets.BoundedIntText(value=100,min=0,max=3072, description='Mask radius (pixels):', disabled=False,layout=centered_box_layout)
+    central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask')
+    exposure_checkbox = widgets.Checkbox(value=False,description='Exposure')
+    widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
+                                            'output_dictionary':fixed(output_dictionary),'image':fixed(image),
+                                            'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
+                                            'cx':center_x_box,'cy':center_y_box,
+                                            'button':central_mask_checkbox,
+                                            'exposure':exposure_checkbox,
+                                            'radius':mask_size_box})
+
+
+    display(path_to_diffraction_pattern_file)
+    display(widgets.HBox([center_x_box,center_y_box]))
+    display(widgets.HBox([mask_size_box,central_mask_checkbox,exposure_checkbox]))
+        
+    return figure, subplot, output_dictionary
