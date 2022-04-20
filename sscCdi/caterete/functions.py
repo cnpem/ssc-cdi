@@ -28,7 +28,7 @@ def masks_application(difpad, jason):
     elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
         print("Applying circular mask to central pixels")
         radius = jason["CentralMask"][1] # pixels
-        central_mask = create_circular_mask(center_row, center_col, radius, difpad.shape)
+        central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
         difpad[central_mask > 0] = -1
 
     return difpad, jason
@@ -191,11 +191,11 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
         center = (round(center_estimate[0]), round(center_estimate[1]))
     return center
 
-def plotshow(figure,subplot,image,title=None,figsize=(10,10),savepath=None,show=False):
+def plotshow(figure,subplot,image,title="",figsize=(8,8),savepath=None,show=False):
     subplot.clear()
     cmap, colors, bounds, norm = miqueles_colormap(image)
     handle = subplot.imshow(image, interpolation='nearest', cmap = cmap, norm=norm)
-    if title != None:
+    if title != "":
         subplot.set_title(title)
     if show:
         plt.show()
@@ -210,21 +210,23 @@ def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,but
         plotshow(figure,subplot,image2)
     else:
         plotshow(figure,subplot,image)
-
+   
 def deploy_interface(path_to_diffraction_pattern_file,output_dictionary):
         
+    output = widgets.Output()
     image = np.load(path_to_diffraction_pattern_file)
+    centered_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',width='100%')
 
-    figure, subplot = plt.subplots(figsize=(10,10))
-    plotshow(figure,subplot,image)
+    with output:
+        figure, subplot = plt.subplots(figsize=(8,8),constrained_layout=True)
+        plotshow(figure,subplot,image,title="")
 
     """ Difpad center boxes """
-    centered_box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
     center_x_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Row pixel:', disabled=False,layout=centered_box_layout)
     center_y_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Column pixel:', disabled=False,layout=centered_box_layout)
 
     """ Central mask radius box """
-    mask_size_box = widgets.BoundedIntText(value=100,min=0,max=3072, description='Mask radius (pixels):', disabled=False,layout=centered_box_layout)
+    mask_size_box = widgets.BoundedIntText(value=50,min=0,max=3072, description='Mask radius (pixels):', disabled=False,layout=centered_box_layout)
     central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask')
     exposure_checkbox = widgets.Checkbox(value=False,description='Exposure')
     widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
@@ -236,8 +238,10 @@ def deploy_interface(path_to_diffraction_pattern_file,output_dictionary):
                                             'radius':mask_size_box})
 
 
-    display(path_to_diffraction_pattern_file)
-    display(widgets.HBox([center_x_box,center_y_box]))
-    display(widgets.HBox([mask_size_box,central_mask_checkbox,exposure_checkbox]))
+    box1 = widgets.VBox([center_x_box,center_y_box])
+    box3 = widgets.VBox([central_mask_checkbox,exposure_checkbox])
+    box2 = widgets.VBox([mask_size_box,box3])
+    controls = widgets.VBox([box1,box2])
+    saida = widgets.HBox([output,controls])
         
-    return figure, subplot, output_dictionary
+    return figure, subplot, output_dictionary, saida

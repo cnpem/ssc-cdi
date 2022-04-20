@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     np.random.seed(jason['Seed'])  # define seed for generation of the same random values
 
-    if 'PreviewGCC' not in jason: jason['PreviewGCC'][0] = False # flag to save previews of interest only to GCC, not to the beamline user
+    if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
     
     #=========== Set Parameters and Folders =====================
     ibira_datafolder = jason['ProposalPath'] 
