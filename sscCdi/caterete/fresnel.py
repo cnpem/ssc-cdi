@@ -8,6 +8,7 @@ Created on Wed Jan 19 16:55:18 2022
 
 # importing matplot lib
 from sys import path_importer_cache
+from turtle import st
 import matplotlib.pyplot as plt
 import numpy as np
  
@@ -107,13 +108,7 @@ def create_propagation_video(path_to_probefile,
 
 
 
-centered_box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
-centered_button_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%',height='50px')
 
-power   = widgets.BoundedFloatText(value=-4,min=-10,max=0, description='10^n', readout_format='d',disabled=False,layout=centered_box_layout)
-start_f = widgets.FloatText(value=1, description='Start F1', readout_format='d',disabled=False,layout=centered_box_layout)
-end_f   = widgets.FloatText(value=9, description='End F1', readout_format='d',disabled=False,layout=centered_box_layout)
-n_frames= widgets.FloatText(value=20, description='Number of Frames', readout_format='d',disabled=False,layout=centered_box_layout)
 
 def update_values(n_frames,start_f,end_f,power):
     global starting_f_value
@@ -155,17 +150,26 @@ def on_click_propagate(dummy,args=()):
 def deploy_interface_fresnel(path_to_probefile,output_dictionary):
 
     from functools import partial
+    output = widgets.Output()
+
+
+    centered_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',width='100%')
+    centered_button_layout = widgets.Layout(flex_flow='column',align_items='flex-end',width='100%',height='50px')
+
+    power   = widgets.BoundedFloatText(value=-4,min=-10,max=0, description='10^n', readout_format='d',disabled=False,layout=centered_box_layout)
+    start_f = widgets.FloatText(value=1, description='Start F1', readout_format='d',disabled=False,layout=centered_box_layout)
+    end_f   = widgets.FloatText(value=9, description='End F', readout_format='d',disabled=False,layout=centered_box_layout)
+    n_frames= widgets.FloatText(value=20, description='#Frames', readout_format='d',disabled=False,layout=centered_box_layout)
 
     out2 = widgets.interactive_output(update_values,{'n_frames':n_frames,'start_f':start_f,'end_f':end_f,'power':power})
-    display(widgets.HBox([n_frames, power, start_f,end_f]),out2)
-
+    box1 = widgets.VBox([n_frames, power, start_f,end_f])
     start_ptycho_button = widgets.Button(description=('Propagate Probe'),layout=centered_button_layout)
-    output = widgets.Output()
-    display(start_ptycho_button,output)
 
     """ Fresnel Number box """
     fresnel_box = widgets.FloatText(value=-5e-3, description='Chosen F (float)', readout_format='.3e',disabled=False,layout=centered_box_layout)
     widgets.interactive_output(update_dic,{'output_dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box})
+    box4 = widgets.VBox([start_ptycho_button,fresnel_box])
+    box2 = widgets.VBox([box1,box4])
 
     image_list, f1_list = [np.ones((100,100))], [0]
 
@@ -182,24 +186,25 @@ def deploy_interface_fresnel(path_to_probefile,output_dictionary):
     slider = widgets.IntSlider(value=0, min=0, max=len(image_list)-1)
     play_box = widgets.HBox([play, slider])
     widgets.jslink((play, 'value'), (slider, 'value'))
-    display(widgets.HBox([play_box,fresnel_box]))
+    
 
-
-    fig = plt.figure(figsize=(5,5))
-    ax1  = fig.add_subplot(1, 1, 1)
-    ax1.imshow(image_list[0],cmap='jet') # initialize
+    with output:
+        fig, ax1 = plt.subplots(figsize=(5,5))
+        ax1.imshow(image_list[0],cmap='jet') # initialize
     
     args = (path_to_probefile,starting_f_value,ending_f_value,number_of_frames,play,slider,fig,ax1)
     start_ptycho_button.on_click(partial(on_click_propagate,args=args))
 
-    return fig, ax1
+    box3 = widgets.VBox([play_box,output])
+    saida = widgets.HBox([box2,box3])
+
+    return fig, ax1, saida
 
 if __name__ == '__main__':
     
     from sys import argv
 
     # path_to_probefile = '/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/outputs/reconstruction/probe_mfi_4keV_01_061121.npy'
-
     path_to_probefile = argv[1]
 
     _, _ = create_propagation_video(path_to_probefile,
