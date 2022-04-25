@@ -3,6 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 import time, os
 import paramiko
 import getpass
+import ipywidgets as widgets 
 
 def write_to_file(python_script_path,jsonFile_path,output_path="",slurmFile = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
@@ -81,6 +82,63 @@ def connect_mafalda():
     ssh.connect(host, port, username, getpass.getpass())
     return ssh
 
+def deploy_runPtycho_button(args):
+
+    from functools import partial
+
+    def run_ptycho(dummy,args=()):
+        mafalda,pythonScript,jsonFile,outputFolder,slurmFile,jobName,queue,gpus,cpus = args
+        run_ptycho_from_jupyter(mafalda,pythonScript,jsonFile,output_path=outputFolder,slurmFile = slurmFile,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
+
+    run_ptycho_partial = partial(run_ptycho,args=args)
+    button_layout = widgets.Layout(align_items='flex-end',width='20%')
+    run_button = widgets.Button(description=('RUN PTYCHO'),layout=button_layout)
+    run_button.on_click(run_ptycho_partial)
+    
+    return run_button
+
+class InputField(object):
+
+    def __init__(self,dictionary,key):
+        
+        field_layout = widgets.Layout(align_items='flex-start',width='50%')
+        field_style = {'description_width': 'initial'}
+        
+        self.dictionary = dictionary
+        self.key = key
+
+        if isinstance(self.dictionary[self.key],bool):
+            self.field = widgets.Checkbox(description=f'{key} {str(type(self.dictionary[self.key]))}',value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],int):
+            self.field = widgets.IntText( description=f'{key} {str(type(self.dictionary[self.key]))}',value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],float):
+            self.field = widgets.FloatText(description=f'{key} {str(type(self.dictionary[self.key]))}',value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],list):
+            self.field = widgets.Text(description=f'{key} {str(type(self.dictionary[self.key]))}',value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],str):
+            self.field = widgets.Text(description=f'{key} {str(type(self.dictionary[self.key]))}',value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.field = widgets.Text(description=f'{key} {str(type(self.dictionary[self.key]))}',value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+        
+        widgets.interactive_output(self.update_dict_value,{'value':self.field})
+
+        
+    def update_dict_value(self,value):
+        if isinstance(self.dictionary[self.key],list):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        else:
+            self.dictionary[self.key] = value
+
+def deploy_inputJson_fields(dictionary):
+        
+    keys_list = [key for key in dictionary]
+    fields_dict = {}
+    for counter in range(0,len(keys_list)): # deployt all interactive fields    
+        fields_dict_key = f'field_{counter}'
+        fields_dict[fields_dict_key] = InputField(dictionary,keys_list[counter])
+        display(fields_dict[fields_dict_key].field) 
 
 if __name__ == "__main__":
 

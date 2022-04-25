@@ -198,7 +198,7 @@ def deploy_interface_fresnel(path_to_probefile,output_dictionary):
     box3 = widgets.VBox([play_box,output])
     saida = widgets.HBox([box2,box3])
 
-    return fig, ax1, saida
+    return saida
 
 if __name__ == '__main__':
     
