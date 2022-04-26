@@ -243,6 +243,4 @@ def deploy_interface(path_to_diffraction_pattern_file,output_dictionary):
     box2 = widgets.VBox([mask_size_box,box3])
     controls = widgets.VBox([box1,box2])
     saida = widgets.HBox([output,controls])
-        
-    return saida
-
+    display(saida)
