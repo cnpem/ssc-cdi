@@ -382,9 +382,9 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filenames[0] + '.npy'))
     else:   
         difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
-    
+
     difpads = np.expand_dims(difpads,axis=0)
 
-    difpads = sscCdi.functions.masks_application(difpads, jason)
+    difpads, jason = sscCdi.functions.masks_application(difpads, jason)
 
     return difpads, time_difpads, jason

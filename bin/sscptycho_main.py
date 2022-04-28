@@ -171,6 +171,7 @@ if __name__ == '__main__':
     print('acquisition_folder : ', acquisition_folder)
  
     if jason["PreviewGCC"][0] == True: # path convention for GCC users
+        if 'LogfilePath' not in jason: jason['LogfilePath'] = ''
         jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],acquisition_folder)
         jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1],'preview')
         jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1],'difpads')
