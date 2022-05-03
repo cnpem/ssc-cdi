@@ -225,6 +225,7 @@ def deploy_framesVisualization(path_to_npy_frames):
         fig = plt.figure(figsize=(10,5))
         ax1  = fig.add_subplot(1, 1, 1)
         ax1.imshow(image_list[0],cmap='gray') # initialize
+        plt.show()
 
     args = (path_to_npy_frames, fig, ax1,play,slider)
 
@@ -297,21 +298,21 @@ def deploy_input_fields(dictionary,auxiliary_dict):
     def update_inputs(dictionary,auxiliary_dict,ProposalPathField,AcquisitionFolderField,jobNameField,jobQueueField,gpusField,cpusField):
         
         """ HARD CODED PATHS """
-        user_folder     = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/" # folder with codes. path to output slurm logs as well
-        # pythonScript    = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/sscptycho_main.py' # path with python script to run
-        pythonScript    = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/sscptycho_main.py' # path with python script to run
+        if 1: # paths for beamline use
+            user_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
+            pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
+        else: # paths for GCC tests       
+            user_folder     = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/" 
+            pythonScript    = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/sscptycho_main.py' # path with python script to run
+        
         slurmFile       = os.path.join(user_folder,'slurm_job.srm') # path to create slurm_file
         jsonFile        = os.path.join(user_folder,'user_input.json') # path with input json to run
-
-        # standard_folder = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/" # folder with beamline outputs
-        # path_to_diffraction_pattern_file = os.path.join(standard_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
-        # path_to_probefile                = os.path.join(standard_folder,'probe_SS61.npy') # path to load probe
-        # path_to_npy_frames               = os.path.join(standard_folder,'unwrap_microagg_SS61_ordered_phase.npy') # path to load npy with first reconstruction preview
+       
         acquisition_folder = ast.literal_eval(AcquisitionFolderField)[0] # changes with control
         standard_folder = os.path.join(ProposalPathField.rsplit('/',3)[0], 'proc','recons',acquisition_folder) # changes with control
         path_to_diffraction_pattern_file = os.path.join(standard_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
         path_to_probefile                = os.path.join(standard_folder,f'probe_{acquisition_folder}.npy') # path to load probe
-        path_to_npy_frames               = os.path.join(standard_folder,f'phase_{acquisition_folder}_01.npy') # path to load npy with first reconstruction preview
+        path_to_npy_frames               = os.path.join(standard_folder,f'phase_{acquisition_folder}.npy') # path to load npy with first reconstruction preview
         
         loadJsonPartial = partial(loadJson,user_folder=user_folder,dictionary=dictionary)
         loadJsonButton.on_click(loadJsonPartial)
@@ -370,7 +371,8 @@ def deploy_center_interface(path_to_diffraction_pattern_file,output_dictionary):
 
     with output:
         figure, subplot = plt.subplots(figsize=(8,8),constrained_layout=True)
-        plotshow(figure,subplot,image,title="")
+        plotshow(figure,subplot,image,title="",show=True)
+    
 
     """ Difpad center boxes """
     center_x_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Row pixel:', disabled=False,layout=centered_box_layout)
@@ -479,7 +481,8 @@ def deploy_interface_fresnel(path_to_probefile,output_dictionary):
     with output:
         fig, ax1 = plt.subplots(figsize=(5,5))
         ax1.imshow(image_list[0],cmap='jet') # initialize
-    
+        plt.show()
+
     args = (path_to_probefile,starting_f_value,ending_f_value,number_of_frames,play,slider,fig,ax1)
     start_ptycho_button.on_click(partial(on_click_propagate,args=args))
 
