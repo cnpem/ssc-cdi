@@ -1,0 +1,240 @@
+import ipywidgets as widgets
+from ipywidgets import fixed
+import ast 
+import numpy as np
+import matplotlib.pyplot as plt
+from functools import partial
+import os
+
+from sscCdi import unwrap_in_parallel
+
+sinogram = np.random.random((2,2,2))
+
+global_dict = {"ibira_data_path": "path/to/ibira/difpads",
+               "folders_list": ["folder1","folder2"],
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
+               "top_crop": 0,
+               "bottom_crop":0,
+               "left_crop":0,
+               "right_crop":0,
+               "bad_frames_list": [],
+               "unwrap_iterations": 0,
+               "unwrap_non_negativity": False,
+               "unwrap_gradient_removal": False,
+               "bad_frames_list2": [],
+               "wiggle_reference_frame": 0,
+               "wiggle_regularization": 0.001, # arbitrary value
+               "tomo_iterations": 25,
+               "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
+               "tomo_n_of_gpus": [0,1,2,3],
+               "threshold_abs" : 0, # max value to be left in reconstructed absorption
+               "threshold_phase" : 0, # max value to be left in reconstructed absorption
+}
+
+output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]  #os.path.join(global_dict["ibira_data_path"], 'proc','recons',global_dict["folders_list"][0]) # changes with control
+
+class Button:
+
+    def __init__(self,description="DESCRIPTION",width="20%",height="30px",icon=""):
+
+        self.button_layout = widgets.Layout(width=width, height=height)
+        self.widget = widgets.Button(description=description,layout=self.button_layout,icon=icon)
+
+    def trigger(self,func):
+        self.widget.on_click(func)
+
+class Input(object):
+
+    def __init__(self,dictionary,key,description="",layout=None,bounded=(),slider=False):
+        
+        self.dictionary = dictionary
+        self.key = key
+        
+        if layout == None:
+            field_layout = widgets.Layout(align_items='flex-start',width='50%')
+        else:
+            field_layout = layout
+        field_style = {'description_width': 'initial'}
+        
+
+        if description == "":
+            field_description = f'{key}{str(type(self.dictionary[self.key]))}'
+        else:
+            field_description = description
+
+        if isinstance(self.dictionary[self.key],bool):
+            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],int):
+            if bounded == ():
+                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+            else:
+                if slider:
+                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key])
+                else:
+                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],float):
+            if bounded == ():
+                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+            else:
+                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],list):
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],str):
+            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+        
+        widgets.interactive_output(self.update_dict_value,{'value':self.widget})
+
+    def update_dict_value(self,value):
+        if isinstance(self.dictionary[self.key],list):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        else:
+            self.dictionary[self.key] = value            
+
+            
+def folders_tab():
+    ibira_data_path = Input(global_dict,"ibira_data_path")
+    folders_list    = Input(global_dict,"folders_list")
+    sinogram_path   = Input(global_dict,"sinogram_path")
+    box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget])
+    return box
+
+
+def crop_tab():
+
+    # make sure dimension is (F,N,M) always! (1,N,M) for single frame!
+    
+    initial_image = np.ones((100,100)) # dummt
+    vertical_max, horizontal_max = initial_image.shape[0]//2, initial_image.shape[1]//2
+
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots()
+        subplot.imshow(initial_image,cmap='gray')
+        figure.canvas.header_visible = False 
+        plt.show()
+    
+    def load_frames(dummy, args = ()):
+        global sinogram
+        top_crop, bottom_crop, left_crop, right_crop, select_slider = args
+        sinogram = np.load(global_dict["sinogram_path"])
+        select_slider.widget.max, select_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
+        vertical_max, horizontal_max = sinogram.shape[1]//2, sinogram.shape[2]//2
+        top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
+        left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
+        plot = widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': select_slider.widget})
+
+    def save_cropped_sinogram(dummy,args=()):
+        top,bottom,left,right = args
+        cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
+        np.save(os.path.join(output_folder,'cropped_sinogram.npy'),cropped_sinogram)
+
+            
+    top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True)
+    bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True)
+    left_crop     = Input(global_dict,"left_crop"  ,description="Left",  bounded=(0,horizontal_max,1),slider=True)
+    right_crop    = Input(global_dict,"right_crop" ,description="Right", bounded=(1,horizontal_max,1),slider=True)
+    select_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,100,1),slider=True)
+
+    load_frames_button  = Button(description="Load Frames",width='50%', height='50px',icon='fa-file-o')
+    args = (top_crop, bottom_crop, left_crop, right_crop, select_slider)
+    load_frames_button.trigger(partial(load_frames,args=args))
+
+    save_cropped_frames_button = Button(description="Save cropped frames",width='70%', height='50px',icon='fa-floppy-o') 
+    args2 = (top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget)
+    save_cropped_frames_button.trigger(partial(save_cropped_sinogram,args=args2))
+    
+    sliders_box = widgets.VBox([load_frames_button.widget,select_slider.widget,top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget,save_cropped_frames_button.widget])
+    box = widgets.HBox([sliders_box,output])
+    return box
+
+def update_imshow(sinogram,figure,subplot,top, bottom,left,right,frame_number):
+    subplot.clear()
+    if bottom == None or right == None:
+        subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+    else:
+        subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+    figure.canvas.draw_idle()
+
+def show_selected_slice(figure,subplot,sinogram,frame_number):
+    subplot.clear()
+    subplot.imshow(sinogram[frame_number,:,:],cmap='gray')
+    figure.canvas.draw_idle()
+
+def update_image(image):
+    subplot.clear()
+    subplot.imshow(image,cmap='gray')
+    figure.canvas.draw_idle()
+    
+def unwrap_tab():
+    
+    output = widgets.Output()
+    with output:
+        figure_unwrap, subplot_unwrap = plt.subplots(1,2)
+        subplot_unwrap[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap[0].set_title('Cropped image')
+        subplot_unwrap[1].set_title('Unwrapped image')
+        figure_unwrap.canvas.draw_idle()
+        figure_unwrap.canvas.header_visible = False 
+        plt.show()
+    
+    def phase_unwrap(dummy):
+        with output: print('Performing phase unwrap...')
+        unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]),'top': fixed(0), 'bottom': fixed(None), 'left': fixed(0), 'right': fixed(None), 'frame_number': selection_slider.widget})    
+        
+    def load_cropped_frames(dummy,args=()):
+        global cropped_sinogram
+        selection_slider = args
+        cropped_sinogram = np.load(os.path.join(output_folder,'cropped_sinogram.npy'))
+        selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'top': fixed(0), 'bottom': fixed(None), 'left': fixed(0), 'right': fixed(None), 'frame_number': selection_slider.widget})    
+        
+    load_cropped_frames_button = Button(description="Load cropped frames",width='50%', height='50px',icon='fa-file-o')
+
+    bad_frames_list = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=widgets.Layout(align_items='flex-start',width='80%'))
+    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames after Unwrap',layout=widgets.Layout(align_items='flex-start',width='80%'))
+    iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Iterations')
+    non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=widgets.Layout(align_items='flex-start',width='40%'),description='Non-negativity')
+    gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=widgets.Layout(align_items='flex-start',width='40%'),description='Gradient')
+    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
+    preview_unwrap_button = Button(description="Preview unwrap",width='50%', height='50px',icon='play')
+    preview_unwrap_button.trigger(phase_unwrap)
+    
+    args = (selection_slider)
+    load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
+
+    unwrap_params_box = widgets.VBox([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget])
+    controls_box = widgets.VBox([load_cropped_frames_button.widget,preview_unwrap_button.widget,selection_slider.widget, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget])
+    plot_box = widgets.VBox([output])
+        
+    box = widgets.HBox([controls_box,plot_box])
+    
+    return box
+    
+def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab()):
+    
+    children_dict = {
+    "Select Folders" : tab1,
+    "Cropping"       : tab2,
+    "Phase Unwrap"   : tab3,
+    "Wiggle"         : widgets.Text(description="Convex Hull"),
+    "Regularization" : widgets.Text(description="Wiggle"),
+    "Tomography"     : widgets.Text(description="Tomography")}
+    
+    button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
+    load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='fa-file-o')
+    run_ptycho_button = Button(description="Run Ptycho",width='50%', height='50px',icon='play')
+    save_dict_button  = Button(description="Save Dictionary",width='50%', height='50px',icon='fa-floppy-o')
+    box = widgets.HBox([load_json_button.widget,run_ptycho_button.widget,save_dict_button.widget])
+    display(box)
+    
+    tab = widgets.Tab()
+    tab.children = list(children_dict.values())
+    for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
+
+    return tab, global_dict  
