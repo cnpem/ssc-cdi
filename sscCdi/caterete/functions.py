@@ -16,7 +16,7 @@ def masks_application(difpad, jason):
         half_size = 128 # 128 pixels halfsize mean the region has 256^2, i.e. the size of a single chip
         mask[center_row-half_size:center_row+half_size,center_col-half_size:center_col+half_size] = 1
         difpad_region = np.where(mask>0,difpad,0)        
-        detector_pileup_count = 50  # counts/sec; value according to Kalile
+        detector_pileup_count = 350000  # counts/sec; value according to Kalile
         detector_exposure_time = jason["DetectorExposure"][1]
         difpad_rescaled = difpad_region / detector_exposure_time # apply threshold
         difpad[difpad_rescaled > detector_pileup_count] = -1

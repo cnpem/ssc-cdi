@@ -6,6 +6,8 @@ import numpy
 from ipywidgets import *
 from skimage.io import imsave
 
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed, wait
+
 
 def RemoveZernike(img,mask):
     """ Giovanni's function for removing zernikes. Not well understood yet.
@@ -123,9 +125,22 @@ def RemoveGrad(img,mask):
     return img + gradient[0]*xx + gradient[1]*yy + gradient[2]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
+def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient = True):
 
+    n_frames = sinogram.shape[0]
 
-def phase_unwrap(img,iterations,non_negativity=True,remove_gradient = True):
+    from functools import partial
+    phase_unwrap_partial = partial(phase_unwrap,iterations=iterations,non_negativity=non_negativity,remove_gradient = remove_gradient)
+
+    with ProcessPoolExecutor() as executor:
+        unwrapped_sinogram = np.empty_like(sinogram)
+        results = executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)])
+        for counter, result in enumerate(results):
+            unwrapped_sinogram[counter,:,:] = result
+
+    return unwrapped_sinogram
+
+def phase_unwrap(img,iterations=0,non_negativity=True,remove_gradient = True):
     """ Function for phase unwrapping reconstructed object. 
 
     Args:
