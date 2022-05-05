@@ -206,7 +206,7 @@ def crop_tab():
     play_control = VideoControl(select_slider.widget,select_slider.widget.value,select_slider.widget.min,select_slider.widget.max,1,300,"Play Button")
     play_box = widgets.HBox([select_slider.widget,play_control.widget])
     
-    load_frames_button  = Button(description="Load Frames",width='50%', height='50px',icon='fa-file-o')
+    load_frames_button  = Button(description="Load Frames",width='50%', height='50px',icon='folder-open-o')
     args = (top_crop, bottom_crop, left_crop, right_crop, select_slider, play_control)
     load_frames_button.trigger(partial(load_frames,args=args))
 
@@ -218,7 +218,7 @@ def crop_tab():
     box = widgets.HBox([sliders_box,output])
     return box
 
-def update_imshow(sinogram,figure,subplot,top, bottom,left,right,frame_number):
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None):
     subplot.clear()
     if bottom == None or right == None:
         subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
@@ -258,7 +258,7 @@ def unwrap_tab():
         global unwrapped_sinogram
         with output: print('Performing phase unwrap...')
         unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]),'top': fixed(0), 'bottom': fixed(None), 'left': fixed(0), 'right': fixed(None), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
         
     def load_cropped_frames(dummy,args=()):
         global cropped_sinogram
@@ -266,7 +266,7 @@ def unwrap_tab():
         cropped_sinogram = np.load(os.path.join(output_folder,'cropped_sinogram.npy'))
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'top': fixed(0), 'bottom': fixed(None), 'left': fixed(0), 'right': fixed(None), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]), 'frame_number': selection_slider.widget})    
 
     def correct_bad_frames(dummy,bad_frames1=[],bad_frames2=[]):
         bad_frames = bad_frames1 + bad_frames2 # concatenate lists
@@ -286,7 +286,7 @@ def unwrap_tab():
         np.save(os.path.join(output_folder,filename),sinogram_to_save)
         with output: print('Saved sinogram at: ',os.path.join(output_folder,filename))
 
-    load_cropped_frames_button = Button(description="Load cropped frames",width='50%', height='50px',icon='fa-file-o')
+    load_cropped_frames_button = Button(description="Load cropped frames",width='50%', height='50px',icon='folder-open-o')
 
     bad_frames_list = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=widgets.Layout(align_items='flex-start',width='80%'))
     bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames after Unwrap',layout=widgets.Layout(align_items='flex-start',width='80%'))
@@ -323,11 +323,6 @@ def unwrap_tab():
 
 
 
-
-
-
-
-
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
@@ -341,7 +336,7 @@ def _operator_T(u):
     z = np.sqrt( delta )
     return z
 
-def do_chull(sinogram,frame):
+def do_chull(sinogram,invert,tolerance,opening_param,erosion_param,chull_param,frame):
     img = sinogram[frame,:,:] 
     where = _operator_T(img).real
     new = np.copy(img)
@@ -356,18 +351,21 @@ def do_chull(sinogram,frame):
     chull = dilation( convex_hull_image(mask3), square(chull_param) ) # EXPAND CASCA DA MASCARA
     img_masked = np.copy(img * chull)  #nova imagem apenas com o suporte
     # sinogram[frame,:,:] = img_masked
-    return img_masked
+    return new,mask,mask2,mask3,chull,img_masked
 
 def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
     print('Perfoming convex hull...')
+    if sinogram.ndim == 2:
+        sinogram = np.expand_dims(sinogram, axis=0) # add dummy dimension to get 3d array
     chull_sinogram = np.empty_like(sinogram)
-    do_chull_partial = partial(do_chull,sinogram)
+    do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
     frames = [f for f in range(sinogram.shape[0])]
     with ProcessPoolExecutor() as executor:
         results = executor.map(do_chull_partial,frames)
         for counter, result in enumerate(results):
-            chull_sinogram[counter,:,:] = result
-    return chull_sinogram
+            new,mask,mask2,mask3,chull,img_masked = result
+            chull_sinogram[counter,:,:] = img_masked
+    return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
     
 def format_chull_plot(figure,subplots):
     subplots[0,0].set_title('Original')
@@ -381,7 +379,6 @@ def format_chull_plot(figure,subplots):
         subplot.set_xticks([])
         subplot.set_yticks([])
     figure.canvas.header_visible = False 
-    plt.show()
     
 def chull_tab():
     
@@ -396,25 +393,61 @@ def chull_tab():
         subplots[1,1].imshow(np.random.random((4,4)),cmap='gray')
         subplots[1,2].imshow(np.random.random((4,4)),cmap='gray')
         format_chull_plot(figure,subplots)
+        plt.show()
+
+    
+    def load_unwrapped_sinogram(dummy,args=()):
+        global unwrapped_sinogram
+        unwrapped_sinogram = np.load(os.path.join(output_folder,'unwrapped_sinogram.npy'))
+        selection_slider, play_control = args
+        selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplots[0,0]), 'frame_number': selection_slider.widget})    
+        format_chull_plot(figure,subplots)
+
+    def preview_cHull(dummy,args=()):
+        invert,tolerance,opening_param,erosion_param,chull_param,selection_slider = args
+        output_list = apply_chull_parallel(unwrapped_sinogram[selection_slider.widget.value,:,:],invert=invert.widget.value,tolerance=tolerance.widget.value,opening_param=opening_param.widget.value,erosion_param=erosion_param.widget.value,chull_param=chull_param.widget.value)
+        cHull_sinogram = output_list[-1]
+        selection_slider.widget.max, selection_slider.widget.value = cHull_sinogram.shape[0] - 1, cHull_sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        for subplot, image in zip(subplots.reshape(-1),output_list[0::]):
+            image = np.expand_dims(image, axis=0)
+            widgets.interactive_output(update_imshow, {'sinogram':fixed(image),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})    
+        format_chull_plot(figure,subplots)
+        print('\tDone with convex hull...')
+
+    def complete_cHull(dummy,args=()):
+        print('Applying complete Convex Hull...')
+        invert,tolerance,opening_param,erosion_param,chull_param,selection_slider = args
+        output_list = apply_chull_parallel(unwrapped_sinogram,invert=invert.widget.value,tolerance=tolerance.widget.value,opening_param=opening_param.widget.value,erosion_param=erosion_param.widget.value,chull_param=chull_param.widget.value)
+        cHull_sinogram = output_list[-1]
+        print('Saving cHull sinogram...')
+        np.save(os.path.join(output_folder,'chull_sinogram.npy'),cHull_sinogram)
+        print('\tSaved!')
         
-    load_button = Button(description="Load unwrapped sinogram",icon='fa-file-o')
-    preview_button = Button(description="Convex Hull Preview",icon='play')
-    start_button = Button(description="Do complete Convex Hull",icon='play')
-    save_button = Button(description="Save CHull sinogram",icon='fa-floppy-o')
 
     selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
     play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
     play_box = widgets.HBox([selection_slider.widget,play_control.widget])
     
-    
-    invert_checkbox = Input(global_dict,"chull_invert",description='Invert')
-    tolerance = Input(global_dict,"chull_tolerance",description='Threshold')
-    opening_slider = Input(global_dict,"chull_opening",description="Opening", bounded=(0,20,1),slider=True)
-    erosion_slider = Input(global_dict,"chull_erosion",description="Erosion", bounded=(0,20,1),slider=True)
-    param_slider   = Input(global_dict,"chull_param",description="Convex Hull", bounded=(0,20,1),slider=True)
+    load_button = Button(description="Load unwrapped sinogram",icon='folder-open-o')
+    load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
 
+    invert_checkbox = Input(global_dict,"chull_invert",    description='Invert')
+    tolerance       = Input(global_dict,"chull_tolerance", description='Threshold')
+    opening_slider  = Input(global_dict,"chull_opening",   description="Opening",     bounded=(0,100,1),slider=True)
+    erosion_slider  = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(0,100,1),slider=True)
+    param_slider    = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(0,500,1),slider=True)
+    
+    preview_button = Button(description="Convex Hull Preview",icon='play')
+    preview_button.trigger(partial(preview_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
+    
+    start_button = Button(description="Do complete Convex Hull",icon='play')
+    start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
+    
     controls0 = widgets.VBox([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget])
-    controls_box = widgets.VBox([load_button.widget,preview_button.widget,start_button.widget,save_button.widget,play_box,controls0])
+    controls_box = widgets.VBox([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0])
     
     box = widgets.HBox([controls_box,output])
     
@@ -443,7 +476,7 @@ def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_
     "Tomography"     : widgets.Text(description="Tomography")}
     
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
-    load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='fa-file-o')
+    load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
     run_ptycho_button = Button(description="Run Ptycho",width='50%', height='50px',icon='play')
     save_dict_button  = Button(description="Save Dictionary",width='50%', height='50px',icon='fa-floppy-o')
     box = widgets.HBox([load_json_button.widget,run_ptycho_button.widget,save_dict_button.widget])
