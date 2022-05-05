@@ -22,6 +22,11 @@ global_dict = {"ibira_data_path": "path/to/ibira/difpads",
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
                "bad_frames_list2": [],
+               "chull_invert": False,
+               "chull_tolerance": 1e-5,
+               "chull_opening": 10,
+               "chull_erosion": 10,
+               "chull_param": 10,               
                "wiggle_reference_frame": 0,
                "wiggle_regularization": 0.001, # arbitrary value
                "tomo_iterations": 25,
@@ -268,6 +273,7 @@ def unwrap_tab():
         with output: print('Zeroing frames: ', bad_frames)
         cropped_sinogram[bad_frames,:,:]   = np.zeros((cropped_sinogram.shape[1],cropped_sinogram.shape[2]))
         unwrapped_sinogram[bad_frames,:,:] = np.zeros((cropped_sinogram.shape[1],cropped_sinogram.shape[2]))
+        save_unwrapped_button.trigger(partial(save_sinogram,sinogram_to_save=unwrapped_sinogram,filename='unwrapped_sinogram.npy'))
 
     @debounce(0.5) # check changes every 0.5sec
     def update_lists(bad_frames_list1,bad_frames_list2):
@@ -302,7 +308,6 @@ def unwrap_tab():
     correct_bad_frames_button = Button(description='Correct Bad Frames',icon='fa-check-square-o')
     
     save_unwrapped_button = Button(description="Save unwrapped frames",icon='fa-floppy-o') 
-    save_unwrapped_button.trigger(partial(save_sinogram,sinogram_to_save=unwrapped_sinogram,filename='unwrapped_sinogram.npy'))
     
     unwrap_params_box = widgets.VBox([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget])
     controls_box = widgets.VBox([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget])
@@ -312,13 +317,128 @@ def unwrap_tab():
     
     return box
     
-def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab()):
+
+
+
+
+
+
+
+
+
+
+
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
+def _operator_T(u):
+    d   = 1.0
+    uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
+    uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
+    uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
+    uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
+    delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
+    z = np.sqrt( delta )
+    return z
+
+def do_chull(sinogram,frame):
+    img = sinogram[frame,:,:] 
+    where = _operator_T(img).real
+    new = np.copy(img)
+    if invert:
+        new[ new > 0] = _operator_T(new).real[ img > 0]
+    else:
+        new[ new < 0] = _operator_T(new).real[ img < 0]
+
+    mask = (np.abs( new - img) < tolerance) * 1.0
+    mask2 = opening(mask, square(opening_param))
+    mask3 = erosion(mask2, square(erosion_param))
+    chull = dilation( convex_hull_image(mask3), square(chull_param) ) # EXPAND CASCA DA MASCARA
+    img_masked = np.copy(img * chull)  #nova imagem apenas com o suporte
+    # sinogram[frame,:,:] = img_masked
+    return img_masked
+
+def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
+    print('Perfoming convex hull...')
+    chull_sinogram = np.empty_like(sinogram)
+    do_chull_partial = partial(do_chull,sinogram)
+    frames = [f for f in range(sinogram.shape[0])]
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(do_chull_partial,frames)
+        for counter, result in enumerate(results):
+            chull_sinogram[counter,:,:] = result
+    return chull_sinogram
+    
+def format_chull_plot(figure,subplots):
+    subplots[0,0].set_title('Original')
+    subplots[0,1].set_title('Threshold')
+    subplots[0,2].set_title('Opening')
+    subplots[1,0].set_title('Erosion')
+    subplots[1,1].set_title('Convex Hull')
+    subplots[1,2].set_title('Masked Image')
+
+    for subplot in subplots.reshape(-1):
+        subplot.set_xticks([])
+        subplot.set_yticks([])
+    figure.canvas.header_visible = False 
+    plt.show()
+    
+def chull_tab():
+    
+    output = widgets.Output()
+    
+    with output:
+        figure, subplots = plt.subplots(2,3)
+        subplots[0,0].imshow(np.random.random((4,4)),cmap='gray')
+        subplots[0,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplots[0,2].imshow(np.random.random((4,4)),cmap='gray')
+        subplots[1,0].imshow(np.random.random((4,4)),cmap='gray')
+        subplots[1,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplots[1,2].imshow(np.random.random((4,4)),cmap='gray')
+        format_chull_plot(figure,subplots)
+        
+    load_button = Button(description="Load unwrapped sinogram",icon='fa-file-o')
+    preview_button = Button(description="Convex Hull Preview",icon='play')
+    start_button = Button(description="Do complete Convex Hull",icon='play')
+    save_button = Button(description="Save CHull sinogram",icon='fa-floppy-o')
+
+    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
+    play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
+    play_box = widgets.HBox([selection_slider.widget,play_control.widget])
+    
+    
+    invert_checkbox = Input(global_dict,"chull_invert",description='Invert')
+    tolerance = Input(global_dict,"chull_tolerance",description='Threshold')
+    opening_slider = Input(global_dict,"chull_opening",description="Opening", bounded=(0,20,1),slider=True)
+    erosion_slider = Input(global_dict,"chull_erosion",description="Erosion", bounded=(0,20,1),slider=True)
+    param_slider   = Input(global_dict,"chull_param",description="Convex Hull", bounded=(0,20,1),slider=True)
+
+    controls0 = widgets.VBox([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget])
+    controls_box = widgets.VBox([load_button.widget,preview_button.widget,start_button.widget,save_button.widget,play_box,controls0])
+    
+    box = widgets.HBox([controls_box,output])
+    
+    return box
+
+
+
+
+
+
+
+
+
+
+
+
+
+def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab()):
     
     children_dict = {
     "Select Folders" : tab1,
     "Cropping"       : tab2,
     "Phase Unwrap"   : tab3,
-    "Convex Hull"         : widgets.Text(description="Convex Hull"),
+    "Convex Hull"    : tab4,
     "Wiggle" : widgets.Text(description="Wiggle"),
     "Tomography"     : widgets.Text(description="Tomography")}
     
