@@ -7,6 +7,7 @@ from functools import partial
 import os
 
 from sscCdi import unwrap_in_parallel
+from sscRadon import radon
 
 sinogram = np.random.random((2,2,2))
 
@@ -28,7 +29,9 @@ global_dict = {"ibira_data_path": "path/to/ibira/difpads",
                "chull_erosion": 10,
                "chull_param": 10,               
                "wiggle_reference_frame": 0,
-               "wiggle_regularization": 0.001, # arbitrary value
+               "wiggle_cpus": 32,
+               "tomo_regularization": True,
+               "tomo_regularization_param": 0.001, # arbitrary value
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "tomo_n_of_gpus": [0,1,2,3],
@@ -218,12 +221,22 @@ def crop_tab():
     box = widgets.HBox([sliders_box,output])
     return box
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None):
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
     subplot.clear()
     if bottom == None or right == None:
-        subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
     else:
-        subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
     figure.canvas.draw_idle()
 
 def show_selected_slice(figure,subplot,sinogram,frame_number):
@@ -354,7 +367,6 @@ def do_chull(sinogram,invert,tolerance,opening_param,erosion_param,chull_param,f
     return new,mask,mask2,mask3,chull,img_masked
 
 def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
-    print('Perfoming convex hull...')
     if sinogram.ndim == 2:
         sinogram = np.expand_dims(sinogram, axis=0) # add dummy dimension to get 3d array
     chull_sinogram = np.empty_like(sinogram)
@@ -436,9 +448,9 @@ def chull_tab():
 
     invert_checkbox = Input(global_dict,"chull_invert",    description='Invert')
     tolerance       = Input(global_dict,"chull_tolerance", description='Threshold')
-    opening_slider  = Input(global_dict,"chull_opening",   description="Opening",     bounded=(0,100,1),slider=True)
-    erosion_slider  = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(0,100,1),slider=True)
-    param_slider    = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(0,500,1),slider=True)
+    opening_slider  = Input(global_dict,"chull_opening",   description="Opening",     bounded=(1,100,1),slider=True)
+    erosion_slider  = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(1,100,1),slider=True)
+    param_slider    = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(1,200,1),slider=True)
     
     preview_button = Button(description="Convex Hull Preview",icon='play')
     preview_button.trigger(partial(preview_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
@@ -454,6 +466,102 @@ def chull_tab():
     return box
 
 
+def format_wiggle_plot(figure,subplots):
+    subplots[0,0].set_title('Pre-wiggle')
+    subplots[0,1].set_title('Post_wiggle')
+    subplots[0,0].set_ylabel('XY')
+    subplots[1,0].set_ylabel('XZ')
+    
+    for subplot in subplots.reshape(-1):
+        subplot.set_aspect('auto')
+        subplot.set_xticks([])
+        subplot.set_yticks([])
+    figure.canvas.header_visible = False 
+    figure.tight_layout()
+    
+
+def wiggle_tab():
+    
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots(figsize=(5,5))
+        subplot.imshow(np.random.random((4,4)),cmap='gray')
+        subplot.set_title('Reference Frame')
+        figure.canvas.draw_idle()
+        figure.canvas.header_visible = False 
+        plt.show()
+
+    output2 = widgets.Output()
+    with output2:
+        figure2, subplot2 = plt.subplots(2,2)
+        subplot2[0,0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[0,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[1,0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[1,1].imshow(np.random.random((4,4)),cmap='gray')
+        format_wiggle_plot(figure2,subplot2)
+        plt.show()
+    
+    def load_sinogram(dummy,args=()):
+        selection_slider, play_control,sinogram_selection = args
+        
+        if sinogram_selection.value == "unwrapped":
+            file = 'unwrapped_sinogram.npy'
+        elif sinogram_selection.value == "convexHull":
+            file = 'chull_sinogram.npy'
+
+        global sinogram
+        with output: print('Loading...: ',file)
+        sinogram = np.load(os.path.join(output_folder,file))
+        with output: print('\t Loaded!')
+        selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})    
+    
+    def update_imshow_with_format(sinogram,figure,subplot,frame_number,axis):
+        update_imshow(sinogram,figure,subplot,frame_number,axis=axis)
+        format_wiggle_plot(figure2,subplot2)
+
+        
+    def start_wiggle(dummy,args=()):
+        sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider = args
+        
+        with output: print("Starting wiggle...")
+        wiggled_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, ref_frame_slider.widget.value)
+        wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, ref_frame_slider.widget.value)
+        with output: print("\t Wiggle done!")
+        sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
+        sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1,0]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
+        with output: print("Saving wiggle sinogram...")
+        np.save(os.path.join(output_folder,'wiggle_sinogram.npy'),wiggled_sinogram)
+        with output: print("\t Saved!")
+
+    ref_frame_slider = Input(global_dict,"wiggle_reference_frame", description="Reference Frame", bounded=(0,sinogram.shape[0],1),slider=True)
+    cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True)
+
+    wiggle_button = Button(description='Perform Wiggle',icon='play')
+    
+    play_control = VideoControl(ref_frame_slider.widget,ref_frame_slider.widget.value,ref_frame_slider.widget.min,ref_frame_slider.widget.max,1,300,"Play Button")
+    play_box = widgets.HBox([ref_frame_slider.widget,play_control.widget])
+    
+    sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', layout={'width': 'max-content'},description='Sinogram to import:',disabled=False)
+    sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True)
+    sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True)
+    
+    args = (ref_frame_slider, play_control,sinogram_selection)
+    load_button = Button(description="Load sinogram",icon='folder-open-o')
+    load_button.trigger(partial(load_sinogram,args=(ref_frame_slider,play_control,sinogram_selection)))
+    
+    args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider)
+    wiggle_button.trigger(partial(start_wiggle,args=args2))
+
+    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget])
+    box = widgets.HBox([controls,output,output2])
+    
+    return box
 
 
 
@@ -465,14 +573,17 @@ def chull_tab():
 
 
 
-def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab()):
+
+
+
+def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab()):
     
     children_dict = {
     "Select Folders" : tab1,
     "Cropping"       : tab2,
     "Phase Unwrap"   : tab3,
     "Convex Hull"    : tab4,
-    "Wiggle" : widgets.Text(description="Wiggle"),
+    "Wiggle"         : tab5,
     "Tomography"     : widgets.Text(description="Tomography")}
     
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
