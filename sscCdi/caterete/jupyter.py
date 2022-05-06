@@ -77,7 +77,6 @@ def monitor_job_execution(given_jobID,mafalda):
     return print(f"\t \t Job {given_jobID} done!")
 
 def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
-    
     # python_script_path = 'testpy.py'
     # jsonFile_path = ''
     slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)

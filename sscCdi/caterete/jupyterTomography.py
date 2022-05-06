@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 import os
 
-from sscCdi import unwrap_in_parallel
+from sscCdi import unwrap_in_parallel, misc
 from sscRadon import radon
 
 sinogram = np.random.random((2,2,2))
@@ -35,11 +35,147 @@ global_dict = {"ibira_data_path": "path/to/ibira/difpads",
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "tomo_n_of_gpus": [0,1,2,3],
-               "threshold_abs" : 0, # max value to be left in reconstructed absorption
-               "threshold_phase" : 0, # max value to be left in reconstructed absorption
+               "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
 }
 
 output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]  #os.path.join(global_dict["ibira_data_path"], 'proc','recons',global_dict["folders_list"][0]) # changes with control
+
+############################################ PROCESSING FUNCTIONS ###########################################################################
+
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
+def _operator_T(u):
+    d   = 1.0
+    uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
+    uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
+    uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
+    uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
+    delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
+    z = np.sqrt( delta )
+    return z
+
+def do_chull(sinogram,invert,tolerance,opening_param,erosion_param,chull_param,frame):
+    img = sinogram[frame,:,:] 
+    where = _operator_T(img).real
+    new = np.copy(img)
+    if invert:
+        new[ new > 0] = _operator_T(new).real[ img > 0]
+    else:
+        new[ new < 0] = _operator_T(new).real[ img < 0]
+
+    mask = (np.abs( new - img) < tolerance) * 1.0
+    mask2 = opening(mask, square(opening_param))
+    mask3 = erosion(mask2, square(erosion_param))
+    chull = dilation( convex_hull_image(mask3), square(chull_param) ) # EXPAND CASCA DA MASCARA
+    img_masked = np.copy(img * chull)  #nova imagem apenas com o suporte
+    # sinogram[frame,:,:] = img_masked
+    return new,mask,mask2,mask3,chull,img_masked
+
+def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
+    if sinogram.ndim == 2:
+        sinogram = np.expand_dims(sinogram, axis=0) # add dummy dimension to get 3d array
+    chull_sinogram = np.empty_like(sinogram)
+    do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
+    frames = [f for f in range(sinogram.shape[0])]
+    with ProcessPoolExecutor() as executor:
+        results = executor.map(do_chull_partial,frames)
+        for counter, result in enumerate(results):
+            new,mask,mask2,mask3,chull,img_masked = result
+            chull_sinogram[counter,:,:] = img_masked
+    return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
+
+def sort_frames_by_angle(ibira_path,foldernames):
+    rois = []
+    counter = -1 
+    for folder in foldernames:
+
+        print(f"Sorting data for {folder} folder")
+
+        filepaths, filenames = sscCdi.misc.list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
+        # filepaths, filenames = sscCdi.misc.list_files_in_folder(os.path.join(ibira_path, folder), look_for_extension="1_001.txt") # use for old file standard
+
+        print('Files:',filenames)
+
+        for filepath in filepaths:
+            roisname = filepath  
+            if roisname == os.path.join(ibira_path,folder, 'positions', folder + '_Ry_positions.txt'): # ignore this file, to use only the positions file inside /positions/ folder
+            # if roisname == os.path.join(ibira_path, folder) + '/Ry_positions.txt': # use for old file standard
+                continue
+            else:
+                counter += 1 
+                posfile = open(roisname)
+                a = 0
+                for line in posfile:
+                    line = str(line)
+                    if a < 1: # get value from first line of the file only
+                        angle = line.split(':')[1].split('\t')[0]
+                        rois.append([int(counter),float(angle)])
+                    a += 1
+
+    rois = np.asarray(rois)
+    rois = rois[rois[:,1].argsort(axis=0)]
+    return rois 
+
+def regularization(sino, L):
+    a = 1
+    R = sino.shape[1]
+    V = sino.shape[0]
+    th = np.linspace(0, np.pi, V, endpoint=False)
+    t  = np.linspace(-a, a, R)
+    dt = (2*a)/float((R-1))
+    wc = 1.0/(2*dt)
+    w = np.linspace(-wc, wc, R)
+    if 1: # two options
+        h = np.abs(w) / (1 + 4 * np.pi * L * (w**2) )
+    else:
+        h = 1 / (1 + 4 * np.pi * L * (w**2) )
+    G = np.fft.fftshift(np.transpose(np.kron(np.ones((V, 1)), h))).T
+    B = np.fft.fft(sino, axis=1)
+    D = np.fft.ifft(B * G, axis=1).real
+    return D
+
+from sscOldRaft import *
+def tomography(algorithm,data,anglesFile,iterations,GPUs):
+
+    if algorithm == "TEM" or algorithm == "EM":
+        data = np.exp(-data)
+    elif algorithm == "ART":
+        flat = np.ones([1,data.shape[-2],data.shape[-2]],dtype=np.uint16)
+        dark = np.zeros(flat.shape[1:],dtype=np.uint16)
+        angles = np.load(anglesFile)
+        centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
+
+    if algorithm != "EEM": # for these
+        rays, slices = data.shape[-1], data.shape[-2]
+        reconstruction3D = np.zeros((rays,slices,rays))
+        for i in range(slices):
+            print(f'Reconstructing slice {i}')
+            sinogram = data[:,i,:]
+            if algorithm == "ART":
+                reconstruction3D[:,i,:]= MaskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
+            elif algorithm == "FBP": 
+                reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
+            elif algorithm == "RegBackprojection":
+                reconstruction3D[:,i,:]= Backprojection( sino=sinogram,device=GPUs)
+            elif algorithm == "EM":
+                reconstruction3D[:,i,:]= EM(sinogram, flat, iter=iterations, pad=2, device=GPUs, csino=0)
+            elif algorithm == "SIRT":
+                reconstruction3D[:,i,:]= SIRT_FST(sinogram, iter=iterations, zpad=2, step=1.0, csino=0, device=GPUs, art_alpha=0.2, reg_mu=0.2, param_alpha=0, supp_reg=0.2, img=None)
+    elif algorithm == "EEM": #data é o que sai do wiggle! 
+        data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
+        nangles = data.shape[1]
+        recsize = data.shape[2]
+        iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
+        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': nangles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
+        reconstruction3D = parallel.emfs( data, dic )
+    else:
+        import sys
+        sys.exit('Select a proper reconstruction method')
+
+    return reconstruction3D
+    
+############################################ INTERFACE / GUI ###########################################################################
 
 class VideoControl:
     
@@ -116,8 +252,26 @@ class Input(object):
         else:
             self.dictionary[self.key] = value            
 
-import asyncio
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
+    subplot.clear()
+    if bottom == None or right == None:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
+    else:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
+    figure.canvas.draw_idle()
 
+            
+import asyncio
 class Timer:
     def __init__(self, timeout, callback):
         self._timeout = timeout
@@ -171,8 +325,6 @@ def folders_tab():
 
 def crop_tab():
 
-    # make sure dimension is (F,N,M) always! (1,N,M) for single frame!
-    
     initial_image = np.ones((100,100)) # dummt
     vertical_max, horizontal_max = initial_image.shape[0]//2, initial_image.shape[1]//2
 
@@ -199,7 +351,6 @@ def crop_tab():
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
         np.save(os.path.join(output_folder,'cropped_sinogram.npy'),cropped_sinogram)
 
-            
     top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True)
     bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True)
     left_crop     = Input(global_dict,"left_crop"  ,description="Left",  bounded=(0,horizontal_max,1),slider=True)
@@ -221,36 +372,7 @@ def crop_tab():
     box = widgets.HBox([sliders_box,output])
     return box
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
-    subplot.clear()
-    if bottom == None or right == None:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
-    else:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
-    figure.canvas.draw_idle()
 
-def show_selected_slice(figure,subplot,sinogram,frame_number):
-    subplot.clear()
-    subplot.imshow(sinogram[frame_number,:,:],cmap='gray')
-    figure.canvas.draw_idle()
-
-def update_image(image):
-    subplot.clear()
-    subplot.imshow(image,cmap='gray')
-    figure.canvas.draw_idle()
-
-
-    
 def unwrap_tab():
     
     global unwrapped_sinogram
@@ -329,70 +451,22 @@ def unwrap_tab():
     box = widgets.HBox([controls_box,plot_box])
     
     return box
-    
 
 
-
-
-
-
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
-from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
-def _operator_T(u):
-    d   = 1.0
-    uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
-    uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
-    uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
-    uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
-    delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
-    z = np.sqrt( delta )
-    return z
-
-def do_chull(sinogram,invert,tolerance,opening_param,erosion_param,chull_param,frame):
-    img = sinogram[frame,:,:] 
-    where = _operator_T(img).real
-    new = np.copy(img)
-    if invert:
-        new[ new > 0] = _operator_T(new).real[ img > 0]
-    else:
-        new[ new < 0] = _operator_T(new).real[ img < 0]
-
-    mask = (np.abs( new - img) < tolerance) * 1.0
-    mask2 = opening(mask, square(opening_param))
-    mask3 = erosion(mask2, square(erosion_param))
-    chull = dilation( convex_hull_image(mask3), square(chull_param) ) # EXPAND CASCA DA MASCARA
-    img_masked = np.copy(img * chull)  #nova imagem apenas com o suporte
-    # sinogram[frame,:,:] = img_masked
-    return new,mask,mask2,mask3,chull,img_masked
-
-def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
-    if sinogram.ndim == 2:
-        sinogram = np.expand_dims(sinogram, axis=0) # add dummy dimension to get 3d array
-    chull_sinogram = np.empty_like(sinogram)
-    do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
-    frames = [f for f in range(sinogram.shape[0])]
-    with ProcessPoolExecutor() as executor:
-        results = executor.map(do_chull_partial,frames)
-        for counter, result in enumerate(results):
-            new,mask,mask2,mask3,chull,img_masked = result
-            chull_sinogram[counter,:,:] = img_masked
-    return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
-    
-def format_chull_plot(figure,subplots):
-    subplots[0,0].set_title('Original')
-    subplots[0,1].set_title('Threshold')
-    subplots[0,2].set_title('Opening')
-    subplots[1,0].set_title('Erosion')
-    subplots[1,1].set_title('Convex Hull')
-    subplots[1,2].set_title('Masked Image')
-
-    for subplot in subplots.reshape(-1):
-        subplot.set_xticks([])
-        subplot.set_yticks([])
-    figure.canvas.header_visible = False 
-    
 def chull_tab():
+    
+    def format_chull_plot(figure,subplots):
+        subplots[0,0].set_title('Original')
+        subplots[0,1].set_title('Threshold')
+        subplots[0,2].set_title('Opening')
+        subplots[1,0].set_title('Erosion')
+        subplots[1,1].set_title('Convex Hull')
+        subplots[1,2].set_title('Masked Image')
+
+        for subplot in subplots.reshape(-1):
+            subplot.set_xticks([])
+            subplot.set_yticks([])
+        figure.canvas.header_visible = False 
     
     output = widgets.Output()
     
@@ -406,7 +480,6 @@ def chull_tab():
         subplots[1,2].imshow(np.random.random((4,4)),cmap='gray')
         format_chull_plot(figure,subplots)
         plt.show()
-
     
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
@@ -466,21 +539,20 @@ def chull_tab():
     return box
 
 
-def format_wiggle_plot(figure,subplots):
-    subplots[0,0].set_title('Pre-wiggle')
-    subplots[0,1].set_title('Post_wiggle')
-    subplots[0,0].set_ylabel('XY')
-    subplots[1,0].set_ylabel('XZ')
-    
-    for subplot in subplots.reshape(-1):
-        subplot.set_aspect('auto')
-        subplot.set_xticks([])
-        subplot.set_yticks([])
-    figure.canvas.header_visible = False 
-    figure.tight_layout()
-    
-
 def wiggle_tab():
+    
+    def format_wiggle_plot(figure,subplots):
+        subplots[0,0].set_title('Pre-wiggle')
+        subplots[0,1].set_title('Post_wiggle')
+        subplots[0,0].set_ylabel('XY')
+        subplots[1,0].set_ylabel('XZ')
+
+        for subplot in subplots.reshape(-1):
+            subplot.set_aspect('auto')
+            subplot.set_xticks([])
+            subplot.set_yticks([])
+        figure.canvas.header_visible = False 
+        figure.tight_layout()
     
     output = widgets.Output()
     with output:
@@ -564,19 +636,61 @@ def wiggle_tab():
     return box
 
 
+def tomo_tab():
+    
+    def format_tomo_plot(figure,subplots):
+        subplots[0].set_title('YZ')
+        subplots[1].set_title('XZ')
+        subplots[2].set_title('XY')
+
+        for subplot in subplots.reshape(-1):
+            subplot.set_aspect('equal')
+            subplot.set_xticks([])
+            subplot.set_yticks([])
+        figure.canvas.header_visible = False 
+        figure.tight_layout()
+        
+    def run_tomo(dummy,args=()):
+        filename,algo_dropdown,iter_slider,gpus_field = args
+        data = os.path.join(output_folder, wiggled_sinogram) 
+
+        anglesFile = global_dict["ibira_data_path"] + global_dict["folders_list"] + f'_angles.npy'
+
+        recon3D = tomography(algo_dropdown.value,data,anglesFile,iter_slider,ast.as_literal(gpus_field))
+        
+        np.save(os.path.join(output_folder, {filename}),recon3D)
+
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots(1,3)
+        subplot[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[2].imshow(np.random.random((4,4)),cmap='gray')
+        format_tomo_plot(figure,subplot)
+        plt.show()
+    
+    reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
+    reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=widgets.Layout(align_items='flex-start',width='90%'))
+    iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True)
+    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=widgets.Layout(align_items='flex-start',width='90%'))
+    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=widgets.Layout(align_items='flex-start',width='90%'))
+    tomo_sliceX      = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True)
+    tomo_sliceY      = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True)
+    tomo_sliceZ      = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True)
+
+    algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:')
+
+    start_tomo = Button(description="Start tomo",icon='play')
+    save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
+
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,gpus_field.widget,start_tomo.widget,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
+    box = widgets.HBox([controls,output])
+    
+    
+    return box 
 
 
-
-
-
-
-
-
-
-
-
-
-def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab()):
+def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
     
     children_dict = {
     "Select Folders" : tab1,
@@ -584,13 +698,13 @@ def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_
     "Phase Unwrap"   : tab3,
     "Convex Hull"    : tab4,
     "Wiggle"         : tab5,
-    "Tomography"     : widgets.Text(description="Tomography")}
+    "Tomography"     : tab6}
     
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
     load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
-    run_ptycho_button = Button(description="Run Ptycho",width='50%', height='50px',icon='play')
+    run_tomo_from_dict = Button(description="Run Ptycho",width='50%', height='50px',icon='play')
     save_dict_button  = Button(description="Save Dictionary",width='50%', height='50px',icon='fa-floppy-o')
-    box = widgets.HBox([load_json_button.widget,run_ptycho_button.widget,save_dict_button.widget])
+    box = widgets.HBox([load_json_button.widget,save_dict_button.widget,run_tomo_from_dict.widget])
     display(box)
     
     tab = widgets.Tab()
