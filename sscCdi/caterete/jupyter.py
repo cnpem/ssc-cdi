@@ -12,6 +12,9 @@ from .fresnel import create_propagation_video
 from .functions import masks_application
 from .misc import miqueles_colormap
 
+madalda_ip = "10.30.4.10" # Mafalda IP
+mafalda_port = 22
+
 def write_to_file(python_script_path,jsonFile_path,output_path="",slurmFile = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
     string = f"""#!/bin/bash
@@ -85,8 +88,8 @@ def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path
 
     
 def connect_mafalda():
-    host = "10.30.4.10" # Mafalda IP
-    port = 22
+    host = madalda_ip #"10.30.4.10" # Mafalda IP
+    port = mafalda_port #22
     username = input("Username:")
     print("Password:")
     ssh = paramiko.SSHClient()

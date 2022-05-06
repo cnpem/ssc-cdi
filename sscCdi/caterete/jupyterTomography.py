@@ -6,13 +6,13 @@ import matplotlib.pyplot as plt
 from functools import partial
 import os
 
-from sscCdi import unwrap_in_parallel, misc
+from sscCdi import unwrap_in_parallel, misc, call_cmd_terminal, monitor_job_execution, call_and_read_terminal
 from sscRadon import radon
 
 sinogram = np.random.random((2,2,2))
 
-global_dict = {"ibira_data_path": "path/to/ibira/difpads",
-               "folders_list": ["folder1","folder2"],
+global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/",
+               "folders_list": ["SS61"],
                "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
                "top_crop": 0,
                "bottom_crop":0,
@@ -34,11 +34,12 @@ global_dict = {"ibira_data_path": "path/to/ibira/difpads",
                "tomo_regularization_param": 0.001, # arbitrary value
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-               "tomo_n_of_gpus": [0,1,2,3],
+               "tomo_n_of_gpus": [0],
                "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
+               "run_all_tomo_steps":False
 }
 
-output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]  #os.path.join(global_dict["ibira_data_path"], 'proc','recons',global_dict["folders_list"][0]) # changes with control
+output_folder = global_dict["sinogram_path"].rsplit('/',1)[0] 
 
 ############################################ PROCESSING FUNCTIONS ###########################################################################
 
@@ -117,6 +118,15 @@ def sort_frames_by_angle(ibira_path,foldernames):
     rois = rois[rois[:,1].argsort(axis=0)]
     return rois 
 
+def reorder_slices_low_to_high_angle(object, rois):
+    object_temporary = np.zeros_like(object)
+
+    for k in range(object.shape[0]): # reorder slices from lowest to highest angle
+            print(f'New index: {k}. Old index: {int(rois[k,0])}')
+            object_temporary[k,:,:] = object[int(rois[k,0]),:,:] 
+
+    return object_temporary
+
 def regularization(sino, L):
     a = 1
     R = sino.shape[1]
@@ -135,47 +145,48 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
-from sscOldRaft import *
-def tomography(algorithm,data,anglesFile,iterations,GPUs):
-
-    if algorithm == "TEM" or algorithm == "EM":
-        data = np.exp(-data)
-    elif algorithm == "ART":
-        flat = np.ones([1,data.shape[-2],data.shape[-2]],dtype=np.uint16)
-        dark = np.zeros(flat.shape[1:],dtype=np.uint16)
-        angles = np.load(anglesFile)
-        centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
-
-    if algorithm != "EEM": # for these
-        rays, slices = data.shape[-1], data.shape[-2]
-        reconstruction3D = np.zeros((rays,slices,rays))
-        for i in range(slices):
-            print(f'Reconstructing slice {i}')
-            sinogram = data[:,i,:]
-            if algorithm == "ART":
-                reconstruction3D[:,i,:]= MaskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
-            elif algorithm == "FBP": 
-                reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
-            elif algorithm == "RegBackprojection":
-                reconstruction3D[:,i,:]= Backprojection( sino=sinogram,device=GPUs)
-            elif algorithm == "EM":
-                reconstruction3D[:,i,:]= EM(sinogram, flat, iter=iterations, pad=2, device=GPUs, csino=0)
-            elif algorithm == "SIRT":
-                reconstruction3D[:,i,:]= SIRT_FST(sinogram, iter=iterations, zpad=2, step=1.0, csino=0, device=GPUs, art_alpha=0.2, reg_mu=0.2, param_alpha=0, supp_reg=0.2, img=None)
-    elif algorithm == "EEM": #data é o que sai do wiggle! 
-        data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
-        nangles = data.shape[1]
-        recsize = data.shape[2]
-        iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': nangles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
-        reconstruction3D = parallel.emfs( data, dic )
-    else:
-        import sys
-        sys.exit('Select a proper reconstruction method')
-
-    return reconstruction3D
-    
 ############################################ INTERFACE / GUI ###########################################################################
+
+def write_to_file(tomo_script_path,jsonFile_path,input_tuple,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+    # Create slurm file
+    string = f"""#!/bin/bash
+
+#SBATCH -J {jobName}          # Select slurm job name
+#SBATCH -p {queue}            # Fila (partition) a ser utilizada
+#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
+#SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
+#SBATCH -o ./slurm.out        # Select output path of slurm file
+
+source /etc/profile.d/modules.sh # need this to load the correct python version from modules
+
+module load python3/3.9.2
+module load cuda/11.2
+module load hdf5/1.12.0_parallel
+
+python3 {tomo_script_path} {jsonFile_path} > {os.path.join(output_path,'output.log')} 2> {os.path.join(output_path,'error.log')}
+"""
+    
+    with open(slurmFile,'w') as the_file:
+        the_file.write(string)
+    
+    return slurmFile
+
+def call_cmd_terminal(filename,mafalda,remove=False):
+    cmd = f'sbatch {filename}'
+    print(cmd)
+    terminal_output = call_and_read_terminal(cmd,mafalda).decode("utf-8") 
+    print(terminal_output)
+    given_jobID = terminal_output.rsplit("\n",1)[0].rsplit(" ",1)[1]
+    if remove: # Remove file after call
+        cmd = f'rm {filename}'
+        subprocess.call(cmd, shell=True)
+        
+    return given_jobID
+
+def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32,run_all_steps=False):
+    slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
+    given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
+    monitor_job_execution(given_jobID,mafalda)
 
 class VideoControl:
     
@@ -593,7 +604,7 @@ def wiggle_tab():
         update_imshow(sinogram,figure,subplot,frame_number,axis=axis)
         format_wiggle_plot(figure2,subplot2)
 
-        
+    global wiggled_sinogram
     def start_wiggle(dummy,args=()):
         sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider = args
         
@@ -651,14 +662,23 @@ def tomo_tab():
         figure.tight_layout()
         
     def run_tomo(dummy,args=()):
-        filename,algo_dropdown,iter_slider,gpus_field = args
-        data = os.path.join(output_folder, wiggled_sinogram) 
+        algo_dropdown,iter_slider,gpus_field,filename_field, sinogram_selection,cpus_field,jobname_field,queue_field= args
 
-        anglesFile = global_dict["ibira_data_path"] + global_dict["folders_list"] + f'_angles.npy'
-
-        recon3D = tomography(algo_dropdown.value,data,anglesFile,iter_slider,ast.as_literal(gpus_field))
+        if sinogram_selection.value == "wiggled":
+            which_sinogram = "wiggle_sinogram.npy"
+        elif sinogram_selection.value == "convexHull":
+            which_sinogram = "chull_sinogram.npy"
+            
+        data = np.load(os.path.join(output_folder, which_sinogram) )
+        anglesFile = global_dict["ibira_data_path"] + global_dict["folders_list"][0] + f'_angles.npy'
         
-        np.save(os.path.join(output_folder, {filename}),recon3D)
+        tomo_script_path = '/bertha/ssc-cdi/bin/ssc-ptycho_raft.py'
+        slurm_filepath = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm'
+        output_path = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'
+        
+        input_tuple = algo_dropdown.value,data,anglesFile,iter_slider.widget.value,gpus_field.widget.value,output_folder,filename_field.widget.value
+        run_job_from_jupyter(mafalda,tomo_script_path,global_dict,  output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_field.widget.value,cpus=cpus_field.widget.value,run_all_steps=False)
+                            (mafalda,tomo_script_path,jsonFile_path,output_path=""         ,slurmFile = 'ptychoJob2.srm',jobName='jobName',                 queue='cat-proc',              gpus=1,                      cpus=32,  run_all_steps=False)
 
     output = widgets.Output()
     with output:
@@ -669,28 +689,43 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
         plt.show()
     
+    
+    field_layout    = widgets.Layout(align_items='flex-start',width='90%')
+    sinogram_selection = widgets.RadioButtons(options=['wiggled', 'convexHull'], value='wiggled', layout={'width': 'max-content'},description='Sinogram to import:',disabled=False)
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
-    reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=widgets.Layout(align_items='flex-start',width='90%'))
+    reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=field_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True)
-    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=widgets.Layout(align_items='flex-start',width='90%'))
-    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=widgets.Layout(align_items='flex-start',width='90%'))
-    tomo_sliceX      = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True)
-    tomo_sliceY      = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True)
-    tomo_sliceZ      = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True)
+    cpus_field      = Input(global_dict,"wiggle_cpus",description = "# of CPUs",layout=field_layout)
+    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=field_layout)
+    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=field_layout)
+    jobname_field   = Input({"dummy_str":'myJobName'},"dummy_str",description = "Slurm Job Name",layout=field_layout)
+    filename_field   = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=field_layout)
+    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=field_layout)
+    tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True)
+    tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True)
+    tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True)
 
     algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:')
 
     start_tomo = Button(description="Start tomo",icon='play')
+    run_tomo_from_dict = Button(description="Run Complete Tomography from JSON",width='50%', height='50px',icon='play')
+    start_box = widgets.VBox([start_tomo.widget,run_tomo_from_dict.widget])
+    
+    args = algo_dropdown,iter_slider,gpus_field,filename_field,sinogram_selection,cpus_field,jobname_field,queue_field
+    start_tomo.trigger(partial(run_tomo,args=args))
     save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
 
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,gpus_field.widget,start_tomo.widget,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
+    slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
+    controls = widgets.VBox([sinogram_selection,algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,start_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
     box = widgets.HBox([controls,output])
-    
     
     return box 
 
 
-def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
+def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
+    
+    global mafalda
+    mafalda = mafalda_session
     
     children_dict = {
     "Select Folders" : tab1,
@@ -702,9 +737,8 @@ def deploy_tabs(tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_
     
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
     load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
-    run_tomo_from_dict = Button(description="Run Ptycho",width='50%', height='50px',icon='play')
-    save_dict_button  = Button(description="Save Dictionary",width='50%', height='50px',icon='fa-floppy-o')
-    box = widgets.HBox([load_json_button.widget,save_dict_button.widget,run_tomo_from_dict.widget])
+    save_dict_button  = Button(description="Save JSON",width='50%', height='50px',icon='fa-floppy-o')
+    box = widgets.HBox([load_json_button.widget,save_dict_button.widget])
     display(box)
     
     tab = widgets.Tab()

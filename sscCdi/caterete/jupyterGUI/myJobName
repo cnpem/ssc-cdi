@@ -1,0 +1,15 @@
+#!/bin/bash
+
+#SBATCH -J cat-proc          # Select slurm job name
+#SBATCH -p [0]            # Fila (partition) a ser utilizada
+#SBATCH --gres=gpu:32     # Number of GPUs to use
+#SBATCH --ntasks=32       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
+#SBATCH -o ./slurm.out        # Select output path of slurm file
+
+source /etc/profile.d/modules.sh # need this to load the correct python version from modules
+
+module load python3/3.9.2
+module load cuda/11.2
+module load hdf5/1.12.0_parallel
+
+python3 /bertha/ssc-cdi/bin/ssc-ptycho_raft.py {'ibira_data_path': '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/', 'folders_list': ['SS61'], 'sinogram_path': '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy', 'top_crop': 0, 'bottom_crop': 1, 'left_crop': 0, 'right_crop': 1, 'bad_frames_list': [], 'unwrap_iterations': 0, 'unwrap_non_negativity': False, 'unwrap_gradient_removal': False, 'bad_frames_list2': [], 'chull_invert': False, 'chull_tolerance': 1e-05, 'chull_opening': 10, 'chull_erosion': 10, 'chull_param': 10, 'wiggle_reference_frame': 0, 'wiggle_cpus': 32, 'tomo_regularization': True, 'tomo_regularization_param': 0.001, 'tomo_iterations': 25, 'tomo_algorithm': 'EEM', 'tomo_n_of_gpus': [0], 'tomo_threshold': 0.0, 'run_all_tomo_steps': False} > /ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm/output.log 2> /ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm/error.log
