@@ -12,7 +12,6 @@ from sscRaft import parallel
 from sscOldRaft import *
 import time
 import sscCdi
-from sscCdi.jupyterTomography import sort_frames_by_angle, regularization
 from sscPtycho import Show, RemovePhaseGrad
 from skimage.restoration import unwrap_phase
 
@@ -77,7 +76,9 @@ if input_dictionary["run_all_tomo_steps"] == False:
     
     print(f'Starting {algorithm} tomography...')
     recon3D = np.ones((2,2,2))
+    
     time.sleep(5)
+
     # recon3D = jupyterTomography.tomography(algorithm,data,anglesFile,iterations,GPUs)
     print('\t Finished! \n \t Saving 3D data...')
     np.save(os.path.join(output_folder, {filename}),recon3D)
@@ -170,7 +171,7 @@ else:
                 plt.clf()
                 plt.close()
 
-        rois =  jupyterTomography.sort_frames_by_angle(ibira_path,foldernames)
+        rois =  sscCdi.jupyterTomography.sort_frames_by_angle(ibira_path,foldernames)
 
         np.save(sinogram_folder + angles_filename,rois)
         print('\tSorting done')
@@ -365,8 +366,8 @@ else:
             print('\tBegin Regularization')
             #regularized data
             for k in range(phase.shape[1]):
-                phase[:,k,:] = jupyterTomography.regularization( phase[:,k,:], regularization_parameter)
-                absol[:,k,:] = jupyterTomography.regularization( absol[:,k,:], regularization_parameter)
+                phase[:,k,:] = sscCdi.jupyterTomography.regularization( phase[:,k,:], regularization_parameter)
+                absol[:,k,:] = sscCdi.jupyterTomography.regularization( absol[:,k,:], regularization_parameter)
 
             print('\tRegularization Done')
 
