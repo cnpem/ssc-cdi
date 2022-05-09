@@ -151,7 +151,7 @@ def regularization(sino, L):
 
 ############################################ INTERFACE / GUI ###########################################################################
 
-def write_to_file(tomo_script_path,jsonFile_path,input_tuple,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
     string = f"""#!/bin/bash
 
@@ -188,7 +188,9 @@ def call_cmd_terminal(filename,mafalda,remove=False):
     return given_jobID
 
 def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32,run_all_steps=False):
+    print(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
+    print('slurmfile',slurm_file)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
 
@@ -680,8 +682,10 @@ def tomo_tab():
         slurm_filepath = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm'
         output_path = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'
         
+        n_gpus = len(ast.literal_eval(gpus_field.widget.value))
+        print('GPUS',n_gpus)
         input_tuple = algo_dropdown.value,data,anglesFile,iter_slider.widget.value,gpus_field.widget.value,output_folder,filename_field.widget.value
-        run_job_from_jupyter(mafalda,tomo_script_path,global_dict,  output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_field.widget.value,cpus=cpus_field.widget.value,run_all_steps=False)
+        run_job_from_jupyter(mafalda,tomo_script_path,global_dict,  output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=False)
 
     output = widgets.Output()
     with output:
@@ -768,11 +772,14 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
         for key in template_dict:
             dictionary[key] = template_dict[key]
+            if key == "tomo_n_of_gpus":
+                dictionary["tomo_n_of_gpus"] = len(template_dict[key])
     
     
     import json
     def save_on_click(dummy,jsonFile="",dictionary={}):
         with open(jsonFile, 'w') as file:
+            dictionary["tomo_n_of_gpus"] = len(dictionary["tomo_n_of_gpus"])
             json.dump(dictionary, file)
         
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')

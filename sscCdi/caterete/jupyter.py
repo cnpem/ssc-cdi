@@ -48,8 +48,8 @@ def call_and_read_terminal(cmd,mafalda):
     else:
         stdin, stdout, stderr = mafalda.exec_command(cmd)
     terminal_output = stdout.read() 
-    # print('Output: ',terminal_output)
-    # print('Error:  ',stderr.read())
+    print('Output: ',terminal_output)
+    print('Error:  ',stderr.read())
     return terminal_output
 
 def call_cmd_terminal(filename,mafalda,remove=False):
@@ -80,8 +80,6 @@ def monitor_job_execution(given_jobID,mafalda):
     return print(f"\t \t Job {given_jobID} done!")
 
 def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
-    # python_script_path = 'testpy.py'
-    # jsonFile_path = ''
     slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
