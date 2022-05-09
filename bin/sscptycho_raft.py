@@ -1,19 +1,21 @@
-import numpy as np
+
+
 from sscRadon import radon
+
 from ssc_remote_vis import remote_visualization as rv
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
+import numpy as np
+import os
 from sscRaft import parallel
 from sscOldRaft import *
 import time
 import sscCdi
 from sscCdi.jupyterTomography import sort_frames_by_angle, regularization
 from sscPtycho import Show, RemovePhaseGrad
-import os
 from skimage.restoration import unwrap_phase
-import sys
-import time
+
 
 def create_directory_if_doesnt_exist(*args):
     for arg in args:
@@ -73,7 +75,7 @@ if input_dictionary["run_all_tomo_steps"] == False:
     output_folder = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'#input_dictionary["run_all_tomo_steps"]
     filename      = 'reconstruction3D.npy'#input_dictionary["run_all_tomo_steps"]
     
-    print(f'Starting {algo_dropdown.value} tomography...')
+    print(f'Starting {algorithm} tomography...')
     recon3D = np.ones((2,2,2))
     time.sleep(5)
     # recon3D = jupyterTomography.tomography(algorithm,data,anglesFile,iterations,GPUs)
