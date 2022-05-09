@@ -13,6 +13,7 @@ from sscPtycho import Show, RemovePhaseGrad
 import os
 from skimage.restoration import unwrap_phase
 import sys
+import time
 
 def create_directory_if_doesnt_exist(*args):
     for arg in args:
@@ -63,7 +64,7 @@ def tomography(algorithm,data,anglesFile,iterations,GPUs):
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
 
-if = input_dictionary["run_all_tomo_steps"] == False:
+if input_dictionary["run_all_tomo_steps"] == False:
     
     algorithm     = input_dictionary["tomo_algorithm"]
     anglesFile    = input_dictionary["run_all_tomo_steps"]
@@ -74,6 +75,7 @@ if = input_dictionary["run_all_tomo_steps"] == False:
     
     print(f'Starting {algo_dropdown.value} tomography...')
     recon3D = np.ones((2,2,2))
+    time.sleep(5)
     # recon3D = jupyterTomography.tomography(algorithm,data,anglesFile,iterations,GPUs)
     print('\t Finished! \n \t Saving 3D data...')
     np.save(os.path.join(output_folder, {filename}),recon3D)
