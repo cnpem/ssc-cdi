@@ -678,7 +678,7 @@ def tomo_tab():
         data = np.load(os.path.join(output_folder, which_sinogram) )
         anglesFile = global_dict["ibira_data_path"] + global_dict["folders_list"][0] + f'_angles.npy'
         
-        tomo_script_path = '/bertha/ssc-cdi/bin/ssc-ptycho_raft.py'
+        tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py'
         slurm_filepath = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm'
         output_path = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'
         
