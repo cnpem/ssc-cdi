@@ -738,11 +738,56 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     "Wiggle"         : tab5,
     "Tomography"     : tab6}
     
+    def load_json(dummy,dictionary={}):
+        template_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/",
+               "folders_list": ["SS61"],
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
+               "top_crop": 0,
+               "bottom_crop":0,
+               "left_crop":0,
+               "right_crop":0,
+               "bad_frames_list": [],
+               "unwrap_iterations": 0,
+               "unwrap_non_negativity": False,
+               "unwrap_gradient_removal": False,
+               "bad_frames_list2": [],
+               "chull_invert": False,
+               "chull_tolerance": 1e-5,
+               "chull_opening": 10,
+               "chull_erosion": 10,
+               "chull_param": 10,               
+               "wiggle_reference_frame": 0,
+               "wiggle_cpus": 32,
+               "tomo_regularization": True,
+               "tomo_regularization_param": 0.001, # arbitrary value
+               "tomo_iterations": 25,
+               "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
+               "tomo_n_of_gpus": [0],
+               "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
+               "run_all_tomo_steps":False}
+    
+        for key in template_dict:
+            dictionary[key] = template_dict[key]
+    
+    
+    import json
+    def save_on_click(dummy,jsonFile="",dictionary={}):
+        with open(jsonFile, 'w') as file:
+            json.dump(dictionary, file)
+        
     button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
+    
     load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
+    load_json_button.trigger(partial(load_json,dictionary=global_dict))
+    
+    json_filepath = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/user_input_tomo.json" #INPUT
+    
     save_dict_button  = Button(description="Save JSON",width='50%', height='50px',icon='fa-floppy-o')
+    save_dict_button.trigger(partial(save_on_click,jsonFile=json_filepath,dictionary=global_dict))
+    
     box = widgets.HBox([load_json_button.widget,save_dict_button.widget])
     display(box)
+    
     
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
