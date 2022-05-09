@@ -6,8 +6,12 @@ import matplotlib.pyplot as plt
 from functools import partial
 import os
 
-from sscCdi import unwrap_in_parallel, misc, call_cmd_terminal, monitor_job_execution, call_and_read_terminal
 from sscRadon import radon
+
+
+from .jupyter import call_cmd_terminal, monitor_job_execution, call_and_read_terminal
+from .unwrap import unwrap_in_parallel
+from .misc import list_files_in_folder
 
 sinogram = np.random.random((2,2,2))
 
@@ -678,7 +682,6 @@ def tomo_tab():
         
         input_tuple = algo_dropdown.value,data,anglesFile,iter_slider.widget.value,gpus_field.widget.value,output_folder,filename_field.widget.value
         run_job_from_jupyter(mafalda,tomo_script_path,global_dict,  output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_field.widget.value,cpus=cpus_field.widget.value,run_all_steps=False)
-                            (mafalda,tomo_script_path,jsonFile_path,output_path=""         ,slurmFile = 'ptychoJob2.srm',jobName='jobName',                 queue='cat-proc',              gpus=1,                      cpus=32,  run_all_steps=False)
 
     output = widgets.Output()
     with output:
@@ -746,3 +749,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
 
     return tab, global_dict  
+
+if __name__ == "__main__":
+
+    pass
