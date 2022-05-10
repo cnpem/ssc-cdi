@@ -21,7 +21,7 @@ def create_directory_if_doesnt_exist(*args):
         if os.path.isdir(arg) == False:
             os.mkdir(arg)
 
-def tomography(algorithm,data,anglesFile,iterations,GPUs):
+def tomography(algorithm,data,angles_filename,iterations,GPUs):
 
     angles = np.load(angles_filename) # sorted angles?
 
@@ -64,30 +64,27 @@ def tomography(algorithm,data,anglesFile,iterations,GPUs):
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
-
 if input_dictionary["run_all_tomo_steps"] == False:
     
     algorithm     = input_dictionary["tomo_algorithm"]
-    anglesFile    = input_dictionary["run_all_tomo_steps"]
     iterations    = input_dictionary["tomo_iterations"]
     GPUs          = input_dictionary["tomo_n_of_gpus"]
-    output_folder = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'#input_dictionary["run_all_tomo_steps"]
-    filename      = 'reconstruction3D.npy'#input_dictionary["run_all_tomo_steps"]
+    output_folder = input_dictionary["jupyter_folder"]
     
-    print(f'Starting {algorithm} tomography...')
-    recon3D = np.ones((2,2,2))
-    
-    time.sleep(5)
+    which_sinogram = input_dictionary["which_sinogram"] 
 
-    # recon3D = jupyterTomography.tomography(algorithm,data,anglesFile,iterations,GPUs)
+    data = np.load(os.path.join(output_folder, which_sinogram) )
+    anglesFile = input_dictionary["ibira_data_path"] + input_dictionary["folders_list"][0] + f'_angles.npy'
+
+    print(f'Starting {algorithm} tomography...')
+    recon3D = tomography(algorithm,data,anglesFile,iterations,GPUs)
     print('\t Finished! \n \t Saving 3D data...')
-    np.save(os.path.join(output_folder, {filename}),recon3D)
+    np.save(os.path.join(output_folder, 'reconstruction3D.npy' ),recon3D)
     print('/t Saved!')
+
 else:
 
-
     """                  INPUTS                 """
-
     processing_steps = { # 1 -> True ; 0 -> False
     "Sort":1 ,
     "Crop":1 ,
