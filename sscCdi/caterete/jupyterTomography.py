@@ -18,6 +18,7 @@ sinogram = np.random.random((2,2,2))
 global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/",
                "folders_list": ["SS61"],
                "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
+               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter-dev/user_input_tomo.json"  ,
                "top_crop": 0,
                "bottom_crop":0,
                "left_crop":0,
@@ -43,7 +44,8 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-d
                "run_all_tomo_steps":False
 }
 
-output_folder = global_dict["sinogram_path"].rsplit('/',1)[0] 
+output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
+print('Output folder: ', output_folder) 
 
 ############################################ PROCESSING FUNCTIONS ###########################################################################
 
@@ -177,9 +179,7 @@ python3 {tomo_script_path} {jsonFile_path} > {os.path.join(output_path,'output.l
 
 def call_cmd_terminal(filename,mafalda,remove=False):
     cmd = f'sbatch {filename}'
-    print(cmd)
     terminal_output = call_and_read_terminal(cmd,mafalda).decode("utf-8") 
-    print(terminal_output)
     given_jobID = terminal_output.rsplit("\n",1)[0].rsplit(" ",1)[1]
     if remove: # Remove file after call
         cmd = f'rm {filename}'
@@ -188,9 +188,7 @@ def call_cmd_terminal(filename,mafalda,remove=False):
     return given_jobID
 
 def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32,run_all_steps=False):
-    print(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
-    print('slurmfile',slurm_file)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
 
@@ -674,18 +672,19 @@ def tomo_tab():
             which_sinogram = "wiggle_sinogram.npy"
         elif sinogram_selection.value == "convexHull":
             which_sinogram = "chull_sinogram.npy"
-            
-        data = np.load(os.path.join(output_folder, which_sinogram) )
-        anglesFile = global_dict["ibira_data_path"] + global_dict["folders_list"][0] + f'_angles.npy'
+
+        run_all_steps = global_dict["run_all_tomo_steps"]
+        global_dict["which_sinogram"] = which_sinogram
         
-        tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py'
-        slurm_filepath = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/tomo_job.srm'
-        output_path = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/'
+        tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
+        output_path = global_dict["jupyter_folder"] 
         
+        slurm_filepath = os.path.join(output_path,'tomo_job.srm')
+
+        jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
+
         n_gpus = len(ast.literal_eval(gpus_field.widget.value))
-        print('GPUS',n_gpus)
-        input_tuple = algo_dropdown.value,data,anglesFile,iter_slider.widget.value,gpus_field.widget.value,output_folder,filename_field.widget.value
-        run_job_from_jupyter(mafalda,tomo_script_path,global_dict,  output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=False)
+        run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=run_all_steps)
 
     output = widgets.Output()
     with output:
@@ -706,7 +705,7 @@ def tomo_tab():
     gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=field_layout)
     queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=field_layout)
     jobname_field   = Input({"dummy_str":'myJobName'},"dummy_str",description = "Slurm Job Name",layout=field_layout)
-    filename_field   = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=field_layout)
+    filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=field_layout)
     tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=field_layout)
     tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True)
     tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True)
@@ -714,14 +713,14 @@ def tomo_tab():
 
     algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:')
 
-    start_tomo = Button(description="Start tomo",icon='play')
-    run_tomo_from_dict = Button(description="Run Complete Tomography from JSON",width='50%', height='50px',icon='play')
-    start_box = widgets.VBox([start_tomo.widget,run_tomo_from_dict.widget])
-    
+    start_tomo = Button(description="Start",icon='play')
     args = algo_dropdown,iter_slider,gpus_field,filename_field,sinogram_selection,cpus_field,jobname_field,queue_field
     start_tomo.trigger(partial(run_tomo,args=args))
     save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
+   
+    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout={'width': 'max-content'},description='Recon type:',disabled=False)
 
+    start_box = widgets.HBox([start_tomo.widget,tomo_selection.widget])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
     controls = widgets.VBox([sinogram_selection,algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,start_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
     box = widgets.HBox([controls,output])
@@ -787,7 +786,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
-    json_filepath = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/user_input_tomo.json" #INPUT
+    json_filepath = global_dict["jupyter_folder"] #INPUT
     
     save_dict_button  = Button(description="Save JSON",width='50%', height='50px',icon='fa-floppy-o')
     save_dict_button.trigger(partial(save_on_click,jsonFile=json_filepath,dictionary=global_dict))
