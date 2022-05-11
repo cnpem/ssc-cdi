@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
 import os
+import json
+from tqdm import tqdm
 
 from sscRadon import radon
 
@@ -15,10 +17,10 @@ from .misc import list_files_in_folder
 
 sinogram = np.random.random((2,2,2))
 
-global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/",
-               "folders_list": ["SS61"],
-               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
-               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter-dev/user_input_tomo.json"  ,
+global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/",
+               "folders_list": ["microagg_P2_01"],
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/microagg_P2_01/object_microagg_P2_01.npy",
+               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter-dev/"  , # FIXED PATH FOR BEAMLINE
                "top_crop": 0,
                "bottom_crop":0,
                "left_crop":0,
@@ -86,7 +88,7 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
     do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
     frames = [f for f in range(sinogram.shape[0])]
     with ProcessPoolExecutor() as executor:
-        results = executor.map(do_chull_partial,frames)
+        results = list(tqdm(executor.map(do_chull_partial,frames),total=sinogram.shape[0]))
         for counter, result in enumerate(results):
             new,mask,mask2,mask3,chull,img_masked = result
             chull_sinogram[counter,:,:] = img_masked
@@ -99,10 +101,10 @@ def sort_frames_by_angle(ibira_path,foldernames):
 
         print(f"Sorting data for {folder} folder")
 
-        filepaths, filenames = sscCdi.misc.list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
-        # filepaths, filenames = sscCdi.misc.list_files_in_folder(os.path.join(ibira_path, folder), look_for_extension="1_001.txt") # use for old file standard
+        filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
+        # filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder), look_for_extension="1_001.txt") # use for old file standard
 
-        print('Files:',filenames)
+        print('\t # of files in folder:',len(filenames))
 
         for filepath in filepaths:
             roisname = filepath  
@@ -128,7 +130,7 @@ def reorder_slices_low_to_high_angle(object, rois):
     object_temporary = np.zeros_like(object)
 
     for k in range(object.shape[0]): # reorder slices from lowest to highest angle
-            print(f'New index: {k}. Old index: {int(rois[k,0])}')
+            # print(f'New index: {k}. Old index: {int(rois[k,0])}')
             object_temporary[k,:,:] = object[int(rois[k,0]),:,:] 
 
     return object_temporary
@@ -322,25 +324,82 @@ def debounce(wait):
 def folders_tab():
 
     output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots()
+        subplot.imshow(np.random.random((4,4)),cmap='gray')
+        figure.canvas.header_visible = False 
+        plt.show()
+
+    def update_fields(ibira_data_path,folders_list,sinogram_path):
+
+        global_dict["ibira_data_path"] = ibira_data_path
+        global_dict["folders_list"]    = folders_list
+        global_dict["sinogram_path"]   = sinogram_path
     
-    def sort_frames(dummy):
-        with output:
-            print('Still need to implement sorting function!')
-    
-    ibira_data_path = Input(global_dict,"ibira_data_path")
-    folders_list    = Input(global_dict,"folders_list")
-    sinogram_path   = Input(global_dict,"sinogram_path")
-    
+    def sort_frames(dummy,ibira_path='',foldernames=[''],sinogram_path='',args=()):
+        global object
+
+        save_path = sinogram_path.rsplit('/',1)[0]
+        print(f'Saving sorted frames to: {save_path}')
+
+        selection_slider,play_control = args
+        foldernames = ast.literal_eval(foldernames)
+
+        complex_object_file  = os.path.join(global_dict["sinogram_path"].rsplit('/',1)[0], 'object_' + foldernames[0] + '.npy') #hard coded path
+        
+        print('Loading sinogram...')
+        object = np.load(complex_object_file)
+        print('\t Loaded!')
+
+        angles_filename = foldernames[0] + '_ordered_angles.npy'
+        rois = sort_frames_by_angle(ibira_path,foldernames)
+
+        object_filename = foldernames[0]  + '_ordered_object.npy'
+
+        object = reorder_slices_low_to_high_angle(object, rois)
+
+        print(f'Extracting sinogram {data_selection.value}...')
+        if data_selection.value == 'Magnitude':
+            object = np.abs(object)
+        elif data_selection.value == "Phase":
+            object = np.angle(object)
+        print('\t Extraction done!')
+
+        print('Saving angles file...')
+        np.save(os.path.join(save_path,angles_filename),rois)
+        print('Saving ordered sinogram...')
+        np.save(os.path.join(save_path,object_filename), object) 
+        print('\tSaved! Sinogram shape: ',object.shape)
+        selection_slider, play_control = args
+        selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})  
+
+
+    field_layout = widgets.Layout(width='100%')
+    ibira_data_path = Input(global_dict,"ibira_data_path",layout=field_layout)
+    folders_list    = Input(global_dict,"folders_list",layout=field_layout)
+    sinogram_path   = Input(global_dict,"sinogram_path",layout=field_layout)
+    widgets.interactive_output(update_fields, {'ibira_data_path':ibira_data_path.widget,'folders_list':folders_list.widget,'sinogram_path':sinogram_path.widget})
+
+    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
+    play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
+    play_box = widgets.HBox([selection_slider.widget,play_control.widget])
+
     sort_button = Button(description="Sort frames",icon="fa-sort-numeric-asc")
-    sort_button.trigger(sort_frames)
-    
-    box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget,sort_button.widget,output])
+    sort_button.trigger(partial(sort_frames,ibira_path=ibira_data_path.widget.value,foldernames=folders_list.widget.value,sinogram_path=sinogram_path.widget.value,args=(selection_slider,play_control)))    
+
+    controls_box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget,sort_button.widget,play_box])
+
+    box = widgets.HBox([output,controls_box])
+
     return box
 
 
 def crop_tab():
 
-    initial_image = np.ones((100,100)) # dummt
+    initial_image = np.ones((100,100)) # dummy
     vertical_max, horizontal_max = initial_image.shape[0]//2, initial_image.shape[1]//2
 
     output = widgets.Output()
@@ -353,18 +412,23 @@ def crop_tab():
     def load_frames(dummy, args = ()):
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, select_slider, play_control = args
-        sinogram = np.load(global_dict["sinogram_path"])
+        print("Loading sinogram")
+        sinogram = np.load( os.path.join(global_dict["sinogram_path"].rsplit('/',1)[0],ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')) 
+        print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         select_slider.widget.max, select_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = select_slider.widget.max
-        vertical_max, horizontal_max = sinogram.shape[1]//2, sinogram.shape[2]//2
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
-        plot = widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': select_slider.widget})
+      
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': select_slider.widget})
+
 
     def save_cropped_sinogram(dummy,args=()):
         top,bottom,left,right = args
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
+        print('Saving cropped frames...')
         np.save(os.path.join(output_folder,'cropped_sinogram.npy'),cropped_sinogram)
+        print('\t Saved!')
 
     top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True)
     bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True)
@@ -391,7 +455,6 @@ def crop_tab():
 def unwrap_tab():
     
     global unwrapped_sinogram
-    unwrapped_sinogram = np.empty_like(sinogram)
     
     output = widgets.Output()
     with output:
@@ -406,35 +469,54 @@ def unwrap_tab():
     
     def phase_unwrap(dummy):
         global unwrapped_sinogram
-        with output: print('Performing phase unwrap...')
+        print('Performing phase unwrap...')
         unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
+        print('\t Done!')
         widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
         
+
+    def format_chull_plot(figure,subplots,frame_number):
+        subplots[0].set_title(f'Frame #{frame_number}')
+        subplots[1].set_title('Unwrapped')
+
+        for subplot in subplots.reshape(-1):
+            subplot.set_xticks([])
+            subplot.set_yticks([])
+        figure.canvas.header_visible = False 
+
     def load_cropped_frames(dummy,args=()):
         global cropped_sinogram
         selection_slider, play_control = args
+        print('Loading cropped sinogram...')
         cropped_sinogram = np.load(os.path.join(output_folder,'cropped_sinogram.npy'))
+        print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(format_chull_plot, {'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap), 'frame_number': selection_slider.widget})    
 
-    def correct_bad_frames(dummy,bad_frames1=[],bad_frames2=[]):
-        bad_frames = bad_frames1 + bad_frames2 # concatenate lists
-        with output: print('Zeroing frames: ', bad_frames)
+    def correct_bad_frames(dummy):
+        print('Zeroing frames: ', bad_frames)
+        global unwrapped_sinogram
+        unwrapped_sinogram = np.empty_like(cropped_sinogram)
         cropped_sinogram[bad_frames,:,:]   = np.zeros((cropped_sinogram.shape[1],cropped_sinogram.shape[2]))
         unwrapped_sinogram[bad_frames,:,:] = np.zeros((cropped_sinogram.shape[1],cropped_sinogram.shape[2]))
-        save_unwrapped_button.trigger(partial(save_sinogram,sinogram_to_save=unwrapped_sinogram,filename='unwrapped_sinogram.npy'))
+        print('\t Done!')
 
     @debounce(0.5) # check changes every 0.5sec
     def update_lists(bad_frames_list1,bad_frames_list2):
-        bad_frames_list1 = ast.literal_eval(bad_frames_list1)
-        bad_frames_list2 = ast.literal_eval(bad_frames_list2)
-        correct_bad_frames_partial = partial(correct_bad_frames,bad_frames1=bad_frames_list1,bad_frames2=bad_frames_list2)
-        correct_bad_frames_button.trigger(correct_bad_frames_partial)
+        bad_frames_listA = ast.literal_eval(bad_frames_list1)
+        bad_frames_listB = ast.literal_eval(bad_frames_list2)
+        global bad_frames
+        bad_frames = bad_frames_listA + bad_frames_listB # concatenate lists
    
-    def save_sinogram(dummy,sinogram_to_save=np.ones((2,2,2)),filename="dummy.npy"):
-        np.save(os.path.join(output_folder,filename),sinogram_to_save)
-        with output: print('Saved sinogram at: ',os.path.join(output_folder,filename))
+    def save_sinogram(dummy):
+        print('Saving unwrapped sinogram...')
+        np.save(os.path.join(output_folder,'unwrapped_sinogram.npy'),unwrapped_sinogram)
+        print('\tSaved sinogram at: ',os.path.join(output_folder,'unwrapped_sinogram.npy'))
+
+    def update_frame_time(play_control,time_per_frame):
+        play_control.widget.interval = time_per_frame
 
     load_cropped_frames_button = Button(description="Load cropped frames",width='50%', height='50px',icon='folder-open-o')
 
@@ -450,14 +532,18 @@ def unwrap_tab():
     
     selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
     play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
-    play_box = widgets.HBox([selection_slider.widget,play_control.widget])
+    frame_time = Input({"dummy_key":300},"dummy_key",description="Time per frame [ms]",layout=widgets.Layout(width='60%'))
+    widgets.interactive_output(update_frame_time, {'play_control':fixed(play_control),'time_per_frame':frame_time.widget})
+    play_box = widgets.HBox([selection_slider.widget,widgets.VBox([play_control.widget,frame_time.widget])])
     
     args = (selection_slider,play_control)
     load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
 
     correct_bad_frames_button = Button(description='Correct Bad Frames',icon='fa-check-square-o')
-    
+    correct_bad_frames_button.trigger(correct_bad_frames)
+
     save_unwrapped_button = Button(description="Save unwrapped frames",icon='fa-floppy-o') 
+    save_unwrapped_button.trigger(save_sinogram)
     
     unwrap_params_box = widgets.VBox([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget])
     controls_box = widgets.VBox([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget])
@@ -498,7 +584,9 @@ def chull_tab():
     
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
+        print('Loading unwrapped sinogram...')
         unwrapped_sinogram = np.load(os.path.join(output_folder,'unwrapped_sinogram.npy'))
+        print('\t Loaded!')
         selection_slider, play_control = args
         selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
@@ -597,9 +685,9 @@ def wiggle_tab():
             file = 'chull_sinogram.npy'
 
         global sinogram
-        with output: print('Loading...: ',file)
+        print('Loading ...: ',file)
         sinogram = np.load(os.path.join(output_folder,file))
-        with output: print('\t Loaded!')
+        print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})    
@@ -612,19 +700,19 @@ def wiggle_tab():
     def start_wiggle(dummy,args=()):
         sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider = args
         
-        with output: print("Starting wiggle...")
+        print("Starting wiggle...")
         wiggled_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, ref_frame_slider.widget.value)
         wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, ref_frame_slider.widget.value)
-        with output: print("\t Wiggle done!")
+        print("\t Wiggle done!")
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
         sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1,0]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
-        with output: print("Saving wiggle sinogram...")
+        print("Saving wiggle sinogram...")
         np.save(os.path.join(output_folder,'wiggle_sinogram.npy'),wiggled_sinogram)
-        with output: print("\t Saved!")
+        print("\t Saved!")
 
     ref_frame_slider = Input(global_dict,"wiggle_reference_frame", description="Reference Frame", bounded=(0,sinogram.shape[0],1),slider=True)
     cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True)
@@ -666,16 +754,13 @@ def tomo_tab():
         figure.tight_layout()
         
     def run_tomo(dummy,args=()):
-        algo_dropdown,iter_slider,gpus_field,filename_field, sinogram_selection,cpus_field,jobname_field,queue_field= args
+        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, tomo_selection = args
 
-        if sinogram_selection.value == "wiggled":
-            which_sinogram = "wiggle_sinogram.npy"
-        elif sinogram_selection.value == "convexHull":
-            which_sinogram = "chull_sinogram.npy"
+        if tomo_selection.value == 'Full Recon':
+            global_dict["run_all_tomo_steps"] = True
+        elif tomo_selection.value == 'Only Tomo': 
+            global_dict["run_all_tomo_steps"] = False
 
-        run_all_steps = global_dict["run_all_tomo_steps"]
-        global_dict["which_sinogram"] = which_sinogram
-        
         tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
         output_path = global_dict["jupyter_folder"] 
         
@@ -684,7 +769,7 @@ def tomo_tab():
         jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
 
         n_gpus = len(ast.literal_eval(gpus_field.widget.value))
-        run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=run_all_steps)
+        run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
 
     output = widgets.Output()
     with output:
@@ -697,7 +782,6 @@ def tomo_tab():
     
     
     field_layout    = widgets.Layout(align_items='flex-start',width='90%')
-    sinogram_selection = widgets.RadioButtons(options=['wiggled', 'convexHull'], value='wiggled', layout={'width': 'max-content'},description='Sinogram to import:',disabled=False)
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=field_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True)
@@ -713,16 +797,24 @@ def tomo_tab():
 
     algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:')
 
+    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout={'width': 'max-content'},description='Recon type:',disabled=False)
+
     start_tomo = Button(description="Start",icon='play')
-    args = algo_dropdown,iter_slider,gpus_field,filename_field,sinogram_selection,cpus_field,jobname_field,queue_field
+    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, tomo_selection
     start_tomo.trigger(partial(run_tomo,args=args))
     save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
    
-    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout={'width': 'max-content'},description='Recon type:',disabled=False)
+    def save_on_click(dummy):
+        json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
+        with open(json_filepath, 'w') as file:
+            json.dump(global_dict, file)
+    save_dict_button  = Button(description="Save JSON",width='90%', height='50px',icon='fa-floppy-o')
+    save_dict_button.trigger(save_on_click)    
+    
 
-    start_box = widgets.HBox([start_tomo.widget,tomo_selection.widget])
+    start_box = widgets.HBox([start_tomo.widget,tomo_selection])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([sinogram_selection,algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,start_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,save_dict_button.widget,start_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
     box = widgets.HBox([controls,output])
     
     return box 
@@ -771,27 +863,17 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
         for key in template_dict:
             dictionary[key] = template_dict[key]
-            if key == "tomo_n_of_gpus":
-                dictionary["tomo_n_of_gpus"] = len(template_dict[key])
     
     
-    import json
-    def save_on_click(dummy,jsonFile="",dictionary={}):
-        with open(jsonFile, 'w') as file:
-            dictionary["tomo_n_of_gpus"] = len(dictionary["tomo_n_of_gpus"])
-            json.dump(dictionary, file)
-        
-    button_layout = widgets.Layout(width='30%', height='100px',max_height='50px')
-    
+
     load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
-    json_filepath = global_dict["jupyter_folder"] #INPUT
     
-    save_dict_button  = Button(description="Save JSON",width='50%', height='50px',icon='fa-floppy-o')
-    save_dict_button.trigger(partial(save_on_click,jsonFile=json_filepath,dictionary=global_dict))
-    
-    box = widgets.HBox([load_json_button.widget,save_dict_button.widget])
+    global data_selection
+    data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
+
+    box = widgets.HBox([data_selection,load_json_button.widget])
     display(box)
     
     

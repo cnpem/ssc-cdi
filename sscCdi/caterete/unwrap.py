@@ -6,8 +6,11 @@ import numpy
 from ipywidgets import *
 from skimage.io import imsave
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed, wait
+from functools import partial
 
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed, wait
+import time
+from tqdm import tqdm
 
 def RemoveZernike(img,mask):
     """ Giovanni's function for removing zernikes. Not well understood yet.
@@ -129,13 +132,18 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
 
     n_frames = sinogram.shape[0]
 
-    from functools import partial
+    print('Sinogram shape to unwrap: ', sinogram.shape)
+
     phase_unwrap_partial = partial(phase_unwrap,iterations=iterations,non_negativity=non_negativity,remove_gradient = remove_gradient)
 
-    with ProcessPoolExecutor() as executor:
+    processes = min(os.cpu_count(),32)
+    print(f'Using {processes} parallel processes')
+    with ProcessPoolExecutor(max_workers=processes) as executor:
         unwrapped_sinogram = np.empty_like(sinogram)
-        results = executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)])
+        results = list(tqdm(executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        # results = executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)])
         for counter, result in enumerate(results):
+            print('Populating results matrix...',counter)
             unwrapped_sinogram[counter,:,:] = result
 
     return unwrapped_sinogram
