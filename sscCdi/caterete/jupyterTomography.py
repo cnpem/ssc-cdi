@@ -752,7 +752,17 @@ def tomo_tab():
             subplot.set_yticks([])
         figure.canvas.header_visible = False 
         figure.tight_layout()
-        
+    
+
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots(1,3)
+        subplot[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[2].imshow(np.random.random((4,4)),cmap='gray')
+        format_tomo_plot(figure,subplot)
+        plt.show()
+
     def run_tomo(dummy,args=()):
         algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, tomo_selection = args
 
@@ -771,15 +781,14 @@ def tomo_tab():
         n_gpus = len(ast.literal_eval(gpus_field.widget.value))
         run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
 
-    output = widgets.Output()
-    with output:
-        figure, subplot = plt.subplots(1,3)
-        subplot[0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[2].imshow(np.random.random((4,4)),cmap='gray')
-        format_tomo_plot(figure,subplot)
-        plt.show()
-    
+    def load_recon(dummy):
+        sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]
+        reconstruction = np.load(os.path.join(sinogram_folder, 'reconstruction3D.npy' ))
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
+
+
     
     field_layout    = widgets.Layout(align_items='flex-start',width='90%')
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
@@ -804,6 +813,9 @@ def tomo_tab():
     start_tomo.trigger(partial(run_tomo,args=args))
     save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
    
+    load_recon_button = Button(description="Load recon slices",icon='play')
+    load_recon_button.trigger(load_recon)
+
     def save_on_click(dummy):
         json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
         with open(json_filepath, 'w') as file:
@@ -814,7 +826,7 @@ def tomo_tab():
 
     start_box = widgets.HBox([start_tomo.widget,tomo_selection])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,save_dict_button.widget,start_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,save_dict_button.widget,start_box,load_recon_button.widget,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
     box = widgets.HBox([controls,output])
     
     return box 
