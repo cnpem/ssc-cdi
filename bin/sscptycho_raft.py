@@ -1,19 +1,19 @@
-
-
-from sscRadon import radon
-
-from ssc_remote_vis import remote_visualization as rv
+import json
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Agg')
 import numpy as np
 import os
-from sscRaft import parallel
-from sscOldRaft import *
+import ast
 import time
-import sscCdi
-from sscPtycho import Show, RemovePhaseGrad
 from skimage.restoration import unwrap_phase
+
+
+from ssc_remote_vis import remote_visualization as rv
+
+from sscRaft import parallel
+from sscRadon import radon
+from sscOldRaft import *
+import sscCdi
+from sscPtycho import RemovePhaseGrad
 
 
 def create_directory_if_doesnt_exist(*args):
@@ -63,7 +63,6 @@ def tomography(algorithm,data,angles_filename,iterations,GPUs):
             
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
-
 if input_dictionary["run_all_tomo_steps"] == False:
     
     algorithm     = input_dictionary["tomo_algorithm"]
@@ -71,16 +70,16 @@ if input_dictionary["run_all_tomo_steps"] == False:
     GPUs          = input_dictionary["tomo_n_of_gpus"]
     output_folder = input_dictionary["jupyter_folder"]
     
-    which_sinogram = input_dictionary["which_sinogram"] 
+    sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]
 
-    data = np.load(os.path.join(output_folder, which_sinogram) )
-    anglesFile = input_dictionary["ibira_data_path"] + input_dictionary["folders_list"][0] + f'_angles.npy'
+    data = np.load(os.path.join(sinogram_folder, "wiggle_sinogram.npy" ))
+    anglesFile = os.path.join(sinogram_folder, ast.literal_eval(input_dictionary["folders_list"])[0] + f'_ordered_angles.npy')
 
     print(f'Starting {algorithm} tomography...')
     recon3D = tomography(algorithm,data,anglesFile,iterations,GPUs)
-    print('\t Finished! \n \t Saving 3D data...')
-    np.save(os.path.join(output_folder, 'reconstruction3D.npy' ),recon3D)
-    print('/t Saved!')
+    print('\t Finished! \n \t Saving 3D data to: ', os.path.join(output_folder, 'reconstruction3D.npy' ))
+    np.save(os.path.join(sinogram_folder, 'reconstruction3D.npy' ),recon3D)
+    print('\t\t Saved!')
 
 else:
 
@@ -173,7 +172,7 @@ else:
         np.save(sinogram_folder + angles_filename,rois)
         print('\tSorting done')
 
-        reorder_slices_low_to_high_angle(object, rois)
+        object = sscCdi.jupyterTomography.reorder_slices_low_to_high_angle(object, rois)
         np.save(sinogram_folder + object_filename, object) 
 
     if processing_steps["Crop"]: 
