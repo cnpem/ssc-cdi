@@ -7,13 +7,17 @@ from functools import partial
 import os
 import json
 from tqdm import tqdm
-
+from skimage.io import imsave
 from sscRadon import radon
 
 
 from .jupyter import call_cmd_terminal, monitor_job_execution, call_and_read_terminal
 from .unwrap import unwrap_in_parallel
 from .misc import list_files_in_folder
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
+from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
 
 sinogram = np.random.random((2,2,2))
 
@@ -42,18 +46,34 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "tomo_n_of_gpus": [0],
-               "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
-               "run_all_tomo_steps":False
+               "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
+               "run_all_tomo_steps":False,
+               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
 }
 
 output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
 print('Output folder: ', output_folder) 
 
+# Definition of standard widget layout and styling
+vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
+vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
+hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
+hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
+slider_layout = widgets.Layout(width='90%')
+items_layout = widgets.Layout( width='90%')     # override the default width of the button to 'auto' to let the button grow
+buttons_layout = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
+style = {'description_width': 'initial'}
+box_layout = widgets.Layout(flex_flow='column',align_items='flex-end',border='1px solid black',width='100%')
+sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border='1px solid black',width='100%')
+style = {'description_width': 'initial'}
+
+def get_box_layout(width,flex_flow='column',align_items='center',border='1px solid black'):
+    return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
+
+
 ############################################ PROCESSING FUNCTIONS ###########################################################################
 
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial
-from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
+
 def _operator_T(u):
     d   = 1.0
     uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
@@ -153,7 +173,26 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
-############################################ INTERFACE / GUI ###########################################################################
+
+############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
+
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
+    subplot.clear()
+    if bottom == None or right == None:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
+    else:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
+    figure.canvas.draw_idle()
 
 def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
@@ -196,8 +235,10 @@ def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",s
 
 class VideoControl:
     
-    def __init__ (self,slider,value,minimum,maximum,step,interval,description):
+    def __init__ (self,slider,step,interval,description):
     
+        value, minimum, maximum = slider.widget.value,slider.widget.min,slider.widget.max
+
         self.widget = widgets.Play(value=value,
                             min=minimum,
                             max=maximum,
@@ -206,14 +247,14 @@ class VideoControl:
                             description=description,
                             disabled=False )
 
-        widgets.jslink((self.widget, 'value'), (slider, 'value'))
+        widgets.jslink((self.widget, 'value'), (slider.widget, 'value'))
 
 class Button:
 
-    def __init__(self,description="DESCRIPTION",width="50%",height="50px",icon=""):
+    def __init__(self,description="DESCRIPTION",layout=widgets.Layout(),icon=""):
 
-        self.button_layout = widgets.Layout(width=width, height=height)
-        self.widget = widgets.Button(description=description,layout=self.button_layout,icon=icon)
+        self.button_layout = layout
+        self.widget = widgets.Button(description=description,layout=self.button_layout,icon=icon,style=style)
 
     def trigger(self,func):
         self.widget.on_click(func)
@@ -226,38 +267,34 @@ class Input(object):
         self.key = key
         
         if layout == None:
-            field_layout = widgets.Layout(align_items='flex-start',width='50%')
+            self.items_layout = widgets.Layout()
         else:
-            field_layout = layout
+            self.items_layout = layout
         field_style = {'description_width': 'initial'}
-        
-
-        if description == "":
-            field_description = f'{key}{str(type(self.dictionary[self.key]))}'
-        else:
-            field_description = description
+   
+        field_description = description
 
         if isinstance(self.dictionary[self.key],bool):
-            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
         elif isinstance(self.dictionary[self.key],int):
             if bounded == ():
-                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
             else:
                 if slider:
-                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key])
+                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
                 else:
-                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
         elif isinstance(self.dictionary[self.key],float):
             if bounded == ():
-                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
             else:
-                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
         elif isinstance(self.dictionary[self.key],list):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
         elif isinstance(self.dictionary[self.key],str):
-            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=field_layout, style=field_style)
+            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
         elif isinstance(self.dictionary[self.key],dict):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=field_layout, style=field_style)
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
         
         widgets.interactive_output(self.update_dict_value,{'value':self.widget})
 
@@ -269,26 +306,6 @@ class Input(object):
         else:
             self.dictionary[self.key] = value            
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
-    subplot.clear()
-    if bottom == None or right == None:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
-    else:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
-    figure.canvas.draw_idle()
-
-            
-import asyncio
 class Timer:
     def __init__(self, timeout, callback):
         self._timeout = timeout
@@ -320,6 +337,34 @@ def debounce(wait):
             timer.start()
         return debounced
     return decorator
+
+
+def slide_and_play(slider_layout=slider_layout,label="",description="",frame_time_milisec = 0):
+
+    def update_frame_time(play_control,time_per_frame):
+        play_control.widget.interval = time_per_frame
+
+    selection_slider = Input({"dummy_key":1},"dummy_key",description=description, bounded=(0,100,1),slider=True,layout=widgets.Layout(width='max-width'))
+    play_control = VideoControl(selection_slider,1,100,"Play Button")
+
+    pbox = widgets.Box([play_control.widget],layout=get_box_layout('max-width'))
+
+    if frame_time_milisec != 0:
+        frame_time = Input({"dummy_key":frame_time_milisec},"dummy_key",description="Time/frame [ms]",layout=widgets.Layout(width='160px'))
+        widgets.interactive_output(update_frame_time, {'play_control':fixed(play_control),'time_per_frame':frame_time.widget})
+        play_box = widgets.HBox([selection_slider.widget,widgets.Box([pbox,frame_time.widget],layout=get_box_layout('max-width'))])
+    else:
+        play_box = widgets.HBox([selection_slider.widget, play_control.widget])
+
+    if label != "":
+        play_label = widgets.HTML(f'<b><font size=4.9px>{label}</b>' )
+        play_box = widgets.VBox([play_label,play_box])
+
+    return play_box, selection_slider,play_control
+
+# play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+
+############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
 
@@ -345,7 +390,7 @@ def folders_tab():
         selection_slider,play_control = args
         foldernames = ast.literal_eval(foldernames)
 
-        complex_object_file  = os.path.join(global_dict["sinogram_path"].rsplit('/',1)[0], 'object_' + foldernames[0] + '.npy') #hard coded path
+        complex_object_file  = os.path.join(output_folder, 'object_' + foldernames[0] + '.npy') #hard coded path
         
         print('Loading sinogram...')
         object = np.load(complex_object_file)
@@ -359,6 +404,7 @@ def folders_tab():
         object = reorder_slices_low_to_high_angle(object, rois)
 
         print(f'Extracting sinogram {data_selection.value}...')
+        global_dict["contrast_type"] = data_selection.value
         if data_selection.value == 'Magnitude':
             object = np.abs(object)
         elif data_selection.value == "Phase":
@@ -377,22 +423,21 @@ def folders_tab():
         widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})  
 
 
-    field_layout = widgets.Layout(width='100%')
-    ibira_data_path = Input(global_dict,"ibira_data_path",layout=field_layout)
-    folders_list    = Input(global_dict,"folders_list",layout=field_layout)
-    sinogram_path   = Input(global_dict,"sinogram_path",layout=field_layout)
+    ibira_data_path = Input(global_dict,"ibira_data_path",layout=items_layout,description='Ibira Datapath (str)')
+    folders_list    = Input(global_dict,"folders_list",layout=items_layout,description='Ibira Datafolders (list)')
+    sinogram_path   = Input(global_dict,"sinogram_path",layout=items_layout,description='Ptycho sinogram path (str)')
     widgets.interactive_output(update_fields, {'ibira_data_path':ibira_data_path.widget,'folders_list':folders_list.widget,'sinogram_path':sinogram_path.widget})
 
-    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
-    play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
-    play_box = widgets.HBox([selection_slider.widget,play_control.widget])
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
 
-    sort_button = Button(description="Sort frames",icon="fa-sort-numeric-asc")
+    sort_button = Button(description="Sort frames",layout=buttons_layout, icon="fa-sort-numeric-asc")
     sort_button.trigger(partial(sort_frames,ibira_path=ibira_data_path.widget.value,foldernames=folders_list.widget.value,sinogram_path=sinogram_path.widget.value,args=(selection_slider,play_control)))    
 
-    controls_box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget,sort_button.widget,play_box])
+    controls_box = widgets.Box(children=[sort_button.widget,play_box], layout=get_box_layout('500px',align_items='center'))
 
-    box = widgets.HBox([output,controls_box])
+    paths_box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget])
+    box = widgets.HBox([controls_box,vbar,output])
+    box = widgets.VBox([paths_box,box])
 
     return box
 
@@ -411,44 +456,45 @@ def crop_tab():
     
     def load_frames(dummy, args = ()):
         global sinogram
-        top_crop, bottom_crop, left_crop, right_crop, select_slider, play_control = args
+        top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         print("Loading sinogram")
-        sinogram = np.load( os.path.join(global_dict["sinogram_path"].rsplit('/',1)[0],ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')) 
+        sinogram = np.load( os.path.join(output_folder,ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
-        select_slider.widget.max, select_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
-        play_control.widget.max = select_slider.widget.max
+        selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
+        play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
       
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': select_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
 
     def save_cropped_sinogram(dummy,args=()):
         top,bottom,left,right = args
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
         print('Saving cropped frames...')
-        np.save(os.path.join(output_folder,'cropped_sinogram.npy'),cropped_sinogram)
+        np.save(os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'),cropped_sinogram)
         print('\t Saved!')
 
-    top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True)
-    bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True)
-    left_crop     = Input(global_dict,"left_crop"  ,description="Left",  bounded=(0,horizontal_max,1),slider=True)
-    right_crop    = Input(global_dict,"right_crop" ,description="Right", bounded=(1,horizontal_max,1),slider=True)
-    select_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,100,1),slider=True)
+    top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True,layout=slider_layout)
+    bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True,layout=slider_layout)
+    left_crop     = Input(global_dict,"left_crop"  ,description="Left",  bounded=(0,horizontal_max,1),slider=True,layout=slider_layout)
+    right_crop    = Input(global_dict,"right_crop" ,description="Right", bounded=(1,horizontal_max,1),slider=True,layout=slider_layout)
 
-    play_control = VideoControl(select_slider.widget,select_slider.widget.value,select_slider.widget.min,select_slider.widget.max,1,300,"Play Button")
-    play_box = widgets.HBox([select_slider.widget,play_control.widget])
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
-    load_frames_button  = Button(description="Load Frames",width='50%', height='50px',icon='folder-open-o')
-    args = (top_crop, bottom_crop, left_crop, right_crop, select_slider, play_control)
+    load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
+    args = (top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control)
     load_frames_button.trigger(partial(load_frames,args=args))
 
-    save_cropped_frames_button = Button(description="Save cropped frames",width='70%', height='50px',icon='fa-floppy-o') 
+    save_cropped_frames_button = Button(description="Save cropped frames",layout=buttons_layout,icon='fa-floppy-o') 
     args2 = (top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget)
     save_cropped_frames_button.trigger(partial(save_cropped_sinogram,args=args2))
     
-    sliders_box = widgets.VBox([load_frames_button.widget,play_box,top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget,save_cropped_frames_button.widget])
-    box = widgets.HBox([sliders_box,output])
+    buttons_box = widgets.Box([load_frames_button.widget,save_cropped_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
+    sliders_box = widgets.Box([top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget],layout=sliders_box_layout)
+
+    controls_box = widgets.Box([buttons_box,play_box,sliders_box],layout=get_box_layout('500px'))
+    box = widgets.HBox([controls_box,vbar,output])
     return box
 
 
@@ -488,7 +534,7 @@ def unwrap_tab():
         global cropped_sinogram
         selection_slider, play_control = args
         print('Loading cropped sinogram...')
-        cropped_sinogram = np.load(os.path.join(output_folder,'cropped_sinogram.npy'))
+        cropped_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'))
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
@@ -512,44 +558,39 @@ def unwrap_tab():
    
     def save_sinogram(dummy):
         print('Saving unwrapped sinogram...')
-        np.save(os.path.join(output_folder,'unwrapped_sinogram.npy'),unwrapped_sinogram)
-        print('\tSaved sinogram at: ',os.path.join(output_folder,'unwrapped_sinogram.npy'))
+        savepath = os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy')
+        np.save(savepath,unwrapped_sinogram)
+        print('\tSaved sinogram at: ',savepath)
 
-    def update_frame_time(play_control,time_per_frame):
-        play_control.widget.interval = time_per_frame
 
-    load_cropped_frames_button = Button(description="Load cropped frames",width='50%', height='50px',icon='folder-open-o')
+    load_cropped_frames_button = Button(description="Load cropped frames",layout=buttons_layout,icon='folder-open-o')
 
-    bad_frames_list = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=widgets.Layout(align_items='flex-start',width='80%'))
-    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames after Unwrap',layout=widgets.Layout(align_items='flex-start',width='80%'))
+    bad_frames_list  = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=items_layout)
+    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames after Unwrap',layout=items_layout)
     widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_list.widget,"bad_frames_list2":bad_frames_list2.widget})
     
-    iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Iterations')
-    non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=widgets.Layout(align_items='flex-start',width='40%'),description='Non-negativity')
-    gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=widgets.Layout(align_items='flex-start',width='40%'),description='Gradient')
-    preview_unwrap_button = Button(description="Preview unwrap",width='50%', height='50px',icon='play')
+    iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
+    non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
+    gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=items_layout,description='Gradient')
+    preview_unwrap_button = Button(description="Preview unwrap",layout=buttons_layout,icon='play')
     preview_unwrap_button.trigger(phase_unwrap)
     
-    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
-    play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
-    frame_time = Input({"dummy_key":300},"dummy_key",description="Time per frame [ms]",layout=widgets.Layout(width='60%'))
-    widgets.interactive_output(update_frame_time, {'play_control':fixed(play_control),'time_per_frame':frame_time.widget})
-    play_box = widgets.HBox([selection_slider.widget,widgets.VBox([play_control.widget,frame_time.widget])])
-    
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
+
     args = (selection_slider,play_control)
     load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
 
-    correct_bad_frames_button = Button(description='Correct Bad Frames',icon='fa-check-square-o')
+    correct_bad_frames_button = Button(description='Correct Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
     correct_bad_frames_button.trigger(correct_bad_frames)
 
-    save_unwrapped_button = Button(description="Save unwrapped frames",icon='fa-floppy-o') 
+    save_unwrapped_button = Button(description="Save unwrapped frames",layout=buttons_layout,icon='fa-floppy-o') 
     save_unwrapped_button.trigger(save_sinogram)
     
-    unwrap_params_box = widgets.VBox([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget])
-    controls_box = widgets.VBox([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget])
+    unwrap_params_box = widgets.Box([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget],layout=get_box_layout('100%'))
+    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget],layout=get_box_layout('500px'))
     plot_box = widgets.VBox([output])
         
-    box = widgets.HBox([controls_box,plot_box])
+    box = widgets.HBox([controls_box,vbar,plot_box])
     
     return box
 
@@ -611,15 +652,13 @@ def chull_tab():
         output_list = apply_chull_parallel(unwrapped_sinogram,invert=invert.widget.value,tolerance=tolerance.widget.value,opening_param=opening_param.widget.value,erosion_param=erosion_param.widget.value,chull_param=chull_param.widget.value)
         cHull_sinogram = output_list[-1]
         print('Saving cHull sinogram...')
-        np.save(os.path.join(output_folder,'chull_sinogram.npy'),cHull_sinogram)
+        np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram)
         print('\tSaved!')
         
 
-    selection_slider = Input({"dummy_key":1},"dummy_key",description="Select Frame", bounded=(0,10,1),slider=True)
-    play_control = VideoControl(selection_slider.widget,selection_slider.widget.value,selection_slider.widget.min,selection_slider.widget.max,1,300,"Play Button")
-    play_box = widgets.HBox([selection_slider.widget,play_control.widget])
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
-    load_button = Button(description="Load unwrapped sinogram",icon='folder-open-o')
+    load_button = Button(description="Load unwrapped sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
 
     invert_checkbox = Input(global_dict,"chull_invert",    description='Invert')
@@ -628,16 +667,16 @@ def chull_tab():
     erosion_slider  = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(1,100,1),slider=True)
     param_slider    = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(1,200,1),slider=True)
     
-    preview_button = Button(description="Convex Hull Preview",icon='play')
+    preview_button = Button(description="Convex Hull Preview",layout=buttons_layout,icon='play')
     preview_button.trigger(partial(preview_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
-    start_button = Button(description="Do complete Convex Hull",icon='play')
+    start_button = Button(description="Do complete Convex Hull",layout=buttons_layout,icon='play')
     start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
     controls0 = widgets.VBox([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget])
-    controls_box = widgets.VBox([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0])
+    controls_box = widgets.Box([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
     
-    box = widgets.HBox([controls_box,output])
+    box = widgets.HBox([controls_box,vbar, output])
     
     return box
 
@@ -659,7 +698,7 @@ def wiggle_tab():
     
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(figsize=(5,5))
+        figure, subplot = plt.subplots(figsize=(3,3))
         subplot.imshow(np.random.random((4,4)),cmap='gray')
         subplot.set_title('Reference Frame')
         figure.canvas.draw_idle()
@@ -680,9 +719,9 @@ def wiggle_tab():
         selection_slider, play_control,sinogram_selection = args
         
         if sinogram_selection.value == "unwrapped":
-            file = 'unwrapped_sinogram.npy'
+            file = f'{data_selection.value}_unwrapped_sinogram.npy'
         elif sinogram_selection.value == "convexHull":
-            file = 'chull_sinogram.npy'
+            file = f'{data_selection.value}_chull_sinogram.npy'
 
         global sinogram
         print('Loading ...: ',file)
@@ -698,11 +737,12 @@ def wiggle_tab():
 
     global wiggled_sinogram
     def start_wiggle(dummy,args=()):
-        sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider = args
+        sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider = args
         
+        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
         print("Starting wiggle...")
-        wiggled_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, ref_frame_slider.widget.value)
-        wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, ref_frame_slider.widget.value)
+        wiggled_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, selection_slider.widget.value)
+        wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)
         print("\t Wiggle done!")
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
         sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
@@ -710,31 +750,29 @@ def wiggle_tab():
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1,0]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
-        print("Saving wiggle sinogram...")
-        np.save(os.path.join(output_folder,'wiggle_sinogram.npy'),wiggled_sinogram)
+        print("Saving wiggle sinogram to: ", savepath)
+        np.save(savepath,wiggled_sinogram)
         print("\t Saved!")
 
-    ref_frame_slider = Input(global_dict,"wiggle_reference_frame", description="Reference Frame", bounded=(0,sinogram.shape[0],1),slider=True)
-    cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True)
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
 
-    wiggle_button = Button(description='Perform Wiggle',icon='play')
+    cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
+
+    wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     
-    play_control = VideoControl(ref_frame_slider.widget,ref_frame_slider.widget.value,ref_frame_slider.widget.min,ref_frame_slider.widget.max,1,300,"Play Button")
-    play_box = widgets.HBox([ref_frame_slider.widget,play_control.widget])
+    sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', layout=items_layout,description='Sinogram to import:',disabled=False)
+    sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
+    sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
     
-    sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', layout={'width': 'max-content'},description='Sinogram to import:',disabled=False)
-    sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True)
-    sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True)
+    load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
+    load_button.trigger(partial(load_sinogram,args=(selection_slider,play_control,sinogram_selection)))
     
-    args = (ref_frame_slider, play_control,sinogram_selection)
-    load_button = Button(description="Load sinogram",icon='folder-open-o')
-    load_button.trigger(partial(load_sinogram,args=(ref_frame_slider,play_control,sinogram_selection)))
-    
-    args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,ref_frame_slider)
+    args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
 
     controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget])
-    box = widgets.HBox([controls,output,output2])
+    output = widgets.Box([output],layout=widgets.Layout(align_content='center'))#,align_items='center',justify_content='center'))
+    box = widgets.HBox([controls,vbar,output,vbar,output2])
     
     return box
 
@@ -752,7 +790,7 @@ def tomo_tab():
             subplot.set_yticks([])
         figure.canvas.header_visible = False 
         figure.tight_layout()
-    
+
 
     output = widgets.Output()
     with output:
@@ -763,11 +801,28 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
         plt.show()
 
+    output2 = widgets.Output()
+    with output2:
+        figure2, axs = plt.subplots(2,2,figsize=(10,5))
+        axs[0,0].hist(np.random.random((10,10)).flatten(),bins=100)
+        axs[0,1].hist(np.random.random((10,10)).flatten(),bins=100)
+        axs[1,0].hist(np.random.random((10,10)).flatten(),bins=100)
+        axs[1,1].hist(np.random.random((10,10)).flatten(),bins=100)
+        figure2.canvas.header_visible = False 
+        figure2.tight_layout()
+        plt.show()
+
+    def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis):
+        update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis)
+        format_tomo_plot(figure,subplot)
+
     def run_tomo(dummy,args=()):
-        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, tomo_selection = args
+        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, tomo_selection, checkboxes = args
 
         if tomo_selection.value == 'Full Recon':
             global_dict["run_all_tomo_steps"] = True
+            global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
+
         elif tomo_selection.value == 'Only Tomo': 
             global_dict["run_all_tomo_steps"] = False
 
@@ -782,52 +837,124 @@ def tomo_tab():
         run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
 
     def load_recon(dummy):
-        sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]
-        reconstruction = np.load(os.path.join(sinogram_folder, 'reconstruction3D.npy' ))
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(reconstruction),'figure':fixed(figure),'subplot':fixed(subplot[0]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
+        sinogram_folder = output_folder
+
+        if load_selection.value == "Original":
+            savepath = os.path.join(sinogram_folder, f'{data_selection.value}_reconstruction3D.npy' )
+        elif load_selection.value == "Threshold":
+            savepath = os.path.join(sinogram_folder, f'{data_selection.value}_reconstruction3D_thresholded.npy' )
+
+        print('Loading 3D recon from: ',savepath)
+        global reconstruction
+        reconstruction = np.load(savepath)
+        print('\t Loaded!')
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
 
 
-    
-    field_layout    = widgets.Layout(align_items='flex-start',width='90%')
+    def save_thresholded_tomo(dummy):
+        print(f'Applying threshold value of {tomo_threshold.widget.value} to reconstruction')
+        thresholded_recon = np.where(reconstruction > tomo_threshold.widget.value,0,reconstruction)
+        print('\t Done!')
+        savepath = os.path.join(output_folder,f'{data_selection.value}_reconstruction3D_thresholded.npy')
+        print('Saving thresholded reconstruction...')
+        np.save(savepath,thresholded_recon)
+        imsave(savepath[:-4] + '.tif',thresholded_recon)
+        print('\tSaved reconstruction at: ',savepath)
+
+    def plot_histograms(dummy):
+
+        n_bins=100
+        threshold = tomo_threshold.widget.value
+        
+        raw_data = np.load(os.path.join(output_folder,f'{data_selection.value}_reconstruction3D_thresholded.npy'))
+
+        raw_data = raw_data.flatten()
+        data = raw_data
+        data = np.where(np.abs(data)>threshold,0,data)
+
+        print('Computing statistics...')
+        statistics_raw         = (np.max(raw_data),np.min(raw_data),np.mean(raw_data),np.std(raw_data))
+        label_raw = f'\n\tMax = {statistics_raw[0]:.2e}\n\t Min = {statistics_raw[1]:.2e}\n\t Mean = {statistics_raw[2]:.2e}\n\t StdDev = {statistics_raw[3]:.2e}'
+        statistics_thresholded = (np.max(data),np.min(data),np.mean(data),np.std(data))
+        label_thresh = f'\n\tMax = {statistics_thresholded[0]:.2e}\n\t Min = {statistics_thresholded[1]:.2e}\n\t Mean = {statistics_thresholded[2]:.2e}\n\t StdDev = {statistics_thresholded[3]:.2e}'
+        print('Raw data statistics: ', label_raw)
+        print('Thresholded data statistics: ',label_thresh)
+
+
+        print('Plotting histograms...')
+        with output2:
+            for ax in axs.reshape(-1):
+                ax.clear()
+            try:
+                axs[0,0].hist(raw_data,bins=n_bins)
+                axs[0,1].hist(raw_data,bins=n_bins)
+            except:
+                print('Problem found when plotting raw data! Check values!')
+            axs[1,0].hist(data,bins=n_bins)
+            axs[1,1].hist(data,bins=n_bins)
+            axs[0,0].set_title('Raw histogram')
+            axs[1,0].set_title('Threshold')
+            axs[0,1].set_title('Log(Raw)')
+            axs[1,1].set_title('Log(Threshold)')
+            axs[0,1].set_yscale('log')
+            axs[1,1].set_yscale('log')
+        print('\t Done!')
+
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
-    reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=field_layout)
-    iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True)
-    cpus_field      = Input(global_dict,"wiggle_cpus",description = "# of CPUs",layout=field_layout)
-    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=field_layout)
-    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=field_layout)
-    jobname_field   = Input({"dummy_str":'myJobName'},"dummy_str",description = "Slurm Job Name",layout=field_layout)
-    filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=field_layout)
-    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=field_layout)
-    tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True)
-    tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True)
-    tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True)
+    reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
+    iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
+    cpus_field      = Input(global_dict,"wiggle_cpus",description = "# of CPUs",layout=items_layout)
+    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=items_layout)
+    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=items_layout)
+    jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=items_layout)
+    filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
+    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=items_layout)
+    tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
+    tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
+    tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
+    
 
-    algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:')
+    algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:',layout=items_layout)
 
-    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout={'width': 'max-content'},description='Recon type:',disabled=False)
+    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout=items_layout,description='Recon type:',disabled=False)
+    load_selection = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original', layout=items_layout,description='Load:',disabled=False)
 
-    start_tomo = Button(description="Start",icon='play')
-    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, tomo_selection
+    checkboxes = [widgets.Checkbox(value=True, description=label,layout=items_layout) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
+    checkboxes_box0 = widgets.VBox(children=checkboxes)
+    checkboxes_box = widgets.HBox([widgets.Label(value="\n\n\n\nSteps to use in Full Recon:"),checkboxes_box0])
+
+    start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
+    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, tomo_selection, checkboxes
     start_tomo.trigger(partial(run_tomo,args=args))
-    save_thresholded_tomo = Button(description="Save thresholded tomo",icon='play')
-   
-    load_recon_button = Button(description="Load recon slices",icon='play')
+    
+    load_recon_button = Button(description="Load recon slices",layout=buttons_layout,icon='play')
     load_recon_button.trigger(load_recon)
 
+    save_thresholded_tomo_button = Button(description="Save thresholded tomo",layout=buttons_layout,icon='play')
+    save_thresholded_tomo_button.trigger(save_thresholded_tomo)
+
+    plot_histogram_button = Button(description="Plot Histograms",layout=buttons_layout,icon='play')
+    plot_histogram_button.trigger(plot_histograms)
+
+
+
+
     def save_on_click(dummy):
+        global_dict["contrast_type"] = data_selection.value
         json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
-    save_dict_button  = Button(description="Save JSON",width='90%', height='50px',icon='fa-floppy-o')
+    save_dict_button  = Button(description="Save JSON",layout=buttons_layout,icon='fa-floppy-o')
     save_dict_button.trigger(save_on_click)    
     
-
+    load_box = widgets.HBox([load_recon_button.widget,load_selection])
     start_box = widgets.HBox([start_tomo.widget,tomo_selection])
+    threshold_box = widgets.HBox([save_thresholded_tomo_button.widget, plot_histogram_button.widget])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,save_dict_button.widget,start_box,load_recon_button.widget,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,tomo_threshold.widget,save_thresholded_tomo.widget])
-    box = widgets.HBox([controls,output])
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,checkboxes_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
+    box = widgets.HBox([controls,vbar2,widgets.VBox([output,hbar,output2])])
     
     return box 
 
@@ -878,7 +1005,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
     
 
-    load_json_button  = Button(description="Load JSON template",width='50%', height='50px',icon='folder-open-o')
+    load_json_button  = Button(description="Load JSON template",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
     
@@ -894,7 +1021,3 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
 
     return tab, global_dict  
-
-if __name__ == "__main__":
-
-    pass

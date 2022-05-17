@@ -5,6 +5,7 @@ import os
 import ast
 import time
 from skimage.restoration import unwrap_phase
+from skimage.io import imsave
 
 
 from ssc_remote_vis import remote_visualization as rv
@@ -36,7 +37,6 @@ def tomography(algorithm,data,angles_filename,iterations,GPUs):
         rays, slices = data.shape[-1], data.shape[-2]
         reconstruction3D = np.zeros((rays,slices,rays))
         for i in range(slices):
-            print(f'Reconstructing slice {i}')
             sinogram = data[:,i,:]
             if algorithm == "ART":
                 reconstruction3D[:,i,:]= MaskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
@@ -63,69 +63,71 @@ def tomography(algorithm,data,angles_filename,iterations,GPUs):
             
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
-if input_dictionary["run_all_tomo_steps"] == False:
+if input_dictionary["run_all_tomo_steps"] == False: # Run only the tomo step of the recon
     
     algorithm     = input_dictionary["tomo_algorithm"]
     iterations    = input_dictionary["tomo_iterations"]
     GPUs          = input_dictionary["tomo_n_of_gpus"]
     output_folder = input_dictionary["jupyter_folder"]
-    
-    sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]
+    sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0] 
 
-    data = np.load(os.path.join(sinogram_folder, "wiggle_sinogram.npy" ))
+    data = np.load(os.path.join(sinogram_folder, f'{input_dictionary["contrast_type"]}_wiggle_sinogram.npy' ))
     anglesFile = os.path.join(sinogram_folder, ast.literal_eval(input_dictionary["folders_list"])[0] + f'_ordered_angles.npy')
 
     print(f'Starting {algorithm} tomography...')
     recon3D = tomography(algorithm,data,anglesFile,iterations,GPUs)
-    print('\t Finished! \n \t Saving 3D data to: ', os.path.join(output_folder, 'reconstruction3D.npy' ))
-    np.save(os.path.join(sinogram_folder, 'reconstruction3D.npy' ),recon3D)
+    savepath = os.path.join(sinogram_folder, f'{input_dictionary["contrast_type"]}_reconstruction3D.npy' )
+    print('\t Finished! \n \t Saving 3D data to: ', savepath)
+    np.save(savepath,recon3D)
+    imsave(savepath[:-4] + '.tif',recon3D)
     print('\t\t Saved!')
 
-else:
+else: # Run selected steps
 
     """                  INPUTS                 """
-    processing_steps = { # 1 -> True ; 0 -> False
-    "Sort":1 ,
-    "Crop":1 ,
-    "Unwrap":1,
-    "ConvexHull":1,
-    "Wiggle":1,
-    "Tomo":1
-    }
+    processing_steps = input_dictionary["processing_steps"]
+    # { # 1 -> True ; 0 -> False
+    # "Sort":1 ,
+    # "Crop":1 ,
+    # "Unwrap":1,
+    # "ConvexHull":1,
+    # "Wiggle":1,
+    # "Tomo":1
+    # }
 
     """ Select data folders  """
-    sinogram_folder = '/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/outputs/microagg_P2_01/reconstruction/' # folder containing sinogram of 2d projections
-    ibira_path = '/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/' # folder of 2d projections
-    foldernames = ["microagg_P2_01"] #input
+    sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]  #'/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/outputs/microagg_P2_01/reconstruction/' # folder containing sinogram of 2d projections
+    ibira_path = input_dictionary["ibira_data_path"] #'/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/' # folder of 2d projections
+    foldernames = input_dictionary["folders_list"] # ["microagg_P2_01"] #input
 
     """ Crop: Select the cropping slices # SLICE MUST HAVE EVEN NUMBER OF POINTS!!! """
-    top, bottom = 300, 300 # number of pixels to crops in each direction
-    left, right = 300, 300
+    top, bottom = input_dictionary["top_crop"], input_dictionary["bottom_crop"] #300, 300 # number of pixels to crops in each direction
+    left, right = input_dictionary["left_crop"], input_dictionary["right_crop"] #300, 300
 
     """ Phase Unwrapping: remove bad frames and unwrap remaining ones """
-    bad_frames = [7,20,36,65,94,123,152,181,210,239,268,296,324]
-    phase_unwrap_iterations = 0
-    phase_unwrap_non_negativity = False
-    phase_unwrap_gradient_removal = False
+    bad_frames = input_dictionary["bad_frames_list"] #[7,20,36,65,94,123,152,181,210,239,268,296,324]
+    phase_unwrap_iterations = input_dictionary["unwrap_iterations"]
+    phase_unwrap_non_negativity = input_dictionary["unwrap_non_negativity"]
+    phase_unwrap_gradient_removal = input_dictionary["unwrap_gradient_removal"]
 
     """ Zero Frames: Manually set to zero those frames that are still bad after phase unwrapping"""
-    frames_to_zero = []
+    frames_to_zero = input_dictionary["bad_frames_list2"]
 
     """ Unwrap + Wiggle: Choose (in the ordered frames) a frame to serve as reference for the alignment. Make sure to select a non-null frame!!! """
-    reference_frame = 222 ## MANUAL!! 
-    n_of_wiggle_processes = 64
+    reference_frame = input_dictionary["wiggle_reference_frame"] ## MANUAL!! 
+    n_of_wiggle_processes = input_dictionary["wiggle_cpus"]
 
     """ Regularization: https://doi.org/10.1016/j.rinam.2019.100088  """
-    do_regularization = True
-    regularization_parameter = 0.001   #tirado do cool, como qqr parametro de reg.
+    do_regularization = input_dictionary["tomo_regularization"]
+    regularization_parameter = input_dictionary["tomo_regularization_param"]   #tirado do cool, como qqr parametro de reg.
 
     """ Tomo Parameters """
-    iterations = 100 # number of iterations of tomographic algorithms
-    which_reconstruction = "EEM" # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-    GPUs = [0,1] # GPUs to use. GPUs = -1, use default of [0]
+    iterations = input_dictionary["tomo_iterations"] # number of iterations of tomographic algorithms
+    which_reconstruction = input_dictionary["tomo_algorithm"] #"EEM" # "ART", "EM", "EEM", "FBP", "RegBackprojection"
+    GPUs = input_dictionary["tomo_n_of_gpus"] #[0,1] # GPUs to use. GPUs = -1, use default of [0]
 
-    threshold_absol = 0 # if != 0, will apply threshold value to reconstructed object, turning values > threshold to zero 
-    threshold_phase = 0 
+    threshold_absol = input_dictionary["tomo_threshold"] # if != 0, will apply threshold value to reconstructed object, turning values > threshold to zero 
+    threshold_phase = input_dictionary["tomo_threshold"]
 
     """             INPUTS -> SET OUTPUT FILES AND FOLDERS                """
     complex_object_file  = sinogram_folder + 'object_' + foldernames[0] + '.npy'
