@@ -55,19 +55,21 @@ output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
 print('Output folder: ', output_folder) 
 
 # Definition of standard widget layout and styling
+standard_border='1px none black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 slider_layout = widgets.Layout(width='90%')
-items_layout = widgets.Layout( width='90%')     # override the default width of the button to 'auto' to let the button grow
+items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 buttons_layout = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
-style = {'description_width': 'initial'}
-box_layout = widgets.Layout(flex_flow='column',align_items='flex-end',border='1px solid black',width='100%')
-sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border='1px solid black',width='100%')
+center_all_layout = widgets.Layout(align_items='center',width='100%',border=standard_border) #align_content='center',justify_content='center'
+box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
+sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 style = {'description_width': 'initial'}
 
-def get_box_layout(width,flex_flow='column',align_items='center',border='1px solid black'):
+def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 
@@ -673,7 +675,7 @@ def chull_tab():
     start_button = Button(description="Do complete Convex Hull",layout=buttons_layout,icon='play')
     start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
-    controls0 = widgets.VBox([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget])
+    controls0 = widgets.Box([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget],layout=box_layout)
     controls_box = widgets.Box([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
     
     box = widgets.HBox([controls_box,vbar, output])
@@ -760,7 +762,7 @@ def wiggle_tab():
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     
-    sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', layout=items_layout,description='Sinogram to import:',disabled=False)
+    sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
     
@@ -817,14 +819,9 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
 
     def run_tomo(dummy,args=()):
-        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, tomo_selection, checkboxes = args
+        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, checkboxes = args
 
-        if tomo_selection.value == 'Full Recon':
-            global_dict["run_all_tomo_steps"] = True
-            global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
-
-        elif tomo_selection.value == 'Only Tomo': 
-            global_dict["run_all_tomo_steps"] = False
+        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
 
         tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
         output_path = global_dict["jupyter_folder"] 
@@ -834,7 +831,12 @@ def tomo_tab():
         jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
 
         n_gpus = len(ast.literal_eval(gpus_field.widget.value))
-        run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
+
+        if machine_selection == 'Bertha':
+            print('Runnint tomo with Bertha....')
+        else: 
+            print('Running tomo through Mafalda...')
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
 
     def load_recon(dummy):
         sinogram_folder = output_folder
@@ -918,17 +920,18 @@ def tomo_tab():
 
     algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:',layout=items_layout)
 
-    tomo_selection = widgets.RadioButtons(options=['Only Tomo', 'Full Recon'], value='Only Tomo', layout=items_layout,description='Recon type:',disabled=False)
-    load_selection = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original', layout=items_layout,description='Load:',disabled=False)
+    load_selection = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
 
-    checkboxes = [widgets.Checkbox(value=True, description=label,layout=items_layout) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
-    checkboxes_box0 = widgets.VBox(children=checkboxes)
-    checkboxes_box = widgets.HBox([widgets.Label(value="\n\n\n\nSteps to use in Full Recon:"),checkboxes_box0])
+    checkboxes = [widgets.Checkbox(value=True, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
+    # checkboxes_box = widgets.Box(children=checkboxes,layout=widgets.Layout(flex_flow='column',width='100%',justify_content='flex-start',border=standard_border,align_item='flex-start',align_content='flex-start'))
+    checkboxes_box = widgets.VBox(children=checkboxes)
+    # checkboxes_box = widgets.VBox([widgets.Label(value="Reconstruction Steps:"),checkboxes_box0])
 
     start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
-    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, tomo_selection, checkboxes
+    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, checkboxes
     start_tomo.trigger(partial(run_tomo,args=args))
-    
+    start_tomo_box = widgets.Box([start_tomo.widget],layout=center_all_layout)
+
     load_recon_button = Button(description="Load recon slices",layout=buttons_layout,icon='play')
     load_recon_button.trigger(load_recon)
 
@@ -950,19 +953,16 @@ def tomo_tab():
     save_dict_button.trigger(save_on_click)    
     
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
-    start_box = widgets.HBox([start_tomo.widget,tomo_selection])
+    start_box = widgets.HBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
     threshold_box = widgets.HBox([save_thresholded_tomo_button.widget, plot_histogram_button.widget])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,checkboxes_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
     box = widgets.HBox([controls,vbar2,widgets.VBox([output,hbar,output2])])
     
     return box 
 
 
 def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
-    
-    global mafalda
-    mafalda = mafalda_session
     
     children_dict = {
     "Select Folders" : tab1,
@@ -1003,16 +1003,22 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         for key in template_dict:
             dictionary[key] = template_dict[key]
     
-    
+    global mafalda
+    mafalda = mafalda_session
+
 
     load_json_button  = Button(description="Load JSON template",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
-    
+    global machine_selection
+    machine_selection = widgets.RadioButtons(options=['Bertha', 'Mafalda'], value='Bertha', layout={'width': '30%'},description='Machine',disabled=False)
+
+
     global data_selection
     data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
 
-    box = widgets.HBox([data_selection,load_json_button.widget])
+
+    box = widgets.HBox([machine_selection,data_selection,load_json_button.widget])
     display(box)
     
     
