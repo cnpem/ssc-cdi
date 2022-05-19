@@ -8,8 +8,9 @@ import os
 import json
 from tqdm import tqdm
 from skimage.io import imsave
-from sscRadon import radon
 
+from sscRadon import radon
+# from sscRaft import parallel
 
 from .jupyter import call_cmd_terminal, monitor_job_execution, call_and_read_terminal
 from .unwrap import unwrap_in_parallel
@@ -19,8 +20,11 @@ from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
 
-sinogram = np.random.random((2,2,2))
 
+global sinogram
+sinogram = np.random.random((2,2,2)) # dummy sinogram
+
+""" Standard dictionary definition """
 global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/",
                "folders_list": ["microagg_P2_01"],
                "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/microagg_P2_01/object_microagg_P2_01.npy",
@@ -48,13 +52,18 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
                "tomo_n_of_gpus": [0],
                "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
                "run_all_tomo_steps":False,
-               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
+               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
+               "contrast_type": "Phase", # Phase or Absolute
 }
 
+
+""" Standard folders definitions"""
+tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
+angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
 output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
 print('Output folder: ', output_folder) 
 
-# Definition of standard widget layout and styling
+""" Standard styling definitions """
 standard_border='1px none black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
@@ -72,9 +81,118 @@ style = {'description_width': 'initial'}
 def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
-
 ############################################ PROCESSING FUNCTIONS ###########################################################################
 
+def create_directory_if_doesnt_exist(*args):
+    for arg in args:
+        if os.path.isdir(arg) == False:
+            os.mkdir(arg)
+
+def angle_mesh_organize( mdata, angles, use_max=True ): 
+        """ Project angles to regular mesh and pad it to run from 0 to 180
+
+        Args:
+            mdata (_type_): _description_
+            angles (_type_): _description_
+            use_max (bool, optional): _description_. Defaults to True.
+
+        Returns:
+            _type_: _description_
+        """
+        angles_list = []
+
+        starta = angles[:,1].min()
+        enda   = angles[:,1].max()
+        rangea = enda - starta
+        forw = np.roll(angles[:,1],1,0) - angles[:,1]
+        forw[-1] = forw[-2]
+        forw[0] = forw[1]
+        maxdth = abs(forw).max() 
+        mindth = abs(forw).min()
+        if use_max == False:
+            nangles = int( (np.pi)/mindth ) 
+        else:
+            nangles = int( (np.pi)/maxdth ) 
+        dth = np.pi / (nangles-1)
+        ndata = np.zeros([nangles,mdata.shape[1],mdata.shape[2]])
+        idx = np.zeros([nangles], dtype=np.int)
+        for k in range(nangles):
+            angle = -np.pi/2.0 + k*dth
+            if angle > enda or angle < starta:
+                idx[k] = -1
+                ndata[k,:,:] = np.zeros([mdata.shape[1],mdata.shape[2]])
+            else:
+                idx[k] = int( np.argmin( abs(angle - angles[:,1]) ) )
+                ndata[k,:,:] = mdata[idx[k],:]
+            angles_list.append(angle*180/np.pi)
+        first = np.argmin((idx < 0)) - 1
+        angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
+        return ndata, idx, first, angles_array 
+
+def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,use_regularly_spaced_angles=True):
+    
+    data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
+
+    if use_regularly_spaced_angles == True:
+        angles_filename = angles_filename[:-4]+'_projected.npy'
+
+    angles_filepath = os.path.join(output_folder,angles_filename)
+
+    angles = np.load(angles_filepath) # sorted angles?
+
+    """ ######################## Regularization ################################ """
+
+    if 0: # Paola's approach to correcting angles
+        # Padded zeros for completion of missing wedge:  from (-70,70) - 140 degrees, to (-90,90) - 180 degrees
+        angles = angles[:,1] # get the angles
+        anglesmax, anglesmin = angles[-1],  angles[0]     # max and min angles
+        angles = np.insert(angles, 0, -90)     # Insert the first angle as -90. Why I do that? Beacause I assume that the first angles is always zero, in order to correctly find the angle step size inside the EM algorithm fro all angles.
+        data = np.pad(data,((1,0),(0,0),(0,0)),'constant') # Pad zeros corresponding to the extra -90 value
+        angles = (angles + 90) # Transform the angles from (-90,90) to (0,180)
+
+    if do_regularization == True and algorithm == "EEM": # If which_reconstruction == "EEM" MIQUELES
+        print('\tBegin Regularization')
+        for k in range(data.shape[1]):
+            data[:,k,:] = regularization( data[:,k,:], regularization_parameter)
+
+        print('\tRegularization Done')
+
+    """ ######################## RECON ################################ """
+
+    if algorithm == "TEM" or algorithm == "EM":
+        data = np.exp(-data)
+    elif algorithm == "ART":
+        flat = np.ones([1,data.shape[-2],data.shape[-2]],dtype=np.uint16)
+        dark = np.zeros(flat.shape[1:],dtype=np.uint16)
+        centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
+
+    if algorithm != "EEM": # for these
+        rays, slices = data.shape[-1], data.shape[-2]
+        reconstruction3D = np.zeros((rays,slices,rays))
+        for i in range(slices):
+            sinogram = data[:,i,:]
+            if algorithm == "ART":
+                reconstruction3D[:,i,:]= MaskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
+            elif algorithm == "FBP": 
+                reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
+            elif algorithm == "RegBackprojection":
+                reconstruction3D[:,i,:]= Backprojection( sino=sinogram,device=GPUs)
+            elif algorithm == "EM":
+                reconstruction3D[:,i,:]= EM(sinogram, flat, iter=iterations, pad=2, device=GPUs, csino=0)
+            elif algorithm == "SIRT":
+                reconstruction3D[:,i,:]= SIRT_FST(sinogram, iter=iterations, zpad=2, step=1.0, csino=0, device=GPUs, art_alpha=0.2, reg_mu=0.2, param_alpha=0, supp_reg=0.2, img=None)
+    elif algorithm == "EEM": #data é o que sai do wiggle! 
+        data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
+        nangles = data.shape[1]
+        recsize = data.shape[2]
+        iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
+        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': nangles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
+        reconstruction3D = parallel.emfs( data, dic )
+    else:
+        import sys
+        sys.exit('Select a proper reconstruction method')
+
+    return reconstruction3D
 
 def _operator_T(u):
     d   = 1.0
@@ -175,7 +293,6 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
-
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
@@ -230,7 +347,7 @@ def call_cmd_terminal(filename,mafalda,remove=False):
         
     return given_jobID
 
-def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32,run_all_steps=False):
+def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
@@ -340,7 +457,6 @@ def debounce(wait):
         return debounced
     return decorator
 
-
 def slide_and_play(slider_layout=slider_layout,label="",description="",frame_time_milisec = 0):
 
     def update_frame_time(play_control,time_per_frame):
@@ -363,8 +479,6 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
         play_box = widgets.VBox([play_label,play_box])
 
     return play_box, selection_slider,play_control
-
-# play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
 
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
@@ -398,7 +512,6 @@ def folders_tab():
         object = np.load(complex_object_file)
         print('\t Loaded!')
 
-        angles_filename = foldernames[0] + '_ordered_angles.npy'
         rois = sort_frames_by_angle(ibira_path,foldernames)
 
         object_filename = foldernames[0]  + '_ordered_object.npy'
@@ -628,7 +741,7 @@ def chull_tab():
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
         print('Loading unwrapped sinogram...')
-        unwrapped_sinogram = np.load(os.path.join(output_folder,'unwrapped_sinogram.npy'))
+        unwrapped_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
         print('\t Loaded!')
         selection_slider, play_control = args
         selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
@@ -726,7 +839,7 @@ def wiggle_tab():
             file = f'{data_selection.value}_chull_sinogram.npy'
 
         global sinogram
-        print('Loading ...: ',file)
+        print('Loading ',file)
         sinogram = np.load(os.path.join(output_folder,file))
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
@@ -738,29 +851,51 @@ def wiggle_tab():
         format_wiggle_plot(figure2,subplot2)
 
     global wiggled_sinogram
+  
     def start_wiggle(dummy,args=()):
+
+        global sinogram # [7,20,36,65,94,123,152,181,210,239,268,296,324]
         sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider = args
         
+        global savepath
         savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+
+        print('Projecting angles to regular mesh...')
+        angles  = np.load( os.path.join(output_folder, angles_filename))
+        angles = (np.pi/180.) * angles
+        sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles)
+        print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
+        projected_angles_filename = angles_filename[:-4]+'_projected.npy'
+        np.save(os.path.join(output_folder, projected_angles_filename),projected_angles)
+
         print("Starting wiggle...")
+        global wiggled_sinogram
         wiggled_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, selection_slider.widget.value)
         wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)
         print("\t Wiggle done!")
+        
+        print("Saving wiggle sinogram to: ", savepath)
+        np.save(savepath,wiggled_sinogram)
+        print("\t Saved!")
+
+    def load_wiggle(dummy):
+        wiggled_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'))
+        print('Loading wiggled frames...')
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
         sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1,0]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
-        print("Saving wiggle sinogram to: ", savepath)
-        np.save(savepath,wiggled_sinogram)
-        print("\t Saved!")
+        print('\tLoaded!')
+
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
 
     cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
+    load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
     
     sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
@@ -771,8 +906,9 @@ def wiggle_tab():
     
     args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
+    load_wiggle_button.trigger(load_wiggle)
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget])
+    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget])
     output = widgets.Box([output],layout=widgets.Layout(align_content='center'))#,align_items='center',justify_content='center'))
     box = widgets.HBox([controls,vbar,output,vbar,output2])
     
@@ -819,11 +955,10 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
 
     def run_tomo(dummy,args=()):
-        algo_dropdown,iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, checkboxes = args
+        iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, checkboxes = args
 
         global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
 
-        tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
         output_path = global_dict["jupyter_folder"] 
         
         slurm_filepath = os.path.join(output_path,'tomo_job.srm')
@@ -832,34 +967,41 @@ def tomo_tab():
 
         n_gpus = len(ast.literal_eval(gpus_field.widget.value))
 
-        if machine_selection == 'Bertha':
-            print('Runnint tomo with Bertha....')
-        else: 
-            print('Running tomo through Mafalda...')
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value,run_all_steps=global_dict["run_all_tomo_steps"])
+        global machine_selection
+        print(f'Running tomo with {machine_selection.value}...')
+        if machine_selection.value == 'Bertha':               
+            _ = tomography(global_dict["tomo_algorithm"],data_selection.value,angles_filename,global_dict["tomo_iterations"],global_dict["tomo_n_of_gpus"],global_dict["tomo_regularization"],global_dict["tomo_regularization_param"])
+            print('\t Done! Please, load the reconstruction with the button...')
+
+        elif machine_selection.value == "Mafalda": 
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value)
 
     def load_recon(dummy):
-        sinogram_folder = output_folder
+
+        if type(global_dict["folders_list"]) == type('a'):
+            global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
 
         if load_selection.value == "Original":
-            savepath = os.path.join(sinogram_folder, f'{data_selection.value}_reconstruction3D.npy' )
+            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '.npy' )
         elif load_selection.value == "Threshold":
-            savepath = os.path.join(sinogram_folder, f'{data_selection.value}_reconstruction3D_thresholded.npy' )
-
+            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '_thresholded.npy' )
+        
         print('Loading 3D recon from: ',savepath)
         global reconstruction
         reconstruction = np.load(savepath)
         print('\t Loaded!')
+        tomo_sliceX.widget.max = reconstruction.shape[0]
+        tomo_sliceY.widget.max = reconstruction.shape[1]
+        tomo_sliceZ.widget.max = reconstruction.shape[2]
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
-
 
     def save_thresholded_tomo(dummy):
         print(f'Applying threshold value of {tomo_threshold.widget.value} to reconstruction')
         thresholded_recon = np.where(reconstruction > tomo_threshold.widget.value,0,reconstruction)
         print('\t Done!')
-        savepath = os.path.join(output_folder,f'{data_selection.value}_reconstruction3D_thresholded.npy')
+        savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' + algo_dropdown.value + '_thresholded.npy' )
         print('Saving thresholded reconstruction...')
         np.save(savepath,thresholded_recon)
         imsave(savepath[:-4] + '.tif',thresholded_recon)
@@ -870,7 +1012,7 @@ def tomo_tab():
         n_bins=100
         threshold = tomo_threshold.widget.value
         
-        raw_data = np.load(os.path.join(output_folder,f'{data_selection.value}_reconstruction3D_thresholded.npy'))
+        raw_data = np.load(os.path.join(output_folder,f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_thresholded.npy'))
 
         raw_data = raw_data.flatten()
         data = raw_data
@@ -916,19 +1058,23 @@ def tomo_tab():
     tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
     tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
-    
+    algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
+    load_selection  = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
+    checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
+    checkboxes_box  = widgets.VBox(children=checkboxes)
 
-    algo_dropdown = widgets.Dropdown(options=[('EEM', 1), ('EM', 2), ('ART', 3),('FBP', 3)], value=1,description='Algorithm:',layout=items_layout)
-
-    load_selection = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
-
-    checkboxes = [widgets.Checkbox(value=True, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
-    # checkboxes_box = widgets.Box(children=checkboxes,layout=widgets.Layout(flex_flow='column',width='100%',justify_content='flex-start',border=standard_border,align_item='flex-start',align_content='flex-start'))
-    checkboxes_box = widgets.VBox(children=checkboxes)
-    # checkboxes_box = widgets.VBox([widgets.Label(value="Reconstruction Steps:"),checkboxes_box0])
+    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,chull_checkbox,wiggle_checkbox,tomo_checkbox):
+        # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
+        dictionary["processing_steps"]["Sort"]       = sort_checkbox 
+        dictionary["processing_steps"]["Crop"]       = crop_checkbox 
+        dictionary["processing_steps"]["Unwrap"]     = unwrap_checkbox 
+        dictionary["processing_steps"]["ConvexHull"] = chull_checkbox 
+        dictionary["processing_steps"]["Wiggle"]     = wiggle_checkbox 
+        dictionary["processing_steps"]["Tomo"]       = tomo_checkbox 
+    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'chull_checkbox':checkboxes[3],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5]})
 
     start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
-    args = algo_dropdown,iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, checkboxes
+    args = iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, checkboxes
     start_tomo.trigger(partial(run_tomo,args=args))
     start_tomo_box = widgets.Box([start_tomo.widget],layout=center_all_layout)
 
@@ -941,23 +1087,25 @@ def tomo_tab():
     plot_histogram_button = Button(description="Plot Histograms",layout=buttons_layout,icon='play')
     plot_histogram_button.trigger(plot_histograms)
 
-
-
-
     def save_on_click(dummy):
+        print('Saving JSON input file...')
         global_dict["contrast_type"] = data_selection.value
+        if type(global_dict["folders_list"]) == type('a'):
+            global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
         json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
+        print('\t Saved!')
+
     save_dict_button  = Button(description="Save JSON",layout=buttons_layout,icon='fa-floppy-o')
     save_dict_button.trigger(save_on_click)    
     
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
     start_box = widgets.HBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
-    threshold_box = widgets.HBox([save_thresholded_tomo_button.widget, plot_histogram_button.widget])
+    threshold_box = widgets.HBox([save_thresholded_tomo_button.widget])#, plot_histogram_button.widget])
     slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
     controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
-    box = widgets.HBox([controls,vbar2,widgets.VBox([output,hbar,output2])])
+    box = widgets.HBox([controls,vbar2,output])#widgets.VBox([output,hbar,output2])])
     
     return box 
 

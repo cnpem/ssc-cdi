@@ -2,20 +2,12 @@ import sscCdi
 import sscIO
 from sscPimega import pi540D
 
-from sys import argv
 import os
 from time import time
 import h5py
 import numpy as np
 
-import matplotlib.pyplot as plt
-import matplotlib
-# matplotlib.use('Agg')
 
-from operator import sub
-
-from numpy.fft import fftshift as shift
-from numpy.fft import ifftshift as ishift
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 from scipy import ndimage
