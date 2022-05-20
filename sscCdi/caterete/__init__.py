@@ -3,5 +3,5 @@ from .unwrap import *
 from .misc import *
 from .fresnel import *
 from .functions import *
-from .jupyter import *
-from .jupyterTomography import *
+from .jupyter_recon2D import *
+from .jupyter_recon3D import *

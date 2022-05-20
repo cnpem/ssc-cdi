@@ -13,7 +13,7 @@ from skimage.io import imsave
 from sscRadon import radon
 from sscRaft import parallel
 
-from .jupyter import call_cmd_terminal, monitor_job_execution, call_and_read_terminal
+from .jupyter_recon2D import call_cmd_terminal, monitor_job_execution, call_and_read_terminal
 from .unwrap import unwrap_in_parallel
 from .misc import list_files_in_folder
 import asyncio

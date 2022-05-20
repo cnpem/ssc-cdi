@@ -12,8 +12,7 @@ from sscOldRaft import *
 import sscCdi
 from sscPtycho import RemovePhaseGrad
 
-from sscCdi.caterete.jupyterTomography import create_directory_if_doesnt_exist, angle_mesh_organize, tomography
-
+from sscCdi.caterete.juputer_recon3D import create_directory_if_doesnt_exist, angle_mesh_organize, tomography
 
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
