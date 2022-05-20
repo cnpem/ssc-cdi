@@ -164,7 +164,7 @@ if processing_steps["Unwrap"]:
         else:
             print('\tPerforming phase unwrap of slice ', i)
             object[i,:,:] = -np.angle(RemovePhaseGrad(object[i,:,:]))
-            object[i,:,:] = sscCdi.unwrap.object_unwrap(phase[i,:,:],phase_unwrap_iterations,non_negativity=phase_unwrap_non_negativity,remove_gradient = phase_unwrap_gradient_removal)
+            object[i,:,:] = sscCdi.unwrap.object_unwrap(object[i,:,:],phase_unwrap_iterations,non_negativity=phase_unwrap_non_negativity,remove_gradient = phase_unwrap_gradient_removal)
 
     if 1: # Save image preview
         slice_number=0

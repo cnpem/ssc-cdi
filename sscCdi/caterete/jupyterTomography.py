@@ -1,10 +1,11 @@
+from cmath import sin
 import ipywidgets as widgets
 from ipywidgets import fixed
 import ast 
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
-import os
+import os, time
 import json
 from tqdm import tqdm
 from skimage.io import imsave
@@ -158,7 +159,7 @@ def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regul
         print('\tRegularization Done')
 
     """ ######################## RECON ################################ """
-
+    print('Starting tomographic algorithm: ',algorithm)
     if algorithm == "TEM" or algorithm == "EM":
         data = np.exp(-data)
     elif algorithm == "ART":
@@ -191,7 +192,7 @@ def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regul
     else:
         import sys
         sys.exit('Select a proper reconstruction method')
-
+    print('\t Tomography done!')
     return reconstruction3D
 
 def _operator_T(u):
@@ -572,8 +573,10 @@ def crop_tab():
     def load_frames(dummy, args = ()):
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
-        print("Loading sinogram")
-        sinogram = np.load( os.path.join(output_folder,ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')) 
+        
+        sinogram_path = os.path.join(output_folder, ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')
+        print("Loading sinogram from: ",sinogram_path)
+        sinogram = np.load(sinogram_path) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
@@ -672,6 +675,11 @@ def unwrap_tab():
         bad_frames = bad_frames_listA + bad_frames_listB # concatenate lists
    
     def save_sinogram(dummy):
+        global unwrapped_sinogram
+        if np.isnan(unwrapped_sinogram).any() == True:
+            print('Removing NaN values from unwrapped sinogram...')
+            unwrapped_sinogram = np.where(np.isnan(unwrapped_sinogram),0,unwrapped_sinogram)
+
         print('Saving unwrapped sinogram...')
         savepath = os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy')
         np.save(savepath,unwrapped_sinogram)
@@ -839,7 +847,7 @@ def wiggle_tab():
             file = f'{data_selection.value}_chull_sinogram.npy'
 
         global sinogram
-        print('Loading ',file)
+        print('Loading sinogram',os.path.join(output_folder,file))
         sinogram = np.load(os.path.join(output_folder,file))
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
@@ -862,8 +870,10 @@ def wiggle_tab():
 
         print('Projecting angles to regular mesh...')
         angles  = np.load( os.path.join(output_folder, angles_filename))
+        # print('angles:', angles)
         angles = (np.pi/180.) * angles
         sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles)
+        print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
         print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
         projected_angles_filename = angles_filename[:-4]+'_projected.npy'
         np.save(os.path.join(output_folder, projected_angles_filename),projected_angles)
@@ -879,8 +889,9 @@ def wiggle_tab():
         print("\t Saved!")
 
     def load_wiggle(dummy):
-        wiggled_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'))
-        print('Loading wiggled frames...')
+        wiggle_datapath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+        wiggled_sinogram = np.load(wiggle_datapath)
+        print('Loading wiggled frames from:',wiggle_datapath)
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
         sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
@@ -970,8 +981,16 @@ def tomo_tab():
         global machine_selection
         print(f'Running tomo with {machine_selection.value}...')
         if machine_selection.value == 'Bertha':               
-            _ = tomography(global_dict["tomo_algorithm"],data_selection.value,angles_filename,global_dict["tomo_iterations"],global_dict["tomo_n_of_gpus"],global_dict["tomo_regularization"],global_dict["tomo_regularization_param"])
+            reconstruction3D = tomography(global_dict["tomo_algorithm"],data_selection.value,angles_filename,global_dict["tomo_iterations"],global_dict["tomo_n_of_gpus"],global_dict["tomo_regularization"],global_dict["tomo_regularization_param"])
             print('\t Done! Please, load the reconstruction with the button...')
+            reconstruction3D = reconstruction3D.astype(np.float32)
+            print('Saving 3D recon...')
+            if type(global_dict["folders_list"]) == type('a'):
+                global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
+            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '.npy' )
+            np.save(savepath,reconstruction3D)
+            imsave(savepath[:-4] + '.tif',reconstruction3D)
+            print('\t Saved!')
 
         elif machine_selection.value == "Mafalda": 
             run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value)
@@ -987,6 +1006,7 @@ def tomo_tab():
             savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '_thresholded.npy' )
         
         print('Loading 3D recon from: ',savepath)
+        time.sleep(0.5)
         global reconstruction
         reconstruction = np.load(savepath)
         print('\t Loaded!')
@@ -999,7 +1019,7 @@ def tomo_tab():
 
     def save_thresholded_tomo(dummy):
         print(f'Applying threshold value of {tomo_threshold.widget.value} to reconstruction')
-        thresholded_recon = np.where(reconstruction > tomo_threshold.widget.value,0,reconstruction)
+        thresholded_recon = np.where( np.abs(reconstruction) > tomo_threshold.widget.value,0,reconstruction)
         print('\t Done!')
         savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' + algo_dropdown.value + '_thresholded.npy' )
         print('Saving thresholded reconstruction...')
