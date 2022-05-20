@@ -34,7 +34,7 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
-               "bad_frames_list": [],
+               "bad_frames_list": [7,20,36,65,94,123,152,181,210,239,268,296,324],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
