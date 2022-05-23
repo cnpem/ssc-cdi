@@ -85,7 +85,7 @@ def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path
     monitor_job_execution(given_jobID,mafalda)
 
     
-def connect_mafalda():
+def connect_server():
     host = madalda_ip #"10.30.4.10" # Mafalda IP
     port = mafalda_port #22
     username = input("Username:")

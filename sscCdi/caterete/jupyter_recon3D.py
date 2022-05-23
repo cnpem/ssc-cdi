@@ -296,7 +296,7 @@ def regularization(sino, L):
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0):
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
     subplot.clear()
     if bottom == None or right == None:
         if axis == 0:
@@ -311,7 +311,12 @@ def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0
         elif axis == 1:
             subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
         elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')    
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')
+    if title == True:
+        subplot.set_title(f'Frame #{frame_number}')
+    if clear_axis == True:
+        subplot.set_xticks([])
+        subplot.set_yticks([])    
     figure.canvas.draw_idle()
 
 def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -536,7 +541,7 @@ def folders_tab():
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
 
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})  
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})  
 
 
     ibira_data_path = Input(global_dict,"ibira_data_path",layout=items_layout,description='Ibira Datapath (str)')
@@ -583,7 +588,7 @@ def crop_tab():
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
       
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
 
     def save_cropped_sinogram(dummy,args=()):
@@ -636,7 +641,7 @@ def unwrap_tab():
         print('Performing phase unwrap...')
         unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
         print('\t Done!')
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'title':fixed(True),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
         
 
     def format_chull_plot(figure,subplots,frame_number):
@@ -656,7 +661,7 @@ def unwrap_tab():
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
         widgets.interactive_output(format_chull_plot, {'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap), 'frame_number': selection_slider.widget})    
 
     def correct_bad_frames(dummy):
@@ -695,7 +700,7 @@ def unwrap_tab():
     iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
     non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
     gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=items_layout,description='Gradient')
-    preview_unwrap_button = Button(description="Preview unwrap",layout=buttons_layout,icon='play')
+    preview_unwrap_button = Button(description="Perform Unwrap",layout=buttons_layout,icon='play')
     preview_unwrap_button.trigger(phase_unwrap)
     
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
@@ -703,7 +708,7 @@ def unwrap_tab():
     args = (selection_slider,play_control)
     load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
 
-    correct_bad_frames_button = Button(description='Correct Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
     correct_bad_frames_button.trigger(correct_bad_frames)
 
     save_unwrapped_button = Button(description="Save unwrapped frames",layout=buttons_layout,icon='fa-floppy-o') 
@@ -754,7 +759,7 @@ def chull_tab():
         selection_slider, play_control = args
         selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplots[0,0]), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplots[0,0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
         format_chull_plot(figure,subplots)
 
     def preview_cHull(dummy,args=()):
@@ -765,7 +770,7 @@ def chull_tab():
         play_control.widget.max =  selection_slider.widget.max
         for subplot, image in zip(subplots.reshape(-1),output_list[0::]):
             image = np.expand_dims(image, axis=0)
-            widgets.interactive_output(update_imshow, {'sinogram':fixed(image),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})    
+            widgets.interactive_output(update_imshow, {'sinogram':fixed(image),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
         format_chull_plot(figure,subplots)
         print('\tDone with convex hull...')
 
@@ -852,7 +857,7 @@ def wiggle_tab():
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})    
     
     def update_imshow_with_format(sinogram,figure,subplot,frame_number,axis):
         update_imshow(sinogram,figure,subplot,frame_number,axis=axis)
@@ -901,7 +906,7 @@ def wiggle_tab():
         print('\tLoaded!')
 
 
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
 
     cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
 
@@ -980,7 +985,7 @@ def tomo_tab():
 
         global machine_selection
         print(f'Running tomo with {machine_selection.value}...')
-        if machine_selection.value == 'Bertha':               
+        if machine_selection.value == 'Local':               
             reconstruction3D = tomography(global_dict["tomo_algorithm"],data_selection.value,angles_filename,global_dict["tomo_iterations"],global_dict["tomo_n_of_gpus"],global_dict["tomo_regularization"],global_dict["tomo_regularization_param"])
             print('\t Done! Please, load the reconstruction with the button...')
             reconstruction3D = reconstruction3D.astype(np.float32)
@@ -992,7 +997,7 @@ def tomo_tab():
             imsave(savepath[:-4] + '.tif',reconstruction3D)
             print('\t Saved!')
 
-        elif machine_selection.value == "Mafalda": 
+        elif machine_selection.value == "Cluster": 
             run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value)
 
     def load_recon(dummy):
@@ -1148,7 +1153,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
-               "bad_frames_list": [],
+               "bad_frames_list": [7,20,36,65,94,123,152,181,210,239,268,296,324],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
@@ -1179,7 +1184,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
     global machine_selection
-    machine_selection = widgets.RadioButtons(options=['Bertha', 'Mafalda'], value='Bertha', layout={'width': '30%'},description='Machine',disabled=False)
+    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
 
 
     global data_selection
