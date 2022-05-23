@@ -172,13 +172,11 @@ def customize_compiler_for_nvcc(self):
     self._compile = _compile
 
 
-
 # run the customize_compiler
 class custom_build_ext(build_ext):
     def build_extensions(self):
         customize_compiler_for_nvcc(self.compiler)
         build_ext.build_extensions(self)
-
 
 # Main setup configuration.
 setup(
