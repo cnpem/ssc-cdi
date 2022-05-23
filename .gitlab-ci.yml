@@ -6,7 +6,7 @@ build:
     image: gccdockers/annotat3d:cuda-11.2
     stage: build
     script:
-        - python3 setup.py bdist_wheel
+        - python3 setup.py bdist_wheel --cuda
     tags:
         - x86_64
         - cuda11
