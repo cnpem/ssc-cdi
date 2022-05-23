@@ -1,7 +1,6 @@
 stages:
     - build
     - deploy
-    - deploy
 
 build:
     image: gccdockers/annotat3d:cuda-11.2
