@@ -5,3 +5,4 @@ from .fresnel import *
 from .functions import *
 from .jupyter_recon2D import *
 from .jupyter_recon3D import *
+from .jupyter_general import *
