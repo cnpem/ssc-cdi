@@ -611,6 +611,7 @@ def crop_tab():
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
+        print(output_folder)
         sinogram_path = os.path.join(output_folder, ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')
         print("Loading sinogram from: ",sinogram_path)
         sinogram = np.load(sinogram_path) 
@@ -1024,9 +1025,9 @@ def wiggle_tab():
 def tomo_tab():
     
     def format_tomo_plot(figure,subplots):
-        subplots[0].set_title('YZ')
-        subplots[1].set_title('XZ')
-        subplots[2].set_title('XY')
+        # subplots[0].set_title('YZ')
+        # subplots[1].set_title('XZ')
+        # subplots[2].set_title('XY')
 
         for subplot in subplots.reshape(-1):
             subplot.set_aspect('equal')
@@ -1105,6 +1106,7 @@ def tomo_tab():
         global reconstruction
         reconstruction = np.load(savepath)
         print('\t Loaded!')
+        print(f'Max = {np.max(reconstruction)}, Min = {np.min(reconstruction)}, Mean = {np.mean(reconstruction)}')
         tomo_sliceX.widget.max = reconstruction.shape[0]
         tomo_sliceY.widget.max = reconstruction.shape[1]
         tomo_sliceZ.widget.max = reconstruction.shape[2]
