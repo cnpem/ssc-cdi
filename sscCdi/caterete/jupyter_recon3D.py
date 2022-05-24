@@ -61,6 +61,7 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
 """ Standard folders definitions"""
 tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
 angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
+object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
 output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
 print('Output folder: ', output_folder) 
 
@@ -1237,22 +1238,58 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     global mafalda
     mafalda = mafalda_session
 
-
     load_json_button  = Button(description="Load JSON template",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
     global machine_selection
     machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
 
-
     global data_selection
     data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
 
 
-    box = widgets.HBox([machine_selection,data_selection,load_json_button.widget])
+    
+    def delete_files(dummy):
+        sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
+
+        filepaths_to_remove = [os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),
+        os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'),
+        os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'),
+        os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'),
+        os.path.join(output_folder, angles_filename[:-4]+'_projected.npy'),
+        os.path.join(sinogram_path,angles_filename),
+        os.path.join(sinogram_path,object_filename)]
+
+        for filepath in filepaths_to_remove:
+            print('Removing file/folder: ', filepath)
+            if os.path.exists(filepath) == True:
+                os.remove(filepath)
+                print(f'Deleted {filepath}\n')
+            else:
+                print(f'Directory {filepath} does not exists. Skipping deletion...\n')
+
+        folderpaths_to_remove =[os.path.join(output_folder,'00_frames_original'),
+                                os.path.join(output_folder,'01_frames_ordered'),
+                                os.path.join(output_folder,'02_frames_cropped'),
+                                os.path.join(output_folder,'03_frames_unwrapped'),
+                                os.path.join(output_folder,'04_frames_convexHull')]
+                                
+        import shutil
+        for folderpath in folderpaths_to_remove:
+            print('Removing file/folder: ', folderpath)
+            if os.path.isdir(folderpath) == True:
+                shutil.rmtree(folderpath)
+                print(f'Deleted {folderpath}\n')
+            else:
+                print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
+
+
+    delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
+    delete_temporary_files_button.trigger(partial(delete_files))
+
+    box = widgets.HBox([machine_selection,data_selection,load_json_button.widget,delete_temporary_files_button.widget])
     display(box)
-    
-    
+
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
