@@ -1,6 +1,5 @@
 import subprocess
 
-
 def install_packages():
     cmd = """pip config --user set global.extra-index-url http://gcc.lnls.br:3128/simple/
     pip config --user set global.trusted-host gcc.lnls.br
