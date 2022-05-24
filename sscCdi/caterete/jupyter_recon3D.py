@@ -63,7 +63,6 @@ tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH U
 angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
 object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
 output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
-print('Output folder: ', output_folder) 
 
 """ Standard styling definitions """
 standard_border='1px none black'
@@ -194,7 +193,34 @@ def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regul
         import sys
         sys.exit('Select a proper reconstruction method')
     print('\t Tomography done!')
+
+    print('Saving tomography logfile...')
+    save_json_logfile(global_dict)
+    print('\tSaved!')
+
     return reconstruction3D
+
+def save_json_logfile(jason):
+    """Save a copy of the json input file with datetime at the filename
+
+    Args:
+        path (string): output folder path 
+        jason (dic): jason dictionary
+    """    
+    import json, os
+    from datetime import datetime
+    now = datetime.now()
+
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    
+    name = jason["folders_list"][0]
+
+    name = dt_string + "_" + name+".json"
+
+    filepath = os.path.join(output_folder,name)
+    file = open(filepath,"w")
+    file.write(json.dumps(jason,indent=3,sort_keys=True))
+    file.close()
 
 def _operator_T(u):
     d   = 1.0
@@ -493,6 +519,8 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
             
 def folders_tab():
 
+    global output_folder
+
     output = widgets.Output()
     with output:
         figure, subplot = plt.subplots()
@@ -501,11 +529,12 @@ def folders_tab():
         plt.show()
 
     def update_fields(ibira_data_path,folders_list,sinogram_path):
-
+        global output_folder
         global_dict["ibira_data_path"] = ibira_data_path
         global_dict["folders_list"]    = folders_list
         global_dict["sinogram_path"]   = sinogram_path
-    
+        output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
+
     def sort_frames(dummy,ibira_path='',foldernames=[''],sinogram_path='',args=()):
         global object
 
@@ -927,6 +956,8 @@ def wiggle_tab():
         sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles)
         print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
         print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
+        global_dict['NumberOriginalAngles'] = angles.shape
+        global_dict['NumberUsedAngles']     = projected_angles.shape
         projected_angles_filename = angles_filename[:-4]+'_projected.npy'
         np.save(os.path.join(output_folder, projected_angles_filename),projected_angles)
 
