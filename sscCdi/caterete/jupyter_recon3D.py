@@ -463,6 +463,8 @@ def debounce(wait):
         return debounced
     return decorator
 
+
+
 def slide_and_play(slider_layout=slider_layout,label="",description="",frame_time_milisec = 0):
 
     def update_frame_time(play_control,time_per_frame):
@@ -673,12 +675,10 @@ def unwrap_tab():
         print('\t Done!')
 
     @debounce(0.5) # check changes every 0.5sec
-    def update_lists(bad_frames_list1,bad_frames_list2):
-        bad_frames_listA = ast.literal_eval(bad_frames_list1)
-        bad_frames_listB = ast.literal_eval(bad_frames_list2)
+    def update_lists(bad_frames_list1):
         global bad_frames
-        bad_frames = bad_frames_listA + bad_frames_listB # concatenate lists
-   
+        bad_frames = ast.literal_eval(bad_frames_list1)
+
     def save_sinogram(dummy):
         global unwrapped_sinogram
         if np.isnan(unwrapped_sinogram).any() == True:
@@ -694,8 +694,7 @@ def unwrap_tab():
     load_cropped_frames_button = Button(description="Load cropped frames",layout=buttons_layout,icon='folder-open-o')
 
     bad_frames_list  = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=items_layout)
-    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames after Unwrap',layout=items_layout)
-    widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_list.widget,"bad_frames_list2":bad_frames_list2.widget})
+    widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_list.widget})
     
     iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
     non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
@@ -715,7 +714,7 @@ def unwrap_tab():
     save_unwrapped_button.trigger(save_sinogram)
     
     unwrap_params_box = widgets.Box([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget],layout=get_box_layout('100%'))
-    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget,bad_frames_list2.widget],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget],layout=get_box_layout('500px'))
     plot_box = widgets.VBox([output])
         
     box = widgets.HBox([controls_box,vbar,plot_box])
@@ -751,6 +750,14 @@ def chull_tab():
         format_chull_plot(figure,subplots)
         plt.show()
     
+
+    output2 = widgets.Output()
+    with output2:
+        figure2, subplot2 = plt.subplots()
+        subplot2.imshow(np.random.random((3,3)),cmap='gray')
+        figure2.canvas.header_visible = False 
+        plt.show()
+
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
         print('Loading unwrapped sinogram...')
@@ -782,29 +789,68 @@ def chull_tab():
         print('Saving cHull sinogram...')
         np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram)
         print('\tSaved!')
-        
+    
+    def load_chull_sinogram(dummy,args=()):
+        global cHull_sinogram
+        print('Loading cHull sinogram...')
+        cHull_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
+        print('\t Loaded!')
+        selection_slider, play_control = args
+        selection_slider.widget.max, selection_slider.widget.value = cHull_sinogram.shape[0] - 1, cHull_sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(cHull_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2), 'title':fixed(True),'frame_number': selection_slider2.widget})    
+
+    def correct_bad_frames(dummy):
+        print('Zeroing frames: ', bad_frames2)
+        global cHull_sinogram
+        cHull_sinogram_corrected = np.load(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
+        unwrapped_sinogram[bad_frames2,:,:]   = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
+        cHull_sinogram_corrected[bad_frames2,:,:]       = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
+        print('\t Done!')
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(cHull_sinogram_corrected),'figure':fixed(figure2),'subplot':fixed(subplot2), 'title':fixed(True),'frame_number': selection_slider2.widget})    
+        print('Saving corrected cHull sinogram:',os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
+        np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram_corrected)
+        print('\tSaved!')
+
+    @debounce(0.5) # check changes every 0.5sec
+    def update_lists(bad_frames_list2):
+        global bad_frames2
+        bad_frames2 = ast.literal_eval(bad_frames_list2)
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
     load_button = Button(description="Load unwrapped sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
 
-    invert_checkbox = Input(global_dict,"chull_invert",    description='Invert')
-    tolerance       = Input(global_dict,"chull_tolerance", description='Threshold')
-    opening_slider  = Input(global_dict,"chull_opening",   description="Opening",     bounded=(1,100,1),slider=True)
-    erosion_slider  = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(1,100,1),slider=True)
-    param_slider    = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(1,200,1),slider=True)
-    
+    invert_checkbox  = Input(global_dict,"chull_invert",    description='Invert')
+    tolerance        = Input(global_dict,"chull_tolerance", description='Threshold')
+    opening_slider   = Input(global_dict,"chull_opening",   description="Opening",     bounded=(1,100,1),slider=True)
+    erosion_slider   = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(1,100,1),slider=True)
+    param_slider     = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(1,200,1),slider=True)
+    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames',  layout=items_layout)
+    widgets.interactive_output(update_lists,{ "bad_frames_list2":bad_frames_list2.widget})
+
     preview_button = Button(description="Convex Hull Preview",layout=buttons_layout,icon='play')
     preview_button.trigger(partial(preview_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
+    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    correct_bad_frames_button.trigger(correct_bad_frames)
+
     start_button = Button(description="Do complete Convex Hull",layout=buttons_layout,icon='play')
     start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
+    play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector")
+
+    load_button2 = Button(description="Load cHull sinogram",layout=buttons_layout,icon='folder-open-o')
+    load_button2.trigger(partial(load_chull_sinogram,args=(selection_slider2,play_control2)))
+
+    cHull_controls = widgets.Box([load_button2.widget,correct_bad_frames_button.widget,bad_frames_list2.widget,play_box2],layout=box_layout)
+
     controls0 = widgets.Box([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget],layout=box_layout)
     controls_box = widgets.Box([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
-    
-    box = widgets.HBox([controls_box,vbar, output])
+    controls_box = widgets.VBox([controls_box,hbar2,cHull_controls])
+
+    box = widgets.HBox([controls_box,vbar, output,vbar,output2])
     
     return box
 
@@ -894,6 +940,7 @@ def wiggle_tab():
         print("\t Saved!")
 
     def load_wiggle(dummy):
+        global wiggled_sinogram
         wiggle_datapath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
         wiggled_sinogram = np.load(wiggle_datapath)
         print('Loading wiggled frames from:',wiggle_datapath)
@@ -905,6 +952,13 @@ def wiggle_tab():
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
         print('\tLoaded!')
 
+    def save_inverted_sinogram(dummy):
+        print('Multiplying sinogram by -1 and saving at:',os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'))
+        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+        global wiggled_sinogram
+        wiggled_sinogram = -1*wiggled_sinogram
+        np.save(savepath,wiggled_sinogram)
+        print(f'\t Saved! New max = {np.max(wiggled_sinogram)}. New min = {np.min(wiggled_sinogram)}')
 
     play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
 
@@ -912,7 +966,7 @@ def wiggle_tab():
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
-    
+
     sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
@@ -924,7 +978,11 @@ def wiggle_tab():
     wiggle_button.trigger(partial(start_wiggle,args=args2))
     load_wiggle_button.trigger(load_wiggle)
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget])
+    invert_sinogram_buttom = Button(description='Invert Sinogram',icon='undo',layout=buttons_layout)
+    invert_sinogram_buttom.trigger(save_inverted_sinogram)
+
+
+    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
     output = widgets.Box([output],layout=widgets.Layout(align_content='center'))#,align_items='center',justify_content='center'))
     box = widgets.HBox([controls,vbar,output,vbar,output2])
     
@@ -967,7 +1025,7 @@ def tomo_tab():
         plt.show()
 
     def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis):
-        update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis)
+        update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis,title=True)
         format_tomo_plot(figure,subplot)
 
     def run_tomo(dummy,args=()):
