@@ -60,9 +60,7 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
 
 """ Standard folders definitions"""
 tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
-angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
-object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
-output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
+
 
 """ Standard styling definitions """
 standard_border='1px none black'
@@ -519,7 +517,7 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
             
 def folders_tab():
 
-    global output_folder
+    global output_folder, angles_filename, object_filename
 
     output = widgets.Output()
     with output:
@@ -529,30 +527,32 @@ def folders_tab():
         plt.show()
 
     def update_fields(ibira_data_path,folders_list,sinogram_path):
-        global output_folder
+        global output_folder, angles_filename, object_filename
         global_dict["ibira_data_path"] = ibira_data_path
         global_dict["folders_list"]    = folders_list
         global_dict["sinogram_path"]   = sinogram_path
         output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
-
-    def sort_frames(dummy,ibira_path='',foldernames=[''],sinogram_path='',args=()):
+        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
+        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
+    
+    def sort_frames(dummy):
         global object
 
-        save_path = sinogram_path.rsplit('/',1)[0]
+        save_path = sinogram_path.widget.value.rsplit('/',1)[0]
         print(f'Saving sorted frames to: {save_path}')
 
-        selection_slider,play_control = args
-        foldernames = ast.literal_eval(foldernames)
+        global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"])
 
-        complex_object_file  = os.path.join(output_folder, 'object_' + foldernames[0] + '.npy') #hard coded path
+        complex_object_file  = os.path.join(output_folder, 'object_' + global_dict["folders_list"][0] + '.npy') #hard coded path
         
-        print('Loading sinogram...')
+        print('Loading sinogram: ',complex_object_file)
         object = np.load(complex_object_file)
         print('\t Loaded!')
 
-        rois = sort_frames_by_angle(ibira_path,foldernames)
+        # ibira_path=,foldernames=folders_list.widget.value,sinogram_path=,args=(selection_slider,play_control)))    
+        rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
 
-        object_filename = foldernames[0]  + '_ordered_object.npy'
+        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
 
         object = reorder_slices_low_to_high_angle(object, rois)
 
@@ -569,7 +569,6 @@ def folders_tab():
         print('Saving ordered sinogram...')
         np.save(os.path.join(save_path,object_filename), object) 
         print('\tSaved! Sinogram shape: ',object.shape)
-        selection_slider, play_control = args
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
 
@@ -584,7 +583,7 @@ def folders_tab():
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
 
     sort_button = Button(description="Sort frames",layout=buttons_layout, icon="fa-sort-numeric-asc")
-    sort_button.trigger(partial(sort_frames,ibira_path=ibira_data_path.widget.value,foldernames=folders_list.widget.value,sinogram_path=sinogram_path.widget.value,args=(selection_slider,play_control)))    
+    sort_button.trigger(sort_frames)
 
     controls_box = widgets.Box(children=[sort_button.widget,play_box], layout=get_box_layout('500px',align_items='center'))
 
