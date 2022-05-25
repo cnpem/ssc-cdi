@@ -268,7 +268,7 @@ def deploy_input_fields(dictionary,auxiliary_dict):
     from ipywidgets import fixed
     import os
 
-    def loadJson(dummy,user_folder="/ibira/lnls/beamlines/caterete/apps/jupyter-dev/" ,dictionary={}):
+    def loadJson(dummy,user_folder="/ibira/lnls/beamlines/caterete/apps/jupyter/" ,dictionary={}):
         json_path = os.path.join(user_folder,"000000_template.json")
         template_dict = json.load(open(json_path))
         for key in template_dict:
@@ -276,8 +276,8 @@ def deploy_input_fields(dictionary,auxiliary_dict):
         
     loadJsonButton = widgets.Button(description="Load json template",layout=widgets.Layout(width='30%', height='100px',max_height='50px'),icon='play')
 
-    ProposalPathField = widgets.Text(value='/ibira/lnls/beamlines/caterete/proposals/YYYYNNNN',description="Insert data path:",style=field_style,layout=field_layout)
-    AcquisitionFolderField = widgets.Text(value='[ "dataFolder1"]',description="Insert list of acquisiton folders inside the data path:",style=field_style,layout=field_layout)
+    ProposalPathField = widgets.Text(value='/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho2d/',description="Insert data path:",style=field_style,layout=field_layout)
+    AcquisitionFolderField = widgets.Text(value='[ "SS61"]',description="Insert list of acquisiton folders inside the data path:",style=field_style,layout=field_layout)
     jobNameField  = widgets.Text(value='myJobName',description="Insert slurm job name:",style=field_style)
     jobQueueField = widgets.Text(value='cat-proc',description="Insert machine queue name:",style=field_style)
     gpusField = widgets.BoundedIntText(value=1,min=0,max=4,description="Insert # of gpus to use:",style=field_style)
@@ -302,8 +302,8 @@ def deploy_input_fields(dictionary,auxiliary_dict):
             user_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
             pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
         else: # paths for GCC tests       
-            user_folder     = "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/" 
-            pythonScript    = '/ibira/lnls/beamlines/caterete/apps/jupyter-dev/sscptycho_main.py' # path with python script to run
+            user_folder     = "/ibira/lnls/beamlines/caterete/apps/jupyter/" 
+            pythonScript    = '/ibira/lnls/beamlines/caterete/apps/jupyter/sscptycho_main.py' # path with python script to run
         
         slurmFile       = os.path.join(user_folder,'slurm_job.srm') # path to create slurm_file
         jsonFile        = os.path.join(user_folder,'user_input.json') # path with input json to run

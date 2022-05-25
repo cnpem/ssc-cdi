@@ -28,8 +28,8 @@ sinogram = np.random.random((2,2,2)) # dummy sinogram
 """ Standard dictionary definition """
 global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/",
                "folders_list": ["microagg_P2_01"],
-               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/microagg_P2_01/object_microagg_P2_01.npy",
-               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter-dev/"  , # FIXED PATH FOR BEAMLINE
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/microagg_P2_01/object_microagg_P2_01.npy",
+               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/"  , # FIXED PATH FOR BEAMLINE
                "top_crop": 0,
                "bottom_crop":0,
                "left_crop":0,
@@ -61,6 +61,8 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
 """ Standard folders definitions"""
 tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
 
+angles_filename = 'dummy_angles_filename'
+object_filename = 'dummy_object_filename'
 
 """ Standard styling definitions """
 standard_border='1px none black'
@@ -253,7 +255,9 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
     chull_sinogram = np.empty_like(sinogram)
     do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
     frames = [f for f in range(sinogram.shape[0])]
-    with ProcessPoolExecutor() as executor:
+    processes = min(os.cpu_count(),32)
+    print(f'Using {processes} parallel processes')
+    with ProcessPoolExecutor(max_workers=processes) as executor:
         results = list(tqdm(executor.map(do_chull_partial,frames),total=sinogram.shape[0]))
         for counter, result in enumerate(results):
             new,mask,mask2,mask3,chull,img_masked = result
@@ -516,8 +520,9 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
-
     global output_folder, angles_filename, object_filename
+    angles_filename = 'dummy2_angles_filename'
+    object_filename = 'dummy2_object_filename'
 
     output = widgets.Output()
     with output:
@@ -532,9 +537,15 @@ def folders_tab():
         global_dict["folders_list"]    = folders_list
         global_dict["sinogram_path"]   = sinogram_path
         output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
-        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
-        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
-    
+
+        if type(global_dict["folders_list"][0]) == type([1,2]):
+            angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
+            object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
+        else:
+            angles_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_angles.npy'
+            object_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_object.npy'        
+
+
     def sort_frames(dummy):
         global object
 
@@ -549,10 +560,11 @@ def folders_tab():
         object = np.load(complex_object_file)
         print('\t Loaded!')
 
-        # ibira_path=,foldernames=folders_list.widget.value,sinogram_path=,args=(selection_slider,play_control)))    
         rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
 
+        global object_filename, angles_filename
         object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
+        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
 
         object = reorder_slices_low_to_high_angle(object, rois)
 
@@ -564,9 +576,9 @@ def folders_tab():
             object = np.angle(object)
         print('\t Extraction done!')
 
-        print('Saving angles file...')
+        print('Saving angles file: ',os.path.join(save_path,angles_filename))
         np.save(os.path.join(save_path,angles_filename),rois)
-        print('Saving ordered sinogram...')
+        print('Saving ordered sinogram: ', os.path.join(save_path,object_filename))
         np.save(os.path.join(save_path,object_filename), object) 
         print('\tSaved! Sinogram shape: ',object.shape)
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
@@ -611,7 +623,11 @@ def crop_tab():
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
         print(output_folder)
-        sinogram_path = os.path.join(output_folder, ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')
+        if type(global_dict['folders_list']) == type('a'): # if string
+            sinogram_path = os.path.join(output_folder, ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')
+        else: # if list
+            sinogram_path = os.path.join(output_folder, global_dict['folders_list'][0] + '_ordered_object.npy')
+
         print("Loading sinogram from: ",sinogram_path)
         sinogram = np.load(sinogram_path) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
@@ -790,7 +806,7 @@ def chull_tab():
 
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
-        print('Loading unwrapped sinogram...')
+        print('Loading unwrapped sinogram: ',os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
         unwrapped_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
         print('\t Loaded!')
         selection_slider, play_control = args
@@ -949,12 +965,22 @@ def wiggle_tab():
         global savepath
         savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
 
+
+        listOfGlobals = globals()
+        print(listOfGlobals['angles_filename'])
+        print(listOfGlobals['object_filename'])
+
         print('Projecting angles to regular mesh...')
         angles  = np.load( os.path.join(output_folder, angles_filename))
         # print('angles:', angles)
         angles = (np.pi/180.) * angles
         sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles)
         print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
+
+        #TODO: BUG to fix: after projection of angles, the reference frame is on the new projected frames! selection slider should be adjusted before starting wiggle!
+        # selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
+        # play_control.widget.max =  selection_slider.widget.max
+
         print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
         global_dict['NumberOriginalAngles'] = angles.shape
         global_dict['NumberUsedAngles']     = projected_angles.shape
@@ -1229,17 +1255,17 @@ def tomo_tab():
 def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
     
     children_dict = {
-    "Select Folders" : tab1,
-    "Cropping"       : tab2,
-    "Phase Unwrap"   : tab3,
-    "Convex Hull"    : tab4,
-    "Wiggle"         : tab5,
-    "Tomography"     : tab6}
+    "Select and Sort"       : tab1,
+    "Cropping"              : tab2,
+    "Phase Unwrap"          : tab3,
+    "Convex Hull"           : tab4,
+    "Wiggle"                : tab5,
+    "Tomography"            : tab6}
     
     def load_json(dummy,dictionary={}):
-        template_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/data/ptycho2d/",
+        template_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho2d/",
                "folders_list": ["SS61"],
-               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter-dev/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
                "top_crop": 0,
                "bottom_crop":0,
                "left_crop":0,
