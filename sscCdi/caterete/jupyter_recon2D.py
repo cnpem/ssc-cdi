@@ -47,9 +47,9 @@ def call_and_read_terminal(cmd,mafalda):
         terminal_output = p.stdout.read() # Read output from terminal
     else:
         stdin, stdout, stderr = mafalda.exec_command(cmd)
-    terminal_output = stdout.read() 
-    print('Output: ',terminal_output)
-    print('Error:  ',stderr.read())
+        terminal_output = stdout.read() 
+        print('Output: ',terminal_output)
+        print('Error:  ',stderr.read())
     return terminal_output
 
 def call_cmd_terminal(filename,mafalda,remove=False):
