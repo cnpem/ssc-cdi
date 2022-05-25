@@ -143,7 +143,7 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
         results = list(tqdm(executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
         # results = executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)])
         for counter, result in enumerate(results):
-            print('Populating results matrix...',counter)
+            if counter % 10 == 0: print('Populating results matrix...',counter)
             unwrapped_sinogram[counter,:,:] = result
 
     return unwrapped_sinogram

@@ -1,7 +1,7 @@
 import sscCdi
 import sscIO
 from sscPimega import pi540D
-
+from sscPimega import opt540D
 import os
 from time import time
 import h5py
@@ -39,10 +39,10 @@ def Restaurate(img, geom):
     return pi540D.backward540D(img, geom)
 
 def UnRestaurate(img, geom):
-    return pi540D._worker_annotation_image(pi540D.forward540D(img, geom))
+    return opt540D._worker_annotation_image(pi540D.forward540D(img, geom))
 
 def _get_center(dbeam, project):
-    aimg = pi540D._worker_annotation_image ( np.clip( dbeam, 0, 100) )
+    aimg = opt540D._worker_annotation_image( np.clip( dbeam, 0, 100) )
     aimg = ndimage.gaussian_filter( aimg, sigma=0.95, order=0 )
     aimg = aimg/aimg.max()
     aimg = 1.0 * ( aimg > 0.98 )    
