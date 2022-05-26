@@ -89,7 +89,7 @@ def create_directory_if_doesnt_exist(*args):
         if os.path.isdir(arg) == False:
             os.mkdir(arg)
 
-def angle_mesh_organize( mdata, angles, use_max=True ): 
+def angle_mesh_organize( mdata, angles, percentage = 100 ): 
         """ Project angles to regular mesh and pad it to run from 0 to 180
 
         Args:
@@ -110,10 +110,11 @@ def angle_mesh_organize( mdata, angles, use_max=True ):
         forw[0] = forw[1]
         maxdth = abs(forw).max() 
         mindth = abs(forw).min()
-        if use_max == False:
-            nangles = int( (np.pi)/mindth ) 
-        else:
-            nangles = int( (np.pi)/maxdth ) 
+
+        divider = (percentage*maxdth - (percentage-100)*mindth)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
+        print(f'Chosen regular interval: {divider}')
+        
+        nangles = int( (np.pi)/divider ) 
         dth = np.pi / (nangles-1)
         ndata = np.zeros([nangles,mdata.shape[1],mdata.shape[2]])
         idx = np.zeros([nangles], dtype=np.int)
@@ -492,8 +493,6 @@ def debounce(wait):
         return debounced
     return decorator
 
-
-
 def slide_and_play(slider_layout=slider_layout,label="",description="",frame_time_milisec = 0):
 
     def update_frame_time(play_control,time_per_frame):
@@ -526,9 +525,16 @@ def folders_tab():
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots()
+        figure, subplot = plt.subplots(figsize=(4,4))
         subplot.imshow(np.random.random((4,4)),cmap='gray')
         figure.canvas.header_visible = False 
+        plt.show()
+
+    output2 = widgets.Output()
+    with output2:
+        figure2, subplot2 = plt.subplots(figsize=(4,4))
+        subplot2.imshow(np.random.random((4,4)),cmap='gray')
+        figure2.canvas.header_visible = False 
         plt.show()
 
     def update_fields(ibira_data_path,folders_list,sinogram_path):
@@ -545,8 +551,7 @@ def folders_tab():
             angles_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_angles.npy'
             object_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_object.npy'        
 
-
-    def sort_frames(dummy):
+    def load_sinogram(dummy):
         global object
 
         save_path = sinogram_path.widget.value.rsplit('/',1)[0]
@@ -560,14 +565,6 @@ def folders_tab():
         object = np.load(complex_object_file)
         print('\t Loaded!')
 
-        rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
-
-        global object_filename, angles_filename
-        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
-        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
-
-        object = reorder_slices_low_to_high_angle(object, rois)
-
         print(f'Extracting sinogram {data_selection.value}...')
         global_dict["contrast_type"] = data_selection.value
         if data_selection.value == 'Magnitude':
@@ -575,6 +572,23 @@ def folders_tab():
         elif data_selection.value == "Phase":
             object = np.angle(object)
         print('\t Extraction done!')
+
+        selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider2.widget})  
+
+
+    def sort_frames(dummy):
+        global object, object_filename, angles_filename
+
+        save_path = sinogram_path.widget.value.rsplit('/',1)[0]
+
+        rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
+
+        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
+        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
+
+        object = reorder_slices_low_to_high_angle(object, rois)
 
         print('Saving angles file: ',os.path.join(save_path,angles_filename))
         np.save(os.path.join(save_path,angles_filename),rois)
@@ -592,15 +606,19 @@ def folders_tab():
     sinogram_path   = Input(global_dict,"sinogram_path",layout=items_layout,description='Ptycho sinogram path (str)')
     widgets.interactive_output(update_fields, {'ibira_data_path':ibira_data_path.widget,'folders_list':folders_list.widget,'sinogram_path':sinogram_path.widget})
 
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector (Angle)")
+    play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector (Time)")
+
+    load_button = Button(description="Load Data",layout=buttons_layout, icon='folder-open-o')
+    load_button.trigger(load_sinogram)
 
     sort_button = Button(description="Sort frames",layout=buttons_layout, icon="fa-sort-numeric-asc")
     sort_button.trigger(sort_frames)
 
-    controls_box = widgets.Box(children=[sort_button.widget,play_box], layout=get_box_layout('500px',align_items='center'))
+    controls_box = widgets.Box(children=[load_button.widget,play_box2,sort_button.widget,play_box], layout=get_box_layout('500px',align_items='center'))
 
     paths_box = widgets.VBox([ibira_data_path.widget,folders_list.widget,sinogram_path.widget])
-    box = widgets.HBox([controls_box,vbar,output])
+    box = widgets.HBox([controls_box,vbar,output2,output])
     box = widgets.VBox([paths_box,box])
 
     return box
@@ -787,23 +805,11 @@ def chull_tab():
     
     with output:
         figure, subplots = plt.subplots(2,3)
-        subplots[0,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplots[0,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplots[0,2].imshow(np.random.random((4,4)),cmap='gray')
-        subplots[1,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplots[1,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplots[1,2].imshow(np.random.random((4,4)),cmap='gray')
+        for subplot in subplots.reshape(-1):
+            subplot.imshow(np.random.random((3,3)),cmap='gray')
         format_chull_plot(figure,subplots)
         plt.show()
     
-
-    output2 = widgets.Output()
-    with output2:
-        figure2, subplot2 = plt.subplots()
-        subplot2.imshow(np.random.random((3,3)),cmap='gray')
-        figure2.canvas.header_visible = False 
-        plt.show()
-
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
         print('Loading unwrapped sinogram: ',os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
@@ -836,27 +842,12 @@ def chull_tab():
         np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram)
         print('\tSaved!')
     
-    def load_chull_sinogram(dummy,args=()):
-        global cHull_sinogram
-        print('Loading cHull sinogram...')
-        cHull_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
-        print('\t Loaded!')
-        selection_slider, play_control = args
-        selection_slider.widget.max, selection_slider.widget.value = cHull_sinogram.shape[0] - 1, cHull_sinogram.shape[0]//2
-        play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(cHull_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2), 'title':fixed(True),'frame_number': selection_slider2.widget})    
-
     def correct_bad_frames(dummy):
         print('Zeroing frames: ', bad_frames2)
-        global cHull_sinogram
-        cHull_sinogram_corrected = np.load(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
-        unwrapped_sinogram[bad_frames2,:,:]   = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
-        cHull_sinogram_corrected[bad_frames2,:,:]       = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
+        global unwrapped_sinogram
+        unwrapped_sinogram[bad_frames2,:,:]  = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
         print('\t Done!')
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(cHull_sinogram_corrected),'figure':fixed(figure2),'subplot':fixed(subplot2), 'title':fixed(True),'frame_number': selection_slider2.widget})    
-        print('Saving corrected cHull sinogram:',os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'))
-        np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram_corrected)
-        print('\tSaved!')
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplots[0,0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
 
     @debounce(0.5) # check changes every 0.5sec
     def update_lists(bad_frames_list2):
@@ -885,18 +876,10 @@ def chull_tab():
     start_button = Button(description="Do complete Convex Hull",layout=buttons_layout,icon='play')
     start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
-    play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector")
-
-    load_button2 = Button(description="Load cHull sinogram",layout=buttons_layout,icon='folder-open-o')
-    load_button2.trigger(partial(load_chull_sinogram,args=(selection_slider2,play_control2)))
-
-    cHull_controls = widgets.Box([load_button2.widget,correct_bad_frames_button.widget,bad_frames_list2.widget,play_box2],layout=box_layout)
-
     controls0 = widgets.Box([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget],layout=box_layout)
-    controls_box = widgets.Box([load_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
-    controls_box = widgets.VBox([controls_box,hbar2,cHull_controls])
+    controls_box = widgets.Box([load_button.widget,bad_frames_list2.widget,correct_bad_frames_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
 
-    box = widgets.HBox([controls_box,vbar, output,vbar,output2])
+    box = widgets.HBox([controls_box,vbar, output])
     
     return box
 
@@ -935,8 +918,7 @@ def wiggle_tab():
         format_wiggle_plot(figure2,subplot2)
         plt.show()
     
-    def load_sinogram(dummy,args=()):
-        selection_slider, play_control,sinogram_selection = args
+    def load_sinogram(dummy):
         
         if sinogram_selection.value == "unwrapped":
             file = f'{data_selection.value}_unwrapped_sinogram.npy'
@@ -957,35 +939,32 @@ def wiggle_tab():
 
     global wiggled_sinogram
   
-    def start_wiggle(dummy,args=()):
+    def project_angles_to_regular_mesh(dummy):
 
-        global sinogram # [7,20,36,65,94,123,152,181,210,239,268,296,324]
-        sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider = args
-        
-        global savepath
-        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
-
-
-        listOfGlobals = globals()
-        print(listOfGlobals['angles_filename'])
-        print(listOfGlobals['object_filename'])
+        global sinogram 
 
         print('Projecting angles to regular mesh...')
         angles  = np.load( os.path.join(output_folder, angles_filename))
-        # print('angles:', angles)
         angles = (np.pi/180.) * angles
-        sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles)
+        sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
         print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
-
-        #TODO: BUG to fix: after projection of angles, the reference frame is on the new projected frames! selection slider should be adjusted before starting wiggle!
-        # selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
-        # play_control.widget.max =  selection_slider.widget.max
-
         print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
-        global_dict['NumberOriginalAngles'] = angles.shape
-        global_dict['NumberUsedAngles']     = projected_angles.shape
+        selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})    
+
+        global_dict['NumberOriginalAngles'] = angles.shape # save to output log
+        global_dict['NumberUsedAngles']     = projected_angles.shape 
         projected_angles_filename = angles_filename[:-4]+'_projected.npy'
         np.save(os.path.join(output_folder, projected_angles_filename),projected_angles)
+
+
+    def start_wiggle(dummy,args=()):
+
+        global savepath, sinogram
+        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+
+        _,_,_,cpus_slider,selection_slider = args
 
         print("Starting wiggle...")
         global wiggled_sinogram
@@ -1022,6 +1001,11 @@ def wiggle_tab():
 
     cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
 
+    projection_button = Button(description='Project Angles',icon='play',layout=buttons_layout)
+    projection_button.trigger(project_angles_to_regular_mesh)
+    angle_step_slider   = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
+    projection_box = widgets.VBox([angle_step_slider.widget,projection_button.widget,play_box])
+
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
 
@@ -1030,7 +1014,7 @@ def wiggle_tab():
     sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
     
     load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
-    load_button.trigger(partial(load_sinogram,args=(selection_slider,play_control,sinogram_selection)))
+    load_button.trigger(load_sinogram)
     
     args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
@@ -1040,7 +1024,7 @@ def wiggle_tab():
     invert_sinogram_buttom.trigger(save_inverted_sinogram)
 
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,play_box,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
+    controls = widgets.VBox([sinogram_selection,load_button.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
     output = widgets.Box([output],layout=widgets.Layout(align_content='center'))#,align_items='center',justify_content='center'))
     box = widgets.HBox([controls,vbar,output,vbar,output2])
     
@@ -1296,7 +1280,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     global mafalda
     mafalda = mafalda_session
 
-    load_json_button  = Button(description="Load JSON template",layout=buttons_layout,icon='folder-open-o')
+    load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
     global machine_selection

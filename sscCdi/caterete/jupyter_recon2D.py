@@ -83,7 +83,6 @@ def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path
     slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
-
     
 def connect_server():
     host = madalda_ip #"10.30.4.10" # Mafalda IP
@@ -399,7 +398,6 @@ def deploy_center_interface(path_to_diffraction_pattern_file,output_dictionary):
     # display(saida)
     return saida
 
-
 def update_values(n_frames,start_f,end_f,power):
     global starting_f_value
     global ending_f_value
@@ -408,7 +406,6 @@ def update_values(n_frames,start_f,end_f,power):
     ending_f_value=-end_f*10**power
     number_of_frames=int(n_frames)
 
-
 def update_imshow(fig,ax1,image_list,f1_list,index):
     print('Plotting new probe propagation...')
     ax1.clear()
@@ -416,7 +413,6 @@ def update_imshow(fig,ax1,image_list,f1_list,index):
     ax1.imshow(image_list[index],cmap='jet')
     fig.canvas.draw_idle()
     
-
 def update_dic(output_dictionary,key,boxvalue):
     output_dictionary[key]  = boxvalue 
 
@@ -435,7 +431,6 @@ def on_click_propagate(dummy,args=()):
 
     out = widgets.interactive_output(update_imshow,{'fig':fixed(fig),'ax1':fixed(ax1),'image_list':fixed(image_list),'f1_list':fixed(f1_list),'index':play})
     display(out)
-
 
 def deploy_interface_fresnel(path_to_probefile,output_dictionary):
 
@@ -492,7 +487,6 @@ def deploy_interface_fresnel(path_to_probefile,output_dictionary):
     # display(saida)
     return saida
 
-
 def deploy_json_save_button(dictionary,auxiliary_dict):
 
     import json
@@ -511,10 +505,10 @@ def deploy_json_save_button(dictionary,auxiliary_dict):
     return saveJsonButton
 
 
+############################################ INTERFACE / GUI : TABS ###########################################################################
+
+
 
 
 if __name__ == "__main__":
-
-    python_script_path = 'testpy.py'
-    jsonFile_path = ''
-    run_ptycho_from_jupyter(python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32)
+    pass
