@@ -51,8 +51,8 @@ def _get_center(dbeam, project):
     xc = ((aimg * xx).sum() / aimg.sum() ).astype(int)
     yc = ((aimg * yy).sum() / aimg.sum() ).astype(int)
     annotation = np.array([ [xc, yc] ])
-    tracking = pi540D.annotation_points_standard ( annotation )
-    tracking = pi540D.tracking540D_vec_standard ( project, tracking ) 
+    tracking = opt540D.annotation_points_standard ( annotation )
+    tracking = opt540D.tracking540D_vec_standard ( project, tracking ) 
     xc = int( tracking[0][2] )
     yc = int( tracking[0][3] ) 
     return xc, yc
@@ -220,12 +220,11 @@ def get_restaurated_difpads_old_format(jason, path, name):
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
-    if jason["PreviewGCC"][0]: # under test -> preview_full_difpad
-        print('Restaurating single difpad to save preview difpad of 3072^2 shape')
-        difpad_number = 0
-        img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
-        sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
+    print('Restaurating single difpad to save preview difpad of 3072^2 shape')
+    difpad_number = 0
+    img = Restaurate(h5f[difpad_number,:,:].astype(np.float32), geometry) # restaurate
+    np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
+    sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
 
     t0 = time()
     output, _ = pi540D.backward540D_nonplanar_batch(h5f, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restauration_processing_binning,  r_params, 'only')
