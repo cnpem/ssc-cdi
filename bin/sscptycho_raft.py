@@ -18,7 +18,6 @@ from sscCdi.caterete.juputer_recon3D import create_directory_if_doesnt_exist, an
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
 """                  INPUTS                 """
-processing_steps = input_dictionary["processing_steps"]
 # { # 1 -> True ; 0 -> False
 # "Sort":1 ,
 # "Crop":1 ,
@@ -27,8 +26,7 @@ processing_steps = input_dictionary["processing_steps"]
 # "Wiggle":1,
 # "Tomo":1
 # }
-
-""" """
+processing_steps = input_dictionary["processing_steps"]
 contrast_type = input_dictionary["contrast_type"] # Phase Or Magnitude?
 prefix_string = f'_{contrast_type}'
 
@@ -42,15 +40,21 @@ top, bottom = input_dictionary["top_crop"], input_dictionary["bottom_crop"] #300
 left, right = input_dictionary["left_crop"], input_dictionary["right_crop"] #300, 300
 
 """ Phase Unwrapping: remove bad frames and unwrap remaining ones """
-bad_frames = input_dictionary["bad_frames_list"] #[7,20,36,65,94,123,152,181,210,239,268,296,324]
+bad_frames_before_unwrap = input_dictionary["bad_frames_list"] #[7,20,36,65,94,123,152,181,210,239,268,296,324]
 phase_unwrap_iterations = input_dictionary["unwrap_iterations"]
 phase_unwrap_non_negativity = input_dictionary["unwrap_non_negativity"]
 phase_unwrap_gradient_removal = input_dictionary["unwrap_gradient_removal"]
 
-""" Zero Frames: Manually set to zero those frames that are still bad after phase unwrapping"""
-frames_to_zero = input_dictionary["bad_frames_list2"]
+""" Convex Hull """
+bad_frames_before_cHull = [] # TODO
+invert_data = True # TODO
+chull_threshold = 0.000001 # TODO
+chull_opening = 10 # TODO
+chull_erosion = 10 # TODO
+convex_hull   = 10 # TODO
 
 """ Unwrap + Wiggle: Choose (in the ordered frames) a frame to serve as reference for the alignment. Make sure to select a non-null frame!!! """
+bad_frames_before_wiggle = input_dictionary["bad_frames_list2"] # set to zero those frames that are still bad after phase unwrapping or convex Hull
 reference_frame = input_dictionary["wiggle_reference_frame"] ## MANUAL!! 
 n_of_wiggle_processes = input_dictionary["wiggle_cpus"]
 
@@ -158,7 +162,7 @@ if processing_steps["Unwrap"]:
 
     print("Starting Phase Unwrap") 
     for i in range(object.shape[0]):
-        if i in bad_frames:
+        if i in bad_frames_before_unwrap:
             print('Ignore frame' + str(i))
         else:
             print('\tPerforming phase unwrap of slice ', i)
@@ -188,6 +192,9 @@ if processing_steps["ConvexHull"]:
     """ ######################## CONVEX HULL: MANUAL ################################ """
 
     phase = np.load(sinogram_folder + 'unwrap_' + object_filename) # save shaken and padded sorted sinogram
+
+    for k in bad_frames_before_cHull:
+        phase[k,:,:] = 0
 
     def _operator_T(u):
         d   = 1.0
@@ -230,7 +237,7 @@ if processing_steps["Wiggle"]:
 
     object = np.load(sinogram_folder + 'unwrap_' + object_filename) # save shaken and padded sorted sinogram
 
-    for k in frames_to_zero: # AFTER PHASE UNWRAP!!!
+    for k in bad_frames_before_wiggle:
         object[k,:,:] = 0
 
     print('Zeroing extra frames completed!')
