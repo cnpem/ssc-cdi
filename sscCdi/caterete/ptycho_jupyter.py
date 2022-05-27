@@ -1,19 +1,15 @@
-import subprocess
-from subprocess import Popen, PIPE, STDOUT
-import time, os, json, ast
+import os, json, ast
 import numpy as np
 import matplotlib.pyplot as plt
-import paramiko
-import getpass
+
 import ipywidgets as widgets 
 from ipywidgets import fixed 
 
-from .fresnel import create_propagation_video
-from .functions import masks_application
+from .ptycho_fresnel import create_propagation_video
+from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
+from .jupyter import monitor_job_execution, call_cmd_terminal
 
-madalda_ip = "10.30.4.10" # Mafalda IP
-mafalda_port = 22
 
 def write_to_file(python_script_path,jsonFile_path,output_path="",slurmFile = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
@@ -41,59 +37,11 @@ python3 {python_script_path} {jsonFile_path} > {os.path.join(output_path,'output
     
     return slurmFile
 
-def call_and_read_terminal(cmd,mafalda):
-    if 0:
-        p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
-        terminal_output = p.stdout.read() # Read output from terminal
-    else:
-        stdin, stdout, stderr = mafalda.exec_command(cmd)
-        terminal_output = stdout.read() 
-        print('Output: ',terminal_output)
-        print('Error:  ',stderr.read())
-    return terminal_output
-
-def call_cmd_terminal(filename,mafalda,remove=False):
-    cmd = f'sbatch {filename}'
-    terminal_output = call_and_read_terminal(cmd,mafalda).decode("utf-8") 
-    given_jobID = terminal_output.rsplit("\n",1)[0].rsplit(" ",1)[1]
-    if remove: # Remove file after call
-        cmd = f'rm {filename}'
-        subprocess.call(cmd, shell=True)
-        
-    return given_jobID
-        
-def monitor_job_execution(given_jobID,mafalda):
-    sleep_time = 10 # seconds
-    print(f'Starting job #{given_jobID}...')
-    time.sleep(3) # sleep for a few seconds to wait for job to really start
-    jobDone = False
-    job_duration = 0
-    while jobDone == False:
-        time.sleep(sleep_time)
-        job_duration += sleep_time
-        cmd = f'squeue | grep {given_jobID}'
-        terminal_output = call_and_read_terminal(cmd,mafalda).decode("utf-8") 
-        if given_jobID not in terminal_output:
-            jobDone = True
-        else:
-            print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
-    return print(f"\t \t Job {given_jobID} done!")
-
 def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
     
-def connect_server():
-    host = madalda_ip #"10.30.4.10" # Mafalda IP
-    port = mafalda_port #22
-    username = input("Username:")
-    print("Password:")
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, port, username, getpass.getpass())
-    return ssh
-
 def deploy_runPtycho_button(mafalda,auxiliary_dict):
 
 

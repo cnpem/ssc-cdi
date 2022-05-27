@@ -1,5 +1,5 @@
-import numpy 
 import matplotlib.pyplot as plt
+import os
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -126,3 +126,9 @@ def save_json_logfile(path,jason):
     file = open(filepath,"w")
     file.write(json.dumps(jason,indent=3,sort_keys=True))
     file.close()
+
+
+def create_directory_if_doesnt_exist(*args):
+    for arg in args:
+        if os.path.isdir(arg) == False:
+            os.mkdir(arg)

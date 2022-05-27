@@ -3,6 +3,7 @@ import numpy as np
 from skimage.restoration import unwrap_phase
 import numpy
 
+from IPython.display import display
 from ipywidgets import *
 from skimage.io import imsave
 
@@ -141,9 +142,8 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
     with ProcessPoolExecutor(max_workers=processes) as executor:
         unwrapped_sinogram = np.empty_like(sinogram)
         results = list(tqdm(executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
-        # results = executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)])
         for counter, result in enumerate(results):
-            if counter % 10 == 0: print('Populating results matrix...',counter)
+            if counter % 25 == 0: print('Populating results matrix...',counter)
             unwrapped_sinogram[counter,:,:] = result
 
     return unwrapped_sinogram
