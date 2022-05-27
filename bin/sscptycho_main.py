@@ -9,7 +9,8 @@ import numpy as np
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
-from sscptycho_restauration import *
+from sscCdi.caterete.ptycho_restauration import *
+from sscCdi.caterete.unwrap import *
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++
 #

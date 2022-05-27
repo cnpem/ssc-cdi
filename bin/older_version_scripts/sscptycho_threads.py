@@ -271,9 +271,9 @@ def difpads_restauration(args, first_iteration = True):
         dic['empty'] = jason['EmptyFrame']
         dic['flat'] = jason['FlatField']
         dic['order'] = 'only' #TODO: ask Miqueles what this 'order' is about! 
-        dic['function'] = sscCdi.caterete.restauration.cat_preproc_ptycho_measurement
+        dic['function'] = sscCdi.caterete.ptycho_restauration.cat_preproc_ptycho_measurement
 
-        difpads, elapsed_time, geometry = sscCdi.caterete.restauration.cat_preproc_ptycho_projections(dic)
+        difpads, elapsed_time, geometry = sscCdi.caterete.ptycho_restauration.cat_preproc_ptycho_projections(dic)
 
         jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
         save_json_logfile2(jason["LogfilePath"], jason) # save json again for new pixel size value

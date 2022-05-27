@@ -6,14 +6,14 @@ from time import time
 from skimage.io import imsave
 
 from ssc_remote_vis import remote_visualization as rv
-from sscRaft import parallel
 from sscRadon import radon
-from sscOldRaft import *
-import sscCdi
+
 from sscPtycho import RemovePhaseGrad
 
-from sscCdi.caterete.juputer_recon3D import create_directory_if_doesnt_exist, angle_mesh_organize, tomography
-
+import sscCdi
+from sscCdi.caterete.tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel
+from sscCdi.caterete.misc import create_directory_if_doesnt_exist
+from sscCdi.caterete.unwrap import unwrap_in_parallel
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
@@ -26,6 +26,7 @@ input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 # "Wiggle":1,
 # "Tomo":1
 # }
+
 processing_steps = input_dictionary["processing_steps"]
 contrast_type = input_dictionary["contrast_type"] # Phase Or Magnitude?
 prefix_string = f'_{contrast_type}'
@@ -45,13 +46,14 @@ phase_unwrap_iterations = input_dictionary["unwrap_iterations"]
 phase_unwrap_non_negativity = input_dictionary["unwrap_non_negativity"]
 phase_unwrap_gradient_removal = input_dictionary["unwrap_gradient_removal"]
 
+
 """ Convex Hull """
-bad_frames_before_cHull = [] # TODO
-invert_data = True # TODO
-chull_threshold = 0.000001 # TODO
-chull_opening = 10 # TODO
-chull_erosion = 10 # TODO
-convex_hull   = 10 # TODO
+bad_frames_before_cHull = input_dictionary["bad_frames_before_cHull"] 
+chull_invert    = input_dictionary["chull_invert"] 
+chull_threshold = input_dictionary["chull_tolerance"] 
+chull_opening   = input_dictionary["chull_opening"] 
+chull_erosion   = input_dictionary["chull_erosion"] 
+convex_hull     = input_dictionary["chull_param"] 
 
 """ Unwrap + Wiggle: Choose (in the ordered frames) a frame to serve as reference for the alignment. Make sure to select a non-null frame!!! """
 bad_frames_before_wiggle = input_dictionary["bad_frames_before_wiggle"] # set to zero those frames that are still bad after phase unwrapping or convex Hull
@@ -161,13 +163,10 @@ if processing_steps["Unwrap"]:
     object = np.zeros(object.shape)
 
     print("Starting Phase Unwrap") 
-    for i in range(object.shape[0]):
-        if i in bad_frames_before_unwrap:
-            print('Ignore frame' + str(i))
-        else:
-            print('\tPerforming phase unwrap of slice ', i)
-            object[i,:,:] = -np.angle(RemovePhaseGrad(object[i,:,:]))
-            object[i,:,:] = sscCdi.unwrap.object_unwrap(object[i,:,:],phase_unwrap_iterations,non_negativity=phase_unwrap_non_negativity,remove_gradient = phase_unwrap_gradient_removal)
+    # for i in range(object.shape[0]): # is this really needed?
+        # object[i,:,:] = -np.angle(RemovePhaseGrad(object[i,:,:]))
+
+    object = unwrap_in_parallel(object,iterations=phase_unwrap_iterations,non_negativity=phase_unwrap_non_negativity,remove_gradient = phase_unwrap_gradient_removal)
 
     if 1: # Save image preview
         slice_number=0
@@ -191,36 +190,13 @@ if processing_steps["Unwrap"]:
 if processing_steps["ConvexHull"]:
     """ ######################## CONVEX HULL: MANUAL ################################ """
 
-    phase = np.load(sinogram_folder + 'unwrap_' + object_filename) # save shaken and padded sorted sinogram
+    object = np.load(sinogram_folder + 'unwrap_' + object_filename) 
 
     for k in bad_frames_before_cHull:
-        phase[k,:,:] = 0
+        object[k,:,:] = 0
 
-    def _operator_T(u):
-        d   = 1.0
-        uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
-        uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
-        uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
-        uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
-        delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
-        z = np.sqrt( delta )
-        return z
-
-    from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
-
-    for f in range(object.shape[0]):
-        img = object[f,:,:]
-        where = _operator_T(img).real
-        new = np.copy(img)
-        new[ new > 0] = _operator_T(new).real[ img > 0]
-        tol = 1e-5
-        mask = (np.abs( new - img) < tol) * 1.0
-        mask = opening(mask, square(10))
-        mask = erosion(mask, square(30))
-        chull = dilation( convex_hull_image(mask), square(40) ) # EXPAND CASCA DA MASCARA
-        img = img * chull  #nova imagem apenas com o suporte
-        img2 = img2 * chull
-        object[f,:,:] = img
+    output_list = apply_chull_parallel(object,invert=chull_invert,tolerance=chull_threshold,opening_param=chull_opening,erosion_param=chull_erosion,chull_param=convex_hull)
+    object = output_list[-1]
 
     np.save(sinogram_folder + 'unwrap_' + object_filename, object)
 
@@ -285,15 +261,12 @@ if processing_steps["Wiggle"]:
 
 if processing_steps["Tomo"]:
     start = time()
-
-    reconstruction3D = tomography(which_reconstruction,contrast_type,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,use_regularly_spaced_angles=True)
-
+    print(f'Starting tomography...')
+    reconstruction3D = tomography(which_reconstruction,contrast_type,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,output_folder,use_regularly_spaced_angles=True)
     elapsed = time() - start
-
     print(f'Reconstruction done!')
     print('Elapsed time for reconstruction (sec):', elapsed )
 
-    reconstruction3D = reconstruction3D.astype(np.float32)
     print('Saving 3D recon...')
     np.save(os.path.join(sinogram_folder,recon_object_filename),reconstruction3D)
     imsave(os.path.join(sinogram_folder,recon_object_filename)[:-4] + '.tif',reconstruction3D)
@@ -315,3 +288,4 @@ if processing_steps["Tomo"]:
         plt.savefig(sinogram_folder+f'reconstruction3D_slice{slice}.png', format='png', dpi=300)
         plt.clf()
         plt.close()
+
