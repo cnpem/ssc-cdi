@@ -40,7 +40,7 @@ top, bottom = input_dictionary["top_crop"], input_dictionary["bottom_crop"] #300
 left, right = input_dictionary["left_crop"], input_dictionary["right_crop"] #300, 300
 
 """ Phase Unwrapping: remove bad frames and unwrap remaining ones """
-bad_frames_before_unwrap = input_dictionary["bad_frames_list"] #[7,20,36,65,94,123,152,181,210,239,268,296,324]
+bad_frames_before_unwrap = input_dictionary["bad_frames_before_unwrap"] #[7,20,36,65,94,123,152,181,210,239,268,296,324]
 phase_unwrap_iterations = input_dictionary["unwrap_iterations"]
 phase_unwrap_non_negativity = input_dictionary["unwrap_non_negativity"]
 phase_unwrap_gradient_removal = input_dictionary["unwrap_gradient_removal"]
@@ -54,7 +54,7 @@ chull_erosion = 10 # TODO
 convex_hull   = 10 # TODO
 
 """ Unwrap + Wiggle: Choose (in the ordered frames) a frame to serve as reference for the alignment. Make sure to select a non-null frame!!! """
-bad_frames_before_wiggle = input_dictionary["bad_frames_list2"] # set to zero those frames that are still bad after phase unwrapping or convex Hull
+bad_frames_before_wiggle = input_dictionary["bad_frames_before_wiggle"] # set to zero those frames that are still bad after phase unwrapping or convex Hull
 reference_frame = input_dictionary["wiggle_reference_frame"] ## MANUAL!! 
 n_of_wiggle_processes = input_dictionary["wiggle_cpus"]
 
