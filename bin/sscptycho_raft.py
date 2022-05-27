@@ -72,19 +72,18 @@ GPUs = input_dictionary["tomo_n_of_gpus"] #[0,1] # GPUs to use. GPUs = -1, use d
 threshold_object = input_dictionary["tomo_threshold"]
 
 """             INPUTS -> SET OUTPUT FILES AND FOLDERS                """
-complex_object_file  = os.path.join(sinogram_folder, 'object_' + foldernames[0] + '.npy')
-output_filesname = foldernames[0]
+complex_object_file  = input_dictionary["complex_object_filepath"] #os.path.join(sinogram_folder, 'object_' + foldernames[0] + '.npy')
 
 """ Select name of ordered phase unwrapped files """
-angles_filename = output_filesname + '_ordered_angles.npy'
-object_filename  = output_filesname + '_ordered_object.npy'
+angles_filename  = input_dictionary["oredered_angles_filename"]  #foldernames[0] + '_ordered_angles.npy'
+object_filename  = input_dictionary["ordered_object_filename"] #foldernames[0] + '_ordered_object.npy'
 
 """ Select output tomogram filenames """
-object_tomogram_filename = contrast_type + '_' + output_filesname + '_wiggle.npy'
+object_tomogram_filename = input_dictionary["wiggle_sinogram_filename"] #contrast_type + '_' + foldernames[0] + '_wiggle.npy'
 
 """ Select filenames of reconstructed object """
-recon_object_filename = contrast_type + '_' + output_filesname + f'_reconstruction3D_' + which_reconstruction + '.npy'
-recon_object_filename_thresholded = contrast_type + '_' + output_filesname + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
+recon_object_filename = input_dictionary['reconstruction_filename'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '.npy'
+recon_object_filename_thresholded = input_dictionary['reconstruction_thresholded_filename'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
 
 """ Output plot folders """
 originals_filepath  = [False ,os.path.join(sinogram_folder, '00_frames_original')]

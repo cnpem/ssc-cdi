@@ -185,6 +185,14 @@ def regularization(sino, L):
 def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,output_folder,use_regularly_spaced_angles=True):
     
     # input_dict = {} 
+    # global_dict["tomo_algorithm"]
+    # data_selection.value
+    # angles_filename
+    # global_dict["tomo_iterations"]
+    # global_dict["tomo_n_of_gpus"]
+    # global_dict["tomo_regularization"]
+    # global_dict["tomo_regularization_param"]
+    # output_folder
 
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
