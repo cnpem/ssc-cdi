@@ -34,11 +34,12 @@ global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/2021
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
-               "bad_frames_list": [7,20,36,65,94,123,152,181,210,239,268,296,324],
+               "bad_frames_before_unwrap": [7,20,36,65,94,123,152,181,210,239,268,296,324],
+               "bad_frames_before_cHull": [],
+               "bad_frames_before_wiggle": [],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
-               "bad_frames_list2": [],
                "chull_invert": False,
                "chull_tolerance": 1e-5,
                "chull_opening": 10,
@@ -757,8 +758,8 @@ def unwrap_tab():
 
     load_cropped_frames_button = Button(description="Load cropped frames",layout=buttons_layout,icon='folder-open-o')
 
-    bad_frames_list  = Input(global_dict,"bad_frames_list", description = 'Bad frames',layout=items_layout)
-    widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_list.widget})
+    bad_frames_before_unwrap  = Input(global_dict,"bad_frames_before_unwrap", description = 'Bad frames',layout=items_layout)
+    widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_before_unwrap.widget})
     
     iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
     non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
@@ -778,7 +779,7 @@ def unwrap_tab():
     save_unwrapped_button.trigger(save_sinogram)
     
     unwrap_params_box = widgets.Box([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget],layout=get_box_layout('100%'))
-    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_list.widget],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_before_unwrap.widget],layout=get_box_layout('500px'))
     plot_box = widgets.VBox([output])
         
     box = widgets.HBox([controls_box,vbar,plot_box])
@@ -850,9 +851,9 @@ def chull_tab():
         widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplots[0,0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
 
     @debounce(0.5) # check changes every 0.5sec
-    def update_lists(bad_frames_list2):
+    def update_lists(bad_frames_before_cHull):
         global bad_frames2
-        bad_frames2 = ast.literal_eval(bad_frames_list2)
+        bad_frames2 = ast.literal_eval(bad_frames_before_cHull)
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
@@ -864,8 +865,8 @@ def chull_tab():
     opening_slider   = Input(global_dict,"chull_opening",   description="Opening",     bounded=(1,100,1),slider=True)
     erosion_slider   = Input(global_dict,"chull_erosion",   description="Erosion",     bounded=(1,100,1),slider=True)
     param_slider     = Input(global_dict,"chull_param",     description="Convex Hull", bounded=(1,200,1),slider=True)
-    bad_frames_list2 = Input(global_dict,"bad_frames_list2",description='Bad Frames',  layout=items_layout)
-    widgets.interactive_output(update_lists,{ "bad_frames_list2":bad_frames_list2.widget})
+    bad_frames_before_cHull = Input(global_dict,"bad_frames_before_cHull",description='Bad Frames',  layout=items_layout)
+    widgets.interactive_output(update_lists,{ "bad_frames_before_cHull":bad_frames_before_cHull.widget})
 
     preview_button = Button(description="Convex Hull Preview",layout=buttons_layout,icon='play')
     preview_button.trigger(partial(preview_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
@@ -877,7 +878,7 @@ def chull_tab():
     start_button.trigger(partial(complete_cHull,args=(invert_checkbox,tolerance,opening_slider,erosion_slider,param_slider,selection_slider)))
     
     controls0 = widgets.Box([invert_checkbox.widget,tolerance.widget,opening_slider.widget,erosion_slider.widget,param_slider.widget],layout=box_layout)
-    controls_box = widgets.Box([load_button.widget,bad_frames_list2.widget,correct_bad_frames_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_button.widget,bad_frames_before_cHull.widget,correct_bad_frames_button.widget,preview_button.widget,start_button.widget,play_box,controls0],layout=get_box_layout('500px'))
 
     box = widgets.HBox([controls_box,vbar, output])
     
@@ -997,6 +998,18 @@ def wiggle_tab():
         np.save(savepath,wiggled_sinogram)
         print(f'\t Saved! New max = {np.max(wiggled_sinogram)}. New min = {np.min(wiggled_sinogram)}')
 
+    def correct_bad_frames(dummy):
+        print('Zeroing frames: ', bad_frames3)
+        global sinogram
+        sinogram[bad_frames3,:,:]  = np.zeros((sinogram.shape[1],sinogram.shape[2]))
+        print('\t Done!')
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+
+    @debounce(0.5) # check changes every 0.5sec
+    def update_lists(bad_frames_before_wiggle):
+        global bad_frames3
+        bad_frames3 = ast.literal_eval(bad_frames_before_wiggle)
+
     play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
 
     cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
@@ -1008,6 +1021,13 @@ def wiggle_tab():
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
+
+    bad_frames_before_wiggle = Input(global_dict,"bad_frames_before_wiggle",description='Bad Frames',  layout=items_layout)
+    widgets.interactive_output(update_lists,{ "bad_frames_before_wiggle":bad_frames_before_wiggle.widget})
+
+    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    correct_bad_frames_button.trigger(correct_bad_frames)
+
 
     sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
@@ -1024,7 +1044,7 @@ def wiggle_tab():
     invert_sinogram_buttom.trigger(save_inverted_sinogram)
 
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
+    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
     output = widgets.Box([output],layout=widgets.Layout(align_content='center'))#,align_items='center',justify_content='center'))
     box = widgets.HBox([controls,vbar,output,vbar,output2])
     
@@ -1254,11 +1274,11 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
-               "bad_frames_list": [7,20,36,65,94,123,152,181,210,239,268,296,324],
+               "bad_frames_before_unwrap": [7,20,36,65,94,123,152,181,210,239,268,296,324],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
-               "bad_frames_list2": [],
+               "bad_frames_before_cHull": [],
                "chull_invert": False,
                "chull_tolerance": 1e-5,
                "chull_opening": 10,
