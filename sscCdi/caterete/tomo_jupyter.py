@@ -10,7 +10,6 @@ from skimage.io import imsave
 import asyncio
 from functools import partial
 import subprocess
-from IPython import display
 
 from sscRadon import radon
 
@@ -65,8 +64,6 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
 """ Standard folders definitions"""
 tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
 
-angles_filename = 'dummy_angles_filename'
-object_filename = 'dummy_object_filename'
 
 """ Standard styling definitions """
 standard_border='1px none black'
@@ -87,8 +84,6 @@ def get_box_layout(width,flex_flow='column',align_items='center',border=standard
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
-
-
 
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
     subplot.clear()
@@ -112,6 +107,27 @@ def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0
         subplot.set_xticks([])
         subplot.set_yticks([])    
     figure.canvas.draw_idle()
+
+def update_paths(global_dict,dummy1,dummy2):
+    # dummy variable is used to trigger update
+    global_dict["output_folder"] = global_dict["sinogram_path"].rsplit('/',1)[0]
+
+    if type(global_dict["folders_list"]) == type([1,2]): # correct data type of this input
+        pass # if list
+    else: # if string
+        global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"])
+
+    global_dict["complex_object_filepath"]             = os.path.join(global_dict["output_folder"],'object_' + global_dict["folders_list"][0] + '.npy')
+    global_dict["ordered_angles_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_angles.npy')
+    global_dict["ordered_object_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_object.npy')
+    global_dict["reconstruction_thresholded_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy')
+    global_dict["reconstruction_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy')
+    global_dict["cropped_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_cropped_sinogram.npy')
+    global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
+    global_dict["chull_sinogram_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
+    global_dict["wiggle_sinogram_filepath"]            = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
+
+    return global_dict
 
 def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
@@ -283,9 +299,6 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
-    global output_folder, angles_filename, object_filename
-    angles_filename = 'dummy2_angles_filename'
-    object_filename = 'dummy2_object_filename'
 
     output = widgets.Output()
     with output:
@@ -302,31 +315,16 @@ def folders_tab():
         plt.show()
 
     def update_fields(ibira_data_path,folders_list,sinogram_path):
-        global output_folder, angles_filename, object_filename
         global_dict["ibira_data_path"] = ibira_data_path
         global_dict["folders_list"]    = folders_list
         global_dict["sinogram_path"]   = sinogram_path
-        output_folder = global_dict["sinogram_path"].rsplit('/',1)[0]
 
-        if type(global_dict["folders_list"][0]) == type([1,2]):
-            angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
-            object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
-        else:
-            angles_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_angles.npy'
-            object_filename = ast.literal_eval(global_dict["folders_list"])[0] + '_ordered_object.npy'        
 
     def load_sinogram(dummy):
         global object
 
-        save_path = sinogram_path.widget.value.rsplit('/',1)[0]
-        print(f'Saving sorted frames to: {save_path}')
-
-        global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"])
-
-        complex_object_file  = os.path.join(output_folder, 'object_' + global_dict["folders_list"][0] + '.npy') #hard coded path
-        
-        print('Loading sinogram: ',complex_object_file)
-        object = np.load(complex_object_file)
+        print('Loading sinogram: ',global_dict["complex_object_filepath"])
+        object = np.load(global_dict["complex_object_filepath"])
         print('\t Loaded!')
 
         print(f'Extracting sinogram {data_selection.value}...')
@@ -343,21 +341,16 @@ def folders_tab():
 
 
     def sort_frames(dummy):
-        global object, object_filename, angles_filename
-
-        save_path = sinogram_path.widget.value.rsplit('/',1)[0]
+        global object
 
         rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
 
-        object_filename = global_dict["folders_list"][0]  + '_ordered_object.npy'
-        angles_filename = global_dict["folders_list"][0] + '_ordered_angles.npy'
-
         object = reorder_slices_low_to_high_angle(object, rois)
 
-        print('Saving angles file: ',os.path.join(save_path,angles_filename))
-        np.save(os.path.join(save_path,angles_filename),rois)
-        print('Saving ordered sinogram: ', os.path.join(save_path,object_filename))
-        np.save(os.path.join(save_path,object_filename), object) 
+        print('Saving angles file: ',global_dict["ordered_angles_filepath"])
+        np.save(global_dict["ordered_angles_filepath"],rois)
+        print('Saving ordered sinogram: ', global_dict["ordered_object_filepath"])
+        np.save(global_dict["ordered_object_filepath"], object) 
         print('\tSaved! Sinogram shape: ',object.shape)
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
@@ -369,6 +362,7 @@ def folders_tab():
     folders_list    = Input(global_dict,"folders_list",layout=items_layout,description='Ibira Datafolders (list)')
     sinogram_path   = Input(global_dict,"sinogram_path",layout=items_layout,description='Ptycho sinogram path (str)')
     widgets.interactive_output(update_fields, {'ibira_data_path':ibira_data_path.widget,'folders_list':folders_list.widget,'sinogram_path':sinogram_path.widget})
+    widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':sinogram_path.widget,'dummy2':folders_list.widget})
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector (Angle)")
     play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector (Time)")
@@ -404,14 +398,8 @@ def crop_tab():
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
-        print(output_folder)
-        if type(global_dict['folders_list']) == type('a'): # if string
-            sinogram_path = os.path.join(output_folder, ast.literal_eval(global_dict['folders_list'])[0] + '_ordered_object.npy')
-        else: # if list
-            sinogram_path = os.path.join(output_folder, global_dict['folders_list'][0] + '_ordered_object.npy')
-
-        print("Loading sinogram from: ",sinogram_path)
-        sinogram = np.load(sinogram_path) 
+        print("Loading sinogram from: ",global_dict["ordered_object_filepath"] )
+        sinogram = np.load(global_dict["ordered_object_filepath"] ) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
@@ -425,7 +413,7 @@ def crop_tab():
         top,bottom,left,right = args
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
         print('Saving cropped frames...')
-        np.save(os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'),cropped_sinogram)
+        np.save(global_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
     top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True,layout=slider_layout)
@@ -487,7 +475,7 @@ def unwrap_tab():
         global cropped_sinogram
         selection_slider, play_control = args
         print('Loading cropped sinogram...')
-        cropped_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'))
+        cropped_sinogram = np.load(global_dict["cropped_sinogram_filepath"])
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
@@ -514,9 +502,8 @@ def unwrap_tab():
             unwrapped_sinogram = np.where(np.isnan(unwrapped_sinogram),0,unwrapped_sinogram)
 
         print('Saving unwrapped sinogram...')
-        savepath = os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy')
-        np.save(savepath,unwrapped_sinogram)
-        print('\tSaved sinogram at: ',savepath)
+        np.save(global_dict["unwrapped_sinogram_filepath"] ,unwrapped_sinogram)
+        print('\tSaved sinogram at: ',global_dict["unwrapped_sinogram_filepath"] )
 
 
     load_cropped_frames_button = Button(description="Load cropped frames",layout=buttons_layout,icon='folder-open-o')
@@ -576,8 +563,8 @@ def chull_tab():
     
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
-        print('Loading unwrapped sinogram: ',os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
-        unwrapped_sinogram = np.load(os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'))
+        print('Loading unwrapped sinogram: ',global_dict["unwrapped_sinogram_filepath"] )
+        unwrapped_sinogram = np.load(global_dict["unwrapped_sinogram_filepath"] )
         print('\t Loaded!')
         selection_slider, play_control = args
         selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
@@ -602,8 +589,8 @@ def chull_tab():
         invert,tolerance,opening_param,erosion_param,chull_param,selection_slider = args
         output_list = apply_chull_parallel(unwrapped_sinogram,invert=invert.widget.value,tolerance=tolerance.widget.value,opening_param=opening_param.widget.value,erosion_param=erosion_param.widget.value,chull_param=chull_param.widget.value)
         cHull_sinogram = output_list[-1]
-        print('Saving cHull sinogram...')
-        np.save(os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),cHull_sinogram)
+        print('Saving cHull sinogram...',global_dict["chull_sinogram_filepath"])
+        np.save(global_dict["chull_sinogram_filepath"],cHull_sinogram)
         print('\tSaved!')
     
     def correct_bad_frames(dummy):
@@ -685,13 +672,13 @@ def wiggle_tab():
     def load_sinogram(dummy):
         
         if sinogram_selection.value == "unwrapped":
-            file = f'{data_selection.value}_unwrapped_sinogram.npy'
+            filepath = global_dict["unwrapped_sinogram_filepath"]
         elif sinogram_selection.value == "convexHull":
-            file = f'{data_selection.value}_chull_sinogram.npy'
+            filepath = global_dict["chull_sinogram_filepath"]
 
         global sinogram
-        print('Loading sinogram',os.path.join(output_folder,file))
-        sinogram = np.load(os.path.join(output_folder,file))
+        print('Loading sinogram',filepath)
+        sinogram = np.load(filepath)
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
@@ -708,7 +695,7 @@ def wiggle_tab():
         global sinogram 
 
         print('Projecting angles to regular mesh...')
-        angles  = np.load( os.path.join(output_folder, angles_filename))
+        angles  = np.load(global_dict["ordered_angles_filepath"])
         angles = (np.pi/180.) * angles
         sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
         print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
@@ -719,14 +706,13 @@ def wiggle_tab():
 
         global_dict['NumberOriginalAngles'] = angles.shape # save to output log
         global_dict['NumberUsedAngles']     = projected_angles.shape 
-        projected_angles_filename = angles_filename[:-4]+'_projected.npy'
-        np.save(os.path.join(output_folder, projected_angles_filename),projected_angles)
+        projected_angles_filepath = global_dict["ordered_angles_filepath"] [:-4]+'_projected.npy'
+        np.save(projected_angles_filepath,projected_angles)
 
 
     def start_wiggle(dummy,args=()):
 
-        global savepath, sinogram
-        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+        global sinogram
 
         _,_,_,cpus_slider,selection_slider = args
 
@@ -736,15 +722,14 @@ def wiggle_tab():
         wiggled_sinogram = radon.get_wiggle( wiggled_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)
         print("\t Wiggle done!")
         
-        print("Saving wiggle sinogram to: ", savepath)
-        np.save(savepath,wiggled_sinogram)
+        print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )
+        np.save(global_dict["wiggle_sinogram_filepath"] ,wiggled_sinogram)
         print("\t Saved!")
 
     def load_wiggle(dummy):
         global wiggled_sinogram
-        wiggle_datapath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
-        wiggled_sinogram = np.load(wiggle_datapath)
-        print('Loading wiggled frames from:',wiggle_datapath)
+        print('Loading wiggled frames from:',global_dict["wiggle_sinogram_filepath"])
+        wiggled_sinogram = np.load(global_dict["wiggle_sinogram_filepath"])
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
         sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
@@ -754,11 +739,10 @@ def wiggle_tab():
         print('\tLoaded!')
 
     def save_inverted_sinogram(dummy):
-        print('Multiplying sinogram by -1 and saving at:',os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'))
-        savepath = os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy')
+        print('Multiplying sinogram by -1 and saving at:',global_dict["wiggle_sinogram_filepath"])
         global wiggled_sinogram
         wiggled_sinogram = -1*wiggled_sinogram
-        np.save(savepath,wiggled_sinogram)
+        np.save(global_dict["wiggle_sinogram_filepath"],wiggled_sinogram)
         print(f'\t Saved! New max = {np.max(wiggled_sinogram)}. New min = {np.min(wiggled_sinogram)}')
 
     def correct_bad_frames(dummy):
@@ -875,9 +859,8 @@ def tomo_tab():
             print('Saving 3D recon...')
             if type(global_dict["folders_list"]) == type('a'):
                 global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
-            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '.npy' )
-            np.save(savepath,reconstruction3D)
-            imsave(savepath[:-4] + '.tif',reconstruction3D)
+            np.save(global_dict["reconstruction_filepath"],reconstruction3D)
+            imsave(global_dict["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
             print('\t Saved!')
 
         elif machine_selection.value == "Cluster": 
@@ -889,9 +872,9 @@ def tomo_tab():
             global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
 
         if load_selection.value == "Original":
-            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '.npy' )
+            savepath = global_dict["reconstruction_filepath"]
         elif load_selection.value == "Threshold":
-            savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' +  algo_dropdown.value  + '_thresholded.npy' )
+            savepath = global_dict["reconstruction_thresholded_filepath"]
         
         print('Loading 3D recon from: ',savepath)
         time.sleep(0.5)
@@ -910,18 +893,17 @@ def tomo_tab():
         print(f'Applying threshold value of {tomo_threshold.widget.value} to reconstruction')
         thresholded_recon = np.where( np.abs(reconstruction) > tomo_threshold.widget.value,0,reconstruction)
         print('\t Done!')
-        savepath = os.path.join(output_folder, f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_' + algo_dropdown.value + '_thresholded.npy' )
         print('Saving thresholded reconstruction...')
-        np.save(savepath,thresholded_recon)
-        imsave(savepath[:-4] + '.tif',thresholded_recon)
-        print('\tSaved reconstruction at: ',savepath)
+        np.save(global_dict["reconstruction_thresholded_filepath"],thresholded_recon)
+        imsave(global_dict["reconstruction_thresholded_filepath"][:-4] + '.tif',thresholded_recon)
+        print('\tSaved reconstruction at: ',global_dict["reconstruction_thresholded_filepath"])
 
     def plot_histograms(dummy):
 
         n_bins=100
         threshold = tomo_threshold.widget.value
         
-        raw_data = np.load(os.path.join(output_folder,f'{data_selection.value}_{global_dict["folders_list"][0]}_reconstruction3D_thresholded.npy'))
+        raw_data = np.load(global_dict["reconstruction_thresholded_filepath"])
 
         raw_data = raw_data.flatten()
         data = raw_data
@@ -972,6 +954,9 @@ def tomo_tab():
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
     checkboxes_box  = widgets.VBox(children=checkboxes)
 
+    widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':algo_dropdown,'dummy2':fixed(algo_dropdown)})
+
+
     def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,chull_checkbox,wiggle_checkbox,tomo_checkbox):
         # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
         dictionary["processing_steps"]["Sort"]       = sort_checkbox 
@@ -998,12 +983,16 @@ def tomo_tab():
 
     def save_on_click(dummy):
         print('Saving JSON input file...')
-        global_dict["contrast_type"] = data_selection.value
+        global_dict["contrast_type"]  = data_selection.value
+        global_dict["tomo_algorithm"] = algo_dropdown.value
         if type(global_dict["folders_list"]) == type('a'):
             global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
         json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
+        
+        from pprint import pprint
+        pprint(global_dict)
         print('\t Saved!')
 
     save_dict_button  = Button(description="Save JSON",layout=buttons_layout,icon='fa-floppy-o')
@@ -1071,18 +1060,19 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
 
     global data_selection
     data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
+    widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':data_selection,'dummy2':fixed(data_selection)})
 
     
     def delete_files(dummy):
         sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
 
-        filepaths_to_remove = [os.path.join(output_folder,f'{data_selection.value}_chull_sinogram.npy'),
-        os.path.join(output_folder,f'{data_selection.value}_wiggle_sinogram.npy'),
-        os.path.join(output_folder,f'{data_selection.value}_unwrapped_sinogram.npy'),
-        os.path.join(output_folder,f'{data_selection.value}_cropped_sinogram.npy'),
-        os.path.join(output_folder, angles_filename[:-4]+'_projected.npy'),
-        os.path.join(sinogram_path,angles_filename),
-        os.path.join(sinogram_path,object_filename)]
+        filepaths_to_remove = [ global_dict["ordered_angles_filepath"],  
+                                global_dict["ordered_object_filepath"] , 
+                                global_dict["cropped_sinogram_filepath"],
+                                global_dict["unwrapped_sinogram_filepath"],
+                                global_dict["chull_sinogram_filepath"],  
+                                global_dict["wiggle_sinogram_filepath"],
+                                global_dict["ordered_angles_filepath"][:-4]+'_projected.npy']
 
         for filepath in filepaths_to_remove:
             print('Removing file/folder: ', filepath)
@@ -1092,11 +1082,11 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             else:
                 print(f'Directory {filepath} does not exists. Skipping deletion...\n')
 
-        folderpaths_to_remove =[os.path.join(output_folder,'00_frames_original'),
-                                os.path.join(output_folder,'01_frames_ordered'),
-                                os.path.join(output_folder,'02_frames_cropped'),
-                                os.path.join(output_folder,'03_frames_unwrapped'),
-                                os.path.join(output_folder,'04_frames_convexHull')]
+        folderpaths_to_remove =[os.path.join(global_dict["output_folder"],'00_frames_original'),
+                                os.path.join(global_dict["output_folder"],'01_frames_ordered'),
+                                os.path.join(global_dict["output_folder"],'02_frames_cropped'),
+                                os.path.join(global_dict["output_folder"],'03_frames_unwrapped'),
+                                os.path.join(global_dict["output_folder"],'04_frames_convexHull')]
                                 
         import shutil
         for folderpath in folderpaths_to_remove:
@@ -1112,10 +1102,9 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     delete_temporary_files_button.trigger(partial(delete_files))
 
     box = widgets.HBox([machine_selection,data_selection,load_json_button.widget,delete_temporary_files_button.widget])
-    display(box)
 
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
 
-    return tab, global_dict  
+    return box,tab, global_dict  
