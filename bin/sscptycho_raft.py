@@ -75,7 +75,7 @@ threshold_object = input_dictionary["tomo_threshold"]
 complex_object_file  = input_dictionary["complex_object_filepath"] #os.path.join(sinogram_folder, 'object_' + foldernames[0] + '.npy')
 
 """ Select name of ordered phase unwrapped files """
-angles_filename  = input_dictionary["oredered_angles_filename"]  #foldernames[0] + '_ordered_angles.npy'
+angles_filename  = input_dictionary["ordered_angles_filename"]  #foldernames[0] + '_ordered_angles.npy'
 object_filename  = input_dictionary["ordered_object_filename"] #foldernames[0] + '_ordered_object.npy'
 
 """ Select output tomogram filenames """
@@ -260,8 +260,9 @@ if processing_steps["Wiggle"]:
 
 if processing_steps["Tomo"]:
     start = time()
+
     print(f'Starting tomography...')
-    reconstruction3D = tomography(which_reconstruction,contrast_type,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,output_folder,use_regularly_spaced_angles=True)
+    reconstruction3D = tomography(input_dictionary,use_regularly_spaced_angles=True)
     elapsed = time() - start
     print(f'Reconstruction done!')
     print('Elapsed time for reconstruction (sec):', elapsed )

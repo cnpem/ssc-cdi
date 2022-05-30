@@ -8,6 +8,18 @@ from functools import partial
 from .misc import list_files_in_folder
 
 from sscRaft import parallel
+from sscOldRaft import Centersino, MaskedART, FBP, Backprojection, EM, SIRT_FST
+
+
+def update_paths(global_dict):
+    global_dict["output_folder"]            = global_dict["singram_folder"].rsplit('/',1)[0]
+    global_dict["complex_object_filepath"]  = os.path.join(global_dict["singram_folder"], 'object_' + global_dict["folders_list"][0] + '.npy')
+    global_dict["ordered_angles_filename"]  = global_dict["folders_list"][0] + '_ordered_angles.npy'
+    global_dict["ordered_object_filename"]  = global_dict["folders_list"][0] + '_ordered_object.npy'
+    global_dict["wiggle_sinogram_filename"] = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_wiggle.npy'
+    global_dict["reconstruction_filename"]  = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + f'_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy'
+    global_dict["reconstruction_thresholded_filename"] = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + f'_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy'
+    return global_dict
 
 ####################### SORTING ###################################
 
@@ -182,17 +194,26 @@ def regularization(sino, L):
     return D
 
 
-def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regularization,regularization_parameter,output_folder,use_regularly_spaced_angles=True):
+def tomography(input_dict,use_regularly_spaced_angles=True):
     
     # input_dict = {} 
     # global_dict["tomo_algorithm"]
-    # data_selection.value
-    # angles_filename
+    # contrast_type
+    # ordered_angles_filename
     # global_dict["tomo_iterations"]
     # global_dict["tomo_n_of_gpus"]
     # global_dict["tomo_regularization"]
     # global_dict["tomo_regularization_param"]
     # output_folder
+
+    algorithm                = input_dict["tomo_algorithm"]
+    data_selection           = input_dict["contrast_type"]
+    angles_filename          = input_dict["ordered_angles_filename"]
+    iterations               = input_dict["tomo_iterations"]
+    GPUs                     = input_dict["tomo_n_of_gpus"]
+    do_regularization        = input_dict["tomo_regularization"]
+    regularization_parameter = input_dict["tomo_regularization_param"]
+    output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
 
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
@@ -222,7 +243,6 @@ def tomography(algorithm,data_selection,angles_filename,iterations,GPUs,do_regul
 
     """ ######################## RECON ################################ """
 
-    from sscOldRaft import Centersino, MaskedART, FBP, Backprojection, EM, SIRT_FST
 
     print('Starting tomographic algorithm: ',algorithm)
     if algorithm == "TEM" or algorithm == "EM":

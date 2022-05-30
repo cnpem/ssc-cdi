@@ -22,45 +22,44 @@ global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
 
 """ Standard dictionary definition """
-global_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/",
+global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
+
+               "ibira_data_path": "/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/",
                "folders_list": ["microagg_P2_01"],
                "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/microagg_P2_01/object_microagg_P2_01.npy",
-               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/"  , # FIXED PATH FOR BEAMLINE
+
+               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
+               "contrast_type": "Phase", # Phase or Absolute
+
                "top_crop": 0,
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
+
                "bad_frames_before_unwrap": [7,20,36,65,94,123,152,181,210,239,268,296,324],
-               "bad_frames_before_cHull": [],
-               "bad_frames_before_wiggle": [],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
+
+               "bad_frames_before_cHull": [],
                "chull_invert": False,
                "chull_tolerance": 1e-5,
                "chull_opening": 10,
                "chull_erosion": 10,
                "chull_param": 10,               
+
+               "bad_frames_before_wiggle": [],
                "wiggle_reference_frame": 0,
                "wiggle_cpus": 32,
+              
                "tomo_regularization": True,
                "tomo_regularization_param": 0.001, # arbitrary value
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "tomo_n_of_gpus": [0],
                "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
-               "run_all_tomo_steps":False,
-               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
-               "contrast_type": "Phase", # Phase or Absolute
 }
 
-
-# input_dictionary["complex_object_filepath"] 
-# input_dictionary["oredered_angles_filename"] 
-# input_dictionary["ordered_object_filename"]
-# input_dictionary["wiggle_sinogram_filename"]
-# input_dictionary['reconstruction_filename']
-# input_dictionary['reconstruction_thresholded_filename']
 
 
 """ Standard folders definitions"""
@@ -88,6 +87,8 @@ def get_box_layout(width,flex_flow='column',align_items='center',border=standard
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
+
+
 
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
     subplot.clear()
@@ -868,7 +869,7 @@ def tomo_tab():
         global machine_selection
         print(f'Running tomo with {machine_selection.value}...')
         if machine_selection.value == 'Local':               
-            reconstruction3D = tomography(global_dict["tomo_algorithm"],data_selection.value,angles_filename,global_dict["tomo_iterations"],global_dict["tomo_n_of_gpus"],global_dict["tomo_regularization"],global_dict["tomo_regularization_param"],output_folder)
+            reconstruction3D = tomography(global_dict)
             print('\t Done! Please, load the reconstruction with the button...')
             reconstruction3D = reconstruction3D.astype(np.float32)
             print('Saving 3D recon...')
