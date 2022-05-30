@@ -8,18 +8,9 @@ from functools import partial
 from .misc import list_files_in_folder
 
 from sscRaft import parallel
-from sscOldRaft import Centersino, MaskedART, FBP, Backprojection, EM, SIRT_FST
 
 
-def update_paths(global_dict):
-    global_dict["output_folder"]            = global_dict["singram_folder"].rsplit('/',1)[0]
-    global_dict["complex_object_filepath"]  = os.path.join(global_dict["singram_folder"], 'object_' + global_dict["folders_list"][0] + '.npy')
-    global_dict["ordered_angles_filename"]  = global_dict["folders_list"][0] + '_ordered_angles.npy'
-    global_dict["ordered_object_filename"]  = global_dict["folders_list"][0] + '_ordered_object.npy'
-    global_dict["wiggle_sinogram_filename"] = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_wiggle.npy'
-    global_dict["reconstruction_filename"]  = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + f'_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy'
-    global_dict["reconstruction_thresholded_filename"] = global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + f'_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy'
-    return global_dict
+
 
 ####################### SORTING ###################################
 
@@ -208,7 +199,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
     algorithm                = input_dict["tomo_algorithm"]
     data_selection           = input_dict["contrast_type"]
-    angles_filename          = input_dict["ordered_angles_filename"]
+    angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["tomo_n_of_gpus"]
     do_regularization        = input_dict["tomo_regularization"]
@@ -218,9 +209,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
     if use_regularly_spaced_angles == True:
-        angles_filename = angles_filename[:-4]+'_projected.npy'
-
-    angles_filepath = os.path.join(output_folder,angles_filename)
+        angles_filepath = angles_filepath[:-4]+'_projected.npy'
 
     angles = np.load(angles_filepath) # sorted angles?
 
@@ -253,6 +242,8 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
 
     if algorithm != "EEM": # for these
+        from sscOldRaft import Centersino, MaskedART, FBP, Backprojection, EM, SIRT_FST
+
         rays, slices = data.shape[-1], data.shape[-2]
         reconstruction3D = np.zeros((rays,slices,rays))
         for i in range(slices):
