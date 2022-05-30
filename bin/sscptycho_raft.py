@@ -108,18 +108,18 @@ if processing_steps["Sort"]:
             plt.clf()
             plt.close()
 
-    rois =  sscCdi.jupyterTomography.sort_frames_by_angle(ibira_path,foldernames)
+    rois =  sscCdi.tomo_processing.sort_frames_by_angle(ibira_path,foldernames)
 
     np.save(angles_filepath,rois)
     print('\tSorting done')
 
-    object = sscCdi.jupyterTomography.reorder_slices_low_to_high_angle(object, rois)
+    object = sscCdi.tomo_processing.reorder_slices_low_to_high_angle(object, rois)
     np.save(object_filepath, object) 
 
 if processing_steps["Crop"]: 
     """ ######################## Crop: STILL MANUAL ################################ """
 
-    object = np.load(sinogram_folder + object_filename) 
+    object = np.load(input_dictionary["complex_object_filepath"]) 
 
     print(" \tBegin Crop")
 
@@ -153,11 +153,11 @@ if processing_steps["Crop"]:
             plt.clf()
             plt.close()
 
-    np.save(sinogram_folder + 'crop_' + object_filename,object) # save shaken and padded sorted sinogram
+    np.save(input_dictionary["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
 
 if processing_steps["Unwrap"]:
     """ ######################## Remove Bad Frames and Phase Unwrap: STILL MANUAL ################################ """
-    object = np.load(sinogram_folder + 'crop_' + object_filename)  
+    object = np.load(input_dictionary["cropped_sinogram_filepath"])  
 
     object = np.zeros(object.shape)
 
@@ -174,7 +174,7 @@ if processing_steps["Unwrap"]:
         subplot.set_title('Phase preview')
         figure.savefig(sinogram_folder+'phaseUnwrap_preview.png')
 
-    np.save(sinogram_folder + 'unwrap_' + object_filename,object)  
+    np.save(input_dictionary["unwrapped_sinogram_filepath"],object)  
 
     if unwrapped_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
@@ -189,7 +189,7 @@ if processing_steps["Unwrap"]:
 if processing_steps["ConvexHull"]:
     """ ######################## CONVEX HULL: MANUAL ################################ """
 
-    object = np.load(sinogram_folder + 'unwrap_' + object_filename) 
+    object = np.load(input_dictionary["unwrapped_sinogram_filepath"]) 
 
     for k in bad_frames_before_cHull:
         object[k,:,:] = 0
@@ -197,7 +197,7 @@ if processing_steps["ConvexHull"]:
     output_list = apply_chull_parallel(object,invert=chull_invert,tolerance=chull_threshold,opening_param=chull_opening,erosion_param=chull_erosion,chull_param=convex_hull)
     object = output_list[-1]
 
-    np.save(sinogram_folder + 'unwrap_' + object_filename, object)
+    np.save(input_dictionary["chull_sinogram_filepath"], object)
 
     if cHull_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
@@ -210,7 +210,10 @@ if processing_steps["ConvexHull"]:
 if processing_steps["Wiggle"]:
     """ ######################## ZEROING EXTRA FRAMES: MANUAL ################################ """
 
-    object = np.load(object_filepath) 
+    if input_dictionary["processing_steps"]["ConvexHull"] == False:
+        object = np.load(input_dictionary["unwrapped_sinogram_filepath"]) 
+    else:
+        object = np.load(input_dictionary["chull_sinogram_filepath"]) 
 
     for k in bad_frames_before_wiggle:
         object[k,:,:] = 0
@@ -267,15 +270,15 @@ if processing_steps["Tomo"]:
     print('Elapsed time for reconstruction (sec):', elapsed )
 
     print('Saving 3D recon...')
-    np.save(os.path.join(sinogram_folder,recon_object_filename),reconstruction3D)
-    imsave(os.path.join(sinogram_folder,recon_object_filename)[:-4] + '.tif',reconstruction3D)
+    np.save(input_dictionary["reconstruction_filepath"],reconstruction3D)
+    imsave(input_dictionary["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
     print('\t Saved!')
 
     if threshold_object != 0:
         print('Saving thresholded 3D recon...')
         thresholded_recon = np.where(reconstruction3D > threshold_object,0,reconstruction3D)
-        np.save(os.path.join(sinogram_folder,recon_object_filename_thresholded),reconstruction3D)
-        imsave(os.path.join(sinogram_folder,recon_object_filename_thresholded)[:-4] + '.tif',thresholded_recon)
+        np.save(input_dictionary["reconstruction_thresholded_filepath"],reconstruction3D)
+        imsave(input_dictionary["reconstruction_thresholded_filepath"][:-4] + '.tif',thresholded_recon)
         print('\t Saved!')
 
 
