@@ -130,7 +130,33 @@ def cat_ptycho_2d(difpads,args):
     '''
 
     return sinogram,probe,bkg
+
+def cat_ptycho_2d_serial(difpads,args):
+    print('Difpadshape:',difpads.shape)
+
+    jason, ibira_datafolder, scans_string, positions_string = args[0]
+    acquisition_folder, filename, filepath, total_frames = args[1], args[2], args[3], args[4]
+
+    args = [jason, filename, filepath, ibira_datafolder, acquisition_folder, scans_string, positions_string]
+
+    # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+    object_shapey, object_shapex, maxroi, hsize, object_pixel_size, jason = set_object_shape(difpads,args)
+    jason["object_pixel"] = object_pixel_size
+    args[0][0] = jason # update args
+
+    params = (args,maxroi,hsize,(object_shapey,object_shapex),total_frames)
     
+    sinogram = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
+    probe    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
+    bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
+    
+    # Main ptycho iteration on ALL frames in threads
+    sinogram, probe, bkg = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1, jason['GPUs'])
+
+
+    return sinogram,probe,bkg
+
+
 
 #TODO: if you put one frame, it will be done by 2d code and it will be set as frame 0, always
 
@@ -204,30 +230,63 @@ if __name__ == '__main__':
     
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
-    #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
+      #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
     t1 = time()
 
+    serial = True #jason['Serial3D'] # Here is the bool variable to choose serial version of 3D or not.
+
     if len(filenames) > 1: # 3D
+        if serial == True:
+            # 3D serial form (computational time is slower, but memory safe)
+            object = [] 
+            probe = []
+            bkg = []
+
+            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
         
-        difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
-        t2 = time()
-        object,probe,bkg  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
-        t3 = time()
-        if len(object) > 1: # Concatenate if projections are divided into more than one folder (All projections in each folder are resolved together, and put on a list of size len(Aquisition_folders))
-            object = np.concatenate(object, axis = 0)
-            probe  = np.concatenate(probe, axis = 0)
-            bkg    = np.concatenate(bkg, axis = 0)
-        else: # If one folder, get the first (and only) item on list
-            object = object[0]
-            probe  = probe[0]
-            bkg    = bkg[0]
+            if jason['Projections'] != []:
+                filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)  
+
+            for acquisitions_folder in jason['Acquisition_Folders']:  
+                for measurement_file, measurement_filepath in zip(filenames, filepaths):   
+                    
+                    arguments = (args,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
+
+                    difpads,_ , jason = restauration_cat_2d_serial(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+                    t2 = time()
+                    object2d,probe2d,bkg2d  = cat_ptycho_2d_serial(difpads,arguments) # Ptycho of 2D Projection (object - complex, probe - complex, bkg - real, are a ndarray of size (1,:,:), (1,:,:,:), (1,:,:) )
+                    t3 = time()
+
+                    object.append(object2d) # build 3D Sinogram
+                    probe.append(probe2d)
+                    bkg.append(bkg2d)
+                    
+        else:
+            # 3D batch form (computational time is faster, but not memory safe)
+            
+                difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
+                t2 = time()
+                object,probe,bkg  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
+                t3 = time()
+                
+                if len(object) > 1: # Concatenate if projections are divided into more than one folder (All projections in each folder are resolved together, and put on a list of size len(Aquisition_folders))
+                    object = np.concatenate(object, axis = 0)
+                    probe  = np.concatenate(probe, axis = 0)
+                    bkg    = np.concatenate(bkg, axis = 0)
+                else: # If one folder, get the first (and only) item on list
+                    object = object[0]
+                    probe  = probe[0]
+                    bkg    = bkg[0]
     else:
+        
         difpads,_ , jason = restauration_cat_2d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
         t2 = time()
         object,probe,bkg  = cat_ptycho_2d(difpads,args) # Ptycho of 2D Projection (object - complex, probe - complex, bkg - real, are a ndarray of size (1,:,:), (1,:,:,:), (1,:,:) )
         t3 = time()
 
+        
     print('Finished Ptycho reconstruction!')
+
 
     cropped_sinogram = crop_sinogram(object, jason)
     
