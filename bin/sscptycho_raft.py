@@ -75,15 +75,15 @@ threshold_object = input_dictionary["tomo_threshold"]
 complex_object_file  = input_dictionary["complex_object_filepath"] #os.path.join(sinogram_folder, 'object_' + foldernames[0] + '.npy')
 
 """ Select name of ordered phase unwrapped files """
-angles_filename  = input_dictionary["ordered_angles_filename"]  #foldernames[0] + '_ordered_angles.npy'
-object_filename  = input_dictionary["ordered_object_filename"] #foldernames[0] + '_ordered_object.npy'
+angles_filepath  = input_dictionary["ordered_angles_filepath"]  #foldernames[0] + '_ordered_angles.npy'
+object_filepath  = input_dictionary["ordered_object_filepath"] #foldernames[0] + '_ordered_object.npy'
 
 """ Select output tomogram filenames """
-object_tomogram_filename = input_dictionary["wiggle_sinogram_filename"] #contrast_type + '_' + foldernames[0] + '_wiggle.npy'
+object_tomogram_filepath = input_dictionary["wiggle_sinogram_filepath"] #contrast_type + '_' + foldernames[0] + '_wiggle.npy'
 
 """ Select filenames of reconstructed object """
-recon_object_filename = input_dictionary['reconstruction_filename'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '.npy'
-recon_object_filename_thresholded = input_dictionary['reconstruction_thresholded_filename'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
+recon_object_filepath = input_dictionary['reconstruction_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '.npy'
+recon_object_filepath_thresholded = input_dictionary['reconstruction_thresholded_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
 
 """ Output plot folders """
 originals_filepath  = [False ,os.path.join(sinogram_folder, '00_frames_original')]
@@ -110,11 +110,11 @@ if processing_steps["Sort"]:
 
     rois =  sscCdi.jupyterTomography.sort_frames_by_angle(ibira_path,foldernames)
 
-    np.save(sinogram_folder + angles_filename,rois)
+    np.save(angles_filepath,rois)
     print('\tSorting done')
 
     object = sscCdi.jupyterTomography.reorder_slices_low_to_high_angle(object, rois)
-    np.save(sinogram_folder + object_filename, object) 
+    np.save(object_filepath, object) 
 
 if processing_steps["Crop"]: 
     """ ######################## Crop: STILL MANUAL ################################ """
@@ -210,7 +210,7 @@ if processing_steps["ConvexHull"]:
 if processing_steps["Wiggle"]:
     """ ######################## ZEROING EXTRA FRAMES: MANUAL ################################ """
 
-    object = np.load(sinogram_folder + 'unwrap_' + object_filename) # save shaken and padded sorted sinogram
+    object = np.load(object_filepath) 
 
     for k in bad_frames_before_wiggle:
         object[k,:,:] = 0
@@ -219,13 +219,12 @@ if processing_steps["Wiggle"]:
 
     """ ######################## Project Angles and Padding to 180 degrees ################################ """
 
-    angles  = np.load(sinogram_folder + angles_filename)
+    angles  = np.load(angles_filepath)
     angles = (np.pi/180.) * angles
 
     object, idxP, firstP, projected_angles = angle_mesh_organize(object, angles)
 
-    projected_angles_filename = angles_filename[:-4]+'_projected.npy'
-    np.save(sinogram_folder + projected_angles_filename,projected_angles)
+    np.save(input_dictionary["projected_angles_filepath"],projected_angles)
 
     """ ######################## Wiggle ################################ """
     print('\tStarting Wiggle')
@@ -233,7 +232,7 @@ if processing_steps["Wiggle"]:
 
     updateTomoP_0 = radon.get_wiggle( object, 'vertical', n_of_wiggle_processes, reference_frame )
     tomoP = radon.get_wiggle( updateTomoP_0, 'horizontal', n_of_wiggle_processes, reference_frame)
-    np.save(sinogram_folder + object_tomogram_filename,tomoP)
+    np.save(object_tomogram_filepath,tomoP)
 
     elapsed = time() - start
     print('Elapsed time for Wiggle (sec):', elapsed )

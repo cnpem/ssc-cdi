@@ -126,7 +126,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
     global_dict["chull_sinogram_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
     global_dict["wiggle_sinogram_filepath"]            = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
-
+    global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"] [:-4]+'_projected.npy')
     return global_dict
 
 def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -706,8 +706,7 @@ def wiggle_tab():
 
         global_dict['NumberOriginalAngles'] = angles.shape # save to output log
         global_dict['NumberUsedAngles']     = projected_angles.shape 
-        projected_angles_filepath = global_dict["ordered_angles_filepath"] [:-4]+'_projected.npy'
-        np.save(projected_angles_filepath,projected_angles)
+        np.save(global_dict["projected_angles_filepath"],projected_angles)
 
 
     def start_wiggle(dummy,args=()):
@@ -1072,7 +1071,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                                 global_dict["unwrapped_sinogram_filepath"],
                                 global_dict["chull_sinogram_filepath"],  
                                 global_dict["wiggle_sinogram_filepath"],
-                                global_dict["ordered_angles_filepath"][:-4]+'_projected.npy']
+                                global_dict["projected_angles_filepath"]]
 
         for filepath in filepaths_to_remove:
             print('Removing file/folder: ', filepath)
