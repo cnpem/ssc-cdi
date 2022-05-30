@@ -382,6 +382,26 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
 
     return difpads, time_difpads, jason
 
+def restauration_cat_2d_serial(args,preview = False,save = False,read = False):
+
+    jason, ibira_datafolder, scans_string, _ = args[0]
+    acquisition_folder, filename, filepath = args[1], args[2], args[3]
+    time_difpads = 0
+
+    params = (jason, ibira_datafolder, filename, acquisition_folder, scans_string, filepath)
+    
+    if read:
+        difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
+    else:   
+        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
+
+    difpads = np.expand_dims(difpads,axis=0)
+
+    difpads, jason = sscCdi.ptycho_processing.masks_application(difpads, jason)
+
+    return difpads, time_difpads, jason
+
+
 ################# MIQUELES RESTAURATION ###################################
 
 def cat_preproc_ptycho_measurement( data, args ):
