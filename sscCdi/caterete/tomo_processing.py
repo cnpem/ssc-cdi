@@ -242,8 +242,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
 
     if algorithm != "EEM": # for these
-        from sscOldRaft import Centersino, MaskedART, FBP, Backprojection, EM, SIRT_FST
-
+        
         rays, slices = data.shape[-1], data.shape[-2]
         reconstruction3D = np.zeros((rays,slices,rays))
         for i in range(slices):

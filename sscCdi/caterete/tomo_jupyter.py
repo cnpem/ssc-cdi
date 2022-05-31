@@ -12,7 +12,6 @@ from functools import partial
 import subprocess
 
 from sscRadon import radon
-
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal
@@ -111,7 +110,8 @@ def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0
 def update_paths(global_dict,dummy1,dummy2):
     # dummy variable is used to trigger update
     global_dict["output_folder"] = global_dict["sinogram_path"].rsplit('/',1)[0]
-
+    global_dict["contrast_type"] = data_selection.value
+    
     if type(global_dict["folders_list"]) == type([1,2]): # correct data type of this input
         pass # if list
     else: # if string
@@ -126,7 +126,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
     global_dict["chull_sinogram_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
     global_dict["wiggle_sinogram_filepath"]            = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
-    global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"] [:-4]+'_projected.npy')
+    global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
     return global_dict
 
 def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -707,6 +707,7 @@ def wiggle_tab():
         global_dict['NumberOriginalAngles'] = angles.shape # save to output log
         global_dict['NumberUsedAngles']     = projected_angles.shape 
         np.save(global_dict["projected_angles_filepath"],projected_angles)
+        print('\tDone!')
 
 
     def start_wiggle(dummy,args=()):
