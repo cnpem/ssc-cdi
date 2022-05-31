@@ -141,7 +141,7 @@ if processing_steps["Crop"]:
         figure, subplot = plt.subplots()
         subplot.imshow(np.angle(object[slice_number,:,:]),cmap='gray')#,interpolation='bilinear')
         subplot.set_title('object preview')
-        figure.savefig(sinogram_folder+'object_preview.png')
+        figure.savefig(os.path.join(sinogram_folder,'object_preview.png'))
 
     print("\tCrop complete!")
 
@@ -172,7 +172,7 @@ if processing_steps["Unwrap"]:
         figure, subplot = plt.subplots()
         subplot.imshow(object[slice_number,:,:],cmap='gray',interpolation='bilinear')
         subplot.set_title('Phase preview')
-        figure.savefig(sinogram_folder+'phaseUnwrap_preview.png')
+        figure.savefig(os.path.join(sinogram_folder,'phaseUnwrap_preview.png'))
 
     np.save(input_dictionary["unwrapped_sinogram_filepath"],object)  
 
