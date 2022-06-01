@@ -185,3 +185,29 @@ class Input(object):
             self.dictionary[self.key] = ast.literal_eval(value)
         else:
             self.dictionary[self.key] = value    
+
+def slide_and_play(slider_layout=widgets.Layout(width='90%'),label="",description="",frame_time_milisec = 0):
+
+    def update_frame_time(play_control,time_per_frame):
+        play_control.widget.interval = time_per_frame
+
+    selection_slider = Input({"dummy_key":1},"dummy_key",description=description, bounded=(0,100,1),slider=True,layout=widgets.Layout(width='max-width'))
+    play_control = VideoControl(selection_slider,1,100,"Play Button")
+
+    pbox = widgets.Box([play_control.widget],layout=get_box_layout('max-width'))
+
+    if frame_time_milisec != 0:
+        frame_time = Input({"dummy_key":frame_time_milisec},"dummy_key",description="Time/frame [ms]",layout=widgets.Layout(width='160px'))
+        widgets.interactive_output(update_frame_time, {'play_control':fixed(play_control),'time_per_frame':frame_time.widget})
+        play_box = widgets.HBox([selection_slider.widget,widgets.Box([pbox,frame_time.widget],layout=get_box_layout('max-width'))])
+    else:
+        play_box = widgets.HBox([selection_slider.widget, play_control.widget])
+
+    if label != "":
+        play_label = widgets.HTML(f'<b><font size=4.9px>{label}</b>' )
+        play_box = widgets.VBox([play_label,play_box])
+
+    return play_box, selection_slider,play_control
+
+def get_box_layout(width,flex_flow='column',align_items='center',border='1px none black'):
+    return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
