@@ -14,10 +14,13 @@ import subprocess
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle
-from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input
+from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
+
+""" Standard folders definitions"""
+tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
 
 """ Standard dictionary definition """
 global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
@@ -59,11 +62,6 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
 }
 
 
-
-""" Standard folders definitions"""
-tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
-
-
 """ Standard styling definitions """
 standard_border='1px none black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
@@ -84,28 +82,6 @@ def get_box_layout(width,flex_flow='column',align_items='center',border=standard
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
-    subplot.clear()
-    if bottom == None or right == None:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
-    else:
-        if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
-        elif axis == 1:
-            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
-        elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')
-    if title == True:
-        subplot.set_title(f'Frame #{frame_number}')
-    if clear_axis == True:
-        subplot.set_xticks([])
-        subplot.set_yticks([])    
-    figure.canvas.draw_idle()
 
 def update_paths(global_dict,dummy1,dummy2):
     # dummy variable is used to trigger update
@@ -129,7 +105,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
     return global_dict
 
-def write_to_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
     string = f"""#!/bin/bash
 
@@ -164,7 +140,7 @@ def call_cmd_terminal(filename,mafalda,remove=False):
     return given_jobID
 
 def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
-    slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
+    slurm_file = write_slurm_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
 
