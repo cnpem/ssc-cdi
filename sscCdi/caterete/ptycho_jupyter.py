@@ -105,7 +105,6 @@ def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,but
     else:
         plotshow(figure,subplot,image)
    
-
 def update_values(n_frames,start_f,end_f,power):
     global starting_f_value
     global ending_f_value
@@ -118,9 +117,7 @@ def update_dic(output_dictionary,key,boxvalue):
     output_dictionary[key]  = boxvalue 
 
 
-
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
-
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
@@ -161,7 +158,6 @@ def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
     
-
 def run_ptycho(dummy,args=()):
     mafalda,pythonScript,json_filepath,outputFolder,slurm_filepath,jobName,queue,gpus,cpus = args
     run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=outputFolder,slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
@@ -171,7 +167,6 @@ def load_json(dummy):
     template_dict = json.load(open(json_path))
     for key in template_dict:
         global_dict[key] = template_dict[key]
-
 
 
 ############################################ INTERFACE / GUI : TABS ###########################################################################
@@ -196,17 +191,17 @@ def inputs_tab():
             json.dump(dictionary, file)
 
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
-    button_layout = widgets.Layout(align_items='flex-end',width='30%', height='50px')
 
-    saveJsonButton = widgets.Button(description="Save Dictinary to json",layout=button_layout)
-    saveJsonButton.on_click(save_on_click_partial)
+    global saveJsonButton
+    saveJsonButton = Button(description="Save Dictinary to json",layout=buttons_layout)
+    saveJsonButton.trigger(save_on_click_partial)
 
     keys_list = [key for key in global_dict]
     fields_dict = {}
-    box = widgets.VBox()
+    box = widgets.VBox([saveJsonButton.widget])
     for counter in range(0,len(keys_list)): # deployt all interactive fields    
         fields_dict_key = f'field_{counter}'
-        fields_dict[fields_dict_key] = Input(global_dict,keys_list[counter])
+        fields_dict[fields_dict_key] = Input(global_dict,keys_list[counter],description=keys_list[counter])
         box = widgets.VBox([box,fields_dict[fields_dict_key].widget])
 
     return box
@@ -314,6 +309,21 @@ def fresnel_tab():
     box = widgets.HBox([box2,box3])
     return box
 
+def ptycho_tab():
+
+    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
+    run_button.trigger(run_ptycho)
+
+    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
+    run_button.trigger(run_ptycho)
+
+    use_obj_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use object reconstruction as initial guess')
+    use_probe_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use probe reconstruction as initial guess')
+
+    box = widgets.VBox([saveJsonButton.widget,use_obj_guess.widget,use_probe_guess.widget,run_button.widget])
+
+    return box
+
 def reconstruction_tab():
     
     frame_time_in_milisec = 100
@@ -377,21 +387,26 @@ def reconstruction_tab():
 
     return box
 
-def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=reconstruction_tab()):
+def merge_tab():
+
+    box = widgets.VBox([])
+
+    return box 
+
+def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab7=merge_tab()):
     
     children_dict = {
     "Job Inputs"        : tab1,
     "Ptycho Inputs"     : tab2,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
-    "Reconstruction"    : tab5
+    "Ptychography"      : tab5,
+    "Reconstruction"    : tab6,
+    "Merge sinograms"   : tab7
     }
     
     global mafalda
     mafalda = mafalda_session
-
-    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
-    run_button.trigger(run_ptycho)
 
     load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(load_json)
@@ -402,7 +417,7 @@ def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_t
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
-    box = widgets.HBox([machine_selection,run_button.widget,load_json_button.widget,delete_temporary_files_button.widget])
+    box = widgets.HBox([machine_selection,load_json_button.widget,delete_temporary_files_button.widget])
 
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
