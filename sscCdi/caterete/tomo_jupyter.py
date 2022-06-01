@@ -14,7 +14,7 @@ import subprocess
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle
-from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal
+from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input
 
 global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
@@ -167,79 +167,6 @@ def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",s
     slurm_file = write_to_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
-
-class VideoControl:
-    
-    def __init__ (self,slider,step,interval,description):
-    
-        value, minimum, maximum = slider.widget.value,slider.widget.min,slider.widget.max
-
-        self.widget = widgets.Play(value=value,
-                            min=minimum,
-                            max=maximum,
-                            step=step,
-                            interval=interval,
-                            description=description,
-                            disabled=False )
-
-        widgets.jslink((self.widget, 'value'), (slider.widget, 'value'))
-
-class Button:
-
-    def __init__(self,description="DESCRIPTION",layout=widgets.Layout(),icon=""):
-
-        self.button_layout = layout
-        self.widget = widgets.Button(description=description,layout=self.button_layout,icon=icon,style=style)
-
-    def trigger(self,func):
-        self.widget.on_click(func)
-
-class Input(object):
-
-    def __init__(self,dictionary,key,description="",layout=None,bounded=(),slider=False):
-        
-        self.dictionary = dictionary
-        self.key = key
-        
-        if layout == None:
-            self.items_layout = widgets.Layout()
-        else:
-            self.items_layout = layout
-        field_style = {'description_width': 'initial'}
-   
-        field_description = description
-
-        if isinstance(self.dictionary[self.key],bool):
-            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],int):
-            if bounded == ():
-                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-            else:
-                if slider:
-                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-                else:
-                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],float):
-            if bounded == ():
-                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-            else:
-                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],list):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],str):
-            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],dict):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
-        
-        widgets.interactive_output(self.update_dict_value,{'value':self.widget})
-
-    def update_dict_value(self,value):
-        if isinstance(self.dictionary[self.key],list):
-            self.dictionary[self.key] = ast.literal_eval(value)
-        elif isinstance(self.dictionary[self.key],dict):
-            self.dictionary[self.key] = ast.literal_eval(value)
-        else:
-            self.dictionary[self.key] = value            
 
 class Timer:
     def __init__(self, timeout, callback):

@@ -4,6 +4,11 @@ import paramiko
 import getpass
 import time
 
+import ipywidgets as widgets 
+from ipywidgets import fixed 
+
+field_style = {'description_width': 'initial'}
+
 madalda_ip = "10.30.4.10" # Mafalda IP
 mafalda_port = 22
 
@@ -83,3 +88,76 @@ pip install sscResolution==1.2.3"""
     #     print('Output: ',stdout.read())
     #     print('Error:  ',stderr.read())   
     # print('\t Done!')
+
+
+class VideoControl:
+    
+    def __init__ (self,slider,step,interval,description):
+    
+        value, minimum, maximum = slider.widget.value,slider.widget.min,slider.widget.max
+
+        self.widget = widgets.Play(value=value,
+                            min=minimum,
+                            max=maximum,
+                            step=step,
+                            interval=interval,
+                            description=description,
+                            disabled=False )
+
+        widgets.jslink((self.widget, 'value'), (slider.widget, 'value'))
+
+class Button:
+
+    def __init__(self,description="DESCRIPTION",layout=widgets.Layout(),icon=""):
+
+        self.button_layout = layout
+        self.widget = widgets.Button(description=description,layout=self.button_layout,icon=icon,style=field_style)
+
+    def trigger(self,func):
+        self.widget.on_click(func)
+
+class Input(object):
+
+    def __init__(self,dictionary,key,description="",layout=None,bounded=(),slider=False):
+        
+        self.dictionary = dictionary
+        self.key = key
+        
+        if layout == None:
+            self.items_layout = widgets.Layout()
+        else:
+            self.items_layout = layout
+   
+        field_description = description
+
+        if isinstance(self.dictionary[self.key],bool):
+            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],int):
+            if bounded == ():
+                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+            else:
+                if slider:
+                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+                else:
+                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],float):
+            if bounded == ():
+                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+            else:
+                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],list):
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],str):
+            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
+        
+        widgets.interactive_output(self.update_dict_value,{'value':self.widget})
+
+    def update_dict_value(self,value):
+        if isinstance(self.dictionary[self.key],list):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        elif isinstance(self.dictionary[self.key],dict):
+            self.dictionary[self.key] = ast.literal_eval(value)
+        else:
+            self.dictionary[self.key] = value    

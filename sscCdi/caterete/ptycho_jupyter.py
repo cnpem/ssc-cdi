@@ -1,6 +1,7 @@
 import os, json, ast
 import numpy as np
 import matplotlib.pyplot as plt
+from functools import partial
 
 import ipywidgets as widgets 
 from ipywidgets import fixed 
@@ -8,7 +9,37 @@ from ipywidgets import fixed
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
-from .jupyter import monitor_job_execution, call_cmd_terminal
+from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input
+
+
+global_paths_dict = { "jupyter_folder": "/ibira/lnls/beamlines/caterete/apps/jupyter/",
+                      "template_file": "000000_template.json"
+                    }
+
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_file"]))) # load from template
+
+
+############################################ Global Layout ###########################################################################
+
+""" Standard styling definitions """
+standard_border='1px none black'
+vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
+vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
+hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
+hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
+slider_layout = widgets.Layout(width='90%')
+items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+buttons_layout = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
+center_all_layout = widgets.Layout(align_items='center',width='100%',border=standard_border) #align_content='center',justify_content='center'
+box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
+sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
+style = {'description_width': 'initial'}
+
+def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
+    return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
+
+#######################################################################################################################
 
 
 def write_to_file(python_script_path,jsonFile_path,output_path="",slurmFile = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -37,36 +68,7 @@ python3 {python_script_path} {jsonFile_path} > {os.path.join(output_path,'output
     
     return slurmFile
 
-def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
-    slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
-    given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
-    monitor_job_execution(given_jobID,mafalda)
-    
-def deploy_runPtycho_button(mafalda,auxiliary_dict):
 
-
-    pythonScript = auxiliary_dict['pythonScript'] 
-    jsonFile     = auxiliary_dict['jsonFile']
-    outputFolder = auxiliary_dict['outputFolder']
-    slurmFile    = auxiliary_dict['slurmFile']
-    jobName      = auxiliary_dict['jobNameField']
-    queue        = auxiliary_dict['jobQueueField']
-    gpus         = auxiliary_dict['gpusField']
-    cpus         = auxiliary_dict['cpusField']
-    args = mafalda,pythonScript,jsonFile,outputFolder,slurmFile,jobName,queue,gpus,cpus
-
-    from functools import partial
-
-    def run_ptycho(dummy,args=()):
-        mafalda,pythonScript,jsonFile,outputFolder,slurmFile,jobName,queue,gpus,cpus = args
-        run_ptycho_from_jupyter(mafalda,pythonScript,jsonFile,output_path=outputFolder,slurmFile = slurmFile,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
-
-    run_ptycho_partial = partial(run_ptycho,args=args)
-    button_layout = widgets.Layout(align_items='flex-end',width='30%', height='50px')
-    run_button = widgets.Button(description=('RUN PTYCHO'),layout=button_layout,icon='play')
-    run_button.on_click(run_ptycho_partial)
-    # display(run_button)
-    return run_button
 
 class InputField(object):
 
@@ -110,9 +112,7 @@ def deploy_inputJson_fields(dictionary):
     for counter in range(0,len(keys_list)): # deployt all interactive fields    
         fields_dict_key = f'field_{counter}'
         fields_dict[fields_dict_key] = InputField(dictionary,keys_list[counter])
-#         display(fields_dict[fields_dict_key].field) 
         box = widgets.VBox([box,fields_dict[fields_dict_key].field])
-#     display(box)
     return box
 
 def deploy_framesVisualization(path_to_npy_frames):
@@ -206,40 +206,7 @@ def inputs_deploy(dictionary,mafalda,auxiliary_dict):
     display(deploy_inputJson_fields(dictionary))
     display(deploy_runPtycho_button(mafalda,auxiliary_dict))
 
-def deploy_input_fields(dictionary,auxiliary_dict):
 
-    field_layout = widgets.Layout(align_items='flex-start',width='70%')
-    field_style = {'description_width': 'initial'}
-
-    from functools import partial
-    from ipywidgets import fixed
-    import os
-
-    def loadJson(dummy,user_folder="/ibira/lnls/beamlines/caterete/apps/jupyter/" ,dictionary={}):
-        json_path = os.path.join(user_folder,"000000_template.json")
-        template_dict = json.load(open(json_path))
-        for key in template_dict:
-            dictionary[key] = template_dict[key]
-        
-    loadJsonButton = widgets.Button(description="Load json template",layout=widgets.Layout(width='30%', height='100px',max_height='50px'),icon='play')
-
-    ProposalPathField = widgets.Text(value='/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho2d/',description="Insert data path:",style=field_style,layout=field_layout)
-    AcquisitionFolderField = widgets.Text(value='[ "SS61"]',description="Insert list of acquisiton folders inside the data path:",style=field_style,layout=field_layout)
-    jobNameField  = widgets.Text(value='myJobName',description="Insert slurm job name:",style=field_style)
-    jobQueueField = widgets.Text(value='cat-proc',description="Insert machine queue name:",style=field_style)
-    gpusField = widgets.BoundedIntText(value=1,min=0,max=4,description="Insert # of gpus to use:",style=field_style)
-    cpusField = widgets.BoundedIntText(value=32,min=1,max=128,description="Insert # of cpus to use:",style=field_style)
-
-    # auxiliary_dict = { 'pythonScript':"",
-    #                 'standard_folder': "",
-    #                 'slurmFile': "",
-    #                 'jobNameField':'',
-    #                 'jobQueueField':'',
-    #                 'gpusField':0,
-    #                 'cpusField':0,
-    #                 'path_to_diffraction_pattern_file':"",
-    #                 'path_to_probefile':"",
-    #                 'path_to_npy_frames':""}
 
 
     def update_inputs(dictionary,auxiliary_dict,ProposalPathField,AcquisitionFolderField,jobNameField,jobQueueField,gpusField,cpusField):
@@ -452,9 +419,132 @@ def deploy_json_save_button(dictionary,auxiliary_dict):
     saveJsonButton.on_click(save_on_click_partial)
     return saveJsonButton
 
-
 ############################################ INTERFACE / GUI : TABS ###########################################################################
 
+
+def delete_files(dummy):
+    sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
+
+    filepaths_to_remove = [ global_dict["ordered_angles_filepath"],  
+                            global_dict["ordered_object_filepath"] , 
+                            global_dict["cropped_sinogram_filepath"],
+                            global_dict["unwrapped_sinogram_filepath"],
+                            global_dict["chull_sinogram_filepath"],  
+                            global_dict["wiggle_sinogram_filepath"],
+                            global_dict["projected_angles_filepath"]]
+
+    for filepath in filepaths_to_remove:
+        print('Removing file/folder: ', filepath)
+        if os.path.exists(filepath) == True:
+            os.remove(filepath)
+            print(f'Deleted {filepath}\n')
+        else:
+            print(f'Directory {filepath} does not exists. Skipping deletion...\n')
+
+    folderpaths_to_remove =[os.path.join(global_dict["output_folder"],'00_frames_original'),
+                            os.path.join(global_dict["output_folder"],'01_frames_ordered'),
+                            os.path.join(global_dict["output_folder"],'02_frames_cropped'),
+                            os.path.join(global_dict["output_folder"],'03_frames_unwrapped'),
+                            os.path.join(global_dict["output_folder"],'04_frames_convexHull')]
+                            
+    import shutil
+    for folderpath in folderpaths_to_remove:
+        print('Removing file/folder: ', folderpath)
+        if os.path.isdir(folderpath) == True:
+            shutil.rmtree(folderpath)
+            print(f'Deleted {folderpath}\n')
+        else:
+            print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
+
+def run_ptycho_from_jupyter(mafalda,python_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+    slurm_file = write_to_file(python_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
+    given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
+    monitor_job_execution(given_jobID,mafalda)
+    
+
+def run_ptycho(dummy,args=()):
+    mafalda,pythonScript,jsonFile,outputFolder,slurmFile,jobName,queue,gpus,cpus = args
+    run_ptycho_from_jupyter(mafalda,pythonScript,jsonFile,output_path=outputFolder,slurmFile = slurmFile,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
+
+def load_json(dummy):
+    json_path = os.path.join("/ibira/lnls/beamlines/caterete/apps/jupyter/" ,"000000_template.json")
+    template_dict = json.load(open(json_path))
+    for key in template_dict:
+        dictionary[key] = template_dict[key]
+
+def slurm_tab():
+
+    jobNameField           = widgets.Text(value='myJobName',description="Insert slurm job name:",style=style)
+    jobQueueField          = widgets.Text(value='cat-proc',description="Insert machine queue name:",style=style)
+    gpusField              = widgets.BoundedIntText(value=1,min=0,max=4,description="Insert # of gpus to use:",style=style)
+    cpusField              = widgets.BoundedIntText(value=32,min=1,max=128,description="Insert # of cpus to use:",style=style)
+
+    box = widgets.VBox([jobNameField,jobQueueField,gpusField,cpusField])
+
+    return box
+
+def inputs_tab():
+
+    keys_list = [key for key in global_dict]
+    fields_dict = {}
+    box = widgets.VBox()
+    for counter in range(0,len(keys_list)): # deployt all interactive fields    
+        fields_dict_key = f'field_{counter}'
+        fields_dict[fields_dict_key] = InputField(global_dict,keys_list[counter])
+        box = widgets.VBox([box,fields_dict[fields_dict_key].field])
+
+    return box
+
+def center_tab():
+    
+    box = widgets.VBox([])
+
+    return box
+
+def fresnel_tab():
+    
+    box = widgets.VBox([])
+
+    return box
+
+def reconstruction_tab():
+    
+    box = widgets.VBox([])
+
+    return box
+
+def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=reconstruction_tab()):
+    
+    children_dict = {
+    "Job Inputs"        : tab1,
+    "Ptycho Inputs"     : tab2,
+    "Find Center"       : tab3,
+    "Probe Propagation" : tab4,
+    "Reconstruction"    : tab5
+    }
+    
+    global mafalda
+    mafalda = mafalda_session
+
+    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
+    run_button.trigger(run_ptycho)
+
+    load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
+    load_json_button.trigger(load_json)
+    
+    global machine_selection
+    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '70%'},description='Machine',disabled=False)
+
+    delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
+    delete_temporary_files_button.trigger(partial(delete_files))
+
+    box = widgets.HBox([machine_selection,run_button.widget,load_json_button.widget,delete_temporary_files_button.widget])
+
+    tab = widgets.Tab()
+    tab.children = list(children_dict.values())
+    for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
+
+    return box,tab, global_dict  
 
 
 
