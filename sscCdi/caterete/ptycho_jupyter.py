@@ -9,7 +9,7 @@ from ipywidgets import fixed
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
-from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
+from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow, slide_and_play
 
 if 0: # paths for beamline use
     ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
@@ -39,7 +39,7 @@ output_dictionary = {}
 ############################################ Global Layout ###########################################################################
 
 """ Standard styling definitions """
-standard_border='1px none black'
+standard_border='1px solid black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
@@ -53,11 +53,10 @@ box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=s
 sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 style = {'description_width': 'initial'}
 
-def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
+def get_box_layout(width,flex_flow='column',align_items='center',border='1px none black'):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
-#######################################################################################################################
-
+############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
 def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
@@ -84,40 +83,9 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'o
         the_file.write(string)
     
     return slurm_filepath
-       
-def plotshow(figure,subplot,image,title="",figsize=(8,8),savepath=None,show=False):
-    subplot.clear()
-    cmap, colors, bounds, norm = miqueles_colormap(image)
-    handle = subplot.imshow(image, interpolation='nearest', cmap = cmap, norm=norm)
-    if title != "":
-        subplot.set_title(title)
-    if show:
-        plt.show()
-    figure.canvas.draw_idle()
-
-def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,radius):
-    output_dictionary[key1] = [cx,cy]
-    output_dictionary[key2] = [button,radius]
-    output_dictionary[key3] = [exposure,0.15]
-    if exposure == True or button == True:
-        image2, _ = masks_application(np.copy(image), output_dictionary)
-        plotshow(figure,subplot,image2)
-    else:
-        plotshow(figure,subplot,image)
    
-def update_values(n_frames,start_f,end_f,power):
-    global starting_f_value
-    global ending_f_value
-    global number_of_frames
-    starting_f_value=-start_f*10**power
-    ending_f_value=-end_f*10**power
-    number_of_frames=int(n_frames)
-    
-def update_dic(output_dictionary,key,boxvalue):
-    output_dictionary[key]  = boxvalue 
-
-
-############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
+def update_dict_entry(dictionary,key,boxvalue):
+    dictionary[key]  = boxvalue 
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
@@ -171,17 +139,6 @@ def load_json(dummy):
 
 ############################################ INTERFACE / GUI : TABS ###########################################################################
 
-def slurm_tab():
-
-    jobNameField           = widgets.Text(value='myJobName',description="Insert slurm job name:",style=style)
-    jobQueueField          = widgets.Text(value='cat-proc',description="Insert machine queue name:",style=style)
-    gpusField              = widgets.BoundedIntText(value=1,min=0,max=4,description="Insert # of gpus to use:",style=style)
-    cpusField              = widgets.BoundedIntText(value=32,min=1,max=128,description="Insert # of cpus to use:",style=style)
-
-    box = widgets.VBox([jobNameField,jobQueueField,gpusField,cpusField])
-
-    return box
-
 def inputs_tab():
 
 
@@ -201,112 +158,128 @@ def inputs_tab():
     box = widgets.VBox([saveJsonButton.widget])
     for counter in range(0,len(keys_list)): # deployt all interactive fields    
         fields_dict_key = f'field_{counter}'
-        fields_dict[fields_dict_key] = Input(global_dict,keys_list[counter],description=keys_list[counter])
+        fields_dict[fields_dict_key] = Input(global_dict,keys_list[counter],description=keys_list[counter],layout=items_layout)
         box = widgets.VBox([box,fields_dict[fields_dict_key].widget])
 
     return box
 
 def center_tab():
-    
-    output = widgets.Output()
-    image = np.load(global_paths_dict['path_to_diffraction_pattern_file'])
-    centered_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',width='100%')
 
+
+    def plotshow(figure,subplot,image,title="",figsize=(8,8),savepath=None,show=False):
+        subplot.clear()
+        cmap, colors, bounds, norm = miqueles_colormap(image)
+        handle = subplot.imshow(image, interpolation='nearest', cmap = cmap, norm=norm)
+        if title != "":
+            subplot.set_title(title)
+        if show:
+            plt.show()
+        figure.canvas.draw_idle()
+
+    def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,radius):
+        output_dictionary[key1] = [cx,cy]
+        output_dictionary[key2] = [button,radius]
+        output_dictionary[key3] = [exposure,0.15]
+        if exposure == True or button == True:
+            image2, _ = masks_application(np.copy(image), output_dictionary)
+            plotshow(figure,subplot,image2)
+        else:
+            plotshow(figure,subplot,image)
+
+    def load_difpad(dummy):
+        image = np.load(global_paths_dict['path_to_diffraction_pattern_file'])
+        widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
+                                                'output_dictionary':fixed(output_dictionary),'image':fixed(image),
+                                                'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
+                                                'cx':center_x_box.widget,'cy':center_y_box.widget,
+                                                'button':central_mask_checkbox,
+                                                'exposure':exposure_checkbox,
+                                                'radius':mask_size_box.widget})
+
+    output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(figsize=(8,8),constrained_layout=True)
-        plotshow(figure,subplot,image,title="",show=True)
-    
+        figure, subplot = plt.subplots(figsize=(5,5),constrained_layout=True)
+        figure,subplot.imshow(np.random.random((4,4)))
+        subplot.set_title('Diffraction Pattern')
+        figure.canvas.header_visible = False 
+        plt.show()
+
+    load_difpad_button  = Button(description="Load Diffraction Pattern",layout=buttons_layout,icon='folder-open-o')
+    load_difpad_button.trigger(load_difpad)
 
     """ Difpad center boxes """
-    center_x_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Row pixel:', disabled=False,layout=centered_box_layout)
-    center_y_box = widgets.IntText(value=1400,min=0,max=3072, description='Center Column pixel:', disabled=False,layout=centered_box_layout)
+    center_x_box  = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1), description='Center Row pixel:',layout=items_layout)
+    center_y_box  = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1), description='Center Column pixel:',layout=items_layout)
+    mask_size_box = Input({'dummy-key':5},   'dummy-key',bounded=(0,50,1), slider=True,description='Mask radius (pixels):',layout=items_layout)
+    central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask',layout=checkbox_layout,style=style)
+    exposure_checkbox     = widgets.Checkbox(value=False,description='Exposure',    layout=checkbox_layout,style=style)
 
-    """ Central mask radius box """
-    mask_size_box = widgets.BoundedIntText(value=50,min=0,max=3072, description='Mask radius (pixels):', disabled=False,layout=centered_box_layout)
-    central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask')
-    exposure_checkbox = widgets.Checkbox(value=False,description='Exposure')
-    widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
-                                            'output_dictionary':fixed(output_dictionary),'image':fixed(image),
-                                            'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
-                                            'cx':center_x_box,'cy':center_y_box,
-                                            'button':central_mask_checkbox,
-                                            'exposure':exposure_checkbox,
-                                            'radius':mask_size_box})
-
-
-    box1 = widgets.VBox([center_x_box,center_y_box])
-    box3 = widgets.VBox([central_mask_checkbox,exposure_checkbox])
-    box2 = widgets.VBox([mask_size_box,box3])
-    controls = widgets.VBox([box1,box2])
-    box = widgets.HBox([output,controls])
+    controls = widgets.Box([load_difpad_button.widget,center_x_box.widget,center_y_box.widget,mask_size_box.widget,central_mask_checkbox,exposure_checkbox],layout=box_layout)
+    box = widgets.HBox([controls,vbar,output])
     return box
 
 def fresnel_tab():
-        
-    def on_click_propagate(dummy,args=()):
     
-        path_to_probefile,starting_f_value,ending_f_value,number_of_frames,play,slider,fig, ax1 = args
-
-        image_list, f1_list = create_propagation_video(path_to_probefile,
-                                starting_f_value=starting_f_value,
-                                ending_f_value=ending_f_value,
-                                number_of_frames=number_of_frames,
-                                jupyter=True)
-
-        play.max = len(image_list)-1
-        slider.max = len(image_list)-1
-
-        widgets.interactive_output(update_imshow,{'fig':fixed(fig),'ax1':fixed(ax1),'image_list':fixed(image_list),'f1_list':fixed(f1_list),'index':play})
-
-
+    image_list, f1_list = [np.random.random((5,5))], [0]
 
     output = widgets.Output()
-
-    centered_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',width='100%')
-    centered_button_layout = widgets.Layout(flex_flow='column',align_items='flex-end',width='100%',height='50px')
-
-    power   = widgets.BoundedFloatText(value=-4,min=-10,max=0, description='10^n', readout_format='d',disabled=False,layout=centered_box_layout)
-    start_f = widgets.FloatText(value=1, description='Start F1', readout_format='d',disabled=False,layout=centered_box_layout)
-    end_f   = widgets.FloatText(value=9, description='End F', readout_format='d',disabled=False,layout=centered_box_layout)
-    n_frames= widgets.FloatText(value=20, description='#Frames', readout_format='d',disabled=False,layout=centered_box_layout)
-
-    out2 = widgets.interactive_output(update_values,{'n_frames':n_frames,'start_f':start_f,'end_f':end_f,'power':power})
-    box1 = widgets.VBox([n_frames, power, start_f,end_f])
-    start_ptycho_button = widgets.Button(description=('Propagate Probe'),layout=centered_button_layout)
-
-    """ Fresnel Number box """
-    fresnel_box = widgets.FloatText(value=-5e-3, description='Chosen F (float)', readout_format='.3e',disabled=False,layout=centered_box_layout)
-    widgets.interactive_output(update_dic,{'output_dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box})
-    box4 = widgets.VBox([start_ptycho_button,fresnel_box])
-    box2 = widgets.VBox([box1,box4])
-
-    image_list, f1_list = [np.ones((100,100))], [0]
-
-    play = widgets.Play(
-        value=0,
-        min=0,
-        max=len(image_list)-1,
-        step=1,
-        interval=300,
-        description="Press play",
-        disabled=False
-    )
-
-    slider = widgets.IntSlider(value=0, min=0, max=len(image_list)-1)
-    play_box = widgets.HBox([play, slider])
-    widgets.jslink((play, 'value'), (slider, 'value'))
-    
-
     with output:
-        fig, ax1 = plt.subplots(figsize=(5,5))
-        ax1.imshow(image_list[0],cmap='jet') # initialize
+        figure, subplot = plt.subplots(figsize=(4,4))
+        subplot.imshow(image_list[0],cmap='jet') # initialize
+        subplot.set_title('Propagated Probe')
+        figure.canvas.header_visible = False 
         plt.show()
 
-    args = (global_paths_dict['path_to_probefile'],starting_f_value,ending_f_value,number_of_frames,play,slider,fig,ax1)
-    start_ptycho_button.on_click(partial(on_click_propagate,args=args))
+    def update_probe_plot(fig,subplot,image_list,frame_list,index):
+        subplot.clear()
+        subplot.set_title(f'Frame #: {frame_list[index]:.1f}')
+        subplot.imshow(image_list[index],cmap='jet')
+        fig.canvas.draw_idle()
 
-    box3 = widgets.VBox([play_box,output])
-    box = widgets.HBox([box2,box3])
+    def on_click_propagate(dummy):
+    
+        print('Propagating probe...')
+        image_list, f1_list = create_propagation_video(global_paths_dict['path_to_probefile'],
+                                                        starting_f_value=starting_f_value,
+                                                        ending_f_value=ending_f_value,
+                                                        number_of_frames=number_of_frames,
+                                                        jupyter=True)
+        
+        play_control.widget.max, selection_slider.widget.max = len(image_list)-1, len(image_list)-1
+
+        print(global_paths_dict['path_to_probefile'])
+        print(f1_list)
+        widgets.interactive_output(update_probe_plot,{'fig':fixed(figure),'subplot':fixed(subplot),'image_list':fixed(image_list),'frame_list':fixed(f1_list),'index':selection_slider.widget})
+        print('\t Done!')
+
+    def update_values(n_frames,start_f,end_f,power):
+        global starting_f_value, ending_f_value, number_of_frames
+        starting_f_value=-start_f*10**power
+        ending_f_value=-end_f*10**power
+        number_of_frames=int(n_frames)
+        label.value = r"Propagating from f = {0}$\times 10^{{{1}}}$ to {2}$\times 10^{{{1}}}$".format(start_f,power,end_f)
+
+
+    play_box, selection_slider,play_control = slide_and_play(label="")
+
+    power   = Input( {'dummy-key':-4}, 'dummy-key', bounded=(-10,10,1),  slider=True, description=r'Exponent $10^n$'    ,layout=items_layout)
+    start_f = Input( {'dummy-key':-1}, 'dummy-key', bounded=(-10,0,1),   slider=True, description='Start f-value'   ,layout=items_layout)
+    end_f   = Input( {'dummy-key':-9}, 'dummy-key', bounded=(-10,0,1),   slider=True, description='End f-value'      ,layout=items_layout)
+    n_frames= Input( {'dummy-key':100},'dummy-key', bounded=(10,200,10), slider=True, description='Number of Frames',layout=items_layout)
+
+    label = widgets.Label(value=r"Propagating from f = {0} $\times 10^{{{1}}}$ to {2} $\times 10^{{{1}}}$".format(start_f,power,end_f),layout=items_layout)
+
+    widgets.interactive_output(update_values,{'n_frames':n_frames.widget,'start_f':start_f.widget,'end_f':end_f.widget,'power':power.widget})
+    propagate_button = Button(description=('Propagate Probe'),layout=buttons_layout)
+    propagate_button.trigger(on_click_propagate)
+
+    """ Fresnel Number box """
+    fresnel_box = Input({'dummy-key':-0.001},'dummy-key', description='Chosen Fresnel Number (float)',layout=items_layout)
+    widgets.interactive_output(update_dict_entry,{'output_dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box.widget})
+    
+    box = widgets.VBox([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_box.widget],layout=box_layout)
+    play_box = widgets.VBox([play_box,output],layout=box_layout)
+    box = widgets.HBox([box,vbar,play_box])
     return box
 
 def ptycho_tab():
@@ -329,7 +302,7 @@ def reconstruction_tab():
     frame_time_in_milisec = 100
     output = widgets.Output()
 
-    centered_box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
+    box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
 
     def update_imshow(fig,ax1,image_list,frame_list,index):
         ax1.clear()
@@ -393,10 +366,9 @@ def merge_tab():
 
     return box 
 
-def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab7=merge_tab()):
+def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab7=merge_tab()):
     
     children_dict = {
-    "Job Inputs"        : tab1,
     "Ptycho Inputs"     : tab2,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
@@ -417,7 +389,14 @@ def deploy_tabs(mafalda_session,tab1=slurm_tab(),tab2=inputs_tab(),tab3=center_t
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
+    jobNameField  = Input({'dummy_key':'CateretePtycho'},'dummy_key',description="Insert slurm job name:")
+    jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
+    gpusField     = Input({'dummy_key':1},'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
+    cpusField     = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
+
     box = widgets.HBox([machine_selection,load_json_button.widget,delete_temporary_files_button.widget])
+    boxSlurm = widgets.HBox([gpusField.widget,cpusField.widget,jobQueueField.widget,jobNameField.widget])
+    box = widgets.VBox([box,boxSlurm])
 
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
