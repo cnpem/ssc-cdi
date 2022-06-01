@@ -3,6 +3,7 @@ from subprocess import Popen, PIPE, STDOUT
 import paramiko
 import getpass
 import time
+import ast
 
 import ipywidgets as widgets 
 from ipywidgets import fixed 
@@ -89,6 +90,29 @@ pip install sscResolution==1.2.3"""
     #     print('Error:  ',stderr.read())   
     # print('\t Done!')
 
+
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
+    subplot.clear()
+    if bottom == None or right == None:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
+    else:
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+        elif axis == 1:
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
+        elif axis == 2:
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')
+    if title == True:
+        subplot.set_title(f'Frame #{frame_number}')
+    if clear_axis == True:
+        subplot.set_xticks([])
+        subplot.set_yticks([])    
+    figure.canvas.draw_idle()
 
 class VideoControl:
     
