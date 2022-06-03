@@ -46,7 +46,8 @@ vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 slider_layout = widgets.Layout(width='90%')
-slider_layout2 = widgets.Layout(width='30%')
+slider_layout2 = widgets.Layout(width='30%',flex='flex-grow')
+slider_layoyt3 = widgets.Layout(display='flex', flex_flow='row',  align_items='flex-start', width='70%')
 items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 items_layout2 = widgets.Layout( width='50%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
@@ -155,7 +156,8 @@ def load_json(dummy):
         global_dict[key] = template_dict[key]
 
 def create_label_widget(text):
-    label = widgets.Label(value=text,layout=widgets.Layout(width='200px',height='30'))
+    # label = widgets.Label(value=text)
+    label = widgets.HTML(value=f"<b style='color:#00008B;font-size:18px;'>{text}</b>")
     return label
 
 ############################################ INTERFACE / GUI : TABS ###########################################################################
@@ -187,12 +189,12 @@ def inputs_tab():
     projections           = Input(global_dict,"Projections",description="Projections",layout=items_layout2)
     
     label2                = create_label_widget("Restauration")
-    centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,1536,1),slider=True,description="Center row",layout=slider_layout2)
-    centery    = Input({'dummy-key':1400},'dummy-key',bounded=(1,1536,1),slider=True,description="Center column",layout=slider_layout2)
-    center_box = widgets.HBox([centerx.widget,centery.widget])
+    centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout2)
+    centery    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout2)
+    center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layoyt3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
-    binning               = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
+    # binning               = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
 
@@ -206,10 +208,10 @@ def inputs_tab():
     ProbeSupport_radius  = Input({'dummy-key':300},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
     ProbeSupport_centerX  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Center X",layout=slider_layout2)
     ProbeSupport_centerY = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Center Y",layout=slider_layout2)
-    central_mask_box = widgets.HBox([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget])
+    central_mask_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layoyt3)
 
     f1            = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
-    Modes               = Input(global_dict,"Modes",bounded=(1,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
+    Modes         = Input(global_dict,"Modes",bounded=(0,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
 
     label5        = create_label_widget("Ptychography")
     Algorithm1    = Input(global_dict,"Algorithm1",description="Recon Algorithm 1",layout=items_layout2)
@@ -217,13 +219,13 @@ def inputs_tab():
     Algorithm3    = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
 
     label6       = create_label_widget("Post-processing")
-    Phaseunwrap  = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=items_layout2)
+    Phaseunwrap  = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
     Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
-    phase_unwrap_box = widgets.HBox([Phaseunwrap.widget,Phaseunwrap_iter.widget])
+    phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layoyt3)
 
     FRC          = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,binning.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,save_or_load_difpads],layout=box_layout)
     box = widgets.Box([box,label3,autocrop.widget,central_mask_box,label4,phase_unwrap_box,f1.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,Phaseunwrap.widget,FRC.widget],layout=box_layout)
 
     return box
