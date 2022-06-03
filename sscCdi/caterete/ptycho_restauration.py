@@ -359,30 +359,8 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
 
     return diffractionpattern, time_difpads, jason
 
+
 def restauration_cat_2d(args,preview = False,save = False,read = False):
-
-    jason, ibira_datafolder, scans_string, _ = args
-    time_difpads = 0
-
-    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, jason['Acquisition_Folders'][0],scans_string), look_for_extension=".hdf5")
-    
-    if jason['Projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)  
-
-    params = (jason, ibira_datafolder, filenames[0], jason['Acquisition_Folders'][0], scans_string, filepaths[0])
-    
-    if read:
-        difpads = np.load( os.path.join(jason['SaveDifpadPath'],filenames[0] + '.npy'))
-    else:   
-        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
-
-    difpads = np.expand_dims(difpads,axis=0)
-
-    difpads, jason = sscCdi.ptycho_processing.masks_application(difpads, jason)
-
-    return difpads, time_difpads, jason
-
-def restauration_cat_2d_serial(args,preview = False,save = False,read = False):
 
     jason, ibira_datafolder, scans_string, _ = args[0]
     acquisition_folder, filename, filepath = args[1], args[2], args[3]

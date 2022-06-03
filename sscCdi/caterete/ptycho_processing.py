@@ -1142,6 +1142,44 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
         center = (round(center_estimate[0]), round(center_estimate[1]))
     return center
 
-
-    
-
+def autocrop_miqueles():
+    import numpy as np
+    import os
+    from sscPimega import misc
+    from skimage.morphology import square, erosion, opening, closing, convex_hull_image
+    import skimage.filters
+    from skimage.morphology import disk
+    from scipy import misc
+    from scipy.ndimage import gaussian_filter
+    # def _operator_T(u):
+    #     d   = 1.0
+    #     uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
+    #     uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
+    #     uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
+    #     uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
+    #     delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
+    #     return np.sqrt( delta )
+    # def removeBorders(img, n):
+    #     r,c = img.shape
+    #     img[0:n,:] = 0
+    #     img[r-n:r,:] = 0
+    #     img[:,0:n] = 0
+    #     img[:,c-n:c] = 0
+    #     return img
+    # ### um certo frame, que vem direto de ptycho
+    # image = ....
+    # img = np.angle(image)  
+    # img_gradient = skimage.filters.scharr(img)
+    # img_gradient = skimage.util.img_as_ubyte(img_gradient / img_gradient.max())
+    # img_gradient = gaussian_filter(img_gradient, sigma=10)
+    # where = _operator_T(img_gradient).real
+    # new = np.copy(img_gradient)
+    # new[ new > 0] = _operator_T(new).real[ img_gradient > 0]
+    # tol = 1e-6
+    # mask = ( np.abs( new - img_gradient) < tol ) * 1.0
+    # mask = erosion(mask, square(5))
+    # mask = removeBorders(mask, 100)
+    # chull = convex_hull_image(mask)
+    # #cropando
+    # image[ chull == 0 ] = 0
+    #segue a vida ...
