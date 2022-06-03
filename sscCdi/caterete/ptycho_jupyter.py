@@ -275,7 +275,7 @@ def fresnel_tab():
 
     """ Fresnel Number box """
     fresnel_box = Input({'dummy-key':-0.001},'dummy-key', description='Chosen Fresnel Number (float)',layout=items_layout)
-    widgets.interactive_output(update_dict_entry,{'output_dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box.widget})
+    widgets.interactive_output(update_dict_entry,{'dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box.widget})
     
     box = widgets.VBox([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_box.widget],layout=box_layout)
     play_box = widgets.VBox([play_box,output],layout=box_layout)
