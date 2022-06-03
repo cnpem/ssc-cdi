@@ -29,6 +29,7 @@ global_paths_dict = { "jupyter_folder"                   : "/ibira/lnls/beamline
                       "slurm_filepath"                   : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
                       "json_filepath"                    : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
                       "path_to_npy_frames"               : os.path.join(output_folder,f'phase_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
+                      "cropped_sinogram_filepath"        : os.path.join(output_folder,f'phase_{acquisition_folder}_cropped.npy'), #TODO: make general for magnitude
                       "path_to_probefile"                : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
                       "path_to_diffraction_pattern_file" : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
                     }
@@ -40,7 +41,7 @@ output_dictionary = {}
 ############################################ Global Layout ###########################################################################
 
 """ Standard styling definitions """
-standard_border='1px none black'
+standard_border='1px solid black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
@@ -281,7 +282,7 @@ def center_tab():
     central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask',layout=checkbox_layout,style=style)
     exposure_checkbox     = widgets.Checkbox(value=False,description='Exposure',    layout=checkbox_layout,style=style)
 
-    controls = widgets.Box([load_difpad_button.widget,center_x_box.widget,center_y_box.widget,mask_size_box.widget,central_mask_checkbox,exposure_checkbox],layout=box_layout)
+    controls = widgets.Box([load_difpad_button.widget,center_x_box.widget,center_y_box.widget,mask_size_box.widget,central_mask_checkbox,exposure_checkbox],layout=get_box_layout('500px'))
     box = widgets.HBox([controls,vbar,output])
     return box
 
@@ -329,9 +330,9 @@ def fresnel_tab():
 
     play_box, selection_slider,play_control = slide_and_play(label="")
 
-    power   = Input( {'dummy-key':-4}, 'dummy-key', bounded=(-10,10,1),  slider=True, description=r'Exponent $10^n$'    ,layout=items_layout)
+    power   = Input( {'dummy-key':-4}, 'dummy-key', bounded=(-10,10,1),  slider=True, description=r'Exponent'       ,layout=items_layout)
     start_f = Input( {'dummy-key':-1}, 'dummy-key', bounded=(-10,0,1),   slider=True, description='Start f-value'   ,layout=items_layout)
-    end_f   = Input( {'dummy-key':-9}, 'dummy-key', bounded=(-10,0,1),   slider=True, description='End f-value'      ,layout=items_layout)
+    end_f   = Input( {'dummy-key':-9}, 'dummy-key', bounded=(-10,0,1),   slider=True, description='End f-value'     ,layout=items_layout)
     n_frames= Input( {'dummy-key':100},'dummy-key', bounded=(10,200,10), slider=True, description='Number of Frames',layout=items_layout)
 
     label = widgets.Label(value=r"Propagating from f = {0} $\times 10^{{{1}}}$ to {2} $\times 10^{{{1}}}$".format(start_f,power,end_f),layout=items_layout)
@@ -344,7 +345,7 @@ def fresnel_tab():
     fresnel_box = Input({'dummy-key':-0.001},'dummy-key', description='Chosen Fresnel Number (float)',layout=items_layout)
     widgets.interactive_output(update_dict_entry,{'dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box.widget})
     
-    box = widgets.VBox([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_box.widget],layout=box_layout)
+    box = widgets.Box([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_box.widget],layout=get_box_layout('700px'))
     play_box = widgets.VBox([play_box,output],layout=box_layout)
     box = widgets.HBox([box,vbar,play_box])
     return box
@@ -365,8 +366,8 @@ def crop_tab():
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
-        print("Loading sinogram from: ",global_dict["path_to_npy_frames"] )
-        sinogram = np.load(global_dict["path_to_npy_frames"] ) 
+        print("Loading sinogram from: ",global_paths_dict["path_to_npy_frames"] )
+        sinogram = np.load(global_paths_dict["path_to_npy_frames"] ) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
@@ -379,7 +380,7 @@ def crop_tab():
         top,bottom,left,right = args
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
         print('Saving cropped frames...')
-        np.save(global_dict['cropped_sinogram_filepath'],cropped_sinogram)
+        np.save(global_paths_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
     top_crop      = Input({'dummy_key':1},'dummy_key',bounded=(0,vertical_max,1),  description="Top",   slider=True,layout=slider_layout)
@@ -412,73 +413,60 @@ def ptycho_tab():
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
 
-    use_obj_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use object reconstruction as initial guess')
-    use_probe_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use probe reconstruction as initial guess')
+    use_obj_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use OBJECT reconstruction as initial guess')
+    use_probe_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use PROBE reconstruction as initial guess')
 
-    box = widgets.VBox([saveJsonButton.widget,use_obj_guess.widget,use_probe_guess.widget,run_button.widget])
+    box = widgets.Box([use_obj_guess.widget,use_probe_guess.widget,saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
 
     return box
 
 def reconstruction_tab():
     
-    frame_time_in_milisec = 100
+    initial_image = np.ones((100,100)) # dummy
+
     output = widgets.Output()
-
-    box_layout = widgets.Layout(flex_flow='column',align_items='center',width='30%')
-
-    def update_imshow(fig,ax1,image_list,frame_list,index):
-        ax1.clear()
-        ax1.set_title(f'Frame #: {frame_list[index]:.1f}')
-        ax1.imshow(image_list[index],cmap='gray')
-        fig.canvas.draw_idle()
-
-    def on_click_load(dummy,args=()): 
-
-        path_to_npy_frames, fig, ax1, play, slider  = args
-
-        matrix = np.load(path_to_npy_frames)
-
-        image_list = [ matrix[i,:,:] for i in range(0,matrix.shape[0])]
-        # image_list = [ matrix[:,i,:] for i in range(0,matrix.shape[1])]
-        # image_list = [ matrix[:,:,i] for i in range(0,matrix.shape[2])]
-
-        play.max = len(image_list)-1
-        slider.max = len(image_list)-1
-
-        frame_list = [ i for i in range(matrix.shape[0])]
-
-        out = widgets.interactive_output(update_imshow,{'fig':fixed(fig),'ax1':fixed(ax1),'image_list':fixed(image_list),'frame_list':fixed(frame_list),'index':play})
-
-    image_list = [np.ones((100,100))]
-
-    play = widgets.Play(
-        value=0,
-        min=0,
-        max=len(image_list)-1,
-        step=1,
-        interval=frame_time_in_milisec,
-        description="Press play",
-        disabled=False
-    )
-
-    slider = widgets.IntSlider(min=0,max=len(image_list)-1)
-    widgets.jslink((play, 'value'), (slider, 'value'))
-    play_box = widgets.HBox([play, slider])
-        
-
     with output:
-        fig = plt.figure(figsize=(10,5))
-        ax1  = fig.add_subplot(1, 1, 1)
-        ax1.imshow(image_list[0],cmap='gray') # initialize
+        figure, subplot = plt.subplots(1,2)
+        subplot[0].imshow(initial_image,cmap='gray')
+        subplot[1].imshow(-initial_image,cmap='gray')
+        figure.canvas.header_visible = False 
         plt.show()
 
-    args = (global_paths_dict['path_to_npy_frames'], fig, ax1,play,slider)
+    output2 = widgets.Output()
+    with output2:
+        figure2, subplot2 = plt.subplots()
+        subplot2.imshow(initial_image,cmap='gray')
+        figure2.canvas.header_visible = False 
+        plt.show()
 
-    loadButton = widgets.Button(description="Load Object Preview",layout=widgets.Layout(width='50%',height='50px'))
-    on_click_load_partial = partial(on_click_load,args=args)
-    loadButton.on_click(on_click_load_partial)
-    box1 = widgets.VBox([play_box,output])
-    box = widgets.VBox([loadButton,box1])
+    def load_frames(dummy):
+        global sinogram
+        print("Loading sinogram from: ",global_paths_dict["path_to_npy_frames"] )
+        sinogram = np.load(global_paths_dict["path_to_npy_frames"] ) 
+        print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
+        selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
+        play_control.widget.max = selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot[0]),'title':fixed(True), 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot[1]),'title':fixed(True), 'frame_number': selection_slider.widget})
+
+        probe = np.load(global_paths_dict["path_to_probefile"] ) 
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider.widget})
+
+
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box2, selection_slider2,play_control2 = slide_and_play(label="Probe Selector")
+
+    load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
+    load_frames_button.trigger(load_frames)
+
+    buttons_box = widgets.Box([load_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
+
+    controls_box = widgets.Box([play_box],layout=get_box_layout('500px'))
+    object_box = widgets.VBox([controls_box,output])
+    controls_box2 = widgets.Box([play_box],layout=get_box_layout('500px'))
+    probe_box = widgets.VBox([controls_box2,output2])
+    box = widgets.HBox([object_box,vbar,probe_box])
+    box = widgets.VBox([buttons_box,box])
 
     return box
 
