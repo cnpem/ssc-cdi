@@ -86,7 +86,7 @@ def get_box_layout(width,flex_flow='column',align_items='center',border=standard
 def update_paths(global_dict,dummy1,dummy2):
     # dummy variable is used to trigger update
     global_dict["output_folder"] = global_dict["sinogram_path"].rsplit('/',1)[0]
-    # global_dict["contrast_type"] = data_selection.value
+    global_dict["contrast_type"] = data_selection.value
     
     if type(global_dict["folders_list"]) == type([1,2]): # correct data type of this input
         pass # if list

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 import ipywidgets as widgets 
-from ipywidgets import fixed 
+from ipywidgets import fixed, interact 
 
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
@@ -41,7 +41,7 @@ output_dictionary = {}
 ############################################ Global Layout ###########################################################################
 
 """ Standard styling definitions """
-standard_border='1px solid black'
+standard_border='1px none black'
 vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
@@ -106,7 +106,6 @@ def update_cpus_gpus(cpus,gpus):
     elif gpus == 4:
         global_dict["GPUs"] = [0,1,2,3]
 
-
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
 
@@ -170,64 +169,105 @@ def inputs_tab():
         with open(json_filepath, 'w') as file:
             json.dump(dictionary, file)
 
+    def update_global_dict(centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop):
+
+        global_dict["DifpadCenter"] = [centerx,centery]
+
+        global_dict["DetectorROI"] = detector_ROI
+
+        if save_or_load_difpads == "Save Diffraction Pattern":
+            global_dict["SaveDifpads"] = 1
+            global_dict["ReadRestauredDifpads"] = 0
+        elif save_or_load_difpads == "Load Diffraction Pattern":
+            global_dict["SaveDifpads"] = 0
+            global_dict["ReadRestauredDifpads"] = 1
+
+        global_dict["CentralMask"] = [CentralMask_bool,CentralMask_radius]
+        
+        global_dict["ProbeSupport"] = [ProbeSupport_radius, ProbeSupport_centerX, ProbeSupport_centerY]
+
+        global_dict["Phaseunwrap"][0] = PhaseUnwrap
+        global_dict["Phaseunwrap"][1] = PhaseUnwrap_iter
+        if [top_crop,bottom_crop] == [0,0]:
+            global_dict["Phaseunwrap"][2] =  []
+        else:
+            global_dict["Phaseunwrap"][2] = [top_crop,bottom_crop]
+        if [left_crop,right_crop] == [0,0]:
+            global_dict["Phaseunwrap"][3] =  []
+        else:
+            global_dict["Phaseunwrap"][3] = [left_crop,right_crop]
+
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
 
     global saveJsonButton
     saveJsonButton = Button(description="Save Inputs",layout=buttons_layout)
     saveJsonButton.trigger(save_on_click_partial)
 
-    # keys_list = [key for key in global_dict]
-    # fields_dict = {}
-    # box = widgets.VBox([saveJsonButton.widget])
-    # for counter in range(0,len(keys_list)): # deployt all interactive fields    
-    #     fields_dict_key = f'field_{counter}'
-    #     fields_dict[fields_dict_key] = Input(global_dict,keys_list[counter],description=keys_list[counter],layout=items_layout)
-    #     box = widgets.VBox([box,fields_dict[fields_dict_key].widget])
-
     label1 = create_label_widget("Data Selection")
     proposal_path_str     = Input(global_dict,"ProposalPath",description="Proposal Path",layout=items_layout2)
     acquisition_folders   = Input(global_dict,"Acquisition_Folders",description="Data Folders",layout=items_layout2)
     projections           = Input(global_dict,"Projections",description="Projections",layout=items_layout2)
     
-    label2                = create_label_widget("Restauration")
+    label2 = create_label_widget("Restauration")
     centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout2)
     centery    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout2)
     center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layoyt3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
-    # binning               = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
+    # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
-
-    label3      = create_label_widget("Diffraction Pattern Processing")
-    autocrop    = Input(global_dict,"AutoCrop",description="Auto Crop borders",layout=items_layout2)
-    CentralMask_bool = Input({'dummy-key':False},'dummy-key',description="Use Central Mask",layout=items_layout2)
+    label3 = create_label_widget("Diffraction Pattern Processing")
+    autocrop           = Input(global_dict,"AutoCrop",description="Auto Crop borders",layout=items_layout2)
+    CentralMask_bool   = Input({'dummy-key':False},'dummy-key',description="Use Central Mask",layout=items_layout2)
     CentralMask_radius = Input({'dummy-key':3},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=items_layout2)
-    central_mask_box = widgets.HBox([CentralMask_bool.widget,CentralMask_radius.widget])
+    central_mask_box   = widgets.HBox([CentralMask_bool.widget,CentralMask_radius.widget])
 
-    label4        = create_label_widget("Probe Adjustment")
-    ProbeSupport_radius  = Input({'dummy-key':300},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
-    ProbeSupport_centerX  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Center X",layout=slider_layout2)
-    ProbeSupport_centerY = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Center Y",layout=slider_layout2)
-    central_mask_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layoyt3)
+    label4 = create_label_widget("Probe Adjustment")
+    ProbeSupport_radius   = Input({'dummy-key':300},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
+    ProbeSupport_centerX  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
+    ProbeSupport_centerY  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
+    probe_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layoyt3)
 
-    f1            = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
-    Modes         = Input(global_dict,"Modes",bounded=(0,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
+    f1    = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
+    Modes = Input(global_dict,"Modes",bounded=(0,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
 
-    label5        = create_label_widget("Ptychography")
-    Algorithm1    = Input(global_dict,"Algorithm1",description="Recon Algorithm 1",layout=items_layout2)
-    Algorithm2    = Input(global_dict,"Algorithm2",description="Recon Algorithm 2",layout=items_layout2)
-    Algorithm3    = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
+    label5 = create_label_widget("Ptychography")
+    Algorithm1 = Input(global_dict,"Algorithm1",description="Recon Algorithm 1",layout=items_layout2)
+    Algorithm2 = Input(global_dict,"Algorithm2",description="Recon Algorithm 2",layout=items_layout2)
+    Algorithm3 = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
 
-    label6       = create_label_widget("Post-processing")
-    Phaseunwrap  = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
+    label6 = create_label_widget("Post-processing")
+    Phaseunwrap      = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
     Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
     phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layoyt3)
+    global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
+    top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Top",   slider=True,layout=slider_layout)
+    bottom_crop   = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Bottom",   slider=True,layout=slider_layout)
+    left_crop     = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),description="Left", slider=True,layout=slider_layout)
+    right_crop    = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),description="Right", slider=True,layout=slider_layout)
 
-    FRC          = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
+    FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,save_or_load_difpads],layout=box_layout)
-    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,label4,phase_unwrap_box,f1.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,Phaseunwrap.widget,FRC.widget],layout=box_layout)
+    widgets.interactive_output(update_global_dict,{'centerx':centerx.widget,
+                                                     'centery':centery.widget,
+                                                     'detector_ROI':detector_ROI.widget,
+                                                     'save_or_load_difpads':save_or_load_difpads,
+                                                     'CentralMask_bool': CentralMask_bool.widget,
+                                                     'CentralMask_radius': CentralMask_radius.widget,
+                                                     'ProbeSupport_radius': ProbeSupport_radius.widget,
+                                                     'ProbeSupport_centerX': ProbeSupport_centerX.widget,
+                                                     'ProbeSupport_centerY': ProbeSupport_centerY.widget,
+                                                     'PhaseUnwrap': Phaseunwrap.widget,
+                                                     'PhaseUnwrap_iter': Phaseunwrap_iter.widget,
+                                                     'top_crop': top_crop.widget,
+                                                     'bottom_crop': bottom_crop.widget,
+                                                     'left_crop': left_crop.widget,
+                                                     'right_crop': right_crop.widget
+                                                     })
+
+    box = widgets.Box([saveJsonButton.widget,label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([box,label3,autocrop.widget,label4,probe_box,f1.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
 
@@ -315,8 +355,6 @@ def fresnel_tab():
         
         play_control.widget.max, selection_slider.widget.max = len(image_list)-1, len(image_list)-1
 
-        print(global_paths_dict['path_to_probefile'])
-        print(f1_list)
         widgets.interactive_output(update_probe_plot,{'fig':fixed(figure),'subplot':fixed(subplot),'image_list':fixed(image_list),'frame_list':fixed(f1_list),'index':selection_slider.widget})
         print('\t Done!')
 
@@ -383,10 +421,6 @@ def crop_tab():
         np.save(global_paths_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
-    top_crop      = Input({'dummy_key':1},'dummy_key',bounded=(0,vertical_max,1),  description="Top",   slider=True,layout=slider_layout)
-    bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(0,vertical_max,1),  description="Bottom",   slider=True,layout=slider_layout)
-    left_crop     = Input({'dummy_key':1},'dummy_key',bounded=(0,horizontal_max,1),description="Left", slider=True,layout=slider_layout)
-    right_crop    = Input({'dummy_key':1},'dummy_key',bounded=(0,horizontal_max,1),description="Right", slider=True,layout=slider_layout)
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
@@ -426,10 +460,16 @@ def reconstruction_tab():
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(1,2)
-        subplot[0].imshow(initial_image,cmap='gray')
-        subplot[1].imshow(-initial_image,cmap='gray')
+        figure, subplot = plt.subplots()
+        subplot.imshow(initial_image,cmap='gray')
         figure.canvas.header_visible = False 
+        plt.show()
+
+    output3 = widgets.Output()
+    with output3:
+        figure3, subplot3 = plt.subplots()
+        subplot3.imshow(initial_image,cmap='gray')
+        figure3.canvas.header_visible = False 
         plt.show()
 
     output2 = widgets.Output()
@@ -446,11 +486,13 @@ def reconstruction_tab():
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot[0]),'title':fixed(True), 'frame_number': selection_slider.widget})
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot[1]),'title':fixed(True), 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.abs(sinogram)),'figure':fixed(figure3),'subplot':fixed(subplot3),'title':fixed(True), 'frame_number': selection_slider.widget})
 
-        probe = np.load(global_paths_dict["path_to_probefile"] ) 
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider.widget})
+        probe = np.abs(np.load(global_paths_dict["path_to_probefile"]))[0] 
+        selection_slider2.widget.max, selection_slider2.widget.value = probe.shape[0]-1, probe.shape[0]//2
+        play_control2.widget.max = selection_slider2.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider.widget})
 
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
@@ -462,8 +504,9 @@ def reconstruction_tab():
     buttons_box = widgets.Box([load_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
 
     controls_box = widgets.Box([play_box],layout=get_box_layout('500px'))
-    object_box = widgets.VBox([controls_box,output])
-    controls_box2 = widgets.Box([play_box],layout=get_box_layout('500px'))
+    objects_box = widgets.HBox([output,output3])
+    object_box = widgets.VBox([controls_box,objects_box])
+    controls_box2 = widgets.Box([play_box2],layout=get_box_layout('500px'))
     probe_box = widgets.VBox([controls_box2,output2])
     box = widgets.HBox([object_box,vbar,probe_box])
     box = widgets.VBox([buttons_box,box])

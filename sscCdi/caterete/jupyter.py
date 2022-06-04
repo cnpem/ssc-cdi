@@ -74,39 +74,22 @@ pip install sscResolution==1.2.3"""
         subprocess.call(line, shell=True)
     print('\t Done!')
 
-    # print('Installing packages @ Mafalda (cluster)...')
-    # cmd = """module load python3/3.9.2
-    # module load cuda/11.2
-    # module load hdf5/1.12.0_parallel
-    # pip config --user set global.extra-index-url http://gcc.lnls.br:3128/simple/
-    # pip config --user set global.trusted-host gcc.lnls.br
-    # pip install sscCdi==0.0.5
-    # pip install sscPimega==0.0.4
-    # pip install sscRaft==1.0.2
-    # pip install sscResolution==1.2.3"""
-    # for line in cmd.split('\n'):
-    #     stdin, stdout, stderr = mafalda.exec_command(line)
-    #     print('Output: ',stdout.read())
-    #     print('Error:  ',stderr.read())   
-    # print('\t Done!')
-
-
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True):
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray'):
     subplot.clear()
     if bottom == None or right == None:
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap='gray')
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap=cmap)
         elif axis == 1:
-            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap='gray')
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap=cmap)
         elif axis == 2:
-            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap='gray')
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap=cmap)
     else:
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap='gray')
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap=cmap)
         elif axis == 1:
-            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap='gray')
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap=cmap)
         elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap='gray')
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap=cmap)
     if title == True:
         subplot.set_title(f'Frame #{frame_number}')
     if clear_axis == True:
@@ -179,10 +162,11 @@ class Input(object):
         widgets.interactive_output(self.update_dict_value,{'value':self.widget})
 
     def update_dict_value(self,value):
-        if isinstance(self.dictionary[self.key],list):
-            self.dictionary[self.key] = ast.literal_eval(value)
-        elif isinstance(self.dictionary[self.key],dict):
-            self.dictionary[self.key] = ast.literal_eval(value)
+        if isinstance(self.dictionary[self.key],list) or isinstance(self.dictionary[self.key],dict):
+            if isinstance(value,str):
+                self.dictionary[self.key] = ast.literal_eval(value)
+            else :
+                self.dictionary[self.key] = value    
         else:
             self.dictionary[self.key] = value    
 
