@@ -46,9 +46,9 @@ vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
 hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
-slider_layout = widgets.Layout(width='90%')
-slider_layout2 = widgets.Layout(width='30%',flex='flex-grow')
-slider_layoyt3 = widgets.Layout(display='flex', flex_flow='row',  align_items='flex-start', width='70%')
+slider_layout = widgets.Layout(width='90%',border=standard_border)
+slider_layout2 = widgets.Layout(width='30%',flex='flex-grow',border=standard_border)
+slider_layout3 = widgets.Layout(display='flex', flex_flow='row',  align_items='flex-start', width='70%',border=standard_border)
 items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 items_layout2 = widgets.Layout( width='50%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
@@ -58,7 +58,7 @@ box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=s
 sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 style = {'description_width': 'initial'}
 
-def get_box_layout(width,flex_flow='column',align_items='center',border='1px none black'):
+def get_box_layout(width,flex_flow='column',align_items='flex-start',border=standard_border):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
@@ -167,9 +167,9 @@ def inputs_tab():
     def save_on_click(dummy,json_filepath="",dictionary={}):
         print(json_filepath)
         with open(json_filepath, 'w') as file:
-            json.dump(dictionary, file)
+            json.dump(dictionary, file)                                                    
 
-    def update_global_dict(centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop):
+    def update_global_dict(centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         global_dict["DifpadCenter"] = [centerx,centery]
 
@@ -183,7 +183,10 @@ def inputs_tab():
             global_dict["ReadRestauredDifpads"] = 1
 
         global_dict["CentralMask"] = [CentralMask_bool,CentralMask_radius]
-        
+        global_dict["DetectorPileup"][0] = DetectorPileup 
+
+# use_obj_guess,use_probe_guess,fresnel_number,
+        global_dict["f1"] = fresnel_number
         global_dict["ProbeSupport"] = [ProbeSupport_radius, ProbeSupport_centerX, ProbeSupport_centerY]
 
         global_dict["Phaseunwrap"][0] = PhaseUnwrap
@@ -197,6 +200,15 @@ def inputs_tab():
         else:
             global_dict["Phaseunwrap"][3] = [left_crop,right_crop]
 
+        if use_obj_guess:
+            global_dict["InitialObj"] = global_paths_dict["path_to_npy_frames"]
+        else: 
+            global_dict["InitialObj"] = ''
+        if use_probe_guess:
+            global_dict["InitialProbe"] = global_paths_dict["path_to_probefile"]
+        else: 
+            global_dict["InitialProbe"] = ''
+
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
 
     global saveJsonButton
@@ -209,9 +221,10 @@ def inputs_tab():
     projections           = Input(global_dict,"Projections",description="Projections",layout=items_layout2)
     
     label2 = create_label_widget("Restauration")
-    centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout2)
-    centery    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout2)
-    center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layoyt3)
+    global centerx, centery
+    centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout)
+    centery    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout)
+    center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layout3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
@@ -219,20 +232,26 @@ def inputs_tab():
 
     label3 = create_label_widget("Diffraction Pattern Processing")
     autocrop           = Input(global_dict,"AutoCrop",description="Auto Crop borders",layout=items_layout2)
+    global CentralMask_radius, CentralMask_bool, DetectorPileup
     CentralMask_bool   = Input({'dummy-key':False},'dummy-key',description="Use Central Mask",layout=items_layout2)
-    CentralMask_radius = Input({'dummy-key':3},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=items_layout2)
-    central_mask_box   = widgets.HBox([CentralMask_bool.widget,CentralMask_radius.widget])
+    CentralMask_radius = Input({'dummy-key':3},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
+    central_mask_box   = widgets.Box([CentralMask_bool.widget,CentralMask_radius.widget],layout=slider_layout3)
+    DetectorPileup   = Input({'dummy-key':False},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
 
     label4 = create_label_widget("Probe Adjustment")
     ProbeSupport_radius   = Input({'dummy-key':300},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
     ProbeSupport_centerX  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
     ProbeSupport_centerY  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
-    probe_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layoyt3)
+    probe_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layout3)
 
-    f1    = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
+    global fresnel_number
+    fresnel_number = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
     Modes = Input(global_dict,"Modes",bounded=(0,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
 
     label5 = create_label_widget("Ptychography")
+    global use_obj_guess, use_probe_guess
+    use_obj_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use OBJECT reconstruction as initial guess')
+    use_probe_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use PROBE reconstruction as initial guess')
     Algorithm1 = Input(global_dict,"Algorithm1",description="Recon Algorithm 1",layout=items_layout2)
     Algorithm2 = Input(global_dict,"Algorithm2",description="Recon Algorithm 2",layout=items_layout2)
     Algorithm3 = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
@@ -240,7 +259,7 @@ def inputs_tab():
     label6 = create_label_widget("Post-processing")
     Phaseunwrap      = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
     Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
-    phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layoyt3)
+    phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layout3)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Top",   slider=True,layout=slider_layout)
     bottom_crop   = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Bottom",   slider=True,layout=slider_layout)
@@ -250,24 +269,28 @@ def inputs_tab():
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
     widgets.interactive_output(update_global_dict,{'centerx':centerx.widget,
-                                                     'centery':centery.widget,
-                                                     'detector_ROI':detector_ROI.widget,
-                                                     'save_or_load_difpads':save_or_load_difpads,
-                                                     'CentralMask_bool': CentralMask_bool.widget,
-                                                     'CentralMask_radius': CentralMask_radius.widget,
-                                                     'ProbeSupport_radius': ProbeSupport_radius.widget,
-                                                     'ProbeSupport_centerX': ProbeSupport_centerX.widget,
-                                                     'ProbeSupport_centerY': ProbeSupport_centerY.widget,
-                                                     'PhaseUnwrap': Phaseunwrap.widget,
-                                                     'PhaseUnwrap_iter': Phaseunwrap_iter.widget,
-                                                     'top_crop': top_crop.widget,
-                                                     'bottom_crop': bottom_crop.widget,
-                                                     'left_crop': left_crop.widget,
-                                                     'right_crop': right_crop.widget
+                                                    'centery':centery.widget,
+                                                    'detector_ROI':detector_ROI.widget,
+                                                    'save_or_load_difpads':save_or_load_difpads,
+                                                    'CentralMask_bool': CentralMask_bool.widget,
+                                                    'CentralMask_radius': CentralMask_radius.widget,
+                                                    'ProbeSupport_radius': ProbeSupport_radius.widget,
+                                                    'ProbeSupport_centerX': ProbeSupport_centerX.widget,
+                                                    'ProbeSupport_centerY': ProbeSupport_centerY.widget,
+                                                    'PhaseUnwrap': Phaseunwrap.widget,
+                                                    'PhaseUnwrap_iter': Phaseunwrap_iter.widget,
+                                                    'top_crop': top_crop.widget,
+                                                    'bottom_crop': bottom_crop.widget,
+                                                    'left_crop': left_crop.widget,
+                                                    'right_crop': right_crop.widget,
+                                                    "use_obj_guess": use_obj_guess.widget,
+                                                    "use_probe_guess":use_probe_guess.widget,
+                                                    "fresnel_number":fresnel_number.widget,
+                                                    "DetectorPileup":DetectorPileup.widget
                                                      })
 
     box = widgets.Box([saveJsonButton.widget,label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,save_or_load_difpads],layout=box_layout)
-    box = widgets.Box([box,label3,autocrop.widget,label4,probe_box,f1.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
+    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,use_obj_guess.widget,use_probe_guess.widget,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
 
@@ -299,10 +322,10 @@ def center_tab():
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(output_dictionary),'image':fixed(image),
                                                 'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
-                                                'cx':center_x_box.widget,'cy':center_y_box.widget,
-                                                'button':central_mask_checkbox,
-                                                'exposure':exposure_checkbox,
-                                                'radius':mask_size_box.widget})
+                                                'cx':centerx.widget,'cy':centery.widget,
+                                                'button':CentralMask_bool,
+                                                'exposure':DetectorPileup,
+                                                'radius':CentralMask_radius.widget})
 
     output = widgets.Output()
     with output:
@@ -316,19 +339,14 @@ def center_tab():
     load_difpad_button.trigger(load_difpad)
 
     """ Difpad center boxes """
-    center_x_box  = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1), description='Center Row pixel:',layout=items_layout)
-    center_y_box  = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1), description='Center Column pixel:',layout=items_layout)
-    mask_size_box = Input({'dummy-key':5},   'dummy-key',bounded=(0,50,1), slider=True,description='Mask radius (pixels):',layout=items_layout)
-    central_mask_checkbox = widgets.Checkbox(value=False,description='Central-mask',layout=checkbox_layout,style=style)
-    exposure_checkbox     = widgets.Checkbox(value=False,description='Exposure',    layout=checkbox_layout,style=style)
-
-    controls = widgets.Box([load_difpad_button.widget,center_x_box.widget,center_y_box.widget,mask_size_box.widget,central_mask_checkbox,exposure_checkbox],layout=get_box_layout('500px'))
+    sliders_box = widgets.HBox([centerx.widget,centery.widget,CentralMask_radius.widget],layout=box_layout)
+    controls = widgets.Box([load_difpad_button.widget,sliders_box,CentralMask_bool.widget,DetectorPileup.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([controls,vbar,output])
     return box
 
 def fresnel_tab():
     
-    image_list, f1_list = [np.random.random((5,5))], [0]
+    image_list, fresnel_number_list = [np.random.random((5,5))], [0]
 
     output = widgets.Output()
     with output:
@@ -347,7 +365,7 @@ def fresnel_tab():
     def on_click_propagate(dummy):
     
         print('Propagating probe...')
-        image_list, f1_list = create_propagation_video(global_paths_dict['path_to_probefile'],
+        image_list, fresnel_number_list = create_propagation_video(global_paths_dict['path_to_probefile'],
                                                         starting_f_value=starting_f_value,
                                                         ending_f_value=ending_f_value,
                                                         number_of_frames=number_of_frames,
@@ -355,7 +373,7 @@ def fresnel_tab():
         
         play_control.widget.max, selection_slider.widget.max = len(image_list)-1, len(image_list)-1
 
-        widgets.interactive_output(update_probe_plot,{'fig':fixed(figure),'subplot':fixed(subplot),'image_list':fixed(image_list),'frame_list':fixed(f1_list),'index':selection_slider.widget})
+        widgets.interactive_output(update_probe_plot,{'fig':fixed(figure),'subplot':fixed(subplot),'image_list':fixed(image_list),'frame_list':fixed(fresnel_number_list),'index':selection_slider.widget})
         print('\t Done!')
 
     def update_values(n_frames,start_f,end_f,power):
@@ -380,10 +398,9 @@ def fresnel_tab():
     propagate_button.trigger(on_click_propagate)
 
     """ Fresnel Number box """
-    fresnel_box = Input({'dummy-key':-0.001},'dummy-key', description='Chosen Fresnel Number (float)',layout=items_layout)
-    widgets.interactive_output(update_dict_entry,{'dictionary':fixed(output_dictionary),'key':fixed('f1'),'boxvalue':fresnel_box.widget})
+    widgets.interactive_output(update_dict_entry,{'dictionary':fixed(output_dictionary),'key':fixed('fresnel_number'),'boxvalue':fresnel_number.widget})
     
-    box = widgets.Box([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_box.widget],layout=get_box_layout('700px'))
+    box = widgets.Box([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_number.widget],layout=get_box_layout('700px'))
     play_box = widgets.VBox([play_box,output],layout=box_layout)
     box = widgets.HBox([box,vbar,play_box])
     return box
@@ -447,8 +464,7 @@ def ptycho_tab():
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
 
-    use_obj_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use OBJECT reconstruction as initial guess')
-    use_probe_guess = Input({"dummy_key":False},"dummy_key",layout=items_layout,description='Use PROBE reconstruction as initial guess')
+
 
     box = widgets.Box([use_obj_guess.widget,use_probe_guess.widget,saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
 
