@@ -262,8 +262,6 @@ if __name__ == '__main__':
 
     t5 = time.time()
 
-    print(len(phase),phase.shape)
-    print(len(probe),probe[0].shape)
     preview_ptycho(jason, phase, absol, probe, frame=0)
   
     calculate_FRC(cropped_sinogram, jason)
