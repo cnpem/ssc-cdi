@@ -199,9 +199,7 @@ def get_restaurated_difpads_old_format(jason, path, name):
         else:
             mask = np.zeros_like(h5f[0])
     else:
-        # mask = np.load(jason['Mask'])
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-        mask = np.flip(mask,0)
     
     # sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
 

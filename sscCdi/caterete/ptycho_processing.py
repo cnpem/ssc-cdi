@@ -29,6 +29,7 @@ def crop_sinogram(sinogram, jason):
 
     if jason['AutoCrop'] == True: # automatically crop borders with noise
 
+        print('Auto cropping frames...')
         if 1: # Miqueles approach
             for frame in range(sinogram.shape[0]):
                 sinogram[frame,:,:] = autocrop_miqueles(sinogram[frame,:,:])
@@ -45,7 +46,8 @@ def crop_sinogram(sinogram, jason):
             sinogram = sinogram[:,0:-1, :]
         if sinogram.shape[2] % 2 != 0:
             sinogram = sinogram[:,:, 0:-1]
-
+        print('\t Done!')
+        
     return sinogram
 
 
@@ -67,8 +69,6 @@ def autocrop_miqueles(image):
         img[:,0:n] = 0
         img[:,c-n:c] = 0
         return img
-    
-
 
     img = np.angle(image) ### um certo frame, que vem direto de ptycho
     img_gradient = skimage.filters.scharr(img)

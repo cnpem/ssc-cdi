@@ -22,19 +22,24 @@ else: # paths for GCC tests
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
-global_paths_dict = { "jupyter_folder"                   : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
-                      "ptycho_folder"                    : ptycho_folder,
-                      "ptycho_script_path"               : pythonScript,
-                      "template_file"                    : "000000_template.json",
-                      "slurm_filepath"                   : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
-                      "json_filepath"                    : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
-                      "path_to_npy_frames"               : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
-                      "cropped_sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
-                      "path_to_probefile"                : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
-                      "path_to_diffraction_pattern_file" : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
+def update_paths_dict(ptycho_folder,pythonScript,output_folder,acquisition_folder):
+    global_paths_dict = { "jupyter_folder"           : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
+                      "ptycho_folder"            : ptycho_folder,
+                      "ptycho_script_path"       : pythonScript,
+                      "template_json"            : "000000_template.json",
+                      "slurm_filepath"           : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
+                      "json_filepath"            : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
+                      "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
+                      "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
+                      "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
+                      "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
+                      "output_folder"            : os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
                     }
+    return global_paths_dict
 
-global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_file"]))) # load from template
+global_paths_dict = update_paths_dict(ptycho_folder,pythonScript,ptycho_folder,acquisition_folder)
+
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
 output_dictionary = {}
 
@@ -89,8 +94,6 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'o
     
     return slurm_filepath
    
-def update_dict_entry(dictionary,key,boxvalue):
-    dictionary[key]  = boxvalue
 
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
@@ -109,11 +112,7 @@ def update_cpus_gpus(cpus,gpus):
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
 
-    filepaths_to_remove = [ global_dict["ordered_angles_filepath"],  
-                            global_dict["cropped_sinogram_filepath"],
-                            global_dict["unwrapped_sinogram_filepath"],
-                            global_dict["chull_sinogram_filepath"],  
-                            global_dict["wiggle_sinogram_filepath"],
+    filepaths_to_remove = [ global_paths_dict["flipped_difpad_filepath"],  
                             global_dict["projected_angles_filepath"]]
 
     for filepath in filepaths_to_remove:
@@ -151,13 +150,13 @@ def run_ptycho(dummy):
 
     global jobNameField, jobQueueField, cpus, gpus
     jobName = jobNameField.widget.value
-    queue = jobQueueField.widget.value
-    cpus = cpus.widget.value
-    gpus = gpus.widget.value
-    run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=output_folder,slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
+    queue   = jobQueueField.widget.value
+    cpus    = cpus.widget.value
+    gpus    = gpus.widget.value
+    run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
 
 def load_json(dummy):
-    json_path = os.path.join("/ibira/lnls/beamlines/caterete/apps/jupyter/" ,"000000_template.json")
+    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["000000_template.json"])
     template_dict = json.load(open(json_path))
     for key in template_dict:
         global_dict[key] = template_dict[key]
@@ -172,11 +171,21 @@ def create_label_widget(text):
 def inputs_tab():
 
     def save_on_click(dummy,json_filepath="",dictionary={}):
-        print(json_filepath)
+        print('Saving input json file at: ',json_filepath)
         with open(json_filepath, 'w') as file:
             json.dump(dictionary, file)                                                    
+        print('\t Saved!')
 
-    def update_global_dict(centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+
+        global_dict["ProposalPath"]        = proposal_path_str
+        global_dict["Acquisition_Folders"] = acquisition_folders
+        global_dict["Projections"]         = projections
+
+        output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',global_dict["Projections"]) # changes with control
+
+        global_paths_dict = update_paths_dict(ptycho_folder,pythonScript,output_folder,global_dict["Projections"])
 
         global_dict["DifpadCenter"] = [centerx,centery]
 
@@ -197,6 +206,7 @@ def inputs_tab():
 
         global_dict["Phaseunwrap"][0] = PhaseUnwrap
         global_dict["Phaseunwrap"][1] = PhaseUnwrap_iter
+
         if [top_crop,bottom_crop] == [0,0]:
             global_dict["Phaseunwrap"][2] =  []
         else:
@@ -207,11 +217,11 @@ def inputs_tab():
             global_dict["Phaseunwrap"][3] = [left_crop,right_crop]
 
         if use_obj_guess:
-            global_dict["InitialObj"] = global_paths_dict["path_to_npy_frames"]
+            global_dict["InitialObj"] = global_paths_dict["sinogram_filepath"]
         else: 
             global_dict["InitialObj"] = ''
         if use_probe_guess:
-            global_dict["InitialProbe"] = global_paths_dict["path_to_probefile"]
+            global_dict["InitialProbe"] = global_paths_dict["probe_filepath"]
         else: 
             global_dict["InitialProbe"] = ''
 
@@ -274,7 +284,10 @@ def inputs_tab():
 
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    widgets.interactive_output(update_global_dict,{ 'centerx':centerx.widget,
+    widgets.interactive_output(update_global_dict,{ 'proposal_path_str':proposal_path_str.widget,
+                                                    'acquisitons_folders': acquisition_folders.widget,
+                                                    'projections': projections.widget,                                                    
+                                                    'centerx':centerx.widget,
                                                     'centery':centery.widget,
                                                     'detector_ROI':detector_ROI.widget,
                                                     'save_or_load_difpads':save_or_load_difpads,
@@ -324,7 +337,7 @@ def center_tab():
             plotshow(figure,subplot,image)
 
     def load_difpad(dummy):
-        image = np.load(global_paths_dict['path_to_diffraction_pattern_file'])
+        image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(output_dictionary),'image':fixed(image),
                                                 'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
@@ -364,14 +377,14 @@ def fresnel_tab():
 
     def update_probe_plot(fig,subplot,image_list,frame_list,index):
         subplot.clear()
-        subplot.set_title(f'Frame #: {frame_list[index]:.1f}')
+        subplot.set_title(f'Frame #: {frame_list[index]:.1e}')
         subplot.imshow(image_list[index],cmap='jet')
         fig.canvas.draw_idle()
 
     def on_click_propagate(dummy):
     
         print('Propagating probe...')
-        image_list, fresnel_number_list = create_propagation_video(global_paths_dict['path_to_probefile'],
+        image_list, fresnel_number_list = create_propagation_video(global_paths_dict['probe_filepath'],
                                                         starting_f_value=starting_f_value,
                                                         ending_f_value=ending_f_value,
                                                         number_of_frames=number_of_frames,
@@ -389,7 +402,6 @@ def fresnel_tab():
         number_of_frames=int(n_frames)
         label.value = r"Propagating from f = {0}$\times 10^{{{1}}}$ to {2}$\times 10^{{{1}}}$".format(start_f,power,end_f)
 
-
     play_box, selection_slider,play_control = slide_and_play(label="")
 
     power   = Input( {'dummy-key':-4}, 'dummy-key', bounded=(-10,10,1),  slider=True, description=r'Exponent'       ,layout=items_layout)
@@ -403,9 +415,6 @@ def fresnel_tab():
     propagate_button = Button(description=('Propagate Probe'),layout=buttons_layout)
     propagate_button.trigger(on_click_propagate)
 
-    """ Fresnel Number box """
-    widgets.interactive_output(update_dict_entry,{'dictionary':fixed(output_dictionary),'key':fixed('fresnel_number'),'boxvalue':fresnel_number.widget})
-    
     box = widgets.Box([n_frames.widget, power.widget, start_f.widget,end_f.widget,label,propagate_button.widget,fresnel_number.widget],layout=get_box_layout('700px'))
     play_box = widgets.VBox([play_box,output],layout=box_layout)
     box = widgets.HBox([box,vbar,play_box])
@@ -427,8 +436,8 @@ def crop_tab():
         global sinogram
         top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
-        print("Loading sinogram from: ",global_paths_dict["path_to_npy_frames"] )
-        sinogram = np.load(global_paths_dict["path_to_npy_frames"] ) 
+        print("Loading sinogram from: ",global_paths_dict["sinogram_filepath"] )
+        sinogram = np.load(global_paths_dict["sinogram_filepath"] ) 
         sinogram = np.angle(sinogram)
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
@@ -499,15 +508,15 @@ def reconstruction_tab():
 
     def load_frames(dummy):
         global sinogram
-        print("Loading sinogram from: ",global_paths_dict["path_to_npy_frames"] )
-        sinogram = np.load(global_paths_dict["path_to_npy_frames"] ) 
+        print("Loading sinogram from: ",global_paths_dict["sinogram_filepath"] )
+        sinogram = np.load(global_paths_dict["sinogram_filepath"] ) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.abs(sinogram)),'figure':fixed(figure3),'subplot':fixed(subplot3),'title':fixed(True), 'frame_number': selection_slider.widget})
 
-        probe = np.abs(np.load(global_paths_dict["path_to_probefile"]))[0] 
+        probe = np.abs(np.load(global_paths_dict["probe_filepath"]))[0] 
         selection_slider2.widget.max, selection_slider2.widget.value = probe.shape[0]-1, probe.shape[0]//2
         play_control2.widget.max = selection_slider2.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider.widget})

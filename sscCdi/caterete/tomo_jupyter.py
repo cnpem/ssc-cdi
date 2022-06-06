@@ -682,7 +682,7 @@ def wiggle_tab():
     sinogram_selection = widgets.RadioButtons(options=['unwrapped', 'convexHull'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
-    
+
     load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(load_sinogram)
     
