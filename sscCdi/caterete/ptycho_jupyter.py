@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 import ipywidgets as widgets 
-from ipywidgets import fixed, interact 
+from ipywidgets import fixed 
 
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
-from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow, slide_and_play
+from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play
 
 if 0: # paths for beamline use
     ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
@@ -28,8 +28,8 @@ global_paths_dict = { "jupyter_folder"                   : "/ibira/lnls/beamline
                       "template_file"                    : "000000_template.json",
                       "slurm_filepath"                   : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
                       "json_filepath"                    : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
-                      "path_to_npy_frames"               : os.path.join(output_folder,f'phase_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
-                      "cropped_sinogram_filepath"        : os.path.join(output_folder,f'phase_{acquisition_folder}_cropped.npy'), #TODO: make general for magnitude
+                      "path_to_npy_frames"               : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
+                      "cropped_sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                       "path_to_probefile"                : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
                       "path_to_diffraction_pattern_file" : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
                     }
@@ -110,7 +110,6 @@ def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
 
     filepaths_to_remove = [ global_dict["ordered_angles_filepath"],  
-                            global_dict["ordered_object_filepath"] , 
                             global_dict["cropped_sinogram_filepath"],
                             global_dict["unwrapped_sinogram_filepath"],
                             global_dict["chull_sinogram_filepath"],  
@@ -145,9 +144,17 @@ def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
     
-def run_ptycho(dummy,args=()):
-    mafalda,pythonScript,json_filepath,outputFolder,slurm_filepath,jobName,queue,gpus,cpus = args
-    run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=outputFolder,slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
+def run_ptycho(dummy):
+    pythonScript = global_paths_dict["ptycho_script_path"]
+    json_filepath = global_paths_dict["json_filepath"]
+    slurm_filepath = global_paths_dict["slurm_filepath"]
+
+    global jobNameField, jobQueueField, cpus, gpus
+    jobName = jobNameField.widget.value
+    queue = jobQueueField.widget.value
+    cpus = cpus.widget.value
+    gpus = gpus.widget.value
+    run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=output_folder,slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
 
 def load_json(dummy):
     json_path = os.path.join("/ibira/lnls/beamlines/caterete/apps/jupyter/" ,"000000_template.json")
@@ -183,9 +190,8 @@ def inputs_tab():
             global_dict["ReadRestauredDifpads"] = 1
 
         global_dict["CentralMask"] = [CentralMask_bool,CentralMask_radius]
-        global_dict["DetectorPileup"][0] = DetectorPileup 
+        global_dict["DetectorExposure"][0] = DetectorPileup 
 
-# use_obj_guess,use_probe_guess,fresnel_number,
         global_dict["f1"] = fresnel_number
         global_dict["ProbeSupport"] = [ProbeSupport_radius, ProbeSupport_centerX, ProbeSupport_centerY]
 
@@ -222,8 +228,8 @@ def inputs_tab():
     
     label2 = create_label_widget("Restauration")
     global centerx, centery
-    centerx    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout)
-    centery    = Input({'dummy-key':1400},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout)
+    centerx    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout)
+    centery    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout)
     center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layout3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
@@ -268,7 +274,7 @@ def inputs_tab():
 
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    widgets.interactive_output(update_global_dict,{'centerx':centerx.widget,
+    widgets.interactive_output(update_global_dict,{ 'centerx':centerx.widget,
                                                     'centery':centery.widget,
                                                     'detector_ROI':detector_ROI.widget,
                                                     'save_or_load_difpads':save_or_load_difpads,
@@ -323,8 +329,8 @@ def center_tab():
                                                 'output_dictionary':fixed(output_dictionary),'image':fixed(image),
                                                 'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
                                                 'cx':centerx.widget,'cy':centery.widget,
-                                                'button':CentralMask_bool,
-                                                'exposure':DetectorPileup,
+                                                'button':CentralMask_bool.widget,
+                                                'exposure':DetectorPileup.widget,
                                                 'radius':CentralMask_radius.widget})
 
     output = widgets.Output()
@@ -423,6 +429,7 @@ def crop_tab():
         
         print("Loading sinogram from: ",global_paths_dict["path_to_npy_frames"] )
         sinogram = np.load(global_paths_dict["path_to_npy_frames"] ) 
+        sinogram = np.angle(sinogram)
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
@@ -460,11 +467,6 @@ def ptycho_tab():
 
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
-
-    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
-    run_button.trigger(run_ptycho)
-
-
 
     box = widgets.Box([use_obj_guess.widget,use_probe_guess.widget,saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
 
@@ -552,6 +554,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
+    global jobNameField, jobQueueField
     jobNameField  = Input({'dummy_key':'CateretePtycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus

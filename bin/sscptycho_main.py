@@ -243,10 +243,6 @@ if __name__ == '__main__':
         probe  = probe[0]
         bkg    = bkg[0]
 
-
-
-    # print('Object shape:',object.shape)
-    # print('Probe shape:',probe.shape)    
     print('Finished Ptycho reconstruction!')
 
     cropped_sinogram = crop_sinogram(object, jason)
@@ -256,28 +252,28 @@ if __name__ == '__main__':
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
         print('Unwrapping sinogram...')
         phase,absol = apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
+        save_variable2(phase, os.path.join(jason['ObjPath'],'unwrapped_phase_' + acquisition_folder))
+        save_variable2(absol, os.path.join(jason['ObjPath'],'unwrapped_magnitude_' + acquisition_folder))
     else:
+        print("Extracting phase and magnitude...")
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
     t5 = time.time()
 
-    preview_ptycho(jason, phase, absol, probe, frame=0)
-  
     calculate_FRC(cropped_sinogram, jason)
 
     if jason["LogfilePath"] != "":  sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # overwrite logfile with new information
-
-    print('Saving Object, Probe and Background!')
             
     if jason['SaveObj']:
-        save_variable2(phase, os.path.join(jason['ObjPath'],'phase_' + acquisition_folder))
-        save_variable2(absol, os.path.join(jason['ObjPath'], 'absol_' + acquisition_folder))
-        if jason['SaveComplexObject']:    
-            save_variable(object, os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
+        print('Saving Object!')
+        save_variable(cropped_sinogram, os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
 
     if jason['SaveProbe']:
+        print('Saving Probe!')
         save_variable(probe, os.path.join(jason['ProbePath'], 'probe_' + acquisition_folder))
+
+    preview_ptycho(jason, phase, absol, probe, frame=0)
 
     t6 = time.time()
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
