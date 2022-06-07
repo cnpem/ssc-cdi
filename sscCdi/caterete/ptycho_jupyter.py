@@ -1,5 +1,5 @@
 from calendar import c
-import os, json, ast
+import os, json, ast, h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from functools import partial
@@ -22,22 +22,20 @@ else: # paths for GCC tests
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
-def update_paths_dict(ptycho_folder,pythonScript,output_folder,acquisition_folder):
-    global_paths_dict = { "jupyter_folder"           : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
-                      "ptycho_folder"            : ptycho_folder,
-                      "ptycho_script_path"       : pythonScript,
-                      "template_json"            : "000000_template.json",
-                      "slurm_filepath"           : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
-                      "json_filepath"            : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
-                      "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
-                      "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
-                      "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
-                      "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
-                      "output_folder"            : os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
-                    }
-    return global_paths_dict
+global_paths_dict = { "jupyter_folder"       : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
+                    "ptycho_folder"            : ptycho_folder,
+                    "ptycho_script_path"       : pythonScript,
+                    "template_json"            : "000000_template.json",
+                    "slurm_filepath"           : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
+                    "json_filepath"            : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
+                    "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
+                    "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
+                    "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
+                    "difpad_raw_mean_filepath"  : os.path.join(output_folder,'03_difpad_raw_mean.npy'), # path to load diffraction pattern
+                    "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
+                    "output_folder"            : output_folder
 
-global_paths_dict = update_paths_dict(ptycho_folder,pythonScript,ptycho_folder,acquisition_folder)
+                }
 
 global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
@@ -94,7 +92,6 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'o
     
     return slurm_filepath
    
-
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
 
@@ -170,6 +167,8 @@ def create_label_widget(text):
 
 def inputs_tab():
 
+    global global_dict
+
     def save_on_click(dummy,json_filepath="",dictionary={}):
         print('Saving input json file at: ',json_filepath)
         with open(json_filepath, 'w') as file:
@@ -179,13 +178,32 @@ def inputs_tab():
 
     def update_global_dict(proposal_path_str,acquisition_folders,projections,centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
+        if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
+            pass 
+        else: # if string
+            acquisition_folders = ast.literal_eval(acquisition_folders)
+            projections = ast.literal_eval(projections)
+
+        global global_dict
         global_dict["ProposalPath"]        = proposal_path_str
         global_dict["Acquisition_Folders"] = acquisition_folders
         global_dict["Projections"]         = projections
 
-        output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',global_dict["Projections"]) # changes with control
+        output_folder = os.path.join( global_dict["ProposalPath"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
 
-        global_paths_dict = update_paths_dict(ptycho_folder,pythonScript,output_folder,global_dict["Projections"])
+        global_paths_dict["jupyter_folder"]            = "/ibira/lnls/beamlines/caterete/apps/jupyter/"
+        global_paths_dict["ptycho_folder"]             = ptycho_folder
+        global_paths_dict["ptycho_script_path"]        = pythonScript
+        global_paths_dict["template_json"]             = "000000_template.json"
+        global_paths_dict["slurm_filepath"]            = os.path.join(ptycho_folder,'slurm_job.srm') # path to create slurm_file
+        global_paths_dict["json_filepath"]             = os.path.join(ptycho_folder,'user_input.json') # path with input json to run
+        global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'object_{acquisition_folders[0]}.npy') # path to load npy with first reconstruction preview
+        global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'object_{acquisition_folders[0]}_cropped.npy')
+        global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'probe_{acquisition_folders[0]}.npy') # path to load probe
+        global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'03_difpad_raw_mean.npy') # path to load diffraction pattern
+        global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
+    
+        global_paths_dict["output_folder"]             = output_folder
 
         global_dict["DifpadCenter"] = [centerx,centery]
 
@@ -278,14 +296,14 @@ def inputs_tab():
     phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layout3)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Top",   slider=True,layout=slider_layout)
-    bottom_crop   = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Bottom",   slider=True,layout=slider_layout)
+    bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1),  description="Bottom",   slider=True,layout=slider_layout)
     left_crop     = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),description="Left", slider=True,layout=slider_layout)
-    right_crop    = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),description="Right", slider=True,layout=slider_layout)
+    right_crop    = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1),description="Right", slider=True,layout=slider_layout)
 
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    widgets.interactive_output(update_global_dict,{ 'proposal_path_str':proposal_path_str.widget,
-                                                    'acquisitons_folders': acquisition_folders.widget,
+    widgets.interactive_output(update_global_dict,{'proposal_path_str':proposal_path_str.widget,
+                                                    'acquisition_folders': acquisition_folders.widget,
                                                     'projections': projections.widget,                                                    
                                                     'centerx':centerx.widget,
                                                     'centery':centery.widget,
@@ -313,6 +331,48 @@ def inputs_tab():
 
     return box
 
+def mask_tab():
+    
+    initial_image = np.random.random((10,10)) # dummy
+
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots()
+        subplot.imshow(initial_image,cmap='gray')
+        subplot.set_title('Raw')
+        figure.canvas.header_visible = False 
+        plt.show()
+
+    output3 = widgets.Output()
+    with output3:
+        figure3, subplot3 = plt.subplots()
+        subplot3.imshow(initial_image,cmap='gray')
+        subplot.set_title('Masked')
+        figure3.canvas.header_visible = False 
+        plt.show()
+
+
+    def load_frames(dummy):
+        global sinogram
+        from matplotlib.colors import LogNorm
+        print("Loading difpad from: ",global_paths_dict["difpad_raw_mean_filepath"] )
+        difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
+        masked_difpad = difpad
+        mask = h5py.File(os.path.join(global_dict["ProposalPath"],global_dict["Acquisition_Folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
+        masked_difpad[mask ==1] = -1 # Apply Mask
+        subplot.imshow(difpad,cmap='jet',norm=LogNorm())
+        subplot3.imshow(masked_difpad,cmap='jet',norm=LogNorm())
+
+
+    load_frames_button  = Button(description="Load Diffraction Patterns",layout=buttons_layout,icon='folder-open-o')
+    load_frames_button.trigger(load_frames)
+
+    buttons_box = widgets.Box([load_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
+    objects_box = widgets.HBox([output,output3])
+    box = widgets.VBox([buttons_box,objects_box])
+
+    return box
+
 def center_tab():
 
 
@@ -336,7 +396,12 @@ def center_tab():
         else:
             plotshow(figure,subplot,image)
 
+
+
     def load_difpad(dummy):
+
+        print(global_dict)
+        print(global_paths_dict)
         image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(output_dictionary),'image':fixed(image),
@@ -422,8 +487,7 @@ def fresnel_tab():
 
 def crop_tab():
 
-    initial_image = np.ones((100,100)) # dummy
-    vertical_max, horizontal_max = initial_image.shape[0]//2, initial_image.shape[1]//2
+    initial_image = np.random.random((100,100)) # dummy
 
     output = widgets.Output()
     with output:
@@ -432,38 +496,34 @@ def crop_tab():
         figure.canvas.header_visible = False 
         plt.show()
     
-    def load_frames(dummy, args = ()):
+    def load_frames(dummy):
         global sinogram
-        top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control = args
         
         print("Loading sinogram from: ",global_paths_dict["sinogram_filepath"] )
         sinogram = np.load(global_paths_dict["sinogram_filepath"] ) 
-        sinogram = np.angle(sinogram)
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
+        print(selection_slider.widget.max, selection_slider.widget.value )
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
-      
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        print(top_crop.widget,left_crop.widget,right_crop.widget,bottom_crop.widget)
+        # widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
-    def save_cropped_sinogram(dummy,args=()):
-        top,bottom,left,right = args
-        cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
+    def save_cropped_sinogram(dummy):
+        cropped_sinogram = sinogram[:,top_crop.widget.value:-bottom_crop.widget.value,left_crop.widget.value:-right_crop.widget.value]
         print('Saving cropped frames...')
         np.save(global_paths_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
-
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
     load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
-    args = (top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control)
-    load_frames_button.trigger(partial(load_frames,args=args))
+    load_frames_button.trigger(load_frames)
 
     save_cropped_frames_button = Button(description="Save cropped frames",layout=buttons_layout,icon='fa-floppy-o') 
-    args2 = (top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget)
-    save_cropped_frames_button.trigger(partial(save_cropped_sinogram,args=args2))
+    save_cropped_frames_button.trigger(save_cropped_sinogram)
     
     buttons_box = widgets.Box([load_frames_button.widget,save_cropped_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
     sliders_box = widgets.Box([top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget],layout=sliders_box_layout)
@@ -540,10 +600,11 @@ def reconstruction_tab():
 
     return box
 
-def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=crop_tab()):
+def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=crop_tab(),tab7=mask_tab()):
     
     children_dict = {
     "Ptycho Inputs"     : tab2,
+    "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
     "Crop"              : tab1,
