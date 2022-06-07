@@ -9,9 +9,41 @@ from skimage.io import imsave
 
 from functools import partial
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed, wait
-import time
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
+
+def RemoveGrad( img, mask ):
+    xy = numpy.argwhere( mask > 0)
+    n = len(xy)
+    y = xy[:,0].reshape([n,1])
+    x = xy[:,1].reshape([n,1])
+    F = numpy.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
+    mat = numpy.zeros([3,3])
+    vec = numpy.zeros([3,1])
+    mat[0,0] = (x*x).sum()
+    mat[0,1] = (x*y).sum()
+    mat[0,2] = (x).sum()
+    mat[1,0] = mat[0,1]
+    mat[1,1] = (y*y).sum()
+    mat[1,2] = (y).sum()
+    mat[2,0] = mat[0,2]
+    mat[2,1] = mat[1,2]
+    mat[2,2] = n
+    vec[0,0] = (x*F).sum()
+    vec[1,0] = (y*F).sum()
+    vec[2,0] = (F).sum()
+    abc = numpy.dot( numpy.linalg.inv(mat), vec).flatten()
+    a = abc[0]
+    b = abc[1]
+    c = abc[2]
+    new   = numpy.zeros(img.shape)
+    row   = new.shape[0]
+    col   = new.shape[1]
+    XX,YY = numpy.meshgrid(numpy.arange(col),numpy.arange(row))
+    new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c )
+    #for k in range(n):
+    #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
+    return new
 
 def RemoveZernike(img,mask):
     """ Giovanni's function for removing zernikes. Not well understood yet.
@@ -81,8 +113,8 @@ def RemoveZernike(img,mask):
     return img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx*yy + gradient[3]*xx + gradient[4]*yy + gradient[5]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
-def RemoveGrad(img,mask):
-    """ Giovanni's function for removing a gradient. Not yet understood.
+def RemoveGradOld(img,mask):
+    """ Giovanni's function for removing a gradient.
 
     Args:
         img 
@@ -175,7 +207,12 @@ def phase_unwrap(img,iterations=0,non_negativity=True,remove_gradient = True):
         zernike = RemoveGrad(zernike,mask=mask)
     return zernike
 
-
+def phase_unwrap_new(new):
+    new = image[xmin:xmax, ymin:ymax] 
+    new = new + abs(new.min()) # wanted masked region is where new > 0
+    new = RemoveGrad(new, new > 0 )
+    new = unwrap_phase(new)
+    return new
 
 def unwrapInterface(recon_folder,recon_filename,frame_number):
 

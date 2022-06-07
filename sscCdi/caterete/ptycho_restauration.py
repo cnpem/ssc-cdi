@@ -248,11 +248,12 @@ def restauration_processing_binning(img, args):
     img = img * np.squeeze(flat) # Apply flatfield
 
     img = img.astype(np.float32) # convert to float
-    img = Restaurate(img, geometry) # restaurate
-
+    
     unbinned_mask = True
-    if unbinned_mask: # if mask after restauration with 3072x3072 size
+    if unbinned_mask: # if mask before restauration with 3072x3072 size
         img[mask ==1] = -1 # Apply Mask
+    
+    img = Restaurate(img, geometry) # restaurate
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
@@ -358,7 +359,7 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
     return diffractionpattern, time_difpads, jason
 
 
-def restauration_cat_2d(args,preview = False,save = False,read = False):
+def restauration_cat_2d(args,preview = False,save = False,read = False,first_run=True):
 
     jason, ibira_datafolder, scans_string, _ = args[0]
     acquisition_folder, filename, filepath = args[1], args[2], args[3]
@@ -369,7 +370,7 @@ def restauration_cat_2d(args,preview = False,save = False,read = False):
     if read:
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
     else:   
-        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save)
+        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save,first_run=first_run)
 
     difpads = np.expand_dims(difpads,axis=0)
 
