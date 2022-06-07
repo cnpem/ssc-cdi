@@ -112,7 +112,7 @@ def cat_ptycho_serial(args):
             
             arguments = (args,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
 
-            difpads,_ , jason = restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            difpads,_ , jason = restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads'],first_run=first_run) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
 
             arg = [jason, [measurement_file], [measurement_filepath], ibira_datafolder, acquisition_folder, scans_string, positions_string]
 
@@ -203,6 +203,8 @@ if __name__ == '__main__':
         jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
         jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
         jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+        jason["DetectorExposure"].append(input_dict['/entry/beamline/detector']['pimega']["exposure time"])
+
 
         jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
         jason["FlatField"]  = os.path.join(ibira_datafolder,images_folder,'flat.hdf5')

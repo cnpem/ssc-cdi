@@ -312,6 +312,7 @@ def set_object_pixel_size(jason,hsize):
     planck = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
+    
     # Compute/convert pixel size:
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
 
@@ -792,7 +793,7 @@ def set_object_shape(difpads,args,offset_topleft = 20):
 
     probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
-    probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = 20)
+    probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = offset_topleft)
 
     if 0: #TODO: test to compute object of rectangular size
         maxroiy       = int(np.max(probe_positions[:, 0])) + offset_bottomright
