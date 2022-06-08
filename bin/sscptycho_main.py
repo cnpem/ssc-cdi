@@ -169,6 +169,7 @@ if __name__ == '__main__':
         jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
     else:
         beamline_outputs_path = os.path.join(ibira_datafolder.rsplit('/',3)[0], 'proc','recons',acquisition_folder) # standard folder chosen by CAT for their outputs
+        print("Output path:",beamline_outputs_path)
         jason["LogfilePath"]    = beamline_outputs_path
         jason["PreviewFolder"]  = beamline_outputs_path
         jason["SaveDifpadPath"] = beamline_outputs_path
@@ -263,8 +264,7 @@ if __name__ == '__main__':
             
     if jason['SaveObj']:
         print('Saving Object!')
-        save_variable(cropped_sinogram, os.path.join(jason['ObjPath'], 'cropped_object_' + acquisition_folder))
-        save_variable(object          , os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
+        save_variable(cropped_sinogram  , os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
 
     if jason['SaveProbe']:
         print('Saving Probe!')

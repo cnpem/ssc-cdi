@@ -131,4 +131,7 @@ def save_json_logfile(path,jason):
 def create_directory_if_doesnt_exist(*args):
     for arg in args:
         if os.path.isdir(arg) == False:
-            os.mkdir(arg)
+            print("Creating directory: ",arg)
+            os.makedirs(arg)
+        else:
+            print('Tried to created directory, but it already exists: ',arg)

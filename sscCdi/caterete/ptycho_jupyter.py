@@ -12,6 +12,8 @@ from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
 from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
 
+from .misc import create_directory_if_doesnt_exist
+
 if 0: # paths for beamline use
     ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
@@ -22,7 +24,7 @@ else: # paths for GCC tests
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
-global_paths_dict = { "jupyter_folder"       : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
+global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
                     "ptycho_folder"            : ptycho_folder,
                     "ptycho_script_path"       : pythonScript,
                     "template_json"            : "000000_template.json",
@@ -31,7 +33,7 @@ global_paths_dict = { "jupyter_folder"       : "/ibira/lnls/beamlines/caterete/a
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
-                    "difpad_raw_mean_filepath"  : os.path.join(output_folder,'03_difpad_raw_mean.npy'), # path to load diffraction pattern
+                    "difpad_raw_mean_filepath" : os.path.join(output_folder,'03_difpad_raw_mean.npy'), # path to load diffraction pattern
                     "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
 
@@ -68,14 +70,13 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
-    slurmfile_output = os.path.join(output_path,'slurm.out')
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o {slurmfile_output}       # Select output path of slurm file
+#SBATCH -o ./slurm.out      # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
@@ -159,6 +160,7 @@ def run_ptycho(dummy):
         queue_value   = jobQueueField.widget.value
         cpus_value    = cpus.widget.value
         gpus_value    = gpus.widget.value
+        create_directory_if_doesnt_exist(global_paths_dict["output_folder"])
         run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
 def load_json(dummy):

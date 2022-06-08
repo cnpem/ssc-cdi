@@ -12,38 +12,7 @@ from functools import partial
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
 
-def RemoveGrad( img, mask ):
-    xy = numpy.argwhere( mask > 0)
-    n = len(xy)
-    y = xy[:,0].reshape([n,1])
-    x = xy[:,1].reshape([n,1])
-    F = numpy.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
-    mat = numpy.zeros([3,3])
-    vec = numpy.zeros([3,1])
-    mat[0,0] = (x*x).sum()
-    mat[0,1] = (x*y).sum()
-    mat[0,2] = (x).sum()
-    mat[1,0] = mat[0,1]
-    mat[1,1] = (y*y).sum()
-    mat[1,2] = (y).sum()
-    mat[2,0] = mat[0,2]
-    mat[2,1] = mat[1,2]
-    mat[2,2] = n
-    vec[0,0] = (x*F).sum()
-    vec[1,0] = (y*F).sum()
-    vec[2,0] = (F).sum()
-    abc = numpy.dot( numpy.linalg.inv(mat), vec).flatten()
-    a = abc[0]
-    b = abc[1]
-    c = abc[2]
-    new   = numpy.zeros(img.shape)
-    row   = new.shape[0]
-    col   = new.shape[1]
-    XX,YY = numpy.meshgrid(numpy.arange(col),numpy.arange(row))
-    new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c )
-    #for k in range(n):
-    #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
-    return new
+
 
 def RemoveZernike(img,mask):
     """ Giovanni's function for removing zernikes. Not well understood yet.
@@ -180,7 +149,7 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
 
     return unwrapped_sinogram
 
-def phase_unwrap(img,iterations=0,non_negativity=True,remove_gradient = True):
+def phase_unwrap_old(img,iterations=0,non_negativity=True,remove_gradient = True):
     """ Function for phase unwrapping reconstructed object. 
 
     Args:
@@ -207,76 +176,40 @@ def phase_unwrap(img,iterations=0,non_negativity=True,remove_gradient = True):
         zernike = RemoveGrad(zernike,mask=mask)
     return zernike
 
-def phase_unwrap_new(new):
-    new = new + abs(new.min()) # wanted masked region is where new > 0
+def RemoveGrad( img, mask ):
+    xy = numpy.argwhere( mask > 0)
+    n = len(xy)
+    y = xy[:,0].reshape([n,1])
+    x = xy[:,1].reshape([n,1])
+    F = numpy.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
+    mat = numpy.zeros([3,3])
+    vec = numpy.zeros([3,1])
+    mat[0,0] = (x*x).sum()
+    mat[0,1] = (x*y).sum()
+    mat[0,2] = (x).sum()
+    mat[1,0] = mat[0,1]
+    mat[1,1] = (y*y).sum()
+    mat[1,2] = (y).sum()
+    mat[2,0] = mat[0,2]
+    mat[2,1] = mat[1,2]
+    mat[2,2] = n
+    vec[0,0] = (x*F).sum()
+    vec[1,0] = (y*F).sum()
+    vec[2,0] = (F).sum()
+    abc = numpy.dot( numpy.linalg.inv(mat), vec).flatten()
+    a = abc[0]
+    b = abc[1]
+    c = abc[2]
+    new   = numpy.zeros(img.shape)
+    row   = new.shape[0]
+    col   = new.shape[1]
+    XX,YY = numpy.meshgrid(numpy.arange(col),numpy.arange(row))
+    new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c )
+    #for k in range(n):
+    #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
+    return new
+
+def phase_unwrap(new):
     new = RemoveGrad(new, new > 0 )
     new = unwrap_phase(new)
     return new
-
-def unwrapInterface(recon_folder,recon_filename,frame_number):
-
-    path_to_recon = os.path.join(recon_folder,recon_filename)
-    image = numpy.load(path_to_recon)[frame_number]
-    
-    vsize, hsize = image.shape[0], image.shape[1]
-
-    fig = plt.figure(figsize=(10,5))
-    ax1  = fig.add_subplot(1, 2, 1)
-    ax1.imshow(image)
-    ax2  = fig.add_subplot(1, 2, 2)
-    ax2.imshow(image)
-    ax1.set_title('Original image')
-    ax2.set_title('Unwrapped image')
-
-    def update(top, bottom,left,right):
-        ax1.clear()
-        ax1.set_title('Original image')
-        ax1.imshow(image[top:-bottom,left:-right])
-        fig.canvas.draw_idle()
-        return top, bottom,left,right
-
-    def on_button_clicked(b):
-        global unwrapped_image 
-        unwrapped_image = phase_unwrap(image[top.value:-bottom.value,left.value:-right.value],iterations.value,non_negativity=non_negativity_checkbox,remove_gradient = remove_gradient_checkbox)
-        ax2.imshow(unwrapped_image)
-        return unwrapped_image
-
-    def savefig_button(b):
-        fig.savefig('figure.png',dpi=300)
-        numpy.save('unwrapped.npy',unwrapped_image)
-        imsave('unwrapped.tif',unwrapped_image)
-
-
-    # Sliders     
-    top    = widgets.IntSlider(min=1, max=vsize//2, step=1, value = 1,description='Top')
-    bottom = widgets.IntSlider(min=1, max=vsize//2, step=1, value = 1,description='Bottom')
-    left   = widgets.IntSlider(min=1, max=hsize//2, step=1, value = 1,description='Left')
-    right  = widgets.IntSlider(min=1, max=vsize//2, step=1, value = 1,description='Right')
-    ui = widgets.HBox([top, bottom, left, right])    
-    out = widgets.interactive_output(update, {'top': top, 'bottom': bottom, 'left': left, 'right': right})
-
-    # Button 1
-    button = widgets.Button(description="Unwrap!")
-    output = widgets.Output()
-    button.on_click(on_button_clicked)
-
-    # Button 2
-    save_button = widgets.Button(description="Save figure")
-    output2 = widgets.Output()
-    save_button.on_click(savefig_button)
-
-    # CheckBox 1 
-    non_negativity_checkbox = widgets.Checkbox(value=False,description='Non-negativity')
-    # CheckBox 2
-    remove_gradient_checkbox= widgets.Checkbox(value=False,description='Remove Gradient')
-
-    # Input 1
-    iterations = widgets.BoundedIntText(value=0,  min=0,step=1, description='Iterations:', disabled=False)
-
-    # DISPLAY
-    display(ui, out)
-    display(iterations)
-    display(non_negativity_checkbox)
-    display(remove_gradient_checkbox)
-    display(button)
-    display(save_button)
