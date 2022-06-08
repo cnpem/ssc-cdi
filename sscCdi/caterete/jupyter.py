@@ -13,6 +13,7 @@ field_style = {'description_width': 'initial'}
 madalda_ip = "10.30.4.10" # Mafalda IP
 mafalda_port = 22
 
+
 def connect_server():
     host = madalda_ip #"10.30.4.10" # Mafalda IP
     port = mafalda_port #22
@@ -23,15 +24,20 @@ def connect_server():
     ssh.connect(host, port, username, getpass.getpass())
     return ssh
 
-def call_and_read_terminal(cmd,mafalda):
-    if 0:
+def call_and_read_terminal(cmd,mafalda,use_mafalda=True):
+    if use_mafalda == False:
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         terminal_output = p.stdout.read() # Read output from terminal
+        while True: # print output line by line
+            line = p.stdout.readline() 
+            if not line:
+                break
+            print(line.rstrip().decode("utf-8"))
     else:
         stdin, stdout, stderr = mafalda.exec_command(cmd)
         terminal_output = stdout.read() 
-        print('Output: ',terminal_output)
-        print('Error:  ',stderr.read())
+        # print('Output: ',terminal_output)
+        # print('Error:  ',stderr.read())
     return terminal_output
 
 def call_cmd_terminal(filename,mafalda,remove=False):
