@@ -208,7 +208,6 @@ def phase_unwrap(img,iterations=0,non_negativity=True,remove_gradient = True):
     return zernike
 
 def phase_unwrap_new(new):
-    new = image[xmin:xmax, ymin:ymax] 
     new = new + abs(new.min()) # wanted masked region is where new > 0
     new = RemoveGrad(new, new > 0 )
     new = unwrap_phase(new)

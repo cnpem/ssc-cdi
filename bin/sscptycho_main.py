@@ -89,7 +89,7 @@ def cat_ptycho_3d(difpads,args):
     '''
         END MAIN PTYCHO RUN
     '''
-    return sinogram,probe,bkg
+    return sinogram,probe,bkg, jason
 
 
 def cat_ptycho_serial(args):
@@ -231,7 +231,7 @@ if __name__ == '__main__':
     if len(filenames) > 1 and serial == False: # 3D batch form (computational time is faster, but not memory safe)
         difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
         t2 = time()
-        object,probe,bkg  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
+        object,probe,bkg, jason  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
         t3 = time()
     else: # serial reconstruction, either of single or multiple 2D frames
         object,probe,bkg,t2,t3,jason  = cat_ptycho_serial(args)  # restauration happens inside
@@ -247,7 +247,7 @@ if __name__ == '__main__':
 
     print('Finished Ptycho reconstruction!')
 
-    cropped_sinogram = crop_sinogram(object, jason)
+    cropped_sinogram = crop_sinogram(object,jason)
 
     t4 = time()
     

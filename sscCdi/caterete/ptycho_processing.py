@@ -32,7 +32,7 @@ def crop_sinogram(sinogram, jason):
         print('Auto cropping frames...')
         if 1: # Miqueles approach
             for frame in range(sinogram.shape[0]):
-                sinogram[frame,:,:] = autocrop_miqueles(sinogram[frame,:,:])
+                sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
             
         else: # Yuri's approach
             for frame in range(sinogram.shape[0]):
@@ -50,8 +50,26 @@ def crop_sinogram(sinogram, jason):
         
     return sinogram
 
+def autocrop_using_scan_positions(image,jason,probe_positions):
 
-def autocrop_miqueles(image):
+    #scanning positions @ image domain
+    probe_positions = 1e-6 * probe_positions / jason['object_pixel_size']
+
+    n         = image.shape[0]
+    where     = np.zeros((n,n))
+    x         = (n//2 - probe_positions [:,0]).astype(int)
+    y         = (n//2 - probe_positions [:,1]).astype(int)
+    pinholesize = 0 #tirado do bolso! 
+    xmin      = x.min() - pinholesize//2
+    xmax      = x.max() + pinholesize//2
+    ymin      = y.min() - pinholesize//2
+    ymax      = y.max() + pinholesize//2
+    new = image[xmin:xmax, ymin:ymax] 
+    new = new + abs(new.min())
+
+    return new
+
+def autocrop_miqueles_operatorT(image):
 
     def _operator_T(u):
         d   = 1.0
@@ -795,12 +813,6 @@ def set_object_shape(difpads,args,offset_topleft = 20):
     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
     probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = offset_topleft)
 
-    if 0: #TODO: test to compute object of rectangular size
-        maxroiy       = int(np.max(probe_positions[:, 0])) + offset_bottomright
-        maxroix       = int(np.max(probe_positions[:, 1])) + offset_bottomright
-        object_shapey = 2 * hsize + maxroiy
-        object_shapex = 2 * hsize + maxroix
-
     maxroi        = int(np.max(probe_positions)) + offset_bottomright
     object_shape  = 2 * hsize + maxroi
     print('Object shape:',object_shape,object_shape)
@@ -991,8 +1003,6 @@ def ptycho3d_batch( difpads, threads, args):
     sa.delete(name2)
 
     return output_object,output_probe,output_backg
-
-
 
 def masks_application(difpad, jason):
 
