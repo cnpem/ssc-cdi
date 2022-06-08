@@ -68,13 +68,14 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
+    slurmfile_output = os.path.join(output_path,'slurm.out')
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o {os.path.join(output_path,'slurm.out')}       # Select output path of slurm file
+#SBATCH -o {slurmfile_output}       # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
