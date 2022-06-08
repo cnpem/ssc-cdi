@@ -352,11 +352,19 @@ def mask_tab():
         figure.canvas.header_visible = False 
         plt.show()
 
+    output2 = widgets.Output()
+    with output2:
+        figure2, subplot2 = plt.subplots()
+        subplot2.imshow(initial_image,cmap='gray')
+        subplot2.set_title('Mask')
+        figure2.canvas.header_visible = False 
+        plt.show()
+
     output3 = widgets.Output()
     with output3:
         figure3, subplot3 = plt.subplots()
         subplot3.imshow(initial_image,cmap='gray')
-        subplot.set_title('Masked')
+        subplot3.set_title('Masked')
         figure3.canvas.header_visible = False 
         plt.show()
 
@@ -370,6 +378,7 @@ def mask_tab():
         mask = h5py.File(os.path.join(global_dict["ProposalPath"],global_dict["Acquisition_Folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
         masked_difpad[mask ==1] = -1 # Apply Mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
+        subplot2.imshow(mask,cmap='gray')
         subplot3.imshow(masked_difpad,cmap='jet',norm=LogNorm())
 
 
@@ -377,7 +386,7 @@ def mask_tab():
     load_frames_button.trigger(load_frames)
 
     buttons_box = widgets.Box([load_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
-    objects_box = widgets.HBox([output,output3])
+    objects_box = widgets.HBox([output,output2,output3])
     box = widgets.VBox([buttons_box,objects_box])
 
     return box
