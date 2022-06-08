@@ -162,7 +162,7 @@ def run_ptycho(dummy):
         run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
 def load_json(dummy):
-    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["000000_template.json"])
+    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["template_json.json"])
     template_dict = json.load(open(json_path))
     for key in template_dict:
         global_dict[key] = template_dict[key]
