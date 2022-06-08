@@ -126,9 +126,9 @@ def cat_ptycho_serial(args):
             probe    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
             bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
             
-            t2 = time.time() 
+            t2 = time() 
             sinogram, probe2d, bkg2d = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1, jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
-            t3 = time.time()
+            t3 = time()
 
             if first_run == True:
                 object = sinogram
@@ -153,7 +153,7 @@ def cat_ptycho_serial(args):
 
 if __name__ == '__main__':
 
-    t0 = time.time()
+    t0 = time()
 
     jason = json.load(open(argv[1]))  # Open jason file
 
@@ -224,15 +224,15 @@ if __name__ == '__main__':
     args = (jason, ibira_datafolder, scans_string, positions_string)
 
       #=========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D =====================
-    t1 = time.time()
+    t1 = time()
 
     serial = True #jason['Serial3D'] # Here is the bool variable to choose serial version of 3D or not.
 
     if len(filenames) > 1 and serial == False: # 3D batch form (computational time is faster, but not memory safe)
         difpads,_ , jason = restauration_cat_3d(args,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']) # Restauration of ALL Projections (difpads - real, is a list of size len(Aquisition_folders))
-        t2 = time.time()
+        t2 = time()
         object,probe,bkg  =  cat_ptycho_3d(difpads,args) # Ptycho of ALL Projections (object - complex, probe - complex, bkg - real, are a list of size len(Aquisition_folders))
-        t3 = time.time()
+        t3 = time()
     else: # serial reconstruction, either of single or multiple 2D frames
         object,probe,bkg,t2,t3,jason  = cat_ptycho_serial(args)  # restauration happens inside
 
@@ -249,7 +249,7 @@ if __name__ == '__main__':
 
     cropped_sinogram = crop_sinogram(object, jason)
 
-    t4 = time.time()
+    t4 = time()
     
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
         print('Unwrapping sinogram...')
@@ -261,7 +261,7 @@ if __name__ == '__main__':
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
-    t5 = time.time()
+    t5 = time()
 
     calculate_FRC(cropped_sinogram, jason)
 
@@ -277,7 +277,7 @@ if __name__ == '__main__':
 
     preview_ptycho(jason, phase, absol, probe, frame=0)
 
-    t6 = time.time()
+    t6 = time()
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
     print(f'Ptycho batch total time: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f} minutes')
     print(f'Auto Crop object time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
