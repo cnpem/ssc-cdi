@@ -21,24 +21,16 @@ from sscCdi.caterete.unwrap import *
 
 def preview_ptycho(jason, phase, absol, probe, frame = 0):
     if jason['Preview']:  # Preview Reconstruction:
-        # # '''
-        # plt.figure()
-        # plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
-        # plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
-        # plt.savefig(jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
-        # plt.clf()
-        # plt.close()
-        # # '''
-        # print('probe shape', probe[frame].shape)
-        # print('phase shape', phase[frame].shape)
-        # Show probe:
+        ''' Plot scan points
+        plt.figure()
+        plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
+        plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
+        plt.savefig(jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
+        plt.clf()
+        plt.close()
+        '''
+
         plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_2d_' + str(frame), nlines=2)
-
-        # Show object:
-        # ango = np.angle(sinogram[frame])
-        # abso = np.clip(abs(sinogram[frame]), 0.0, np.max(abs(sinogram[frame][hsize:maxroi, hsize:maxroi])))
-        # abso = abs(sinogram[frame])
-
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(frame), cmap='gray', nlines=1)
         
 
@@ -216,6 +208,8 @@ if __name__ == '__main__':
         flatfield = np.load(jason["FlatField"])
         empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
     
+    jason['positions_string'] = positions_string
+    jason['scans_string'] = scans_string
     filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisition_folder,scans_string), look_for_extension=".hdf5")
 
     if jason['Projections'] != []:
@@ -269,7 +263,8 @@ if __name__ == '__main__':
             
     if jason['SaveObj']:
         print('Saving Object!')
-        save_variable(cropped_sinogram, os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
+        save_variable(cropped_sinogram, os.path.join(jason['ObjPath'], 'cropped_object_' + acquisition_folder))
+        save_variable(object          , os.path.join(jason['ObjPath'], 'object_' + acquisition_folder))
 
     if jason['SaveProbe']:
         print('Saving Probe!')

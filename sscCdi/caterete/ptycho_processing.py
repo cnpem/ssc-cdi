@@ -30,11 +30,38 @@ def crop_sinogram(sinogram, jason):
     if jason['AutoCrop'] == True: # automatically crop borders with noise
 
         print('Auto cropping frames...')
-        if 1: # Miqueles approach
+        if 1: # Miqueles approach using scan positions
+            frame = 0
+            ibira_datafolder = jason["ProposalPath"]
+            for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
+                
+                filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,jason['scans_string']), look_for_extension=".hdf5")
+                
+                if jason['Projections'] != []:
+                    filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
+
+                for measurement_file, measurement_filepath in zip(filenames, filepaths):
+
+                    if sinogram.shape[0] == len(filenames): print("SHAPES MATCH!")
+
+                    probe_positions_file = os.path.join(acquisitions_folder, jason['positions_string'], measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
+                    probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
+
+                    cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],jason,probe_positions) # crop
+                    
+                    if frame == 0: 
+                        cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]))
+                    
+                    print("SHAPES:",len(filenames),sinogram.shape, cropped_frame.shape)
+                    cropped_sinogram[frame,:,:] = cropped_frame
+                    frame += 1
+            sinogram = cropped_sinogram
+
+        if 0: # Miqueles approach using T operator
             for frame in range(sinogram.shape[0]):
                 sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
             
-        else: # Yuri's approach
+        if 0: # Yuri approach using local entropy
             for frame in range(sinogram.shape[0]):
                 min_crop_value = []
                 best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
@@ -52,8 +79,7 @@ def crop_sinogram(sinogram, jason):
 
 def autocrop_using_scan_positions(image,jason,probe_positions):
 
-    #scanning positions @ image domain
-    probe_positions = 1e-6 * probe_positions / jason['object_pixel_size']
+    probe_positions = 1e-6 * probe_positions / jason['object_pixel']     #scanning positions @ image domain
 
     n         = image.shape[0]
     where     = np.zeros((n,n))
@@ -125,7 +151,6 @@ def apply_phase_unwrap(sinogram, jason):
         original_object = sinogram[frame,:,:]  # create copy of object
         absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
         phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-        # sinogram[frame,:,:] = absolute * np.exp(-1j * angle)
 
         if 1:  # plot original and cropped object phase and save!
             figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
@@ -299,9 +324,6 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     # Adicionar modulos incoerentes
     probe = set_modes(probe, jason)
 
-    # GPUs selection:
-    # set_gpus(jason)
-
     # Object initial guess:
     obj = set_initial_obj(jason, object_size, probe, difpads)
 
@@ -326,12 +348,12 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
 
 
 def set_object_pixel_size(jason,hsize):
-    c = 299792458  # Velocity of Light [m/s]
+    c = 299792458             # Speed of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
     
-    # Compute/convert pixel size:
+    # Convert pixel size:
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
 
     return dx, jason
