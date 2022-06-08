@@ -1015,7 +1015,7 @@ def masks_application(difpad, jason):
         central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
         difpad[central_mask > 0] = -1
 
-    return difpad, jason
+    return difpad
 
 def create_circular_mask(center_row, center_col, radius, mask_shape):
     """Create a circular mask to block the center of the diffraction pattern
