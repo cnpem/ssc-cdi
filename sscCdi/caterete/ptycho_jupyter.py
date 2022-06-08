@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from functools import partial
 
 import ipywidgets as widgets 
-from ipywidgets import fixed 
+from ipywidgets import fixed
 
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
-from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play
+from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
 
 if 0: # paths for beamline use
     ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
@@ -138,19 +138,25 @@ def delete_files(dummy):
 def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
-    monitor_job_execution(given_jobID,mafalda)
+    # monitor_job_execution(given_jobID,mafalda)
     
 def run_ptycho(dummy):
     pythonScript = global_paths_dict["ptycho_script_path"]
     json_filepath = global_paths_dict["json_filepath"]
     slurm_filepath = global_paths_dict["slurm_filepath"]
 
-    global jobNameField, jobQueueField, cpus, gpus
-    jobName = jobNameField.widget.value
-    queue   = jobQueueField.widget.value
-    cpus    = cpus.widget.value
-    gpus    = gpus.widget.value
-    run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName,queue=queue,gpus=gpus,cpus=cpus)
+    print(f'Running ptycho with {machine_selection.value}...')
+    if machine_selection.value == 'Local':
+        cmd = f'python3 {pythonScript} {json_filepath}'
+        print('Running command: ',cmd)               
+        call_and_read_terminal(cmd,mafalda,use_mafalda=False)
+    elif machine_selection.value == "Cluster": 
+        global jobNameField, jobQueueField, cpus, gpus
+        jobName_value = jobNameField.widget.value
+        queue_value   = jobQueueField.widget.value
+        cpus_value    = cpus.widget.value
+        gpus_value    = gpus.widget.value
+        run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
 def load_json(dummy):
     json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["000000_template.json"])
@@ -534,10 +540,27 @@ def crop_tab():
 
 def ptycho_tab():
 
+    def view_jobs(dummy):
+        output = call_and_read_terminal('squeue',mafalda)
+        print(output.decode("utf-8"))
+    def cancel_job(dummy):
+        print(f'Cancelling job {job_number.widget.value}')    
+        call_and_read_terminal(f'scancel {job_number.widget.value}',mafalda)
+
+    job_number = Input({"dummy-key":00000},"dummy-key",description="Job ID number",layout=items_layout)
+
+    view_jobs_button = Button(description='List Jobs',layout=buttons_layout,icon='fa-eye')
+    view_jobs_button.trigger(view_jobs)
+
+    cancel_job_button = Button(description='Cancel Job',layout=buttons_layout,icon='fa-stop-circle')
+    cancel_job_button.trigger(cancel_job)    
+
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
 
+    job_box = widgets.VBox([job_number.widget,view_jobs_button.widget,cancel_job_button.widget])
     box = widgets.Box([use_obj_guess.widget,use_probe_guess.widget,saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
+    box = widgets.HBox([box,job_box])
 
     return box
 
@@ -619,7 +642,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     load_json_button.trigger(load_json)
     
     global machine_selection
-    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '70%'},description='Machine',disabled=False)
+    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Cluster', layout={'width': '70%'},description='Machine',disabled=False)
 
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
