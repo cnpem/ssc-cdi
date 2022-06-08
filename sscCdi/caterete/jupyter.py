@@ -28,11 +28,7 @@ def call_and_read_terminal(cmd,mafalda,use_mafalda=True):
     if use_mafalda == False:
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         terminal_output = p.stdout.read() # Read output from terminal
-        while True: # print output line by line
-            line = p.stdout.readline() 
-            if not line:
-                break
-            print(line.rstrip().decode("utf-8"))
+
     else:
         stdin, stdout, stderr = mafalda.exec_command(cmd)
         terminal_output = stdout.read() 

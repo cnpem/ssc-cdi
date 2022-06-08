@@ -148,8 +148,10 @@ def run_ptycho(dummy):
     print(f'Running ptycho with {machine_selection.value}...')
     if machine_selection.value == 'Local':
         cmd = f'python3 {pythonScript} {json_filepath}'
+        # cmd = f'python3 ~/ssc-cdi/bin/sscptycho_main_test.py {json_filepath}'
         print('Running command: ',cmd)               
-        call_and_read_terminal(cmd,mafalda,use_mafalda=False)
+        output = call_and_read_terminal(cmd,mafalda,use_mafalda=False)
+        print(output.decode("utf-8"))
     elif machine_selection.value == "Cluster": 
         global jobNameField, jobQueueField, cpus, gpus
         jobName_value = jobNameField.widget.value
