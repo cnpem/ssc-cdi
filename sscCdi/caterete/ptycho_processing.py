@@ -25,10 +25,11 @@ from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
 
+from .misc import create_directory_if_doesnt_exist
+
 def crop_sinogram(sinogram, jason): 
 
     if jason['AutoCrop'] == True: # automatically crop borders with noise
-
         print('Auto cropping frames...')
         if 1: # Miqueles approach using scan positions
             frame = 0
@@ -48,18 +49,16 @@ def crop_sinogram(sinogram, jason):
                     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
 
                     cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],jason,probe_positions) # crop
-                    
                     if frame == 0: 
-                        cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]))
+                        cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
                     
                     print("SHAPES:",len(filenames),sinogram.shape, cropped_frame.shape)
                     cropped_sinogram[frame,:,:] = cropped_frame
                     frame += 1
-            sinogram = cropped_sinogram
-
+       
         if 0: # Miqueles approach using T operator
             for frame in range(sinogram.shape[0]):
-                sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
+                cropped_sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
             
         if 0: # Yuri approach using local entropy
             for frame in range(sinogram.shape[0]):
@@ -67,22 +66,21 @@ def crop_sinogram(sinogram, jason):
                 best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
                 min_crop_value.append(best_crop)
             min_crop = min(min_crop_value)
-            sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
+            cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
-        if sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-            sinogram = sinogram[:,0:-1, :]
-        if sinogram.shape[2] % 2 != 0:
-            sinogram = sinogram[:,:, 0:-1]
+        if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+            cropped_sinogram = cropped_sinogram[:,0:-1, :]
+        if cropped_sinogram.shape[2] % 2 != 0:
+            cropped_sinogram = cropped_sinogram[:,:, 0:-1]
         print('\t Done!')
         
-    return sinogram
+    return cropped_sinogram
 
 def autocrop_using_scan_positions(image,jason,probe_positions):
 
     probe_positions = 1e-6 * probe_positions / jason['object_pixel']     #scanning positions @ image domain
 
     n         = image.shape[0]
-    where     = np.zeros((n,n))
     x         = (n//2 - probe_positions [:,0]).astype(int)
     y         = (n//2 - probe_positions [:,1]).astype(int)
     pinholesize = 0 #tirado do bolso! 
@@ -142,15 +140,14 @@ def apply_phase_unwrap(sinogram, jason):
 
     print('Phase unwrapping the cropped image')
     n_iterations = jason['Phaseunwrap'][1]  # number of iterations to remove gradient from unwrapped image.
-        #TODO: insert non_negativity and remove_gradient optionals in the json input? We do not understand why they are needed yet!
     
     phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
     absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
 
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
-        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
-        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])), n_iterations, non_negativity=0, remove_gradient=0)
+        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
+        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
 
         if 1:  # plot original and cropped object phase and save!
             figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
@@ -766,9 +763,7 @@ def auto_crop_noise_borders(complex_array):
 
     return best_crop
 
-def create_directory_if_doesnt_exist(path):
-    if os.path.isdir(path) == False:
-        os.mkdir(path)
+
 
 def create_output_directories(jason):
     if jason["PreviewGCC"][0] == True:
