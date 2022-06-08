@@ -257,6 +257,8 @@ def restauration_processing_binning(img, args):
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
+    img = sscCdi.ptycho_processing.masks_application(img,jason)
+
     # select ROI from the center (cx,cy)
     img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
 
@@ -352,7 +354,6 @@ def restauration_cat_3d(args,preview  = False,save  = False,read = False):
         else: 
             difpads, time_difpads, _, jason = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
 
-        difpads = sscCdi.ptycho_processing.masks_application(difpads, jason)
 
         diffractionpattern.append(difpads)
 
@@ -370,11 +371,9 @@ def restauration_cat_2d(args,preview = False,save = False,read = False,first_run
     if read:
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
     else:   
-        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save,first_run=first_run)
+        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save,first_iteration=first_run)
 
     difpads = np.expand_dims(difpads,axis=0)
-
-    difpads, jason = sscCdi.ptycho_processing.masks_application(difpads, jason)
 
     return difpads, time_difpads, jason
 
