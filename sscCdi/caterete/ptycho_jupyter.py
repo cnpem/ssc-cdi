@@ -74,7 +74,7 @@ def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o ./slurm.out        # Select output path of slurm file
+#SBATCH -o {os.path.join(output_path,'slurm.out')}       # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
