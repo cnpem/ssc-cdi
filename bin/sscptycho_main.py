@@ -115,12 +115,11 @@ def cat_ptycho_serial(args):
                 jason["object_pixel"] = object_pixel_size
                 arg[0] = jason # update args
                 first_iteration = False
-
             params = (arg,maxroi,hsize,(object_shapey,object_shapex),len(filenames))
 
             object_dummy = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
-            probe_dummy    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
-            bkg_dummy      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
+            probe_dummy  = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
+            bkg_dummy    = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
             
             t2 = time() 
             object2d, probe2d, bkg2d = ptycho_main(difpads, object_dummy, probe_dummy, bkg_dummy, params, 0, 1, jason['GPUs'])   # Main ptycho iteration on ALL frames in threads

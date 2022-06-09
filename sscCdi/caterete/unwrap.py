@@ -149,7 +149,7 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
 
     return unwrapped_sinogram
 
-def phase_unwrap_old(img,iterations=0,non_negativity=True,remove_gradient = True):
+def phase_unwrap(img,iterations=0,non_negativity=False,remove_gradient = False):
     """ Function for phase unwrapping reconstructed object. 
 
     Args:
@@ -209,7 +209,7 @@ def RemoveGrad( img, mask ):
     #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
     return new
 
-def phase_unwrap(new):
+def phase_unwrap_new(new):
     new = RemoveGrad(new, new > 0 )
     new = unwrap_phase(new)
     return new

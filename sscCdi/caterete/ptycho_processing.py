@@ -147,8 +147,10 @@ def apply_phase_unwrap(sinogram, jason):
 
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
-        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
-        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
+        # absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
+        # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
+        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sinogram[frame,:,:]))
+        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sinogram[frame,:,:]))
 
         if 1:  # plot original and cropped object phase and save!
             figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
@@ -246,7 +248,7 @@ def read_probe_positions(probe_positions_filepath, measurement):
     for line in positions_file:
         line = str(line)
         if line_counter > 1:  # skip first line, which is the header
-            T = -3E-3  # why rotate by this amount?
+            T = -3E-3  # why did Giovanni rotated by this amount? not using this correction seems to result in an error in the number of positions
             pxl = float(line.split()[1])
             pyl = float(line.split()[0])
             px = pxl * np.cos(T) - np.sin(T) * pyl
@@ -262,15 +264,13 @@ def read_probe_positions(probe_positions_filepath, measurement):
         mshape = file['entry/data/data'].shape
 
     if pshape[0] == mshape[0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
-        print('\tSuccess in read positions file:' + probe_positions_filepath)
+        print('\tSuccess in reading positions file:' + probe_positions_filepath)
         print("\tShape probe_positions:", probe_positions.shape, pshape, mshape)
     else:
-        print("\tError in probe_positions shape. {0} is different from diffraction pattern shape {1}".format(probe_positions.shape, mshape))
-        print('\npshape: ', pshape)
+        print("\tError in probe_positions shape. {0} is different from diffraction pattern shape {1}".format(probe_positions.shape, mshape,pshape))
         print('\t\t Setting object as null array with correct shape.')
-        # probe_positions = np.zeros([1,1,1,1])
-        probe_positions = np.zeros((mshape[0], 4))
-        print('teste',probe_positions.shape)
+        probe_positions = np.zeros((mshape[0]-1, 4))
+        print('\t\tNew probe positions shape',probe_positions.shape)
     return probe_positions
 
 
@@ -403,7 +403,7 @@ def set_initial_probe(difpads, jason):
         probe = np.sqrt(shift(ifft2(shift(ft))))
     else:
         # Load probe:
-        probe = np.load(jason['InitialProbe'])[0]
+        probe = np.load(jason['InitialProbe'])[0][0]
 
     print("\tProbe shape:", probe.shape)
     return probe
@@ -459,14 +459,12 @@ def set_initial_obj(jason, object_shape, probe, difpads):
     Returns:
         obj (array)
     """    
-    print('Setting initial guess for Object...')
     # Object initial guess:
     if jason['InitialObj'] == "":
-        obj = np.random.rand(object_shape[0], object_shape[1]) * (
-            np.sqrt(np.average(difpads) / np.average(abs(np.fft.fft2(probe)) ** 2)))
-        # obj = np.random.rand(2048,2048) * (np.sqrt(np.average(difpads)/np.average(abs(np.fft.fft2(probe))**2)))
+        print('Setting initial guess for Object...')
+        obj = np.random.rand(object_shape[0], object_shape[1]) * (np.sqrt(np.average(difpads) / np.average(abs(np.fft.fft2(probe)) ** 2)))
     else:
-        obj = np.load(jason['InitialObj'])
+        obj = np.load(jason['InitialObj'])[0]
 
     return obj
 

@@ -234,11 +234,11 @@ def inputs_tab():
         global_dict["Phaseunwrap"][0] = PhaseUnwrap
         global_dict["Phaseunwrap"][1] = PhaseUnwrap_iter
 
-        if [top_crop,bottom_crop] == [0,0]:
+        if [top_crop,bottom_crop] == [0,1]:
             global_dict["Phaseunwrap"][2] =  []
         else:
             global_dict["Phaseunwrap"][2] = [top_crop,bottom_crop]
-        if [left_crop,right_crop] == [0,0]:
+        if [left_crop,right_crop] == [0,1]:
             global_dict["Phaseunwrap"][3] =  []
         else:
             global_dict["Phaseunwrap"][3] = [left_crop,right_crop]
@@ -336,7 +336,7 @@ def inputs_tab():
                                                      })
 
     box = widgets.Box([saveJsonButton.widget,label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,save_or_load_difpads],layout=box_layout)
-    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,use_obj_guess.widget,use_probe_guess.widget,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
+    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
 
@@ -574,7 +574,7 @@ def ptycho_tab():
     run_button.trigger(run_ptycho)
 
     job_box = widgets.VBox([job_number.widget,view_jobs_button.widget,cancel_job_button.widget])
-    box = widgets.Box([use_obj_guess.widget,use_probe_guess.widget,saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
+    box = widgets.Box([saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([box,job_box])
 
     return box
