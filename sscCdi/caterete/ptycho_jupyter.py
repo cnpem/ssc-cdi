@@ -36,12 +36,12 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                     "difpad_raw_mean_filepath" : os.path.join(output_folder,'03_difpad_raw_mean.npy'), # path to load diffraction pattern
                     "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
-
                 }
 
-global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
-output_dictionary = {}
+
+
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
 ############################################ Global Layout ###########################################################################
 
@@ -85,8 +85,6 @@ module load cuda/11.2
 module load hdf5/1.12.0_parallel
 
 python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'output.log')} 2> {os.path.join(output_path,'error.log')}
-# python3 {python_script_path} > {os.path.join(output_path,'output.log')} 2> {os.path.join(output_path,'error.log')}
-
 """
     
     with open(slurm_filepath,'w') as the_file:
@@ -395,6 +393,13 @@ def mask_tab():
 
 def center_tab():
 
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots(figsize=(5,5),constrained_layout=True)
+        figure,subplot.imshow(np.random.random((4,4)))
+        subplot.set_title('Diffraction Pattern')
+        figure.canvas.header_visible = False 
+        plt.show()
 
     def plotshow(figure,subplot,image,title="",figsize=(8,8),savepath=None,show=False):
         subplot.clear()
@@ -406,38 +411,34 @@ def center_tab():
             plt.show()
         figure.canvas.draw_idle()
 
-    def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,radius):
+    def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,exposure_time,radius):
+
+
         output_dictionary[key1] = [cx,cy]
         output_dictionary[key2] = [button,radius]
-        output_dictionary[key3] = [exposure,0.15]
+        output_dictionary[key3] = [exposure,exposure_time]
         if exposure == True or button == True:
-            image2, _ = masks_application(np.copy(image), output_dictionary)
+            image2 = masks_application(np.copy(image), output_dictionary)
             plotshow(figure,subplot,image2)
         else:
             plotshow(figure,subplot,image)
 
-
-
     def load_difpad(dummy):
 
-        print(global_dict)
-        print(global_paths_dict)
+        mdata_filepath = os.path.join(global_dict["ProposalPath"],global_dict['Acquisition_Folders'][0],'mdata.json')
+        input_dict = json.load(open(mdata_filepath))
+
+        print(CentralMask_radius.widget,CentralMask_bool.widget,DetectorPileup.widget)
+        print(centerx.widget.value,centery.widget.value)
         image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
-                                                'output_dictionary':fixed(output_dictionary),'image':fixed(image),
+                                                'output_dictionary':fixed(global_dict),'image':fixed(image),
                                                 'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
                                                 'cx':centerx.widget,'cy':centery.widget,
                                                 'button':CentralMask_bool.widget,
                                                 'exposure':DetectorPileup.widget,
+                                                'exposure_time':fixed(input_dict['/entry/beamline/detector']['pimega']["exposure time"]),
                                                 'radius':CentralMask_radius.widget})
-
-    output = widgets.Output()
-    with output:
-        figure, subplot = plt.subplots(figsize=(5,5),constrained_layout=True)
-        figure,subplot.imshow(np.random.random((4,4)))
-        subplot.set_title('Diffraction Pattern')
-        figure.canvas.header_visible = False 
-        plt.show()
 
     load_difpad_button  = Button(description="Load Diffraction Pattern",layout=buttons_layout,icon='folder-open-o')
     load_difpad_button.trigger(load_difpad)
@@ -613,10 +614,10 @@ def reconstruction_tab():
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.abs(sinogram)),'figure':fixed(figure3),'subplot':fixed(subplot3),'title':fixed(True), 'frame_number': selection_slider.widget})
 
-        probe = np.abs(np.load(global_paths_dict["probe_filepath"]))[0] 
+        probe = np.abs(np.load(global_paths_dict["probe_filepath"]))[:,0,:,:] # get only 0th order 
         selection_slider2.widget.max, selection_slider2.widget.value = probe.shape[0]-1, probe.shape[0]//2
         play_control2.widget.max = selection_slider2.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider2.widget})
 
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")

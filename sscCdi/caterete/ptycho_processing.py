@@ -29,6 +29,7 @@ from .misc import create_directory_if_doesnt_exist
 
 def crop_sinogram(sinogram, jason): 
 
+    cropped_sinogram = sinogram
     if jason['AutoCrop'] == True: # automatically crop borders with noise
         print('Auto cropping frames...')
         if 1: # Miqueles approach using scan positions
@@ -68,10 +69,10 @@ def crop_sinogram(sinogram, jason):
             min_crop = min(min_crop_value)
             cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
-        if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-            cropped_sinogram = cropped_sinogram[:,0:-1, :]
-        if cropped_sinogram.shape[2] % 2 != 0:
-            cropped_sinogram = cropped_sinogram[:,:, 0:-1]
+        # if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+        #     cropped_sinogram = cropped_sinogram[:,0:-1, :]
+        # if cropped_sinogram.shape[2] % 2 != 0:
+        #     cropped_sinogram = cropped_sinogram[:,:, 0:-1]
         print('\t Done!')
         
     return cropped_sinogram
@@ -592,9 +593,8 @@ def save_variable(variable, predefined_name, savename=""):
         predefined_name: predefined name for saving the output variable
         savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
     """    
-    print(f'Saving variable {predefined_name}...')
-    print(len(variable))
     variable = np.asarray(variable, dtype=object)
+
     # for i in range(variable.shape[0]):
     #     print('shapes', variable[i].shape)
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
@@ -607,8 +607,6 @@ def save_variable(variable, predefined_name, savename=""):
         np.save(savename, variable)
     else:
         np.save(predefined_name, variable)
-
-    print('\t', savename, variable.shape)
 
 def save_variable2(variable, predefined_name, savename=""):
     """ Function to save reconstruction object, probe and/or background. 
@@ -845,14 +843,11 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
     filepaths           = args[0][2]
     ibira_datafolder    = args[0][3]
     acquisitions_folder = args[0][4]
-    scans_string        = args[0][5]
     positions_string    = args[0][6]
-    maxroi              = args[1]
     hsize               = args[2]
     object_shape        = args[3]
 
     for i in range(_end_ - _start_):
-    # for measurement_file, measurement_filepath in zip(filenames, filepaths):  # loop through each hdf5, one for each sample angle
         
         measurement_file     = filenames[_start_ + i]
         measurement_filepath = filepaths[_start_ + i]
@@ -933,7 +928,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
             if i == 0: t4 = time()
 
             sinogram[frame, :, :] = datapack['obj']  # build 3D Sinogram
-            probe3d[frame, :, :]  = datapack['probe']
+            probe3d[frame, :, :, :]  = datapack['probe']
             backg3d[frame, :, :]  = datapack['bkg']
 
         else:
@@ -944,8 +939,8 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
 
         if i == 0: t5 = time()
 
-    # print(f'\nElapsed time for reconstruction of 1st frame: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
-    # print(f'Total time iteration: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
+    print(f'\nElapsed time for reconstruction of 1st frame: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
+    print(f'Total time iteration: {t5 - t0:.2f} seconds = {(t5 - t0) / 60:.2f} minutes')
 
     return sinogram, probe3d, backg3d
 
@@ -1025,7 +1020,7 @@ def masks_application(difpad, jason):
 
     center_row, center_col = jason["DifpadCenter"]
 
-    if jason["DetectorExposure"][0]:  # still being tested
+    if jason["DetectorExposure"][0]: 
         print("Removing pixels above detector pile-up threshold")
         mask = np.zeros_like(difpad)
         difpad_region = np.zeros_like(difpad)
