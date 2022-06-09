@@ -92,7 +92,9 @@ def cat_ptycho_serial(args):
     probe_list    = []
     bkg_list      = []
     
-    first_run = True
+    counter = 0
+    first_iteration = True
+    first_of_folder = True
     for acquisitions_folder in jason['Acquisition_Folders']:  
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
@@ -104,37 +106,41 @@ def cat_ptycho_serial(args):
             
             arguments = (args,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
 
-            difpads,_ , jason = restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads'],first_run=first_run) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            difpads,_ , jason = restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads'],first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
 
             arg = [jason, [measurement_file], [measurement_filepath], ibira_datafolder, acquisition_folder, scans_string, positions_string]
 
-            if first_run: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+            if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shapey, object_shapex, maxroi, hsize, object_pixel_size, jason = set_object_shape(difpads,arg)
                 jason["object_pixel"] = object_pixel_size
                 arg[0] = jason # update args
-                params = (arg,maxroi,hsize,(object_shapey,object_shapex),len(filenames))
+                first_iteration = False
 
-            sinogram = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
-            probe    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
-            bkg      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
+            params = (arg,maxroi,hsize,(object_shapey,object_shapex),len(filenames))
+
+            object_dummy = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
+            probe_dummy    = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
+            bkg_dummy      = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
             
             t2 = time() 
-            sinogram, probe2d, bkg2d = ptycho_main(difpads, sinogram, probe, bkg, params, 0, 1, jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            object2d, probe2d, bkg2d = ptycho_main(difpads, object_dummy, probe_dummy, bkg_dummy, params, 0, 1, jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
             t3 = time()
-
-            if first_run == True:
-                object = sinogram
+            if first_of_folder:
+                object = object2d
                 probe  = probe2d
                 bkg    = bkg2d
-                first_run = False
+                first_of_folder = False
             else:
-                object = np.concatenate((object,sinogram), axis = 0)
+                object = np.concatenate((object,object2d), axis = 0)
                 probe  = np.concatenate((probe,probe2d),  axis = 0)
                 bkg    = np.concatenate((bkg,bkg2d),    axis = 0)
+            counter +=1
 
-    sinogram_list.append(object)
-    probe_list.append(probe)
-    bkg_list.append(bkg)
+        first_of_folder = True
+
+        sinogram_list.append(object)
+        probe_list.append(probe)
+        bkg_list.append(bkg)
 
     return sinogram_list, probe_list, bkg_list, t2, t3,jason
 
@@ -196,7 +202,7 @@ if __name__ == '__main__':
         jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
         jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
         jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
-        jason["DetectorExposure"].append(input_dict['/entry/beamline/detector']['pimega']["exposure time"])
+        jason["DetectorExposure"][1] = input_dict['/entry/beamline/detector']['pimega']["exposure time"]
 
 
         jason["EmptyFrame"] = os.path.join(ibira_datafolder,images_folder,'empty.hdf5')
@@ -231,6 +237,7 @@ if __name__ == '__main__':
     else: # serial reconstruction, either of single or multiple 2D frames
         object,probe,bkg,t2,t3,jason  = cat_ptycho_serial(args)  # restauration happens inside
 
+    print("shapes obj probe",len(object),object[0].shape,len(probe),probe[0].shape)
     if len(object) > 1: # Concatenate if object is a list because divided into more than one folder (All projections in each folder are resolved together, and put on a list of size len(Aquisition_folders))
         object = np.concatenate(object, axis = 0)
         probe  = np.concatenate(probe, axis = 0)
@@ -239,6 +246,7 @@ if __name__ == '__main__':
         object = object[0]
         probe  = probe[0]
         bkg    = bkg[0]
+    print("shapes obj probe",len(object),object.shape,len(probe),probe.shape)
 
     print('Finished Ptycho reconstruction!')
 
@@ -270,7 +278,9 @@ if __name__ == '__main__':
         print('Saving Probe!')
         save_variable(probe, os.path.join(jason['ProbePath'], 'probe_' + acquisition_folder))
 
-    preview_ptycho(jason, phase, absol, probe, frame=0)
+
+    for i in range(phase.shape[0]):
+        preview_ptycho(jason, phase, absol, probe, frame=i)
 
     t6 = time()
     print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')

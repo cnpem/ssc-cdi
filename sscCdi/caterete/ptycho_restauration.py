@@ -198,7 +198,8 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
             mask = np.zeros_like(raw_difpads[0])
     else:
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-    
+        mask = np.flip(mask,0)
+        
     # sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
 
     if jason['DifpadCenter'] == []:
