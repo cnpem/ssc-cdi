@@ -149,7 +149,7 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
 
     return unwrapped_sinogram
 
-def phase_unwrap(img,iterations=0,non_negativity=False,remove_gradient = False):
+def phase_unwrap_G(img,iterations=0,non_negativity=False,remove_gradient = False):
     """ Function for phase unwrapping reconstructed object. 
 
     Args:
@@ -196,7 +196,12 @@ def RemoveGrad( img, mask ):
     vec[0,0] = (x*F).sum()
     vec[1,0] = (y*F).sum()
     vec[2,0] = (F).sum()
-    abc = numpy.dot( numpy.linalg.inv(mat), vec).flatten()
+    eye = numpy.eye(mat.shape[0])
+    eps = 1e-3 # valor tirado do *
+    if 1: # com regularização
+        abc = numpy.dot( numpy.linalg.inv(mat + eps * eye), vec).flatten() 
+    else: # sem regularização
+        abc = numpy.dot( numpy.linalg.inv(mat), vec).flatten()
     a = abc[0]
     b = abc[1]
     c = abc[2]
@@ -209,7 +214,8 @@ def RemoveGrad( img, mask ):
     #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
     return new
 
-def phase_unwrap_new(new):
+# def phase_unwrap_M(new):
+def phase_unwrap(new):
     new = RemoveGrad(new, new > 0 )
     new = unwrap_phase(new)
     return new
