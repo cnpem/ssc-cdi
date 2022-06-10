@@ -293,7 +293,7 @@ def inputs_tab():
     label6 = create_label_widget("Post-processing")
     Phaseunwrap      = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
     Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
-    phase_unwrap_box = widgets.Box([Phaseunwrap.widget,Phaseunwrap_iter.widget],layout=slider_layout3)
+    phase_unwrap_box = widgets.Box([Phaseunwrap.widget],layout=items_layout2)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Top",   slider=True,layout=slider_layout)
     bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1),  description="Bottom",   slider=True,layout=slider_layout)
@@ -315,7 +315,7 @@ def inputs_tab():
                                                     'ProbeSupport_centerX': ProbeSupport_centerX.widget,
                                                     'ProbeSupport_centerY': ProbeSupport_centerY.widget,
                                                     'PhaseUnwrap': Phaseunwrap.widget,
-                                                    'PhaseUnwrap_iter': Phaseunwrap_iter.widget,
+                                                    'PhaseUnwrap_iter': Phaseunwrap_iter.widget, # Remove this in the future
                                                     'top_crop': top_crop.widget,
                                                     'bottom_crop': bottom_crop.widget,
                                                     'left_crop': left_crop.widget,
