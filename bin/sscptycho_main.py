@@ -253,11 +253,11 @@ if __name__ == '__main__':
 
     t4 = time()
     
-    if jason['Phaseunwrap'][0]: # Apply phase unwrap to data
+    if jason['Phaseunwrap'][0]: # Apply phase unwrap to data 
         print('Unwrapping sinogram...')
         phase,absol = apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
-        save_variable2(phase, os.path.join(jason['ObjPath'],'unwrapped_phase_' + acquisition_folder))
-        save_variable2(absol, os.path.join(jason['ObjPath'],'unwrapped_magnitude_' + acquisition_folder))
+        cropped_sinogram = absol*np.exp(-1j*phase)
+        save_variable(cropped_sinogram, os.path.join(jason['ObjPath'],'unwrapped_object_' + acquisition_folder))
     else:
         print("Extracting phase and magnitude...")
         phase = np.angle(cropped_sinogram)

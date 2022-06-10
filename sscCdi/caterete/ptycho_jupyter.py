@@ -122,9 +122,7 @@ def delete_files(dummy):
 
     folderpaths_to_remove =[os.path.join(global_dict["output_folder"],'00_frames_original'),
                             os.path.join(global_dict["output_folder"],'01_frames_ordered'),
-                            os.path.join(global_dict["output_folder"],'02_frames_cropped'),
-                            os.path.join(global_dict["output_folder"],'03_frames_unwrapped'),
-                            os.path.join(global_dict["output_folder"],'04_frames_convexHull')]
+]
                             
     import shutil
     for folderpath in folderpaths_to_remove:
@@ -162,7 +160,7 @@ def run_ptycho(dummy):
         run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
 def load_json(dummy):
-    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["template_json.json"])
+    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["template_json"])
     template_dict = json.load(open(json_path))
     for key in template_dict:
         global_dict[key] = template_dict[key]
@@ -200,18 +198,11 @@ def inputs_tab():
 
         output_folder = os.path.join( global_dict["ProposalPath"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
 
-        global_paths_dict["jupyter_folder"]            = "/ibira/lnls/beamlines/caterete/apps/jupyter/"
-        global_paths_dict["ptycho_folder"]             = ptycho_folder
-        global_paths_dict["ptycho_script_path"]        = pythonScript
-        global_paths_dict["template_json"]             = "000000_template.json"
-        global_paths_dict["slurm_filepath"]            = os.path.join(ptycho_folder,'slurm_job.srm') # path to create slurm_file
-        global_paths_dict["json_filepath"]             = os.path.join(ptycho_folder,'user_input.json') # path with input json to run
         global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'object_{acquisition_folders[0]}.npy') # path to load npy with first reconstruction preview
         global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'object_{acquisition_folders[0]}_cropped.npy')
         global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'probe_{acquisition_folders[0]}.npy') # path to load probe
         global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'03_difpad_raw_mean.npy') # path to load diffraction pattern
         global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
-    
         global_paths_dict["output_folder"]             = output_folder
 
         global_dict["DifpadCenter"] = [centerx,centery]
@@ -524,12 +515,9 @@ def crop_tab():
         sinogram = np.load(global_paths_dict["sinogram_filepath"] ) 
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
-        print(selection_slider.widget.max, selection_slider.widget.value )
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
-        print(top_crop.widget,left_crop.widget,right_crop.widget,bottom_crop.widget)
-        # widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
     def save_cropped_sinogram(dummy):
@@ -670,7 +658,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
-    box = widgets.HBox([machine_selection,load_json_button.widget,delete_temporary_files_button.widget])
+    box = widgets.HBox([machine_selection,load_json_button.widget])
     boxSlurm = widgets.HBox([gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
     box = widgets.VBox([box,boxSlurm])
 

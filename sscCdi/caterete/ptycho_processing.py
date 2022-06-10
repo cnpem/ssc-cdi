@@ -24,14 +24,59 @@ from numpy.fft import fftshift as shift
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
-
 from .misc import create_directory_if_doesnt_exist
+
+def match_cropped_frame_dimension(sinogram,frame):
+    """ Match the new incoming frame to the same squared shape of the sinogram. Sinogram should have shape (M,N,N)!
+
+    Args:
+        sinogram : sinogram of shape (M,N,N)
+        frame : frame of shape (A,B)
+
+    Returns:
+        frame : frame of shape (N,N)
+    """
+
+    if sinogram.shape != frame.shape:
+        print('Frame shape do not match the sinogram. Applying correction')
+        print(f'\t Sinogram shape: {sinogram.shape}. Frame shape: {frame.shape}')
+
+    if sinogram.shape[1] < frame.shape[0]:
+        frame = frame[0:sinogram.shape[1],:]
+    elif sinogram.shape[1] > frame.shape[0]:
+        frame = np.concatenate((frame,frame[-1,:]),axis=0) # appended a repeated last line
+
+    if sinogram.shape[2] < frame.shape[1]:
+        frame = frame[:,0:sinogram.shape[2]]
+    elif sinogram.shape[2] > frame.shape[1]:
+        frame = np.concatenate((frame,frame[:,-1]),axis=1) # appended a repeated last line
+
+    if sinogram.shape != frame.shape:
+        print(f'\t Corrected drame shape: {frame.shape}')
+
+    return frame
+
+def make_1st_frame_squared(frame):
+    """ Crops frame of dimension (A,B) to (A,A) or (B,B), depending if A or B is smaller
+
+    Args:
+        frame: 2D frame
+
+    Returns:
+        frame: cropped frame with smalelr dimension
+    """
+    if frame.shape[0] != frame.shape[1]:
+        smallest_shape = min(frame.shape[0],frame.shape[1])
+        frame = frame[0:smallest_shape,0:smallest_shape]
+    return frame
+
 
 def crop_sinogram(sinogram, jason): 
 
     cropped_sinogram = sinogram
     if jason['AutoCrop'] == True: # automatically crop borders with noise
         print('Auto cropping frames...')
+        
         if 1: # Miqueles approach using scan positions
             frame = 0
             ibira_datafolder = jason["ProposalPath"]
@@ -51,8 +96,10 @@ def crop_sinogram(sinogram, jason):
 
                     cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],jason,probe_positions) # crop
                     if frame == 0: 
+                        cropped_frame =  make_1st_frame_squared(cropped_frame)
                         cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
                     
+                    cropped_frame = match_cropped_frame_dimension(cropped_sinogram,cropped_frame)
                     print("SHAPES:",len(filenames),sinogram.shape, cropped_frame.shape)
                     cropped_sinogram[frame,:,:] = cropped_frame
                     frame += 1
@@ -69,10 +116,10 @@ def crop_sinogram(sinogram, jason):
             min_crop = min(min_crop_value)
             cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
-        # if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-        #     cropped_sinogram = cropped_sinogram[:,0:-1, :]
-        # if cropped_sinogram.shape[2] % 2 != 0:
-        #     cropped_sinogram = cropped_sinogram[:,:, 0:-1]
+        if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+            cropped_sinogram = cropped_sinogram[:,0:-1, :]
+        if cropped_sinogram.shape[2] % 2 != 0:
+            cropped_sinogram = cropped_sinogram[:,:, 0:-1]
         print('\t Done!')
         
     return cropped_sinogram
@@ -147,7 +194,7 @@ def apply_phase_unwrap(sinogram, jason):
 
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
-        # absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
+        # absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
         # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
         absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sinogram[frame,:,:]))
         phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sinogram[frame,:,:]))
@@ -605,34 +652,6 @@ def save_variable(variable, predefined_name, savename=""):
         np.save(savename, variable)
     else:
         np.save(predefined_name, variable)
-
-def save_variable2(variable, predefined_name, savename=""):
-    """ Function to save reconstruction object, probe and/or background. 
-    
-    This function presents some redundancy. Should be improved!
-
-    Args:
-        variable : variable to be saved (e.g. sinogram, probe reconstruction and/or background)
-        predefined_name: predefined name for saving the output variable
-        savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
-    """    
-    print(f'Saving variable {predefined_name}...')
-    print(len(variable))
-    variable = np.asarray(variable, dtype=object)
-    # for i in range(variable.shape[0]):
-    #     print('shapes', variable[i].shape)
-    for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
-        if math.isnan(variable[i][:, :].sum()):
-            variable[i][:, :] = np.zeros(variable[i][:, :].shape)
-
-    variable = np.asarray(variable, dtype=np.float32)
-
-    if savename != "":
-        np.save(savename, variable)
-    else:
-        np.save(predefined_name, variable)
-
-    print('\t', savename, variable.shape)
 
 
 def resolution_frc(data, pixel, plot=False,plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
