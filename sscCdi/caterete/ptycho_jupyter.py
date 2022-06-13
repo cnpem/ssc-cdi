@@ -98,13 +98,13 @@ def update_cpus_gpus(cpus,gpus):
     if gpus == 0:
         global_dict["GPUs"] = []
     elif gpus == 1:
-        global_dict["GPUs"] = [0]
+        global_dict["GPUs"] = [2] # GPUs 2 and 5 are the ones not used by the Pimega detector
     elif gpus == 2:
-        global_dict["GPUs"] = [0,1]
+        global_dict["GPUs"] = [2,5]
     elif gpus == 3:
-        global_dict["GPUs"] = [0,1,2]
+        global_dict["GPUs"] = [2,5,0]
     elif gpus == 4:
-        global_dict["GPUs"] = [0,1,2,3]
+        global_dict["GPUs"] = [2,5,0,1]
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
