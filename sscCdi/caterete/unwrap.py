@@ -82,7 +82,7 @@ def RemoveZernike(img,mask):
     return img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx*yy + gradient[3]*xx + gradient[4]*yy + gradient[5]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
-def RemoveGradOld(img,mask):
+def RemoveGrad(img,mask):
     """ Giovanni's function for removing a gradient.
 
     Args:
@@ -149,7 +149,7 @@ def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient
 
     return unwrapped_sinogram
 
-def phase_unwrap_G(img,iterations=0,non_negativity=False,remove_gradient = False):
+def phase_unwrap(img,iterations=0,non_negativity=False,remove_gradient = False):
     """ Function for phase unwrapping reconstructed object. 
 
     Args:
@@ -176,7 +176,7 @@ def phase_unwrap_G(img,iterations=0,non_negativity=False,remove_gradient = False
         zernike = RemoveGrad(zernike,mask=mask)
     return zernike
 
-def RemoveGrad( img, mask ):
+def RemoveGrad_new( img, mask ):
     xy = numpy.argwhere( mask > 0)
     n = len(xy)
     y = xy[:,0].reshape([n,1])
@@ -214,8 +214,7 @@ def RemoveGrad( img, mask ):
     #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
     return new
 
-# def phase_unwrap_M(new):
-def phase_unwrap(new):
-    new = RemoveGrad(new, new > 0 )
+def phase_unwrap_new(new):
     new = unwrap_phase(new)
+    # new = RemoveGrad(new, new > 0 )
     return new
