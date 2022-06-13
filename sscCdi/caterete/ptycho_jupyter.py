@@ -14,7 +14,7 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 
 from .misc import create_directory_if_doesnt_exist
 
-if 0: # paths for beamline use
+if 1: # paths for beamline use
     ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
