@@ -15,21 +15,20 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 from .misc import create_directory_if_doesnt_exist
 
 if 1: # paths for beamline use
-    ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
-    ptycho_folder   = "/ibira/lnls/beamlines/caterete/apps/jupyter/" 
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
+
+jupyter_folder = "/ibira/lnls/beamlines/caterete/apps/jupyter/"
 
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
 global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
-                    "ptycho_folder"            : ptycho_folder,
                     "ptycho_script_path"       : pythonScript,
                     "template_json"            : "000000_template.json",
-                    "slurm_filepath"           : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
-                    "json_filepath"            : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
+                    "slurm_filepath"           : os.path.join(jupyter_folder,'slurm_job.srm'), # path to create slurm_file
+                    "json_filepath"            : os.path.join(jupyter_folder,'user_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
@@ -37,7 +36,6 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                     "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
                 }
-
 
 
 
