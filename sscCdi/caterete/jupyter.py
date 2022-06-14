@@ -63,13 +63,14 @@ def monitor_job_execution(given_jobID,mafalda):
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
 
-def package_versions_for_caterete():
+def package_versions_for_caterete(vCdi='0.1.0',vPtycho='1.0.2',vPimega='0.0.4',vRaft='1.0.3',vRadon='1.0.0',vResolution='1.2.3'):
 
-    packages = {'sscCdi': '0.1.0',
-             'sscPimega': '0.0.4',
-               'sscRaft': '1.0.3',
-              'sscRadon': '1.0.0',
-         'sscResolution': '1.2.3'}
+    packages = {'sscCdi': {vCdi},
+             'sscPtycho': {vPtycho},
+             'sscPimega': {vPimega},
+               'sscRaft': {vRaft},
+              'sscRadon': {vRadon},
+         'sscResolution': {vResolution}}
 
     return packages
 
