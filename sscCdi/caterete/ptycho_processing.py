@@ -26,6 +26,63 @@ from numpy.fft import ifft2 as ifft2
 
 from .misc import create_directory_if_doesnt_exist
 
+
+
+def define_paths(jason):
+    if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
+    
+    #=========== Set Parameters and Folders =====================
+    print('Proposal path: ',jason['ProposalPath'] )
+    print('Acquisition folder: ',jason["Acquisition_Folders"][0])
+ 
+    if jason["PreviewGCC"][0] == True: # path convention for GCC users
+        if 'LogfilePath' not in jason: jason['LogfilePath'] = ''
+        jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
+        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1],'preview')
+        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1],'difpads')
+        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+    else:
+        beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
+        print("Output path:",     beamline_outputs_path)
+        jason["LogfilePath"]    = beamline_outputs_path
+        jason["PreviewFolder"]  = beamline_outputs_path
+        jason["SaveDifpadPath"] = beamline_outputs_path
+        jason["ObjPath"]        = beamline_outputs_path
+        jason["ProbePath"]      = beamline_outputs_path
+        jason["BkgPath"]        = beamline_outputs_path
+
+
+    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ObjPath'],   jason['InitialObj']) # append initialObj filename to path
+    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ProbePath'], jason['InitialProbe'])
+    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['BkgPath'],   jason['InitialBkg'])
+
+    jason['scans_string'] = 'scans'
+    jason['positions_string']  = 'positions'
+
+    images_folder    = os.path.join(jason["Acquisition_Folders"][0],'images')
+
+    input_dict = json.load(open(os.path.join(jason['ProposalPath'] ,jason["Acquisition_Folders"][0],'mdata.json')))
+    jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
+    jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+    jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+    jason["DetectorExposure"][1] = input_dict['/entry/beamline/detector']['pimega']["exposure time"]
+    jason["EmptyFrame"] = os.path.join(jason['ProposalPath'] ,images_folder,'empty.hdf5')
+    jason["FlatField"]  = os.path.join(jason['ProposalPath'] ,images_folder,'flat.hdf5')
+    jason["Mask"]       = os.path.join(jason['ProposalPath'] ,images_folder,'mask.hdf5')
+    return jason
+
+
+def get_files_of_interest(jason):
+    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
+
+    if jason['Projections'] != []:
+        filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
+
+    return filepaths, filenames
+
+
 def match_cropped_frame_dimension(sinogram,frame):
     """ Match the new incoming frame to the same squared shape of the sinogram. Sinogram should have shape (M,N,N)!
 
@@ -55,6 +112,7 @@ def match_cropped_frame_dimension(sinogram,frame):
         print(f'\t Corrected drame shape: {frame.shape}')
 
     return frame
+
 
 def make_1st_frame_squared(frame):
     """ Crops frame of dimension (A,B) to (A,A) or (B,B), depending if A or B is smaller
@@ -124,6 +182,7 @@ def crop_sinogram(sinogram, jason):
         
     return cropped_sinogram
 
+
 def autocrop_using_scan_positions(image,jason,probe_positions):
 
     probe_positions = 1e-6 * probe_positions / jason['object_pixel']     #scanning positions @ image domain
@@ -140,6 +199,7 @@ def autocrop_using_scan_positions(image,jason,probe_positions):
     new = new + abs(new.min())
 
     return new
+
 
 def autocrop_miqueles_operatorT(image):
 
@@ -174,6 +234,7 @@ def autocrop_miqueles_operatorT(image):
     chull = convex_hull_image(mask)
     image[ chull == 0 ] = 0 #cropando
     return image
+
 
 def apply_phase_unwrap(sinogram, jason):
 
@@ -232,6 +293,7 @@ def calculate_FRC(sinogram, jason):
 
     return jason
 
+
 def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
     """ Show plot in a specific format 
 
@@ -276,6 +338,7 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
     plt.show()
     plt.clf()
     plt.close()
+
 
 def read_probe_positions(probe_positions_filepath, measurement):
     """Read probe positions from .txt data file
@@ -337,7 +400,6 @@ def create_squared_mask(start_row, start_column, height, width, mask_shape):
     mask = np.zeros(mask_shape)
     mask[start_row:start_row + height, start_column:start_column + width] = 1
     return mask
-
 
 
 def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, center_y, object_size, dx):
@@ -402,6 +464,7 @@ def set_object_pixel_size(jason,hsize):
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
 
     return dx, jason
+
 
 def setfresnel(dx=1, pixel=55.55E-6, energy=3.8E3, z=1):
     """Calculate Fresnel number
@@ -556,6 +619,7 @@ def set_background(difpads, jason):
 
     return background
 
+
 def probe_support(probe, hsize, radius, center_x, center_y):
     """Create a support for probe
 
@@ -698,6 +762,7 @@ def resolution_frc(data, pixel, plot=False,plot_output_folder="./outputs/preview
 
     return resolution
 
+
 def export_json(params,output_path):
     """ Exports a dictionary to a json file
 
@@ -779,7 +844,6 @@ def auto_crop_noise_borders(complex_array):
     return best_crop
 
 
-
 def create_output_directories(jason):
     if jason["PreviewGCC"][0] == True:
         try:
@@ -796,7 +860,6 @@ def create_output_directories(jason):
         create_directory_if_doesnt_exist(jason["ProbePath"])
     if jason["SaveDifpadPath"] != "":
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
-
 
 
 def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
@@ -821,6 +884,7 @@ def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
     probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
 
     return probe_positions, offset_bottomright
+
 
 def set_object_shape(difpads,args,offset_topleft = 20):
 
@@ -851,6 +915,7 @@ def set_object_shape(difpads,args,offset_topleft = 20):
     # print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
 
     return object_shape,object_shape, maxroi, hsize, dx, jason
+
 
 def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
     t0 = time()
@@ -961,6 +1026,7 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
 
     return sinogram, probe3d, backg3d
 
+
 def _worker_batch_frames_(params, idx_start, idx_end, gpu):
     
     output_object = params[0]
@@ -974,6 +1040,7 @@ def _worker_batch_frames_(params, idx_start, idx_end, gpu):
 
     output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:] = ptycho_main( difpads[_start_:_end_,:,:,:], output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:], args, _start_, _end_, gpu)
     
+
 def _build_batch_of_frames_(params):
 
     total_frames = params[5][4]
@@ -1033,6 +1100,7 @@ def ptycho3d_batch( difpads, threads, args):
 
     return output_object,output_probe,output_backg
 
+
 def masks_application(difpad, jason):
 
     center_row, center_col = jason["DifpadCenter"]
@@ -1056,6 +1124,7 @@ def masks_application(difpad, jason):
 
     return difpad
 
+
 def create_circular_mask(center_row, center_col, radius, mask_shape):
     """Create a circular mask to block the center of the diffraction pattern
 
@@ -1078,6 +1147,7 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
 
     mask = np.where((Xmesh - center_col) ** 2 + (Ymesh - center_row) ** 2 <= radius ** 2, 1, 0)
     return mask
+
 
 def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
     """ Fit of 2d lorentzian to a matrix
@@ -1119,6 +1189,7 @@ def get_central_region(difpad, center_estimate, radius):
     center_r, center_c = int(center_estimate[0]), int(center_estimate[1])
     region_around_center = difpad[center_r - radius:center_r + radius + 1, center_c - radius:center_c + radius + 1]
     return region_around_center
+
 
 def refine_center_estimate(difpad, center_estimate, radius=20):
     """
@@ -1214,3 +1285,18 @@ def get_difpad_center(difpad, refine=True, fit=False, radius=20):
         center = (round(center_estimate[0]), round(center_estimate[1]))
     return center
 
+
+def preview_ptycho(jason, phase, absol, probe, frame = 0):
+    if jason['Preview']:  # Preview Reconstruction:
+        ''' Plot scan points
+        plt.figure()
+        plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
+        plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
+        plt.savefig(jason['PreviewFolder'] + '/scatter_2d.png', format='png', dpi=300)
+        plt.clf()
+        plt.close()
+        '''
+
+        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_2d_' + str(frame), nlines=2)
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(frame), cmap='gray', nlines=1)
+        

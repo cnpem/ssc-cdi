@@ -321,9 +321,10 @@ def restauration_processing_binning(img, args):
 
     return img
 
-def restauration_cat_3d(args,preview  = False,save  = False,read = False):
+def restauration_cat_3d(args):
     
-    jason, ibira_datafolder, scans_string, _ = args
+    ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
+    preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
 
     diffractionpattern = []
     count = -1
