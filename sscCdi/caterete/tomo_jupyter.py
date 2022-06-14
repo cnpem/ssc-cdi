@@ -208,17 +208,19 @@ def folders_tab():
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(figsize=(4,4))
+        figure, subplot = plt.subplots(figsize=(5,5))
         subplot.imshow(np.random.random((4,4)),cmap='gray')
         figure.canvas.header_visible = False 
         plt.show()
 
+
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots(figsize=(4,4))
+        figure2, subplot2 = plt.subplots(figsize=(5,5))
         subplot2.imshow(np.random.random((4,4)),cmap='gray')
         figure2.canvas.header_visible = False 
         plt.show()
+
 
     def update_fields(ibira_data_path,folders_list,sinogram_path):
         global_dict["ibira_data_path"] = ibira_data_path
@@ -290,15 +292,16 @@ def folders_tab():
 
 def crop_tab():
 
-    initial_image = np.ones((100,100)) # dummy
+    initial_image = np.ones((5,5)) # dummy
     vertical_max, horizontal_max = initial_image.shape[0]//2, initial_image.shape[1]//2
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots()
+        figure, subplot = plt.subplots(figsize=(5,5))
         subplot.imshow(initial_image,cmap='gray')
         figure.canvas.header_visible = False 
         plt.show()
+
     
     def load_frames(dummy, args = ()):
         global sinogram
@@ -359,6 +362,7 @@ def unwrap_tab():
         figure_unwrap.canvas.draw_idle()
         figure_unwrap.canvas.header_visible = False 
         plt.show()
+
     
     def phase_unwrap(dummy):
         global unwrapped_sinogram
@@ -466,6 +470,7 @@ def chull_tab():
             subplot.imshow(np.random.random((3,3)),cmap='gray')
         format_chull_plot(figure,subplots)
         plt.show()
+
     
     def load_unwrapped_sinogram(dummy,args=()):
         global unwrapped_sinogram
@@ -565,6 +570,7 @@ def wiggle_tab():
         figure.canvas.header_visible = False 
         plt.show()
 
+
     output2 = widgets.Output()
     with output2:
         figure2, subplot2 = plt.subplots(2,2)
@@ -574,6 +580,7 @@ def wiggle_tab():
         subplot2[1,1].imshow(np.random.random((4,4)),cmap='gray')
         format_wiggle_plot(figure2,subplot2)
         plt.show()
+
     
     def load_sinogram(dummy):
         
@@ -728,6 +735,7 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
         plt.show()
 
+
     output2 = widgets.Output()
     with output2:
         figure2, axs = plt.subplots(2,2,figsize=(10,5))
@@ -738,6 +746,7 @@ def tomo_tab():
         figure2.canvas.header_visible = False 
         figure2.tight_layout()
         plt.show()
+
 
     def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis):
         update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis,title=True)
@@ -1014,7 +1023,6 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
 
     return box,tab, global_dict  
-
 
 
 if __name__ == "__main__":
