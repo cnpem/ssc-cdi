@@ -14,7 +14,6 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 
 from .misc import create_directory_if_doesnt_exist
 
-
 if 1: # paths for beamline use
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
@@ -359,6 +358,7 @@ def mask_tab():
         figure.canvas.header_visible = False 
         plt.show()
 
+
     output2 = widgets.Output()
     with output2:
         figure2, subplot2 = plt.subplots(figsize=(4,4))
@@ -367,6 +367,7 @@ def mask_tab():
         figure2.canvas.header_visible = False 
         plt.show()
 
+
     output3 = widgets.Output()
     with output3:
         figure3, subplot3 = plt.subplots(figsize=(4,4))
@@ -374,6 +375,7 @@ def mask_tab():
         subplot3.set_title('Masked')
         figure3.canvas.header_visible = False 
         plt.show()
+
 
 
     def load_frames(dummy):
@@ -408,6 +410,7 @@ def center_tab():
         figure.canvas.header_visible = False 
         plt.show()
 
+
     def plotshow(figure,subplot,image,title="",figsize=(8,8),savepath=None,show=False):
         subplot.clear()
         cmap, colors, bounds, norm = miqueles_colormap(image)
@@ -415,7 +418,9 @@ def center_tab():
         if title != "":
             subplot.set_title(title)
         if show:
-            plt.show()
+            if __name__ == '__main__': 
+                plt.show()
+
         figure.canvas.draw_idle()
 
     def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,exposure_time,radius):
@@ -435,8 +440,6 @@ def center_tab():
         mdata_filepath = os.path.join(global_dict["ProposalPath"],global_dict['Acquisition_Folders'][0],'mdata.json')
         input_dict = json.load(open(mdata_filepath))
 
-        print(CentralMask_radius.widget,CentralMask_bool.widget,DetectorPileup.widget)
-        print(centerx.widget.value,centery.widget.value)
         image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(global_dict),'image':fixed(image),
@@ -467,6 +470,7 @@ def fresnel_tab():
         subplot.set_title('Propagated Probe')
         figure.canvas.header_visible = False 
         plt.show()
+
 
     def update_probe_plot(fig,subplot,image_list,frame_list,index):
         subplot.clear()
@@ -523,6 +527,7 @@ def crop_tab():
         subplot.imshow(initial_image,cmap='gray')
         figure.canvas.header_visible = False 
         plt.show()
+
     
     def load_frames(dummy):
         global sinogram
@@ -592,6 +597,7 @@ def reconstruction_tab():
         figure.canvas.header_visible = False 
         plt.show()
 
+
     output3 = widgets.Output()
     with output3:
         figure3, subplot3 = plt.subplots(figsize=(4,4))
@@ -599,12 +605,14 @@ def reconstruction_tab():
         figure3.canvas.header_visible = False 
         plt.show()
 
+
     output2 = widgets.Output()
     with output2:
         figure2, subplot2 = plt.subplots(figsize=(4,4))
         subplot2.imshow(initial_image,cmap='gray')
         figure2.canvas.header_visible = False 
         plt.show()
+
 
     def load_frames(dummy):
         global sinogram
@@ -627,16 +635,18 @@ def reconstruction_tab():
     buttons_box = widgets.Box([load_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
 
     controls_box = widgets.Box([play_box],layout=get_box_layout('500px'))
-    objects_box = widgets.HBox([output,output3])
+    objects_box = widgets.HBox([output,output3,output2])
     object_box = widgets.VBox([controls_box,objects_box])
-    probe_box = widgets.VBox([output2])
-    box = widgets.HBox([object_box,probe_box])
+    box = widgets.HBox([object_box])
     box = widgets.VBox([buttons_box,box])
 
     return box
 
 def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=crop_tab(),tab7=mask_tab()):
     
+    __name__ = "__main__"
+
+
     children_dict = {
     "Ptycho Inputs"     : tab2,
     "Ptychography"      : tab5,
