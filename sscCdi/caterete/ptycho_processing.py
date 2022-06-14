@@ -140,10 +140,7 @@ def crop_sinogram(sinogram, jason):
             ibira_datafolder = jason["ProposalPath"]
             for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
                 
-                filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,jason['scans_string']), look_for_extension=".hdf5")
-                
-                if jason['Projections'] != []:
-                    filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
+                filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
 
                 for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
