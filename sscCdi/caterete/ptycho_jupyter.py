@@ -14,6 +14,7 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 
 from .misc import create_directory_if_doesnt_exist
 
+
 if 1: # paths for beamline use
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
@@ -582,25 +583,25 @@ def ptycho_tab():
 
 def reconstruction_tab():
     
-    initial_image = np.ones((100,100)) # dummy
+    initial_image = np.random.random((5,5)) # dummy
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots()
+        figure, subplot = plt.subplots(figsize=(4,4))
         subplot.imshow(initial_image,cmap='gray')
         figure.canvas.header_visible = False 
         plt.show()
 
     output3 = widgets.Output()
     with output3:
-        figure3, subplot3 = plt.subplots()
+        figure3, subplot3 = plt.subplots(figsize=(4,4))
         subplot3.imshow(initial_image,cmap='gray')
         figure3.canvas.header_visible = False 
         plt.show()
 
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots()
+        figure2, subplot2 = plt.subplots(figsize=(4,4))
         subplot2.imshow(initial_image,cmap='gray')
         figure2.canvas.header_visible = False 
         plt.show()
@@ -616,13 +617,9 @@ def reconstruction_tab():
         widgets.interactive_output(update_imshow, {'sinogram':fixed(np.abs(sinogram)),'figure':fixed(figure3),'subplot':fixed(subplot3),'title':fixed(True), 'frame_number': selection_slider.widget})
 
         probe = np.abs(np.load(global_paths_dict["probe_filepath"]))[:,0,:,:] # get only 0th order 
-        selection_slider2.widget.max, selection_slider2.widget.value = probe.shape[0]-1, probe.shape[0]//2
-        play_control2.widget.max = selection_slider2.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider2.widget})
-
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(probe),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'cmap':fixed('jet'), 'frame_number': selection_slider.widget})
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
-    play_box2, selection_slider2,play_control2 = slide_and_play(label="Probe Selector")
 
     load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
     load_frames_button.trigger(load_frames)
@@ -632,9 +629,8 @@ def reconstruction_tab():
     controls_box = widgets.Box([play_box],layout=get_box_layout('500px'))
     objects_box = widgets.HBox([output,output3])
     object_box = widgets.VBox([controls_box,objects_box])
-    controls_box2 = widgets.Box([play_box2],layout=get_box_layout('500px'))
-    probe_box = widgets.VBox([controls_box2,output2])
-    box = widgets.HBox([object_box,vbar,probe_box])
+    probe_box = widgets.VBox([output2])
+    box = widgets.HBox([object_box,probe_box])
     box = widgets.VBox([buttons_box,box])
 
     return box

@@ -1014,3 +1014,8 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
 
     return box,tab, global_dict  
+
+
+
+if __name__ == "__main__":
+    pass
