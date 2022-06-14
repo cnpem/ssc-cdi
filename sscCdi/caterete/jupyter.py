@@ -63,15 +63,34 @@ def monitor_job_execution(given_jobID,mafalda):
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
 
-def install_packages(mafalda):
+def package_versions_for_caterete():
+
+    packages = {'sscCdi': '0.1.0',
+             'sscPimega': '0.0.4',
+               'sscRaft': '1.0.3',
+              'sscRadon': '1.0.0',
+         'sscResolution': '1.2.3'}
+
+    return packages
+
+def install_packages(mafalda,force_install=False):
+    
+    packages = package_versions_for_caterete()
+
+    if force_install:
+        force_string = '--force-install'
+    else:
+        force_string = ''
+
+
     print('Installing packages @ Bertha (local)...')
-    cmd = """pip config --user set global.extra-index-url http://gcc.lnls.br:3128/simple/
+    cmd = f"""pip config --user set global.extra-index-url http://gcc.lnls.br:3128/simple/
 pip config --user set global.trusted-host gcc.lnls.br
-pip install --upgrade --force-reinstall sscCdi==0.1.0
-pip install --upgrade --force-reinstall sscPimega==0.0.4
-pip install --upgrade --force-reinstall sscRaft==1.0.3
-pip install --upgrade --force-reinstall sscRadon==1.0.0
-pip install --upgrade --force-reinstall sscResolution==1.2.3"""
+pip install --upgrade {force_string} "sscCdi"=={packages["sscCdi"]}
+pip install --upgrade {force_string} "sscPimega"=={packages["sscPimega"]}
+pip install --upgrade {force_string} "sscRaft"=={packages["sscRaft"]}
+pip install --upgrade {force_string} "sscRadon"=={packages["sscRadon"]}
+pip install --upgrade {force_string} "sscResolution"=={packages["sscResolution"]}"""
     for line in cmd.split('\n'):
         print('\t',line)
         subprocess.call(line, shell=True)
