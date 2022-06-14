@@ -95,14 +95,14 @@ def update_gpu_limits(machine_selection):
     if machine_selection == 'Cluster':
         gpus.widget.max = 4
     elif machine_selection == 'Local':
-        gpus.widget.value = 1
+        gpus.widget.value = 0
         gpus.widget.max = 1
 
 
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
 
-    if machine_selection == 'Cluster':
+    if machine_selection.value == 'Cluster':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
@@ -113,13 +113,13 @@ def update_cpus_gpus(cpus,gpus):
             global_dict["GPUs"] = [0,1,2]
         elif gpus == 4:
             global_dict["GPUs"] = [0,1,2,3]
-    elif machine_selection == 'Local':
+    elif machine_selection.value == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
             global_dict["GPUs"] = [5] 
-        else:
-            print('You can only use 1 GPU to run in the local machine!')
+    else:
+        print('You can only use 1 GPU to run in the local machine!')
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
