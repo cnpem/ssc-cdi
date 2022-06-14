@@ -14,22 +14,21 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 
 from .misc import create_directory_if_doesnt_exist
 
-if 0: # paths for beamline use
-    ptycho_folder     = "/ibira/lnls/beamlines/caterete/apps/ptycho-dev/" # folder with json template, and where to output jupyter files. path to output slurm logs as well
+if 1: # paths for beamline use
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
-    ptycho_folder   = "/ibira/lnls/beamlines/caterete/apps/jupyter/" 
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
+
+jupyter_folder = "/ibira/lnls/beamlines/caterete/apps/jupyter/"
 
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
 global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
-                    "ptycho_folder"            : ptycho_folder,
                     "ptycho_script_path"       : pythonScript,
                     "template_json"            : "000000_template.json",
-                    "slurm_filepath"           : os.path.join(ptycho_folder,'slurm_job.srm'), # path to create slurm_file
-                    "json_filepath"            : os.path.join(ptycho_folder,'user_input.json'), # path with input json to run
+                    "slurm_filepath"           : os.path.join(jupyter_folder,'slurm_job.srm'), # path to create slurm_file
+                    "json_filepath"            : os.path.join(jupyter_folder,'user_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
@@ -37,7 +36,6 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                     "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
                 }
-
 
 
 
@@ -91,20 +89,37 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'o
         the_file.write(string)
     
     return slurm_filepath
-   
+
+def update_gpu_limits(machine_selection):
+
+    if machine_selection == 'Cluster':
+        gpus.widget.max = 4
+    elif machine_selection == 'Local':
+        gpus.widget.value = 1
+        gpus.widget.max = 1
+
+
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
 
-    if gpus == 0:
-        global_dict["GPUs"] = []
-    elif gpus == 1:
-        global_dict["GPUs"] = [2] # GPUs 2 and 5 are the ones not used by the Pimega detector
-    elif gpus == 2:
-        global_dict["GPUs"] = [2,5]
-    elif gpus == 3:
-        global_dict["GPUs"] = [2,5,0]
-    elif gpus == 4:
-        global_dict["GPUs"] = [2,5,0,1]
+    if machine_selection == 'Cluster':
+        if gpus == 0:
+            global_dict["GPUs"] = []
+        elif gpus == 1:
+            global_dict["GPUs"] = [0] 
+        elif gpus == 2:
+            global_dict["GPUs"] = [0,1]
+        elif gpus == 3:
+            global_dict["GPUs"] = [0,1,2]
+        elif gpus == 4:
+            global_dict["GPUs"] = [0,1,2,3]
+    elif machine_selection == 'Local':
+        if gpus == 0:
+            global_dict["GPUs"] = []
+        elif gpus == 1:
+            global_dict["GPUs"] = [5] 
+        else:
+            print('You can only use 1 GPU to run in the local machine!')
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
@@ -333,11 +348,11 @@ def inputs_tab():
 
 def mask_tab():
     
-    initial_image = np.random.random((10,10)) # dummy
+    initial_image = np.random.random((5,5)) # dummy
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots()
+        figure, subplot = plt.subplots(figsize=(4,4))
         subplot.imshow(initial_image,cmap='gray')
         subplot.set_title('Raw')
         figure.canvas.header_visible = False 
@@ -345,7 +360,7 @@ def mask_tab():
 
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots()
+        figure2, subplot2 = plt.subplots(figsize=(4,4))
         subplot2.imshow(initial_image,cmap='gray')
         subplot2.set_title('Mask')
         figure2.canvas.header_visible = False 
@@ -353,7 +368,7 @@ def mask_tab():
 
     output3 = widgets.Output()
     with output3:
-        figure3, subplot3 = plt.subplots()
+        figure3, subplot3 = plt.subplots(figsize=(4,4))
         subplot3.imshow(initial_image,cmap='gray')
         subplot3.set_title('Masked')
         figure3.canvas.header_visible = False 
@@ -561,9 +576,7 @@ def ptycho_tab():
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
 
-    job_box = widgets.VBox([job_number.widget,view_jobs_button.widget,cancel_job_button.widget])
-    box = widgets.Box([saveJsonButton.widget,run_button.widget],layout=get_box_layout('500px'))
-    box = widgets.HBox([box,job_box])
+    box = widgets.Box([saveJsonButton.widget,run_button.widget,view_jobs_button.widget,job_number.widget,cancel_job_button.widget],layout=get_box_layout('500px'))
 
     return box
 
@@ -630,11 +643,11 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     
     children_dict = {
     "Ptycho Inputs"     : tab2,
+    "Ptychography"      : tab5,
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
     "Crop"              : tab1,
-    "Ptychography"      : tab5,
     "Reconstruction"    : tab6
     }
     
@@ -646,6 +659,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     
     global machine_selection
     machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Cluster', layout={'width': '70%'},description='Machine',disabled=False)
+    widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
@@ -654,7 +668,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     jobNameField  = Input({'dummy_key':'CateretePtycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
-    gpus = Input({'dummy_key':1},'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
+    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
