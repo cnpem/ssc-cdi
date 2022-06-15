@@ -21,9 +21,6 @@ def cat_ptycho_3d(difpads,jason):
     probe = []
     background = [] 
 
-    '''
-        BEGIN MAIN PTYCHO RUN
-    '''  
     count = -1
     for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
@@ -33,18 +30,14 @@ def cat_ptycho_3d(difpads,jason):
 
         filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
 
-        total_frames = len(filenames)
         print('\nFilenames: ', filenames)
 
-        # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-        if count == 0:
+        if count == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
             object_shape, half_size, object_pixel_size, jason =sscCdi.caterete.ptycho_processing.set_object_shape(difpads[count],jason,filenames,filepaths,acquisitions_folder)
             jason["object_pixel"] = object_pixel_size
 
-        args = (jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,total_frames)
-
-        # Main ptycho iteration on ALL frames in threads
-        sinogram3d ,probe3d, background3d = sscCdi.caterete.ptycho_processing.ptycho3d_batch(difpads[count], args)
+        args = (jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,len(filenames))
+        sinogram3d ,probe3d, background3d = sscCdi.caterete.ptycho_processing.ptycho3d_batch(difpads[count], args) # Main ptycho iteration over ALL frames in threads
 
         sinogram.append(sinogram3d)
         probe.append(probe3d)
@@ -52,9 +45,6 @@ def cat_ptycho_3d(difpads,jason):
     
     t3 = time()
 
-    '''
-        END MAIN PTYCHO RUN
-    '''
     return sinogram,probe,background,t2,t3, jason
 
 
@@ -84,7 +74,7 @@ def cat_ptycho_serial(jason):
 
             object_dummy     = np.zeros((1,object_shape[1],object_shape[0]),dtype = complex) # build 3D Sinogram
             probe_dummy      = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
-            background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
+            background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]), dtype=np.float32)
             
             args = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
 
@@ -114,7 +104,6 @@ def cat_ptycho_serial(jason):
     return sinogram_list, probe_list, background_list, t2, t3, jason
 
 
-
 if __name__ == '__main__':
 
     t0 = time()
@@ -140,13 +129,15 @@ if __name__ == '__main__':
     if len(object) > 1: # Concatenate if object is a list of multiple elements. Each element is a ndarray of recons performed together
         object = np.concatenate(object, axis = 0)
         probe  = np.concatenate(probe, axis = 0)
-        background    = np.concatenate(background, axis = 0)
+        background = np.concatenate(background, axis = 0)
     else: # If one folder, get the first (and only) item on list
         object = object[0]
         probe  = probe[0]
-        background    = background[0]
+        background = background[0]
 
     print('Finished Ptycho reconstruction!')
+
+    """ ===================== Post-processing ===================== """
 
     cropped_sinogram = sscCdi.caterete.ptycho_processing.crop_sinogram(object,jason)
 
@@ -166,6 +157,8 @@ if __name__ == '__main__':
 
     jason = sscCdi.caterete.ptycho_processing.calculate_FRC(cropped_sinogram, jason)
 
+    """ ===================== Save and preview data ===================== """
+
     if jason["LogfilePath"] != "":  sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # overwrite logfile with new information
             
     if jason['SaveObj']:
@@ -180,8 +173,9 @@ if __name__ == '__main__':
         sscCdi.caterete.ptycho_processing.preview_ptycho(jason, phase, absol, probe, frame=i)
 
     t6 = time()
-    print(f'\nElapsed time for restauration of all difpads: {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
-    print(f'Ptychography time: {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f} minutes')
-    print(f'Auto Crop object time: {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
-    print(f'Phase unwrap object time: {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
-    print(f'Total time: {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
+    print('\n')
+    print(f'Restauration time:     {t2 - t1:.2f} seconds = {(t2 - t1) / 60:.2f} minutes')
+    print(f'Ptychography time:     {t3 - t2:.2f} seconds = {(t3 - t2) / 60:.2f} minutes')
+    print(f'Cropping time:         {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes')
+    print(f'Phase unwrapping time: {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
+    print(f'Total time:            {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
