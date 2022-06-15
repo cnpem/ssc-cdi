@@ -117,12 +117,10 @@ if __name__ == '__main__':
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
     t1 = time()
 
-    jason['SerialRestauration'] = False
-
     filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
     if len(filenames) > 1 and jason['SerialRestauration'] == False: # 3D batch restauration form (computationally faster, but not memory safe)
         difpads,_ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_3d(jason) # difpads is a list of size = len(Aquisition_folders)
-        object,probe,background, t2,t3, jason  =  cat_ptycho_3d(difpads,jason) 
+        object,probe,background, t2,t3, jason = cat_ptycho_3d(difpads,jason) 
     else: # serial reconstruction, either of single or multiple 2D frames
         object,probe,background,t2,t3,jason  = cat_ptycho_serial(jason)  # restauration happens inside!
 
