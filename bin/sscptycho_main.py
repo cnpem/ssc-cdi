@@ -35,20 +35,16 @@ def cat_ptycho_3d(difpads,jason):
 
         total_frames = len(filenames)
         print('\nFilenames: ', filenames)
-        args = [jason, filenames, filepaths, jason['ProposalPath'] , acquisitions_folder, jason['scans_string'], jason['positions_string']]
 
         # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
         if count == 0:
-            object_shapey, object_shapex, maxroi, hsize, object_pixel_size, jason =sscCdi.caterete.ptycho_processing.set_object_shape(difpads[count],args)
+            object_shape, half_size, object_pixel_size, jason =sscCdi.caterete.ptycho_processing.set_object_shape(difpads[count],jason,filenames,filepaths,acquisitions_folder)
             jason["object_pixel"] = object_pixel_size
-            args[0] = jason # update args
 
-        params = (args,maxroi,hsize,(object_shapey,object_shapex),total_frames)
+        args = (jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,total_frames)
 
-        threads = len(jason['GPUs'])
-        
         # Main ptycho iteration on ALL frames in threads
-        sinogram3d ,probe3d, background3d = sscCdi.caterete.ptycho_processing.ptycho3d_batch(difpads[count], threads, params)
+        sinogram3d ,probe3d, background3d = sscCdi.caterete.ptycho_processing.ptycho3d_batch(difpads[count], args)
 
         sinogram.append(sinogram3d)
         probe.append(probe3d)
@@ -81,23 +77,20 @@ def cat_ptycho_serial(jason):
 
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads'],first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
 
-            arg = [jason, [measurement_file], [measurement_filepath], jason['ProposalPath'] , jason["Acquisition_Folders"][0], jason['scans_string'], jason['positions_string']]
-
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                object_shapey, object_shapex, maxroi, hsize, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,arg)
+                object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
                 jason["object_pixel"] = object_pixel_size
-                arg[0] = jason # update args
                 first_iteration = False
-            
-            params = (arg,maxroi,hsize,(object_shapey,object_shapex),len(filenames))
 
-            object_dummy     = np.zeros((1,object_shapey,object_shapex),dtype = complex) # build 3D Sinogram
+            object_dummy     = np.zeros((1,object_shape[1],object_shape[0]),dtype = complex) # build 3D Sinogram
             probe_dummy      = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
             background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]))
             
+            args = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
+
             t2 = time() 
 
-            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, object_dummy, probe_dummy, background_dummy, params, 0, 1, jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args, 0, 1,len(jason['GPUs']))   # Main ptycho iteration on ALL frames in threads
             
             t3 = time()
 

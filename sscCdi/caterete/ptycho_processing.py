@@ -5,8 +5,9 @@ import sscResolution
 import sscPtycho
 import sscCdi
 
-import os
 from time import time
+import os
+import json
 import h5py
 import pandas as pd
 import numpy as np
@@ -415,7 +416,7 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     Returns:
         initial data for reconstruction
     """    
-    hsize = difpads.shape[-1] // 2
+    half_size = difpads.shape[-1] // 2
 
     if jason['f1'] == -1:  # Manually choose wether to find Fresnel number automatically or not
         jason['f1'] = setfresnel(dx, pixel=jason['RestauredPixelSize'], energy=jason['Energy'], z=jason['DetDistance'])
@@ -441,7 +442,7 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
         background = np.ones(difpads[0].shape) # dummy
 
     # Compute probe support:
-    probesupp = probe_support(probe, hsize, radius, center_x, center_y)
+    probesupp = probe_support(probe, half_size, radius, center_x, center_y)
 
     probe_positionsi = probe_positions + 0  # what's the purpose of declaring probe_positionsi?
 
@@ -451,14 +452,14 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     return datapack, probe_positionsi, sigmask
 
 
-def set_object_pixel_size(jason,hsize):
+def set_object_pixel_size(jason,half_size):
     c = 299792458             # Speed of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
     
     # Convert pixel size:
-    dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * hsize * 2)
+    dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * half_size * 2)
 
     return dx, jason
 
@@ -558,7 +559,7 @@ def set_initial_obj(jason, object_shape, probe, difpads):
 
     Args:
         jason (json file): file with inputs
-        hsize (int): half size of the object
+        half_size (int): half size of the object
         maxroi (int): size of the padding object
         probe (array): probe
         difpads (array): measured data
@@ -617,12 +618,12 @@ def set_background(difpads, jason):
     return background
 
 
-def probe_support(probe, hsize, radius, center_x, center_y):
+def probe_support(probe, half_size, radius, center_x, center_y):
     """Create a support for probe
 
     Args:
         probe (array): initial guess for the probe
-        hsize (int): half difraction pattern size
+        half_size (int): half difraction pattern size
         radius (): probe support radius
         center_x (int): probe support center in x
         center_y (int): probe support center in y
@@ -632,7 +633,7 @@ def probe_support(probe, hsize, radius, center_x, center_y):
     """    
     print('Setting probe support...')
     # Compute probe support:
-    ar = np.arange(-hsize, hsize)
+    ar = np.arange(-half_size, half_size)
     xx, yy = np.meshgrid(ar, ar)
     probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2  # offset of 30 chosen by hand?
     probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
@@ -883,48 +884,47 @@ def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
     return probe_positions, offset_bottomright
 
 
-def set_object_shape(difpads,args,offset_topleft = 20):
+def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offset_topleft = 20):
 
-    jason               = args[0]
-    filenames           = args[1]
-    filepaths           = args[2]
-    ibira_datafolder    = args[3]
-    acquisitions_folder = args[4]
-    positions_string    = args[6]
+    ibira_datafolder    = jason['ProposalPath']
+    positions_string    = jason['positions_string']
 
     # Pego a PRIMEIRA medida de posicao, supondo que ela nao tem erro
     measurement_file = filenames[0]
     measurement_filepath = filepaths[0]
     
     # Compute half size of diffraction patterns:
-    hsize = difpads.shape[-1] // 2
+    half_size = difpads.shape[-1] // 2
 
     # Compute/convert pixel size:
-    dx, jason = set_object_pixel_size(jason,hsize)
+    dx, jason = set_object_pixel_size(jason,half_size)
 
     probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
     probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = offset_topleft)
 
     maxroi        = int(np.max(probe_positions)) + offset_bottomright
-    object_shape  = 2 * hsize + maxroi
-    print('Object shape:',object_shape,object_shape)
-    # print(f'\tmaxroi: {np.max(probe_positions)}, int(maxroi):{maxroi}')
+    object_shape  = 2 * half_size + maxroi
+    print('Object shape:',object_shape)
 
-    return object_shape,object_shape, maxroi, hsize, dx, jason
+    return (object_shape,object_shape), half_size, dx, jason
 
 
-def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
+def ptycho_main(difpads, args, _start_, _end_,gpu):
     t0 = time()
-    
-    jason               = args[0][0]
-    filenames           = args[0][1]
-    filepaths           = args[0][2]
-    ibira_datafolder    = args[0][3]
-    acquisitions_folder = args[0][4]
-    positions_string    = args[0][6]
-    hsize               = args[2]
-    object_shape        = args[3]
+
+    jason               = args[0]
+    filenames           = args[1]
+    filepaths           = args[2]
+    acquisitions_folder = args[3]
+    half_size           = args[4]
+    object_shape        = args[5]
+    sinogram            = args[7]
+    probe3d             = args[8]
+    backg3d             = args[9]
+
+    ibira_datafolder  = jason['ProposalPath']
+    positions_string  = jason['positions_string']
 
     for i in range(_end_ - _start_):
         
@@ -957,11 +957,9 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
 
             probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 
-            print(f'Object shape: {object_shape}. Detector half-size: {hsize}')
+            print(f'Object shape: {object_shape}. Detector half-size: {half_size}')
 
             datapack, _, sigmask = set_initial_parameters(jason,difpads[frame],probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,object_shape,jason["object_pixel"])
-
-            param = {'device':gpu}
 
             if i == 0: t3 = time()
 
@@ -978,26 +976,26 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
                         datapack = sscPtycho.GL(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                     probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'],
                                                     epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                    probef1=jason['f1'], data=datapack,params=param)
+                                                    probef1=jason['f1'], data=datapack,params={'device':gpu})
 
                     elif algorithm['Name'] == 'positioncorrection':
                         datapack['bkg'] = None
                         datapack = sscPtycho.PosCorrection(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                                probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'], 
                                                                epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                               probef1=jason['f1'], data=datapack,params=param)
+                                                               probef1=jason['f1'], data=datapack,params={'device':gpu})
 
                     elif algorithm['Name'] == 'RAAR':
                         datapack = sscPtycho.RAAR(iter=algorithm['Iterations'], beta=algorithm['Beta'],
                                                       probecycles=algorithm['ProbeCycles'], batch=algorithm['Batch'],
                                                       epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'],
-                                                      sigmask=sigmask, probef1=jason['f1'], data=datapack,params=param)
+                                                      sigmask=sigmask, probef1=jason['f1'], data=datapack,params={'device':gpu})
 
                     elif algorithm['Name'] == 'GLL':
                         datapack = sscPtycho.GL(iter=algorithm['Iterations'], objbeta=algorithm['ObjBeta'],
                                                     probebeta=algorithm['ProbeBeta'], batch=algorithm['Batch'],
                                                     epsilon=algorithm['Epsilon'], tvmu=algorithm['TV'], sigmask=sigmask,
-                                                    probef1=jason['f1'], data=datapack,params=param)
+                                                    probef1=jason['f1'], data=datapack,params={'device':gpu})
 
                     loop_counter += 1
                     RF = datapack['error']
@@ -1026,22 +1024,30 @@ def ptycho_main(difpads, sinogram, probe3d, backg3d, args, _start_, _end_, gpu):
 
 def _worker_batch_frames_(params, idx_start, idx_end, gpu):
     
-    output_object = params[0]
-    output_probe  = params[1]
-    output_backg  = params[2]
-    difpads       = params[3]
-    args          = params[5]
-    
+    output_object       = params[0]
+    output_probe        = params[1]
+    output_backg        = params[2]
+    difpads             = params[3]
+    jason               = params[4] 
+    filenames           = params[5]
+    filepaths           = params[6]
+    acquisitions_folder = params[7]
+    half_size           = params[8]
+    object_shape        = params[9]
+    total_frames        = params[10]   
+
     _start_ = idx_start
     _end_   = idx_end
 
-    output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:] = ptycho_main( difpads[_start_:_end_,:,:,:], output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:], args, _start_, _end_, gpu)
+    args = (jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,total_frames,output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:])
+
+    output_object[_start_:_end_,:,:], output_probe[_start_:_end_,:,:,:], output_backg[_start_:_end_,:,:] = ptycho_main( difpads[_start_:_end_,:,:,:], args, _start_, _end_,gpu)
     
 
 def _build_batch_of_frames_(params):
 
-    total_frames = params[5][4]
-    threads      = params[4]
+    total_frames = params[9]
+    threads      = len(params[4]['GPUs']) 
     
     b = int( np.ceil( total_frames/threads )  ) 
     
@@ -1061,14 +1067,14 @@ def _build_batch_of_frames_(params):
         p.join()
     
 
-def ptycho3d_batch( difpads, threads, args):
+def ptycho3d_batch( difpads, params):
     
     name         = str( uuid.uuid4())
     name1        = str( uuid.uuid4())
     name2        = str( uuid.uuid4())
 
-    object_shape = args[3]
-    total_frames = args[4]
+
+    jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,total_frames = params
 
     try:
         sa.delete(name)
@@ -1087,7 +1093,7 @@ def ptycho3d_batch( difpads, threads, args):
     output_probe  = sa.create(name1,[total_frames, 1, difpads.shape[-2],difpads.shape[-1]], dtype=np.complex64)
     output_backg  = sa.create(name2,[total_frames, difpads.shape[-2],difpads.shape[-1]], dtype=np.float32)
 
-    _params_ = ( output_object, output_probe, output_backg, difpads, threads, args)
+    _params_ = ( output_object, output_probe, output_backg, difpads, jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,total_frames)
     
     _build_batch_of_frames_ ( _params_ )
 
@@ -1164,11 +1170,11 @@ def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
     X, Y = np.meshgrid(x, y)
     size_to_reshape = X.shape
 
-    params, pcov = curve_fit(lorentzian2d, (X, Y), np.ravel(dataset), fit_guess)
-    lorentzian2d_fit = lorentzian2d(np.array([X, Y]), params[0], params[1], params[2], params[3], params[4], params[5])
+    # params, pcov = curve_fit(lorentzian2d, (X, Y), np.ravel(dataset), fit_guess)
+    # lorentzian2d_fit = lorentzian2d(np.array([X, Y]), params[0], params[1], params[2], params[3], params[4], params[5])
     lorentzian2d_fit = lorentzian2d_fit.reshape(size_to_reshape)
 
-    return lorentzian2d_fit, params
+    return lorentzian2d_fit
 
 
 def get_central_region(difpad, center_estimate, radius):
