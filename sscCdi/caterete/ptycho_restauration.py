@@ -360,10 +360,12 @@ def restauration_cat_3d(args):
     return diffractionpattern, time_difpads, jason
 
 
-def restauration_cat_2d(args,preview = False,save = False,read = False,first_run=True):
+def restauration_cat_2d(args,first_run=True):
 
-    jason, ibira_datafolder, scans_string, _ = args[0]
-    acquisition_folder, filename, filepath = args[1], args[2], args[3]
+    jason, acquisition_folder, filename, filepath = args[0] , args[1], args[2], args[3]
+    ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
+    preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
+
     time_difpads = 0
 
     params = (jason, ibira_datafolder, filename, acquisition_folder, scans_string, filepath)

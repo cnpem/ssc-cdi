@@ -1,6 +1,6 @@
 from sys import argv
 import os
-import time
+from time import time
 import json
 import numpy as np
 
@@ -63,9 +63,9 @@ def cat_ptycho_serial(jason):
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             
-            arguments = (acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
+            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
 
-            difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(arguments,jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads'],first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
 
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
@@ -76,11 +76,11 @@ def cat_ptycho_serial(jason):
             probe_dummy      = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
             background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]), dtype=np.float32)
             
-            args = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
+            args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
 
             t2 = time() 
 
-            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args, 0, 1,len(jason['GPUs']))   # Main ptycho iteration on ALL frames in threads
+            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,len(jason['GPUs']))   # Main ptycho iteration on ALL frames in threads
             
             t3 = time()
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
     t1 = time()
 
-    jason['SerialRestauration'] = True
+    jason['SerialRestauration'] = False
 
     filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
     if len(filenames) > 1 and jason['SerialRestauration'] == False: # 3D batch restauration form (computationally faster, but not memory safe)
