@@ -39,12 +39,10 @@ def call_and_read_terminal(cmd,mafalda,use_mafalda=True):
 def call_cmd_terminal(filename,mafalda,remove=False):
     cmd = f'sbatch {filename}'
     terminal_output = call_and_read_terminal(cmd,mafalda).decode("utf-8") 
-    given_jobID = terminal_output.rsplit("\n",1)[0].rsplit(" ",1)[1]
+    print('Terminal output:',terminal_output)
     if remove: # Remove file after call
         cmd = f'rm {filename}'
         subprocess.call(cmd, shell=True)
-        
-    return given_jobID
         
 def monitor_job_execution(given_jobID,mafalda):
     sleep_time = 10 # seconds
