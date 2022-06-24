@@ -233,8 +233,8 @@ if processing_steps["Wiggle"]:
     print('\tStarting Wiggle')
     start = time()
 
-    updateTomoP_0 = radon.get_wiggle( object, 'vertical', n_of_wiggle_processes, reference_frame )
-    tomoP = radon.get_wiggle( updateTomoP_0, 'horizontal', n_of_wiggle_processes, reference_frame)
+    updateTomoP_0 = radon.get_wiggle( object, 'vertical', n_of_wiggle_processes, reference_frame )[0]
+    tomoP = radon.get_wiggle( updateTomoP_0, 'horizontal', n_of_wiggle_processes, reference_frame)[0]
     np.save(object_tomogram_filepath,tomoP)
 
     elapsed = time() - start
