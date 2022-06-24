@@ -631,10 +631,7 @@ def wiggle_tab():
 
         print("Starting wiggle...")
         global wiggled_sinogram
-        print(sinogram.shape)
         temporary_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, selection_slider.widget.value)[0]
-        print(type(temporary_sinogram))
-        print(temporary_sinogram.shape)
         wiggled_sinogram = radon.get_wiggle( temporary_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)[0]
         print("\t Wiggle done!")
         

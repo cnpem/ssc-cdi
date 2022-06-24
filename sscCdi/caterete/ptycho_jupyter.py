@@ -150,7 +150,7 @@ def delete_files(dummy):
 
 def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
-    given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
+    call_cmd_terminal(slurm_file,mafalda,remove=False)
     # monitor_job_execution(given_jobID,mafalda)
     
 def run_ptycho(dummy):
