@@ -2,7 +2,7 @@ stages:
     - build
     - deploy
 
-build:
+build_dgx:
     image: gccdockers/annotat3d:cuda-11.2
     stage: build
     script:
@@ -15,8 +15,21 @@ build:
             - ./dist/*whl
         expire_in: 1 day
 
+build_power:
+    image: gccdockers/annotat3d:cuda-11.2
+    stage: build
+    script:
+        - python3 setup.py bdist_wheel --cuda
+    tags:
+        - ppc64
+        - cuda11
+    artifacts:
+        paths:
+            - ./dist/*whl
+        expire_in: 1 day
 
-deploy_dgx:
+
+deploy_all:
     stage: deploy
     image: gccdockers/annotat3d:cuda-11.2
     script:
@@ -31,19 +44,4 @@ deploy_dgx:
     only:
         - tags
 
-
-deploy_power:
-    stage: deploy
-    image: gccdockers/annotat3d:cuda-11.2
-    script:
-        - python3 -m pip install keyring==12.0.0 keyrings.alt
-        - python3 -m pip install twine==2.0.0 passlib
-        - twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
-    tags:
-        - ppc64
-        - cuda11
-    dependencies:
-        - build
-    only:
-        - tags
 
