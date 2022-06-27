@@ -22,7 +22,7 @@ build_power:
         - python3 setup.py bdist_wheel --cuda
     tags:
         - ppc64
-        - cuda11
+        - cuda10
     artifacts:
         paths:
             - ./dist/*whl
@@ -52,7 +52,7 @@ deploy_power:
         - twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
     tags:
         - ppc64
-        - cuda11
+        - cuda10
     dependencies:
         - build_power
     only:
