@@ -21,7 +21,7 @@ build_power:
     script:
         - python3 setup.py bdist_wheel --cuda
     tags:
-        - ppc64
+        - ppc64le
         - cuda10
     artifacts:
         paths:
@@ -51,7 +51,7 @@ deploy_power:
         - python3 -m pip install twine==2.0.0 passlib
         - twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
     tags:
-        - ppc64
+        - ppc64le
         - cuda10
     dependencies:
         - build_power
