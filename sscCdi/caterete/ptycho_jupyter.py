@@ -158,7 +158,7 @@ def run_ptycho(dummy):
     json_filepath = global_paths_dict["json_filepath"]
     slurm_filepath = global_paths_dict["slurm_filepath"]
 
-    print(f'Running ptycho with {machine_selection.value}...')
+    print(f'Running ptycho with {machine_selection.value} machine...')
     if machine_selection.value == 'Local':
         cmd = f'python3 {pythonScript} {json_filepath}'
         # cmd = f'python3 ~/ssc-cdi/bin/sscptycho_main_test.py {json_filepath}'
@@ -653,8 +653,8 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
-    "Crop"              : tab1,
-    "Reconstruction"    : tab6
+    "Reconstruction"    : tab6,
+    "Crop"              : tab1
     }
     
     global mafalda

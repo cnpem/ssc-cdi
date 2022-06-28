@@ -12,6 +12,7 @@ from sscCdi.caterete.ptycho_processing import *
 from sscIO import io
 import sscCdi
 from sscPimega import pi540D
+from sscPimega import optimize
 from sscPimega import opt540D
 
 ############################ OLD RESTAURATION BY GIOVANNI #####################################################

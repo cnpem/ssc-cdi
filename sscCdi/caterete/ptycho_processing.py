@@ -342,7 +342,7 @@ def apply_phase_unwrap(sinogram, jason):
         original_object = sinogram[frame,:,:]  # create copy of object
         # absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
         # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
-        absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sinogram[frame,:,:]))
+        absol[frame,:,:] = np.abs(sinogram[frame,:,:])
         phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sinogram[frame,:,:]))
 
         if 1:  # plot original and cropped object phase and save!
@@ -364,7 +364,7 @@ def calculate_FRC(sinogram, jason):
 
     if jason['FRC'] == True:
         print('Estimating resolution via Fourier Ring Correlation')
-        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size, plot=True,plot_output_folder=jason["PreviewFolder"],savepath=jason["PreviewFolder"])
+        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size, plot=True,plot_output_folder=os.path.join(jason["PreviewFolder"]+'/'),savepath=jason["PreviewFolder"])
         try:
             print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit_resolution'])
             jason["halfbit_resolution"] = resolution['halfbit_resolution']
