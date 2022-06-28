@@ -1,2 +1,5 @@
 docs/build/*
 bin/__pycache__/*
+dist/*
+build/*
+
