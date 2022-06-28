@@ -93,7 +93,7 @@ def cat_ptycho_serial(jason):
 
             t2 = time() 
 
-            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,len(jason['GPUs']))   # Main ptycho iteration on ALL frames in threads
+            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
             
             t3 = time()
 
@@ -340,9 +340,8 @@ def apply_phase_unwrap(sinogram, jason):
 
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
-        # absol[frame,:,:] = sscCdi.unwrap.phase_unwrap(np.abs(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
-        # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
         absol[frame,:,:] = np.abs(sinogram[frame,:,:])
+        # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
         phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sinogram[frame,:,:]))
 
         if 1:  # plot original and cropped object phase and save!
