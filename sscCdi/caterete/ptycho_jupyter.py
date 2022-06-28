@@ -93,6 +93,7 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'o
 def update_gpu_limits(machine_selection):
 
     if machine_selection == 'Cluster':
+        gpus.widget.value = 0
         gpus.widget.max = 4
     elif machine_selection == 'Local':
         gpus.widget.value = 0
