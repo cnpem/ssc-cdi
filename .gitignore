@@ -3,3 +3,4 @@ bin/__pycache__/*
 dist/*
 build/*
 sscCdi/caterete/jupyter_notebooks/.ipynb_checkpoints/*
+sscCdi.egg-info/*
