@@ -486,12 +486,9 @@ def chull_tab():
     def preview_cHull(dummy,args=()):
         invert,tolerance,opening_param,erosion_param,chull_param,selection_slider = args
         output_list = apply_chull_parallel(unwrapped_sinogram[selection_slider.widget.value,:,:],invert=invert.widget.value,tolerance=tolerance.widget.value,opening_param=opening_param.widget.value,erosion_param=erosion_param.widget.value,chull_param=chull_param.widget.value)
-        cHull_sinogram = output_list[-1]
-        selection_slider.widget.max, selection_slider.widget.value = cHull_sinogram.shape[0] - 1, cHull_sinogram.shape[0]//2
-        play_control.widget.max =  selection_slider.widget.max
         for subplot, image in zip(subplots.reshape(-1),output_list[0::]):
             image = np.expand_dims(image, axis=0)
-            widgets.interactive_output(update_imshow, {'sinogram':fixed(image),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+            widgets.interactive_output(update_imshow, {'sinogram':fixed(image),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': fixed(0)})    
         format_chull_plot(figure,subplots)
         print('\tDone with convex hull...')
 
