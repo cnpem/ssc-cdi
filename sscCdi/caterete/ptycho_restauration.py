@@ -251,7 +251,7 @@ def restauration_processing_binning(img, args):
     
     unbinned_mask = True
     if unbinned_mask: # if mask before restauration with 3072x3072 size
-        img[mask ==1] = -1 # Apply Mask
+        img[np.abs(mask) ==1] = -1 # Apply Mask
     
     img = Restaurate(img, geometry) # restaurate
 
@@ -316,7 +316,7 @@ def restauration_processing_binning(img, args):
         img[img < 0] = -1
 
     if unbinned_mask == False: # if mask after restauration with 640x640 size
-        img[mask ==1] = -1 # Apply Mask
+        img[np.abs(mask) ==1] = -1 # Apply Mask
 
     t1 = time()
 

@@ -384,9 +384,9 @@ def mask_tab():
         from matplotlib.colors import LogNorm
         print("Loading difpad from: ",global_paths_dict["difpad_raw_mean_filepath"] )
         difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
-        masked_difpad = difpad
+        masked_difpad = difpad.copy()
         mask = h5py.File(os.path.join(global_dict["ProposalPath"],global_dict["Acquisition_Folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
-        masked_difpad[mask ==1] = -1 # Apply Mask
+        masked_difpad[np.abs(mask) == 1] = -1 # Apply Mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
         subplot2.imshow(mask,cmap='gray')
         subplot3.imshow(masked_difpad,cmap='jet',norm=LogNorm())
