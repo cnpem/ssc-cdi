@@ -1,7 +1,5 @@
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
-import paramiko
-import getpass
 import time
 import ast
 
@@ -10,19 +8,6 @@ from ipywidgets import fixed
 
 field_style = {'description_width': 'initial'}
 
-madalda_ip = "10.30.4.10" # Mafalda IP
-mafalda_port = 22
-
-
-def connect_server():
-    host = madalda_ip #"10.30.4.10" # Mafalda IP
-    port = mafalda_port #22
-    username = input("Username:")
-    print("Password:")
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, port, username, getpass.getpass())
-    return ssh
 
 def call_and_read_terminal(cmd,mafalda,use_mafalda=True):
     if use_mafalda == False:
@@ -61,39 +46,6 @@ def monitor_job_execution(given_jobID,mafalda):
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
 
-def package_versions_for_caterete(vCdi='0.1.0',vPtycho='1.0.2',vPimega='0.0.4',vRaft='1.0.3',vRadon='1.0.0',vResolution='1.2.3'):
-
-    packages = {'sscCdi': {vCdi},
-             'sscPtycho': {vPtycho},
-             'sscPimega': {vPimega},
-               'sscRaft': {vRaft},
-              'sscRadon': {vRadon},
-         'sscResolution': {vResolution}}
-
-    return packages
-
-def install_packages(mafalda,force_install=False):
-    
-    packages = package_versions_for_caterete()
-
-    if force_install:
-        force_string = '--force-install'
-    else:
-        force_string = ''
-
-
-    print('Installing packages @ Bertha (local)...')
-    cmd = f"""pip config --user set global.extra-index-url http://gcc.lnls.br:3128/simple/
-pip config --user set global.trusted-host gcc.lnls.br
-pip install --upgrade {force_string} "sscCdi"=={packages["sscCdi"]}
-pip install --upgrade {force_string} "sscPimega"=={packages["sscPimega"]}
-pip install --upgrade {force_string} "sscRaft"=={packages["sscRaft"]}
-pip install --upgrade {force_string} "sscRadon"=={packages["sscRadon"]}
-pip install --upgrade {force_string} "sscResolution"=={packages["sscResolution"]}"""
-    for line in cmd.split('\n'):
-        print('\t',line)
-        subprocess.call(line, shell=True)
-    print('\t Done!')
 
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray'):
     subplot.clear()
