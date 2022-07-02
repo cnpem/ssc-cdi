@@ -128,23 +128,19 @@ def define_paths(jason):
         jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
         jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1])
         jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1])
-        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1])
-        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1])
-        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1])
+        jason["ReconsPath"]     = os.path.join(jason["PreviewGCC"][1])
     else:
         beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
         print("Output path:",     beamline_outputs_path)
         jason["LogfilePath"]    = beamline_outputs_path
         jason["PreviewFolder"]  = beamline_outputs_path
         jason["SaveDifpadPath"] = beamline_outputs_path
-        jason["ObjPath"]        = beamline_outputs_path
-        jason["ProbePath"]      = beamline_outputs_path
-        jason["BkgPath"]        = beamline_outputs_path
+        jason["ReconsPath"]     = beamline_outputs_path
 
 
-    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ObjPath'],   jason['InitialObj']) # append initialObj filename to path
-    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ProbePath'], jason['InitialProbe'])
-    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['BkgPath'],   jason['InitialBkg'])
+    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ReconsPath'], jason['InitialObj']) # append initialObj filename to path
+    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ReconsPath'], jason['InitialProbe'])
+    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['ReconsPath'], jason['InitialBkg'])
 
     jason['scans_string'] = 'scans'
     jason['positions_string']  = 'positions'
@@ -938,10 +934,10 @@ def create_output_directories(jason):
         create_directory_if_doesnt_exist(jason["LogfilePath"])
     if jason["PreviewFolder"] != "":
         create_directory_if_doesnt_exist(jason["PreviewFolder"])
-    if jason["ObjPath"] != "":
-        create_directory_if_doesnt_exist(jason["ObjPath"])
-    if jason["ProbePath"] != "":
-        create_directory_if_doesnt_exist(jason["ProbePath"])
+    if jason["ReconsPath"] != "":
+        create_directory_if_doesnt_exist(jason["ReconsPath"])
+    if jason["ReconsPath"] != "":
+        create_directory_if_doesnt_exist(jason["ReconsPath"])
     if jason["SaveDifpadPath"] != "":
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
 
@@ -1386,6 +1382,6 @@ def preview_ptycho(jason, phase, absol, probe, frame = 0):
         plt.close()
         '''
 
-        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_2d_' + str(frame), nlines=2)
-        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(frame), cmap='gray', nlines=1)
+        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_'  + str(frame), nlines=2)
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=jason['PreviewFolder'] + '/object_' + str(frame), nlines=1, cmap='gray')
         
