@@ -14,7 +14,7 @@ from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, up
 
 from .misc import create_directory_if_doesnt_exist
 
-if 1: # paths for beamline use
+if 0: # paths for beamline use
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
@@ -33,7 +33,7 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
                     "difpad_raw_mean_filepath" : os.path.join(output_folder,'03_difpad_raw_mean.npy'), # path to load diffraction pattern
-                    "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy'), # path to load diffraction pattern
+                    "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_restaured_flipped.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
                 }
 
@@ -82,7 +82,7 @@ module load python3/3.9.2
 module load cuda/11.2
 module load hdf5/1.12.0_parallel
 
-python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'output.log')} 2> {os.path.join(output_path,'error.log')}
+python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'log_output.log')} 2> {os.path.join(output_path,'log_error.log')}
 """
     
     with open(slurm_filepath,'w') as the_file:
@@ -218,7 +218,7 @@ def inputs_tab():
         global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'object_{acquisition_folders[0]}_cropped.npy')
         global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'probe_{acquisition_folders[0]}.npy') # path to load probe
         global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'03_difpad_raw_mean.npy') # path to load diffraction pattern
-        global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_raw_flipped_3072.npy') # path to load diffraction pattern
+        global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
 
         global_dict["DifpadCenter"] = [centerx,centery]
