@@ -126,11 +126,11 @@ def define_paths(jason):
     if jason["PreviewGCC"][0] == True: # path convention for GCC users
         if 'LogfilePath' not in jason: jason['LogfilePath'] = ''
         jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
-        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1],'preview')
-        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1],'difpads')
-        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
-        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1],'reconstruction')
-        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1])
+        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1])
+        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1])
+        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1])
+        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1])
     else:
         beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
         print("Output path:",     beamline_outputs_path)
