@@ -223,7 +223,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
-    if preview and first_iteration:
+    if first_iteration: # difpad used in jupyter to find center position!
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
         img = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
