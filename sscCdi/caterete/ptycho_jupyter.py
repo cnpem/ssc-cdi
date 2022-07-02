@@ -214,9 +214,9 @@ def inputs_tab():
 
         output_folder = os.path.join( global_dict["ProposalPath"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
 
-        global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'object_{acquisition_folders[0]}.npy') # path to load npy with first reconstruction preview
-        global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'object_{acquisition_folders[0]}_cropped.npy')
-        global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'probe_{acquisition_folders[0]}.npy') # path to load probe
+        global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'{acquisition_folders[0]}_object.npy') # path to load npy with first reconstruction preview
+        global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'{acquisition_folders[0]}_object_cropped.npy')
+        global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'{acquisition_folders[0]}_probe.npy') # path to load probe
         global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'02_difpad_raw_mean.npy') # path to load diffraction pattern
         global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
