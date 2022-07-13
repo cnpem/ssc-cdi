@@ -102,6 +102,7 @@ if processing_steps["Sort"]:
 
     if originals_filepath[0]: # Save pngs of frames
         for i in range(object.shape[0]):
+            plt.figure()
             plt.imshow(np.angle(object[i,:,:]),cmap='gray')
             plt.colorbar()
             plt.savefig( os.path.join(originals_filepath[1],'original_frame_' + str(i) + '.png'), format='png', dpi=300)
@@ -125,6 +126,7 @@ if processing_steps["Crop"]:
 
     if ordered_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
+            plt.figure()
             plt.imshow(np.angle(object[i,:,:]),cmap='gray')
             plt.colorbar()
             plt.savefig( os.path.join(ordered_filepath[1], 'ordered_frame_' + str(i) + '.png'), format='png', dpi=300)
@@ -147,6 +149,7 @@ if processing_steps["Crop"]:
 
     if cropped_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
+            plt.figure()
             plt.imshow(np.angle(object[i,:,:]),cmap='gray')
             plt.colorbar()
             plt.savefig( os.path.join(sinogram_folder, cropped_filepath[1], 'cropped_frame_' + str(i) + '.png'), format='png', dpi=300)
@@ -178,6 +181,7 @@ if processing_steps["Unwrap"]:
 
     if unwrapped_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
+            plt.figure()
             plt.imshow(object[i,:,:],cmap='gray')
             plt.colorbar()
             plt.savefig( os.path.join(unwrapped_filepath[1], 'unwrapped_frame_' + str(i) + '.png'), format='png', dpi=300)
@@ -201,6 +205,7 @@ if processing_steps["ConvexHull"]:
 
     if cHull_filepath[0]: # Save pngs of sorted frames
         for i in range(object.shape[0]):
+            plt.figure()
             plt.imshow(object[i,:,:],cmap='gray')
             plt.colorbar()
             plt.savefig(  os.path.join(cHull_filepath[1], 'cHull_frame' + str(i) + '.png'), format='png', dpi=300)
