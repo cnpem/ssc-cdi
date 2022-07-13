@@ -521,13 +521,20 @@ def cropunwrap_tab():
 
     output = widgets.Output()
     with output:
-        figure_unwrap, subplot_unwrap = plt.subplots(1,2)
-        subplot_unwrap[0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot_unwrap[1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot_unwrap[0].set_title('Cropped image')
-        subplot_unwrap[1].set_title('Unwrapped image')
+        figure_unwrap, subplot_unwrap = plt.subplots(figsize=(3,3))
+        subplot_unwrap.imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap.set_title('Cropped image')
         figure_unwrap.canvas.draw_idle()
         figure_unwrap.canvas.header_visible = False 
+        plt.show()
+
+    output2 = widgets.Output()
+    with output2:
+        figure_unwrap2, subplot_unwrap2 = plt.subplots(figsize=(3,3))
+        subplot_unwrap2.imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap2.set_title('Unwrapped image')
+        figure_unwrap2.canvas.draw_idle()
+        figure_unwrap2.canvas.header_visible = False 
         plt.show()
 
     
@@ -541,27 +548,28 @@ def cropunwrap_tab():
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
 
     def preview_unwrap(dummy):
         cropped_frame = sinogram[selection_slider.widget.value,top_crop.widget.value:-bottom_crop.widget.value,left_crop.widget.value:-right_crop.widget.value]
+        cropped_frame = cropped_frame[np.newaxis]
         unwrapped_frame = phase_unwrap(np.angle(cropped_frame),iterations=0,non_negativity=False,remove_gradient = False)
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_frame),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]),'title':fixed(True),'frame_number': fixed(0)})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_frame),'figure':fixed(figure_unwrap2),'subplot':fixed(subplot_unwrap2),'title':fixed(True),'frame_number': fixed(0)})
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
     load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
     load_frames_button.trigger(load_frames)
 
-    preview_unwrap_button = Button(description="Save cropped frames",layout=buttons_layout,icon='play') 
+    preview_unwrap_button = Button(description="Preview Unwrap",layout=buttons_layout,icon='play') 
     preview_unwrap_button.trigger(preview_unwrap)
     
     buttons_box = widgets.Box([load_frames_button.widget,preview_unwrap_button.widget],layout=get_box_layout('100%',align_items='center'))
     sliders_box = widgets.Box([top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget],layout=sliders_box_layout)
 
     controls_box = widgets.Box([buttons_box,play_box,sliders_box],layout=get_box_layout('500px'))
-    box = widgets.HBox([controls_box,vbar,output])
+    box = widgets.HBox([controls_box,vbar,output,output2])
     return box
 
 def ptycho_tab():
@@ -655,8 +663,8 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
-    "Reconstruction"    : tab6,
-    "Crop and Unwrap"   : tab1
+    "Crop and Unwrap"   : tab1,
+    "Reconstruction"    : tab6
     }
     
     global mafalda
