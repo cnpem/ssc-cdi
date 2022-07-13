@@ -187,21 +187,11 @@ def regularization(sino, L):
 
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
-    # input_dict = {} 
-    # global_dict["tomo_algorithm"]
-    # contrast_type
-    # ordered_angles_filename
-    # global_dict["tomo_iterations"]
-    # global_dict["tomo_n_of_gpus"]
-    # global_dict["tomo_regularization"]
-    # global_dict["tomo_regularization_param"]
-    # output_folder
-
     algorithm                = input_dict["tomo_algorithm"]
     data_selection           = input_dict["contrast_type"]
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
-    GPUs                     = input_dict["tomo_n_of_gpus"]
+    GPUs                     = input_dict["GPUs"]
     do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
     output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located

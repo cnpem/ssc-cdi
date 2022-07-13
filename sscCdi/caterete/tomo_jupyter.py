@@ -54,13 +54,13 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
 
                "bad_frames_before_wiggle": [],
                "wiggle_reference_frame": 0,
-               "wiggle_cpus": 32,
+               "CPUs": 32,
               
                "tomo_regularization": True,
                "tomo_regularization_param": 0.001, # arbitrary value
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-               "tomo_n_of_gpus": [0],
+               "GPUs": [0],
                "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
 }
 
@@ -202,6 +202,36 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
 
     return play_box, selection_slider,play_control
 
+def update_gpu_limits(machine_selection):
+
+    if machine_selection == 'Cluster':
+        gpus_slider.widget.value = 0
+        gpus_slider.widget.max = 4
+    elif machine_selection == 'Local':
+        gpus_slider.widget.value = 0
+        gpus_slider.widget.max = 1
+
+def update_cpus_gpus(cpus,gpus):
+    global_dict["CPUs"] = cpus
+
+    if machine_selection.value == 'Cluster':
+        if gpus == 0:
+            global_dict["GPUs"] = []
+        elif gpus == 1:
+            global_dict["GPUs"] = [0] 
+        elif gpus == 2:
+            global_dict["GPUs"] = [0,1]
+        elif gpus == 3:
+            global_dict["GPUs"] = [0,1,2]
+        elif gpus == 4:
+            global_dict["GPUs"] = [0,1,2,3]
+    elif machine_selection.value == 'Local':
+        if gpus == 0:
+            global_dict["GPUs"] = []
+        elif gpus == 1:
+            global_dict["GPUs"] = [5] 
+    else:
+        print('You can only use 1 GPU to run in the local machine!')
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
@@ -322,6 +352,9 @@ def crop_tab():
         top,bottom,left,right = args
         cropped_sinogram = sinogram[:,top.value:-bottom.value,left.value:-right.value]
         print('Saving cropped frames...')
+        if np.isnan(cropped_sinogram).any():
+            print("NaN values were found. Substituting by 0 before save!")
+            cropped_sinogram = np.where(np.isnan(cropped_sinogram),0,cropped_sinogram)
         np.save(global_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
@@ -446,6 +479,9 @@ def unwrap_tab():
     
     return box
 
+def equalizer_tab():
+
+    return widgets.Output()
 
 def chull_tab():
     
@@ -628,9 +664,9 @@ def wiggle_tab():
 
         print("Starting wiggle...")
         global wiggled_sinogram
-        temporary_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, selection_slider.widget.value)[0]
+        temporary_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.value, selection_slider.widget.value)[0]
         print('Finished vertical wiggle. Starting horizontal wiggle...')
-        wiggled_sinogram = radon.get_wiggle( temporary_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)[0]
+        wiggled_sinogram = radon.get_wiggle( temporary_sinogram, 'horizontal', cpus_slider.value, selection_slider.widget.value)[0]
         print("\t Wiggle done!")
         
         print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )
@@ -670,8 +706,6 @@ def wiggle_tab():
 
     play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
 
-    cpus_slider      = Input(global_dict,"wiggle_cpus", description="# of CPUs", bounded=(1,128,1),slider=True,layout=slider_layout)
-
     projection_button = Button(description='Project Angles',icon='play',layout=buttons_layout)
     projection_button.trigger(project_angles_to_regular_mesh)
     angle_step_slider   = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
@@ -694,6 +728,11 @@ def wiggle_tab():
     load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(load_sinogram)
     
+    global cpus_slider, gpus_slider
+    gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="# of GPUs:")
+    cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="# of CPUs:")
+    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget})
+
     args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
     load_wiggle_button.trigger(load_wiggle)
@@ -710,12 +749,8 @@ def wiggle_tab():
 
 
 def tomo_tab():
-    
-    def format_tomo_plot(figure,subplots):
-        # subplots[0].set_title('YZ')
-        # subplots[1].set_title('XZ')
-        # subplots[2].set_title('XY')
 
+    def format_tomo_plot(figure,subplots):
         for subplot in subplots.reshape(-1):
             subplot.set_aspect('equal')
             subplot.set_xticks([])
@@ -751,7 +786,7 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
 
     def run_tomo(dummy,args=()):
-        iter_slider,gpus_field,filename_field, cpus_field,jobname_field,queue_field, checkboxes = args
+        iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
 
         global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
 
@@ -761,7 +796,6 @@ def tomo_tab():
 
         jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
 
-        n_gpus = len(ast.literal_eval(gpus_field.widget.value))
 
         global machine_selection
         print(f'Running tomo with {machine_selection.value}...')
@@ -777,7 +811,8 @@ def tomo_tab():
             print('\t Saved!')
 
         elif machine_selection.value == "Cluster": 
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_field.widget.value)
+            n_gpus = len(ast.literal_eval(gpus_slider.widget.value))
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_slider.value)
 
     def load_recon(dummy):
 
@@ -850,11 +885,11 @@ def tomo_tab():
             axs[1,1].set_yscale('log')
         print('\t Done!')
 
+
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
-    cpus_field      = Input(global_dict,"wiggle_cpus",description = "# of CPUs",layout=items_layout)
-    gpus_field      = Input(global_dict,"tomo_n_of_gpus",description = "GPUs list",layout=items_layout)
+    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget})
     queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=items_layout)
     jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=items_layout)
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
@@ -881,7 +916,7 @@ def tomo_tab():
     widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'chull_checkbox':checkboxes[3],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5]})
 
     start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
-    args = iter_slider,gpus_field,filename_field,cpus_field,jobname_field,queue_field, checkboxes
+    args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
     start_tomo.trigger(partial(run_tomo,args=args))
     start_tomo_box = widgets.Box([start_tomo.widget],layout=center_all_layout)
 
@@ -914,19 +949,20 @@ def tomo_tab():
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
     start_box = widgets.HBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
     threshold_box = widgets.HBox([save_thresholded_tomo_button.widget])#, plot_histogram_button.widget])
-    slurm_box = widgets.VBox([cpus_field.widget,gpus_field.widget,queue_field.widget,jobname_field.widget])
+    slurm_box = widgets.VBox([cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
     controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
     box = widgets.HBox([controls,vbar2,output])#widgets.VBox([output,hbar,output2])])
     
     return box 
 
 
-def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab()):
+def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab(),tab7=equalizer_tab()):
     
     children_dict = {
     "Select and Sort"       : tab1,
     "Cropping"              : tab2,
     "Phase Unwrap"          : tab3,
+    "Frame Equalizer"       : tab7,
     "Convex Hull"           : tab4,
     "Wiggle"                : tab5,
     "Tomography"            : tab6}
@@ -950,12 +986,12 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                "chull_erosion": 10,
                "chull_param": 10,               
                "wiggle_reference_frame": 0,
-               "wiggle_cpus": 32,
+               "CPUs": 32,
                "tomo_regularization": True,
                "tomo_regularization_param": 0.001, # arbitrary value
                "tomo_iterations": 25,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-               "tomo_n_of_gpus": [0],
+               "GPUs": [0],
                "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
                "run_all_tomo_steps":False}
     
@@ -970,12 +1006,14 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
     global machine_selection
     machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
+    widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
     global data_selection
     data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
     widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':data_selection,'dummy2':fixed(data_selection)})
 
-    
+
+
     def delete_files(dummy):
         sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
 

@@ -46,7 +46,6 @@ def monitor_job_execution(given_jobID,mafalda):
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
 
-
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray'):
     subplot.clear()
     if bottom == None or right == None:
