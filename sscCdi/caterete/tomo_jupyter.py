@@ -319,7 +319,6 @@ def folders_tab():
 
     return box
 
-
 def crop_tab():
 
     initial_image = np.ones((5,5)) # dummy
@@ -379,7 +378,6 @@ def crop_tab():
     controls_box = widgets.Box([buttons_box,play_box,sliders_box],layout=get_box_layout('500px'))
     box = widgets.HBox([controls_box,vbar,output])
     return box
-
 
 def unwrap_tab():
     
@@ -578,7 +576,6 @@ def chull_tab():
     
     return box
 
-
 def wiggle_tab():
     
     def format_wiggle_plot(figure,subplots):
@@ -636,10 +633,19 @@ def wiggle_tab():
 
     global wiggled_sinogram
   
+    def preview_angle_projection(dummy):
+        print("Simulating projection of angles to regular grid...")
+        angles  = np.load(global_dict["ordered_angles_filepath"])
+        angles = (np.pi/180.) * angles
+        _, selected_indices, _, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
+        print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
+        selected_indices = [ i for i in selected_indices if i > 0]
+        number_of_repeated_indices = len(selected_indices) - len(set(selected_indices))
+        print(f"{number_of_repeated_indices} frames are being repeated!")
+
     def project_angles_to_regular_mesh(dummy):
 
         global sinogram 
-
         print('Projecting angles to regular mesh...')
         angles  = np.load(global_dict["ordered_angles_filepath"])
         angles = (np.pi/180.) * angles
@@ -706,10 +712,12 @@ def wiggle_tab():
 
     play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
 
+    simulation_button = Button(description='Simulate Projection',icon='play',layout=buttons_layout)
+    simulation_button.trigger(preview_angle_projection)
     projection_button = Button(description='Project Angles',icon='play',layout=buttons_layout)
     projection_button.trigger(project_angles_to_regular_mesh)
     angle_step_slider   = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
-    projection_box = widgets.VBox([angle_step_slider.widget,projection_button.widget,play_box])
+    projection_box = widgets.VBox([angle_step_slider.widget,simulation_button.widget,projection_button.widget,play_box])
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
@@ -746,7 +754,6 @@ def wiggle_tab():
     box = widgets.HBox([controls,vbar,output,vbar,output2])
     
     return box
-
 
 def tomo_tab():
 
@@ -954,7 +961,6 @@ def tomo_tab():
     box = widgets.HBox([controls,vbar2,output])#widgets.VBox([output,hbar,output2])])
     
     return box 
-
 
 def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab(),tab7=equalizer_tab()):
     
