@@ -10,7 +10,8 @@ from ipywidgets import fixed
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
-from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
+from .jupyter import call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
+from .unwrap import phase_unwrap
 
 from .misc import create_directory_if_doesnt_exist
 
@@ -99,7 +100,6 @@ def update_gpu_limits(machine_selection):
         gpus.widget.value = 0
         gpus.widget.max = 1
 
-
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
 
@@ -152,7 +152,6 @@ def delete_files(dummy):
 def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
     call_cmd_terminal(slurm_file,mafalda,remove=False)
-    # monitor_job_execution(given_jobID,mafalda)
     
 def run_ptycho(dummy):
     pythonScript = global_paths_dict["ptycho_script_path"]
@@ -518,15 +517,17 @@ def fresnel_tab():
     box = widgets.HBox([box,vbar,play_box])
     return box
 
-def crop_tab():
-
-    initial_image = np.random.random((100,100)) # dummy
+def cropunwrap_tab():
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots()
-        subplot.imshow(initial_image,cmap='gray')
-        figure.canvas.header_visible = False 
+        figure_unwrap, subplot_unwrap = plt.subplots(1,2)
+        subplot_unwrap[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot_unwrap[0].set_title('Cropped image')
+        subplot_unwrap[1].set_title('Unwrapped image')
+        figure_unwrap.canvas.draw_idle()
+        figure_unwrap.canvas.header_visible = False 
         plt.show()
 
     
@@ -540,23 +541,23 @@ def crop_tab():
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(np.angle(sinogram)),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
-    def save_cropped_sinogram(dummy):
-        cropped_sinogram = sinogram[:,top_crop.widget.value:-bottom_crop.widget.value,left_crop.widget.value:-right_crop.widget.value]
-        print('Saving cropped frames...')
-        np.save(global_paths_dict['cropped_sinogram_filepath'],cropped_sinogram)
-        print('\t Saved!')
+
+    def preview_unwrap(dummy):
+        cropped_frame = sinogram[selection_slider.widget.value,top_crop.widget.value:-bottom_crop.widget.value,left_crop.widget.value:-right_crop.widget.value]
+        unwrapped_frame = phase_unwrap(np.angle(cropped_frame),iterations=0,non_negativity=False,remove_gradient = False)
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_frame),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[1]),'title':fixed(True),'frame_number': fixed(0)})
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
     load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
     load_frames_button.trigger(load_frames)
 
-    save_cropped_frames_button = Button(description="Save cropped frames",layout=buttons_layout,icon='fa-floppy-o') 
-    save_cropped_frames_button.trigger(save_cropped_sinogram)
+    preview_unwrap_button = Button(description="Save cropped frames",layout=buttons_layout,icon='play') 
+    preview_unwrap_button.trigger(preview_unwrap)
     
-    buttons_box = widgets.Box([load_frames_button.widget,save_cropped_frames_button.widget],layout=get_box_layout('100%',align_items='center'))
+    buttons_box = widgets.Box([load_frames_button.widget,preview_unwrap_button.widget],layout=get_box_layout('100%',align_items='center'))
     sliders_box = widgets.Box([top_crop.widget,bottom_crop.widget,left_crop.widget,right_crop.widget],layout=sliders_box_layout)
 
     controls_box = widgets.Box([buttons_box,play_box,sliders_box],layout=get_box_layout('500px'))
@@ -643,7 +644,7 @@ def reconstruction_tab():
 
     return box
 
-def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=crop_tab(),tab7=mask_tab()):
+def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=cropunwrap_tab(),tab7=mask_tab()):
     
     __name__ = "__main__"
 
@@ -655,7 +656,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
     "Reconstruction"    : tab6,
-    "Crop"              : tab1
+    "Crop and Unwrap"   : tab1
     }
     
     global mafalda

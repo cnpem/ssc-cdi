@@ -28,8 +28,6 @@ from numpy.fft import ifft2 as ifft2
 from .misc import create_directory_if_doesnt_exist
 
 def cat_ptycho_3d(difpads,jason):
-    t2 = time()
-
     sinogram = []
     probe = []
     background = [] 
@@ -56,9 +54,7 @@ def cat_ptycho_3d(difpads,jason):
         probe.append(probe3d)
         background.append(background3d)
     
-    t3 = time()
-
-    return sinogram,probe,background,t2,t3, jason
+    return sinogram,probe,background,jason
 
 
 def cat_ptycho_serial(jason):
@@ -69,6 +65,8 @@ def cat_ptycho_serial(jason):
     counter = 0
     first_iteration = True
     first_of_folder = True
+    time_elasped_restauration = 0
+    time_elasped_ptycho = 0
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
 
@@ -77,9 +75,9 @@ def cat_ptycho_serial(jason):
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
-
+            t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
-
+            time_elasped_restauration += time() - t_start
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
                 jason["object_pixel"] = object_pixel_size
@@ -91,11 +89,9 @@ def cat_ptycho_serial(jason):
             
             args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
 
-            t2 = time() 
-
+            t_start2 = time()
             object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
-            
-            t3 = time()
+            time_elasped_ptycho += time() - t_start2
 
             if first_of_folder:
                 object = object2d
@@ -114,7 +110,7 @@ def cat_ptycho_serial(jason):
         probe_list.append(probe)
         background_list.append(background)
 
-    return sinogram_list, probe_list, background_list, t2, t3, jason
+    return sinogram_list, probe_list, background_list, time_elasped_restauration, time_elasped_ptycho, jason
 
 def define_paths(jason):
     if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
