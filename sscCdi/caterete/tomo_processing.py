@@ -110,36 +110,12 @@ def remove_outliers(data,sigma):
     # print('New',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
     return data, minimum, maximum, mean, std
 
-def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None)), remove_negative=True):
 
-    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
-    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
-    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
-    
-    # Invert sinogram
-    if invert == True:
-        sinogram = -sinogram
-
-    # Remove NaNs
-    whereNaN = np.isnan(sinogram)
-    if whereNaN.any():
-        print("NaN values found in unwrapped sinogram. Removing them!")
-        sinogram = np.where(whereNaN,0,sinogram)
-
-    # Call parallel equalization
-    # equalize_frame_partial = partial(equalize_frame(frame, mask, remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None)), remove_negative=True))
-    # sinogram = 
-
-    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
-    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
-
-    return sinogram
-
-def equalize_frame(frame, mask, remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None))):
+def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset,frame):
 
     # Remove Gradient
     for i in range(0,remove_gradient):
-        frame = RemoveGrad(frame,mask)
+        frame = RemoveGrad(frame,np.ones_like(frame,dtype=bool))
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -157,13 +133,49 @@ def equalize_frame(frame, mask, remove_gradient=0, remove_outlier=0, remove_glob
 
     # Remove average offset from specific region
     if remove_avg_offset[0]:
-        frame -= np.mean(frame[remove_avg_offset[1],remove_avg_offset[2]])
+        frame -= np.mean(frame[remove_avg_offset[1][0]:remove_avg_offset[1][1],remove_avg_offset[1][2]:remove_avg_offset[1][3]])
         frame = np.where(frame<0,0,frame)
 
     return frame
 
 
+def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
 
+    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
+    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
+    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    
+    # Invert sinogram
+    if invert == True:
+        sinogram = -sinogram
+
+    # Remove NaNs
+    whereNaN = np.isnan(sinogram)
+    if whereNaN.any():
+        print("NaN values found in unwrapped sinogram. Removing them!")
+        sinogram = np.where(whereNaN,0,sinogram)
+
+    # Call parallel equalization
+    equalize_frame_partial = partial(equalize_frame, remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset)
+    print('Sinogram shape to unwrap: ', sinogram.shape)
+
+    n_frames = sinogram.shape[0]
+
+    processes = min(os.cpu_count(),32)
+    print(f'Using {processes} parallel processes')
+
+
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        equalized_sinogram = np.empty_like(sinogram)
+        results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        for counter, result in enumerate(results):
+            if counter % 100 == 0: print('Populating results matrix...',counter)
+            equalized_sinogram[counter,:,:] = result
+
+    minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
+    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+
+    return equalized_sinogram
 
 
 

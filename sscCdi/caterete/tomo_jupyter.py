@@ -46,10 +46,10 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "unwrap_gradient_removal": False,
 
                 "equalize_invert":False,
-                "equalize_gradient":1,
-                "equalize_outliers":1,
+                "equalize_gradient":0,
+                "equalize_outliers":0,
                 "equalize_global_offset":False,
-                "equalize_local_offset":[0,slice(0,None),slice(0,None)],
+                "equalize_local_offset":[0,[0,None,0,None]],
 
                "bad_frames_before_cHull": [],
                "chull_invert": False,
@@ -514,14 +514,16 @@ def equalizer_tab():
     
     def start_equalization(dummy):
         print("Starting equalization...")
+        print(remove_local_offset_field.widget.value,type(remove_local_offset_field.widget.value))
+        print(type(ast.literal_eval(remove_local_offset_field.widget.value)))
         global equalized_sinogram
-        equalized_sinogram = equalize_frames_parallel(sinogram,invert_checkbox.widget.value,remove_gradient_slider.widget.value, remove_outliers_slider.widget.value, remove_global_offset_checkbox.widget.value, remove_local_offset_field.widget.value)
+        equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,invert_checkbox.widget.value,remove_gradient_slider.widget.value, remove_outliers_slider.widget.value, remove_global_offset_checkbox.widget.value, ast.literal_eval(remove_local_offset_field.widget.value))
         widgets.interactive_output(update_imshow, {'sinogram':fixed(equalized_sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
 
     def save_sinogram(dummy):
         print('Saving equalized sinogram...')
         np.save(global_dict["unwrapped_sinogram_filepath"] ,unwrapped_sinogram)
-        print('\tSaved sinogram at: ',global_dict["unwrapped_sinogram_filepath"] )
+        print('\tSaved sinogram at: ',global_dict["unwrapped_sinogram_filepath"])
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
@@ -529,14 +531,14 @@ def equalizer_tab():
     load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
 
     start_button = Button(description="Start equalization",layout=buttons_layout,icon='play')
-    start_button.trigger(partial(start_equalization,args=(selection_slider,play_control)))
+    start_button.trigger(start_equalization)
 
     save_equalized_button = Button(description="Save equalized frames",layout=buttons_layout,icon='fa-floppy-o') 
     save_equalized_button.trigger(save_sinogram)
 
     invert_checkbox               = Input(global_dict,"equalize_invert",        description='Invert',layout=items_layout)
-    remove_gradient_slider        = Input(global_dict,"equalize_gradient",      description="Remove Gradient", bounded=(1,10,1), slider=True,layout=slider_layout)
-    remove_outliers_slider        = Input(global_dict,"equalize_outliers",      description="Remove Outliers", bounded=(1,10,1), slider=True,layout=slider_layout)
+    remove_gradient_slider        = Input(global_dict,"equalize_gradient",      description="Remove Gradient", bounded=(0,10,1), slider=True,layout=slider_layout)
+    remove_outliers_slider        = Input(global_dict,"equalize_outliers",      description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
     remove_global_offset_checkbox = Input(global_dict,"equalize_global_offset", description='Remove Global Offset',layout=items_layout)
     remove_local_offset_field     = Input(global_dict,"equalize_local_offset",  description='Remove Local Offset',layout=items_layout)
 
