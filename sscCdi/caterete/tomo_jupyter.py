@@ -13,7 +13,7 @@ import subprocess
 
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
-from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle
+from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
@@ -44,6 +44,12 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
+
+                "equalize_invert":False,
+                "equalize_gradient":1,
+                "equalize_outliers":1,
+                "equalize_global_offset":False,
+                "equalize_local_offset":[0,slice(0,None),slice(0,None)],
 
                "bad_frames_before_cHull": [],
                "chull_invert": False,
@@ -103,6 +109,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["reconstruction_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy')
     global_dict["cropped_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_cropped_sinogram.npy')
     global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
+    global_dict["equalized_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_equalized_sinogram.npy')
     global_dict["chull_sinogram_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
     global_dict["wiggle_sinogram_filepath"]            = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
     global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
@@ -479,7 +486,64 @@ def unwrap_tab():
 
 def equalizer_tab():
 
-    return widgets.Output()
+
+    output = widgets.Output()
+    with output:
+        figure, subplot = plt.subplots(figsize=(5,5))
+        subplot.imshow(np.random.random((3,3)),cmap='gray')
+        figure.canvas.header_visible = False 
+        plt.show()
+
+    def plot_hist(data):
+        plt.figure(dpi=150,figsize=(3,3))
+        n, bins, patches = plt.hist(data.flatten(), 300, density=True, facecolor='g', alpha=0.75)
+        plt.xlabel('Pixel values')
+        plt.ylabel('Counts')
+        plt.grid(True)
+        plt.show()
+
+    def load_unwrapped_sinogram(dummy,args=()):
+        global unwrapped_sinogram
+        print('Loading unwrapped sinogram: ',global_dict["unwrapped_sinogram_filepath"] )
+        unwrapped_sinogram = np.load(global_dict["unwrapped_sinogram_filepath"] )
+        print('\t Loaded!')
+        selection_slider, play_control = args
+        selection_slider.widget.max, selection_slider.widget.value = unwrapped_sinogram.shape[0] - 1, unwrapped_sinogram.shape[0]//2
+        play_control.widget.max =  selection_slider.widget.max
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+    
+    def start_equalization(dummy):
+        print("Starting equalization...")
+        global equalized_sinogram
+        equalized_sinogram = equalize_frames_parallel(sinogram,invert_checkbox.widget.value,remove_gradient_slider.widget.value, remove_outliers_slider.widget.value, remove_global_offset_checkbox.widget.value, remove_local_offset_field.widget.value)
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(equalized_sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+
+    def save_sinogram(dummy):
+        print('Saving equalized sinogram...')
+        np.save(global_dict["unwrapped_sinogram_filepath"] ,unwrapped_sinogram)
+        print('\tSaved sinogram at: ',global_dict["unwrapped_sinogram_filepath"] )
+
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    
+    load_button = Button(description="Load unwrapped sinogram",layout=buttons_layout,icon='folder-open-o')
+    load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
+
+    start_button = Button(description="Start equalization",layout=buttons_layout,icon='play')
+    start_button.trigger(partial(start_equalization,args=(selection_slider,play_control)))
+
+    save_equalized_button = Button(description="Save equalized frames",layout=buttons_layout,icon='fa-floppy-o') 
+    save_equalized_button.trigger(save_sinogram)
+
+    invert_checkbox               = Input(global_dict,"equalize_invert",        description='Invert',layout=items_layout)
+    remove_gradient_slider        = Input(global_dict,"equalize_gradient",      description="Remove Gradient", bounded=(1,10,1), slider=True,layout=slider_layout)
+    remove_outliers_slider        = Input(global_dict,"equalize_outliers",      description="Remove Outliers", bounded=(1,10,1), slider=True,layout=slider_layout)
+    remove_global_offset_checkbox = Input(global_dict,"equalize_global_offset", description='Remove Global Offset',layout=items_layout)
+    remove_local_offset_field     = Input(global_dict,"equalize_local_offset",  description='Remove Local Offset',layout=items_layout)
+
+    controls_box = widgets.Box([load_button.widget,play_box, invert_checkbox.widget,remove_gradient_slider.widget,remove_outliers_slider.widget,remove_global_offset_checkbox.widget,remove_local_offset_field.widget,start_button.widget,save_equalized_button.widget],layout=get_box_layout('500px'))
+    box = widgets.HBox([controls_box,vbar, output]) 
+
+    return box
 
 def chull_tab():
     
@@ -1027,6 +1091,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                                 global_dict["ordered_object_filepath"] , 
                                 global_dict["cropped_sinogram_filepath"],
                                 global_dict["unwrapped_sinogram_filepath"],
+                                global_dict["equalized_sinogram_filepath"],
                                 global_dict["chull_sinogram_filepath"],  
                                 global_dict["wiggle_sinogram_filepath"],
                                 global_dict["projected_angles_filepath"]]

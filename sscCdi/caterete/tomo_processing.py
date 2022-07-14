@@ -6,6 +6,7 @@ from skimage.morphology import square, erosion, opening, convex_hull_image, dila
 from functools import partial
 
 from .misc import list_files_in_folder
+from .unwrap import RemoveGrad
 
 from sscRaft import parallel
 
@@ -95,6 +96,75 @@ def reorder_slices_low_to_high_angle(object, rois):
             object_temporary[k,:,:] = object[int(rois[k,0]),:,:] 
 
     return object_temporary
+
+
+######################### EQUALIZATION #################################################
+
+def remove_outliers(data,sigma):
+    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
+    # print(f'Min \t Mean-{sigma}*sigma \t Mean \t Mean+{sigma}*sigma \t Max ')
+    # print('Old',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
+    data = np.where(data > mean + sigma*std,0,data)
+    data = np.where(data < mean - sigma*std,0,data)
+    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
+    # print('New',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
+    return data, minimum, maximum, mean, std
+
+def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None)), remove_negative=True):
+
+    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
+    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
+    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    
+    # Invert sinogram
+    if invert == True:
+        sinogram = -sinogram
+
+    # Remove NaNs
+    whereNaN = np.isnan(sinogram)
+    if whereNaN.any():
+        print("NaN values found in unwrapped sinogram. Removing them!")
+        sinogram = np.where(whereNaN,0,sinogram)
+
+    # Call parallel equalization
+    # equalize_frame_partial = partial(equalize_frame(frame, mask, remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None)), remove_negative=True))
+    # sinogram = 
+
+    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
+    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+
+    return sinogram
+
+def equalize_frame(frame, mask, remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=(0,slice(0,None),slice(0,None))):
+
+    # Remove Gradient
+    for i in range(0,remove_gradient):
+        frame = RemoveGrad(frame,mask)
+
+    # Check for NaNs
+    whereNaN = np.isnan(frame)
+    if whereNaN.any():
+        print("NaN values found in frame after removing gradient. Removing them!")
+        frame = np.where(whereNaN,0,frame)
+
+    # Remove outliers
+    for i in range(0,remove_outlier):
+        frame = remove_outliers(frame,3)
+
+    # Remove global offsset
+    if remove_global_offset:
+        frame -= np.min(frame)
+
+    # Remove average offset from specific region
+    if remove_avg_offset[0]:
+        frame -= np.mean(frame[remove_avg_offset[1],remove_avg_offset[2]])
+        frame = np.where(frame<0,0,frame)
+
+    return frame
+
+
+
+
 
 
 ######################### CONVEX HULL #################################################
