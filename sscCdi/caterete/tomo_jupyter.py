@@ -3,6 +3,7 @@ from ipywidgets import fixed
 import ast 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from functools import partial
 import os, time
 import json
@@ -856,8 +857,8 @@ def tomo_tab():
         plt.show()
 
 
-    def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis):
-        update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis,title=True)
+    def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis,norm=None):
+        update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis,title=True,norm=norm)
         format_tomo_plot(figure,subplot)
 
     def run_tomo(dummy,args=()):
@@ -905,12 +906,14 @@ def tomo_tab():
         reconstruction = np.load(savepath)
         print('\t Loaded!')
         print(f'Max = {np.max(reconstruction)}, Min = {np.min(reconstruction)}, Mean = {np.mean(reconstruction)}')
-        tomo_sliceX.widget.max = reconstruction.shape[0]
-        tomo_sliceY.widget.max = reconstruction.shape[1]
-        tomo_sliceZ.widget.max = reconstruction.shape[2]
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
+        tomo_sliceX.widget.max, tomo_sliceX.widget.value = reconstruction.shape[0], reconstruction.shape[0]//2
+        tomo_sliceY.widget.max, tomo_sliceY.widget.value = reconstruction.shape[1], reconstruction.shape[1]//2
+        tomo_sliceZ.widget.max, tomo_sliceZ.widget.value = reconstruction.shape[2], reconstruction.shape[2]//2
+        # norm = colors.Normalize(vmin=np.min(reconstruction), vmax=np.max(reconstruction))
+        norm = None
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget,'norm':fixed(norm)})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget,'norm':fixed(norm)})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget,'norm':fixed(norm)})    
         subplot[1,0].imshow(np.sum(reconstruction,axis=0),cmap='gray')
         subplot[1,1].imshow(np.sum(reconstruction,axis=1),cmap='gray')
         subplot[1,2].imshow(np.sum(reconstruction,axis=2),cmap='gray')

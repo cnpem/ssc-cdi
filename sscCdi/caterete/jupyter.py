@@ -6,6 +6,8 @@ import ast
 import ipywidgets as widgets 
 from ipywidgets import fixed 
 
+from matplotlib import colors
+
 field_style = {'description_width': 'initial'}
 
 
@@ -46,22 +48,22 @@ def monitor_job_execution(given_jobID,mafalda):
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
 
-def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray'):
+def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray',norm=None):
     subplot.clear()
     if bottom == None or right == None:
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap=cmap)
+            subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap=cmap,norm=norm)
         elif axis == 1:
-            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap=cmap)
+            subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap=cmap,norm=norm)
         elif axis == 2:
-            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap=cmap)
+            subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap=cmap,norm=norm)
     else:
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap=cmap)
+            subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap=cmap,norm=norm)
         elif axis == 1:
-            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap=cmap)
+            subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap=cmap,norm=norm)
         elif axis == 2:
-            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap=cmap)
+            subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap=cmap,norm=norm)
     if title == True:
         subplot.set_title(f'Frame #{frame_number}')
     if clear_axis == True:
