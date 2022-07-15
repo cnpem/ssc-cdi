@@ -288,7 +288,6 @@ def folders_tab():
         global object
 
         rois = sort_frames_by_angle(ibira_data_path.widget.value,global_dict["folders_list"])
-
         object = reorder_slices_low_to_high_angle(object, rois)
 
         print('Saving angles file: ',global_dict["ordered_angles_filepath"])
@@ -826,6 +825,8 @@ def tomo_tab():
             subplot.set_aspect('equal')
             subplot.set_xticks([])
             subplot.set_yticks([])
+        subplots[0,0].set_ylabel("Slice")
+        subplots[1,0].set_ylabel("Projection")
         figure.canvas.header_visible = False 
         figure.tight_layout()
 
@@ -910,9 +911,10 @@ def tomo_tab():
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(np.sum(reconstruction,axis=0)),'figure1':fixed(figure),'subplot1':fixed(subplot[1,0]), 'axis':fixed(0), 'frame_number': fixed(0)})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(np.sum(reconstruction,axis=1)),'figure1':fixed(figure),'subplot1':fixed(subplot[1,1]), 'axis':fixed(0), 'frame_number': fixed(0)})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(np.sum(reconstruction,axis=2)),'figure1':fixed(figure),'subplot1':fixed(subplot[1,2]), 'axis':fixed(0), 'frame_number': fixed(0)})    
+        subplot[1,0].imshow(np.sum(reconstruction,axis=0),cmap='gray')
+        subplot[1,1].imshow(np.sum(reconstruction,axis=1),cmap='gray')
+        subplot[1,2].imshow(np.sum(reconstruction,axis=2),cmap='gray')
+        format_tomo_plot(figure,subplot)
 
 
     def save_thresholded_tomo(dummy):

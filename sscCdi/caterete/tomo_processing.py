@@ -67,7 +67,6 @@ def sort_frames_by_angle(ibira_path,foldernames):
         filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
 
         print('\t # of files in folder:',len(filenames))
-        print(filenames)
         for filepath in filepaths:
             roisname = filepath  
             if roisname == os.path.join(ibira_path,folder, 'positions', folder + '_Ry_positions.txt'): # ignore this file, to use only the positions file inside /positions/ folder
@@ -84,11 +83,9 @@ def sort_frames_by_angle(ibira_path,foldernames):
                         rois.append([int(counter),float(angle)])
                         break    
                     a += 1
-                    print(a)
 
     
     rois = np.asarray(rois)
-    print(rois)
     rois = rois[rois[:,1].argsort(axis=0)]
     return rois 
 
@@ -101,7 +98,6 @@ def reorder_slices_low_to_high_angle(object, rois):
 
     return object_temporary
 
-
 ######################### EQUALIZATION #################################################
 
 def remove_outliers(data,sigma):
@@ -112,8 +108,7 @@ def remove_outliers(data,sigma):
     data = np.where(data < mean - sigma*std,0,data)
     minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
     # print('New',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
-    return data, minimum, maximum, mean, std
-
+    return data
 
 def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset,frame):
 
@@ -141,7 +136,6 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         frame = np.where(frame<0,0,frame)
 
     return frame
-
 
 def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
 
@@ -174,14 +168,14 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
         results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
         for counter, result in enumerate(results):
             if counter % 100 == 0: print('Populating results matrix...',counter)
+            minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
+            print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
             equalized_sinogram[counter,:,:] = result
 
     minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
     print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
 
     return equalized_sinogram
-
-
 
 ######################### CONVEX HULL #################################################
 
@@ -227,7 +221,6 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
             chull_sinogram[counter,:,:] = img_masked
     return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
 
-
 ####################### TOMOGRAPHY ###########################################3
 
 def save_json_logfile(jason,output_folder):
@@ -269,7 +262,6 @@ def regularization(sino, L):
     B = np.fft.fft(sino, axis=1)
     D = np.fft.ifft(B * G, axis=1).real
     return D
-
 
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
