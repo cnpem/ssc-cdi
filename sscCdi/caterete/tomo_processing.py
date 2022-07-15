@@ -67,7 +67,7 @@ def sort_frames_by_angle(ibira_path,foldernames):
         filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
 
         print('\t # of files in folder:',len(filenames))
-
+        print(filenames)
         for filepath in filepaths:
             roisname = filepath  
             if roisname == os.path.join(ibira_path,folder, 'positions', folder + '_Ry_positions.txt'): # ignore this file, to use only the positions file inside /positions/ folder
@@ -82,9 +82,13 @@ def sort_frames_by_angle(ibira_path,foldernames):
                     if a < 1: # get value from first line of the file only
                         angle = line.split(':')[1].split('\t')[0]
                         rois.append([int(counter),float(angle)])
+                        break    
                     a += 1
+                    print(a)
 
+    
     rois = np.asarray(rois)
+    print(rois)
     rois = rois[rois[:,1].argsort(axis=0)]
     return rois 
 
