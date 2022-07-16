@@ -1,5 +1,6 @@
 docs/build/*
-bin/__pycache__/*
+__pycache__/*
+sscCdi/__pycache__/*
 dist/*
 build/*
 sscCdi/caterete/jupyter_notebooks/.ipynb_checkpoints/*
