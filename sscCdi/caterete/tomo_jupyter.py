@@ -65,7 +65,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
               
                "tomo_regularization": False,
                "tomo_regularization_param": 0.001, # arbitrary value
-               "tomo_iterations": 25,
+               "tomo_iterations": 10,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "GPUs": [0],
                "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
@@ -280,8 +280,8 @@ def folders_tab():
             object = np.angle(object)
         print('\t Extraction done!')
 
-        selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
-        play_control.widget.max =  selection_slider.widget.max
+        selection_slider2.widget.max, selection_slider2.widget.value = object.shape[0] - 1, object.shape[0]//2
+        play_control2.widget.max =  selection_slider2.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider2.widget})  
 
 
@@ -643,7 +643,8 @@ def wiggle_tab():
     
     def format_wiggle_plot(figure,subplots):
         subplots[0,0].set_title('Pre-wiggle')
-        subplots[0,1].set_title('Post_wiggle')
+        subplots[0,1].set_title('Wiggled')
+        subplots[0,2].set_title('C-Mass Adjusted')
         subplots[0,0].set_ylabel('YZ')
         subplots[1,0].set_ylabel('XY')
         subplots[2,0].set_ylabel('XZ')
@@ -660,13 +661,16 @@ def wiggle_tab():
     
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots(3,2,figsize=(6,6))
+        figure2, subplot2 = plt.subplots(3,3,figsize=(6,6))
         subplot2[0,0].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[0,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[0,2].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[1,0].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[1,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[1,2].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[2,0].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[2,1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[2,2].imshow(np.random.random((4,4)),cmap='gray')
         format_wiggle_plot(figure2,subplot2)
         plt.show()
 
@@ -730,18 +734,26 @@ def wiggle_tab():
 
         global sinogram
 
-        _,_,_,cpus_slider,selection_slider = args
+        _,_,_,_,selection_slider = args
+
+        global_dict["wiggle_reference_frame"] = selection_slider.widget.value 
 
         print("Starting wiggle...")
         global wiggled_sinogram
-        temporary_sinogram = radon.get_wiggle( sinogram,  'vertical', cpus_slider.widget.value, selection_slider.widget.value)[0]
+        temp_tomogram, shiftv = radon.get_wiggle( sinogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
+        temp_tomogram, shiftv = radon.get_wiggle( temp_tomogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
         print('Finished vertical wiggle. Starting horizontal wiggle...')
-        wiggled_sinogram = radon.get_wiggle( temporary_sinogram, 'horizontal', cpus_slider.widget.value, selection_slider.widget.value)[0]
+        wiggled_sinogram, shifth, wiggle_cmas_temp = radon.get_wiggle( temp_tomogram, "horizontal", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
+        wiggle_cmas = [[],[]]
+        print(wiggle_cmas_temp.shape)
+        wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
+        global_dict["wiggle_ctr_of_mas"] = wiggle_cmas
         print("\t Wiggle done!")
         
         print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )
         np.save(global_dict["wiggle_sinogram_filepath"] ,wiggled_sinogram)
         print("\t Saved!")
+
 
     def load_wiggle(dummy):
         global wiggled_sinogram
@@ -755,6 +767,23 @@ def wiggle_tab():
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[2,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
         print('\tLoaded!')
+
+    def load_recon(dummy):
+        # try:
+        if os.path.getmtime(global_dict["reconstruction_thresholded_filepath"]) > os.path.getmtime(global_dict["reconstruction_filepath"]):
+            print('Loading reconstruction sinogram. :',global_dict["reconstruction_thresholded_filepath"])
+            recon3D = np.load(global_dict["reconstruction_thresholded_filepath"])
+        else:
+            print('Loading reconstruction sinogram. :',global_dict["reconstruction_filepath"])
+            recon3D = np.load(global_dict["reconstruction_filepath"])
+        tomogram_cmas_adjusted = np.swapaxes( radon.radon_gpu_block( recon3D, wiggled_sinogram.shape[0], global_dict["GPUs"], blocksize=10 ), 0, 1)
+        # except:
+            # print("No reconstruction file was found! Please perform the tomography first.")
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[0,2]), 'axis':fixed(0),'frame_number': selection_slider.widget})        
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[1,2]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[2,2]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
+        print('\tLoaded!')
+
 
     def save_inverted_sinogram(dummy):
         print('Multiplying sinogram by -1 and saving at:',global_dict["wiggle_sinogram_filepath"])
@@ -781,11 +810,14 @@ def wiggle_tab():
     simulation_button.trigger(preview_angle_projection)
     projection_button = Button(description='Project Angles',icon='play',layout=buttons_layout)
     projection_button.trigger(project_angles_to_regular_mesh)
-    angle_step_slider   = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
+    angle_step_slider = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
     projection_box = widgets.VBox([angle_step_slider.widget,simulation_button.widget,projection_button.widget,play_box])
 
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
+
+    load_recon_button   = Button(description='Load Recon',icon='folder-open-o',layout=buttons_layout)
+    load_recon_button.trigger(load_recon)
 
     bad_frames_before_wiggle = Input(global_dict,"bad_frames_before_wiggle",description='Bad Frames',  layout=items_layout)
     widgets.interactive_output(update_lists,{ "bad_frames_before_wiggle":bad_frames_before_wiggle.widget})
@@ -814,7 +846,7 @@ def wiggle_tab():
     invert_sinogram_buttom.trigger(save_inverted_sinogram)
 
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
+    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,load_recon_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
     box = widgets.HBox([controls,vbar,output2])
     
     return box
@@ -1071,7 +1103,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                "CPUs": 32,
                "tomo_regularization": True,
                "tomo_regularization_param": 0.001, # arbitrary value
-               "tomo_iterations": 25,
+               "tomo_iterations": 10,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "GPUs": [0],
                "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption

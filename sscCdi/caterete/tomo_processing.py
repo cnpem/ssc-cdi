@@ -9,7 +9,7 @@ from .misc import list_files_in_folder
 from .unwrap import RemoveGrad
 
 from sscRaft import parallel
-
+from sscRadon import radon
 
 
 
@@ -270,9 +270,11 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["GPUs"]
+    CPUs                     = input_dict["CPUs"]
     do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
     output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
+    wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
 
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
@@ -335,6 +337,11 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     else:
         import sys
         sys.exit('Select a proper reconstruction method')
+    
+    print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
+    reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -2*np.array(wiggle_cmas[1]), -2*np.array(wiggle_cmas[0]), input_dict["CPUs"])
+    print('\t\t Correction done!')
+
     print('\t Tomography done!')
 
     print('Saving tomography logfile...')
