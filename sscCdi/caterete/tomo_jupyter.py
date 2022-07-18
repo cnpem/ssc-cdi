@@ -14,7 +14,7 @@ import subprocess
 
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
-from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
+from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel, equalize_tomogram
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
@@ -69,6 +69,8 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "GPUs": [0],
                "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
+               "tomo_remove_outliers": 0,
+               "tomo_local_offset":[[],[]]
 }
 
 
@@ -105,7 +107,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["complex_object_filepath"]             = os.path.join(global_dict["output_folder"],'object_' + global_dict["folders_list"][0] + '.npy')
     global_dict["ordered_angles_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_angles.npy')
     global_dict["ordered_object_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_object.npy')
-    global_dict["reconstruction_thresholded_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy')
+    global_dict["reconstruction_equalized_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy')
     global_dict["reconstruction_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy')
     global_dict["cropped_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_cropped_sinogram.npy')
     global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
@@ -686,7 +688,6 @@ def wiggle_tab():
         elif sinogram_selection.value == "cropped":
             filepath = global_dict["cropped_sinogram_filepath"]
 
-
         global sinogram
         print('Loading sinogram',filepath)
         sinogram = np.load(filepath)
@@ -770,9 +771,9 @@ def wiggle_tab():
 
     def load_recon(dummy):
         # try:
-        if os.path.getmtime(global_dict["reconstruction_thresholded_filepath"]) > os.path.getmtime(global_dict["reconstruction_filepath"]):
-            print('Loading reconstruction sinogram. :',global_dict["reconstruction_thresholded_filepath"])
-            recon3D = np.load(global_dict["reconstruction_thresholded_filepath"])
+        if os.path.getmtime(global_dict["reconstruction_equalized_filepath"]) > os.path.getmtime(global_dict["reconstruction_filepath"]):
+            print('Loading reconstruction sinogram. :',global_dict["reconstruction_equalized_filepath"])
+            recon3D = np.load(global_dict["reconstruction_equalized_filepath"])
         else:
             print('Loading reconstruction sinogram. :',global_dict["reconstruction_filepath"])
             recon3D = np.load(global_dict["reconstruction_filepath"])
@@ -866,7 +867,7 @@ def tomo_tab():
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(2,3)
+        figure, subplot = plt.subplots(2,3,figsize=(10,5))
         subplot[0,0].imshow(np.random.random((4,4)),cmap='gray')
         subplot[0,1].imshow(np.random.random((4,4)),cmap='gray')
         subplot[0,2].imshow(np.random.random((4,4)),cmap='gray')
@@ -879,11 +880,13 @@ def tomo_tab():
 
     output2 = widgets.Output()
     with output2:
-        figure2, axs = plt.subplots(2,2,figsize=(10,5))
-        axs[0,0].hist(np.random.random((10,10)).flatten(),bins=100)
-        axs[0,1].hist(np.random.random((10,10)).flatten(),bins=100)
-        axs[1,0].hist(np.random.random((10,10)).flatten(),bins=100)
-        axs[1,1].hist(np.random.random((10,10)).flatten(),bins=100)
+        figure2, axs = plt.subplots(2,1,figsize=(10,5))
+        axs[0].hist(np.random.normal((100,100)).flatten(),bins=10)
+        axs[1].hist(np.random.normal((100,100)).flatten(),bins=10,color='green')
+        axs[0].set_title("Histogram: Original")
+        axs[1].set_title("Histogram: Equalized")
+        axs[0].set_yscale('log')
+        axs[1].set_yscale('log')
         figure2.canvas.header_visible = False 
         figure2.tight_layout()
         plt.show()
@@ -892,6 +895,7 @@ def tomo_tab():
     def update_imshow_with_format(sinogram,figure1,subplot1,frame_number,axis,norm=None):
         update_imshow(sinogram,figure1,subplot1,frame_number,axis=axis,title=True,norm=norm)
         format_tomo_plot(figure,subplot)
+
 
     def run_tomo(dummy,args=()):
         iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
@@ -929,11 +933,10 @@ def tomo_tab():
 
         if load_selection.value == "Original":
             savepath = global_dict["reconstruction_filepath"]
-        elif load_selection.value == "Threshold":
-            savepath = global_dict["reconstruction_thresholded_filepath"]
+        elif load_selection.value == "Equalized":
+            savepath = global_dict["reconstruction_equalized_filepath"]
         
         print('Loading 3D recon from: ',savepath)
-        time.sleep(0.5)
         global reconstruction
         reconstruction = np.load(savepath)
         print('\t Loaded!')
@@ -941,8 +944,8 @@ def tomo_tab():
         tomo_sliceX.widget.max, tomo_sliceX.widget.value = reconstruction.shape[0], reconstruction.shape[0]//2
         tomo_sliceY.widget.max, tomo_sliceY.widget.value = reconstruction.shape[1], reconstruction.shape[1]//2
         tomo_sliceZ.widget.max, tomo_sliceZ.widget.value = reconstruction.shape[2], reconstruction.shape[2]//2
-        # norm = colors.Normalize(vmin=np.min(reconstruction), vmax=np.max(reconstruction))
-        norm = None
+        norm = colors.Normalize(vmin=np.min(reconstruction), vmax=np.max(reconstruction))
+        # norm = None
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget,'norm':fixed(norm)})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget,'norm':fixed(norm)})    
         widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget,'norm':fixed(norm)})    
@@ -951,55 +954,36 @@ def tomo_tab():
         subplot[1,2].imshow(np.sum(reconstruction,axis=2),cmap='gray')
         format_tomo_plot(figure,subplot)
 
+        axs[0].clear()
+        axs[0].hist(reconstruction.flatten(),bins=300)
+        axs[0].set_title("Histogram: Original")
+        axs[1].set_title("Histogram: Equalized")
 
-    def save_thresholded_tomo(dummy):
-        print(f'Applying threshold value of {tomo_threshold.widget.value} to reconstruction')
-        thresholded_recon = np.where( np.abs(reconstruction) > tomo_threshold.widget.value,0,reconstruction)
-        print('\t Done!')
-        print('Saving thresholded reconstruction...')
-        np.save(global_dict["reconstruction_thresholded_filepath"],thresholded_recon)
-        imsave(global_dict["reconstruction_thresholded_filepath"][:-4] + '.tif',thresholded_recon)
-        print('\tSaved reconstruction at: ',global_dict["reconstruction_thresholded_filepath"])
-
-    def plot_histograms(dummy):
-
-        n_bins=100
-        threshold = tomo_threshold.widget.value
-        
-        raw_data = np.load(global_dict["reconstruction_thresholded_filepath"])
-
-        raw_data = raw_data.flatten()
-        data = raw_data
-        data = np.where(np.abs(data)>threshold,0,data)
+    def equalize(dummy):
 
         print('Computing statistics...')
-        statistics_raw         = (np.max(raw_data),np.min(raw_data),np.mean(raw_data),np.std(raw_data))
-        label_raw = f'\n\tMax = {statistics_raw[0]:.2e}\n\t Min = {statistics_raw[1]:.2e}\n\t Mean = {statistics_raw[2]:.2e}\n\t StdDev = {statistics_raw[3]:.2e}'
-        statistics_thresholded = (np.max(data),np.min(data),np.mean(data),np.std(data))
-        label_thresh = f'\n\tMax = {statistics_thresholded[0]:.2e}\n\t Min = {statistics_thresholded[1]:.2e}\n\t Mean = {statistics_thresholded[2]:.2e}\n\t StdDev = {statistics_thresholded[3]:.2e}'
-        print('Raw data statistics: ', label_raw)
-        print('Thresholded data statistics: ',label_thresh)
+        statistics_raw = (np.max(reconstruction),np.min(reconstruction),np.mean(reconstruction),np.std(reconstruction))
+        print('Raw data statistics: ',  f'\n\tMax = {statistics_raw[0]:.2e}\t Min = {statistics_raw[1]:.2e}\t Mean = {statistics_raw[2]:.2e}\t StdDev = {statistics_raw[3]:.2e}')
 
+        global equalized_tomogram 
+        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value)
 
-        print('Plotting histograms...')
-        with output2:
-            for ax in axs.reshape(-1):
-                ax.clear()
-            try:
-                axs[0,0].hist(raw_data,bins=n_bins)
-                axs[0,1].hist(raw_data,bins=n_bins)
-            except:
-                print('Problem found when plotting raw data! Check values!')
-            axs[1,0].hist(data,bins=n_bins)
-            axs[1,1].hist(data,bins=n_bins)
-            axs[0,0].set_title('Raw histogram')
-            axs[1,0].set_title('Threshold')
-            axs[0,1].set_title('Log(Raw)')
-            axs[1,1].set_title('Log(Threshold)')
-            axs[0,1].set_yscale('log')
-            axs[1,1].set_yscale('log')
-        print('\t Done!')
+        statistics_equalized = (np.max(equalized_tomogram),np.min(equalized_tomogram),np.mean(equalized_tomogram),np.std(equalized_tomogram))
+        print('Thresholded data statistics: ',f'\n\tMax = {statistics_equalized[0]:.2e}\n\t Min = {statistics_equalized[1]:.2e}\n\t Mean = {statistics_equalized[2]:.2e}\n\t StdDev = {statistics_equalized[3]:.2e}')
 
+        flattened_tomogram = equalized_tomogram.flatten()
+        axs[1].clear()
+        axs[1].hist(np.where(flattened_tomogram==0,np.NaN,flattened_tomogram),bins=300,color='green')
+        if hist_max.widget.value != 0:
+            axs[0].set_ylim(0,hist_max.widget.value)
+            axs[1].set_ylim(0,hist_max.widget.value)
+        axs[0].set_title("Histogram: Original")
+        axs[1].set_title("Histogram: Equalized")
+
+        print('Saving equalized reconstruction...')
+        np.save(global_dict["reconstruction_equalized_filepath"],equalized_tomogram)
+        imsave(global_dict["reconstruction_equalized_filepath"][:-4] + '.tif',equalized_tomogram)
+        print('\tSaved reconstruction at: ',global_dict["reconstruction_equalized_filepath"])
 
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
@@ -1008,12 +992,12 @@ def tomo_tab():
     queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=items_layout)
     jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=items_layout)
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
-    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold for recon",layout=items_layout)
+    tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold",layout=items_layout)
     tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
     tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
-    load_selection  = widgets.RadioButtons(options=['Original', 'Threshold'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
+    load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
     checkboxes_box  = widgets.VBox(children=checkboxes)
 
@@ -1038,11 +1022,12 @@ def tomo_tab():
     load_recon_button = Button(description="Load recon slices",layout=buttons_layout,icon='play')
     load_recon_button.trigger(load_recon)
 
-    save_thresholded_tomo_button = Button(description="Save thresholded tomo",layout=buttons_layout,icon='play')
-    save_thresholded_tomo_button.trigger(save_thresholded_tomo)
+    plot_histogram_button = Button(description="Equalize Reconstruction",layout=buttons_layout,icon='play')
+    plot_histogram_button.trigger(equalize)
 
-    plot_histogram_button = Button(description="Plot Histograms",layout=buttons_layout,icon='play')
-    plot_histogram_button.trigger(plot_histograms)
+    remove_outliers_slider        = Input(global_dict,"tomo_remove_outliers",      description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
+    remove_local_offset_field     = Input(global_dict,"tomo_local_offset",  description='Remove Background Offset',layout=items_layout)
+    hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
     def save_on_click(dummy):
         print('Saving JSON input file...')
@@ -1063,10 +1048,11 @@ def tomo_tab():
     
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
     start_box = widgets.HBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
-    threshold_box = widgets.HBox([save_thresholded_tomo_button.widget])#, plot_histogram_button.widget])
+    threshold_box = widgets.VBox([remove_outliers_slider.widget,remove_local_offset_field.widget,tomo_threshold.widget,hist_max.widget,plot_histogram_button.widget])#, plot_histogram_button.widget])
     slurm_box = widgets.VBox([cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,tomo_threshold.widget,threshold_box])
-    box = widgets.HBox([controls,vbar2,output])#widgets.VBox([output,hbar,output2])])
+    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,threshold_box])
+    plots = widgets.VBox([output,hbar,output2])
+    box = widgets.HBox([controls,vbar2,plots])
     
     return box 
 

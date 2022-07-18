@@ -4,6 +4,7 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
 from functools import partial
+import ast
 
 from .misc import list_files_in_folder
 from .unwrap import RemoveGrad
@@ -263,6 +264,30 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
+def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[],[]]):
+
+
+    bkg_window = ast.literal_eval(bkg_window) # read string as list
+    equalized_tomogram = recon
+
+    print(type(threshold),threshold)
+    if threshold != 0:
+        equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
+
+    if remove_outliers != 0:
+        for i in range(remove_outliers):
+            equalized_tomogram = np.where( equalized_tomogram > mean+3*std,0,equalized_tomogram)
+            equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
+
+    if bkg_window !=[[],[]]:
+        window = recon[bkg_window[0][0]:bkg_window[0][1],bkg_window[1][0]:bkg_window[1][1]]
+        offset = np.mean(window)
+        equalized_tomogram = equalized_tomogram - offset
+        equalized_tomogram = np.where(equalized_tomogram<0,0,equalized_tomogram)
+
+    return equalized_tomogram
+
+
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
     algorithm                = input_dict["tomo_algorithm"]
@@ -339,7 +364,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         sys.exit('Select a proper reconstruction method')
     
     print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
-    reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -2*np.array(wiggle_cmas[1]), -2*np.array(wiggle_cmas[0]), input_dict["CPUs"])
+    reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
     print('\t\t Correction done!')
 
     print('\t Tomography done!')
