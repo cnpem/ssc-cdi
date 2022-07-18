@@ -12,8 +12,6 @@ from .unwrap import RemoveGrad
 from sscRaft import parallel
 from sscRadon import radon
 
-
-
 ####################### SORTING ###################################
 
 def angle_mesh_organize( mdata, angles, percentage = 100 ): 
@@ -132,8 +130,8 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         frame -= np.min(frame)
 
     # Remove average offset from specific region
-    if remove_avg_offset[0]:
-        frame -= np.mean(frame[remove_avg_offset[1][0]:remove_avg_offset[1][1],remove_avg_offset[1][2]:remove_avg_offset[1][3]])
+    if remove_avg_offset != []:
+        frame -= np.mean(frame[remove_avg_offset[0]:remove_avg_offset[1],remove_avg_offset[2]:remove_avg_offset[3]])
         frame = np.where(frame<0,0,frame)
 
     return frame
@@ -279,14 +277,13 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[
             equalized_tomogram = np.where( equalized_tomogram > mean+3*std,0,equalized_tomogram)
             equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
 
-    if bkg_window !=[[],[]]:
-        window = recon[bkg_window[0][0]:bkg_window[0][1],bkg_window[1][0]:bkg_window[1][1]]
+    if bkg_window !=[]:
+        window = recon[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
         offset = np.mean(window)
         equalized_tomogram = equalized_tomogram - offset
         equalized_tomogram = np.where(equalized_tomogram<0,0,equalized_tomogram)
 
     return equalized_tomogram
-
 
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
