@@ -62,6 +62,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "wiggle_sinogram_selection":"cropped",
                "bad_frames_before_wiggle": [],
                "wiggle_reference_frame": 0,
+               "wiggle_ctr_of_mas": [[],[]],
                "CPUs": 32,
               
                "tomo_regularization": False,
@@ -902,7 +903,7 @@ def tomo_tab():
     def run_tomo(dummy,args=()):
         iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
 
-        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "ConvexHull":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value } # select steps when performing full recon
+        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value,"ConvexHull":checkboxes2[0].value, "Wiggle":checkboxes2[1].value, "Tomo":checkboxes2[2].value, "Equalize Recon":checkboxes2[3].value } # select steps when performing full recon
 
         output_path = global_dict["jupyter_folder"] 
         
@@ -925,8 +926,7 @@ def tomo_tab():
             print('\t Saved!')
 
         elif machine_selection.value == "Cluster": 
-            n_gpus = len(ast.literal_eval(gpus_slider.widget.value))
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=n_gpus,cpus=cpus_slider.value)
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
 
     def load_recon(dummy):
 
