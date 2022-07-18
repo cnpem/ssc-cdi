@@ -41,7 +41,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "left_crop":0,
                "right_crop":0,
 
-               "bad_frames_before_unwrap": [7,20,36,65,94,123,152,181,210,239,268,296,324],
+               "bad_frames_before_unwrap": [],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
@@ -50,7 +50,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                 "equalize_gradient":0,
                 "equalize_outliers":0,
                 "equalize_global_offset":False,
-                "equalize_local_offset":[0,[0,None,0,None]],
+                "equalize_local_offset":[0,None,0,None],
 
                "bad_frames_before_cHull": [],
                "chull_invert": False,
@@ -59,6 +59,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "chull_erosion": 10,
                "chull_param": 10,               
 
+               "wiggle_sinogram_selection":"cropped",
                "bad_frames_before_wiggle": [],
                "wiggle_reference_frame": 0,
                "CPUs": 32,
@@ -68,9 +69,9 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "tomo_iterations": 10,
                "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
                "GPUs": [0],
-               "tomo_threshold" : float(100.0), # max value to be left in reconstructed matrix
+               "tomo_threshold" : 0.0, # max value to be left in reconstructed matrix
                "tomo_remove_outliers": 0,
-               "tomo_local_offset":[[],[]]
+               "tomo_local_offset":[]
 }
 
 
@@ -104,17 +105,17 @@ def update_paths(global_dict,dummy1,dummy2):
     else: # if string
         global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"])
 
-    global_dict["complex_object_filepath"]             = os.path.join(global_dict["output_folder"],'object_' + global_dict["folders_list"][0] + '.npy')
-    global_dict["ordered_angles_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_angles.npy')
-    global_dict["ordered_object_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_object.npy')
-    global_dict["reconstruction_equalized_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_thresholded.npy')
-    global_dict["reconstruction_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy')
-    global_dict["cropped_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_cropped_sinogram.npy')
-    global_dict["unwrapped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
-    global_dict["equalized_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_equalized_sinogram.npy')
-    global_dict["chull_sinogram_filepath"]             = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
-    global_dict["wiggle_sinogram_filepath"]            = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
-    global_dict["projected_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
+    global_dict["complex_object_filepath"]           = os.path.join(global_dict["output_folder"],'object_' + global_dict["folders_list"][0] + '.npy')
+    global_dict["ordered_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_angles.npy')
+    global_dict["ordered_object_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_object.npy')
+    global_dict["reconstruction_equalized_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_equalized.npy')
+    global_dict["reconstruction_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '.npy')
+    global_dict["cropped_sinogram_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_cropped_sinogram.npy')
+    global_dict["unwrapped_sinogram_filepath"]       = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_unwrapped_sinogram.npy')
+    global_dict["equalized_sinogram_filepath"]       = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_equalized_sinogram.npy')
+    global_dict["chull_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
+    global_dict["wiggle_sinogram_filepath"]          = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
+    global_dict["projected_angles_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
     return global_dict
 
 def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -646,7 +647,7 @@ def wiggle_tab():
     def format_wiggle_plot(figure,subplots):
         subplots[0,0].set_title('Pre-wiggle')
         subplots[0,1].set_title('Wiggled')
-        subplots[0,2].set_title('C-Mass Adjusted')
+        subplots[0,2].set_title('Reconstruction')
         subplots[0,0].set_ylabel('YZ')
         subplots[1,0].set_ylabel('XY')
         subplots[2,0].set_ylabel('XZ')
@@ -738,6 +739,7 @@ def wiggle_tab():
         _,_,_,_,selection_slider = args
 
         global_dict["wiggle_reference_frame"] = selection_slider.widget.value 
+        global_dict["wiggle_sinogram_selection"] = sinogram_selection.value
 
         print("Starting wiggle...")
         global wiggled_sinogram
@@ -796,7 +798,7 @@ def wiggle_tab():
     def correct_bad_frames(dummy):
         print('Zeroing frames: ', bad_frames3)
         global sinogram
-        sinogram[bad_frames3,:,:]  = np.zeros((sinogram.shape[1],sinogram.shape[2]))
+        sinogram[bad_frames3,:,:] = np.zeros((sinogram.shape[1],sinogram.shape[2]))
         print('\t Done!')
         widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
 
@@ -998,21 +1000,23 @@ def tomo_tab():
     tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
     load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
-    checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "ConvexHull", "Wiggle", "Tomo"]]
-    checkboxes_box  = widgets.VBox(children=checkboxes)
+    checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "Equalize Frames"]]
+    checkboxes2     = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["ConvexHull", "Wiggle", "Tomo", "Equalize Recon"]]
+    checkboxes_box  = widgets.VBox([widgets.HBox([*checkboxes]),widgets.HBox([*checkboxes2])])
 
     widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':algo_dropdown,'dummy2':fixed(algo_dropdown)})
 
-
-    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,chull_checkbox,wiggle_checkbox,tomo_checkbox):
+    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,chull_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
         # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
-        dictionary["processing_steps"]["Sort"]       = sort_checkbox 
-        dictionary["processing_steps"]["Crop"]       = crop_checkbox 
-        dictionary["processing_steps"]["Unwrap"]     = unwrap_checkbox 
-        dictionary["processing_steps"]["ConvexHull"] = chull_checkbox 
-        dictionary["processing_steps"]["Wiggle"]     = wiggle_checkbox 
-        dictionary["processing_steps"]["Tomo"]       = tomo_checkbox 
-    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'chull_checkbox':checkboxes[3],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5]})
+        dictionary["processing_steps"]["Sort"]            = sort_checkbox 
+        dictionary["processing_steps"]["Crop"]            = crop_checkbox 
+        dictionary["processing_steps"]["Unwrap"]          = unwrap_checkbox 
+        dictionary["processing_steps"]["Equalize Frames"] = equalize_frames_checkbox 
+        dictionary["processing_steps"]["ConvexHull"]      = chull_checkbox 
+        dictionary["processing_steps"]["Wiggle"]          = wiggle_checkbox 
+        dictionary["processing_steps"]["Tomo"]            = tomo_checkbox 
+        dictionary["processing_steps"]["Equalize Recon"]  = equalize_recon_checkbox 
+    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'chull_checkbox':checkboxes2[0],'wiggle_checkbox':checkboxes2[1],'tomo_checkbox':checkboxes2[2],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes2[3]})
 
     start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
     args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
@@ -1025,8 +1029,8 @@ def tomo_tab():
     plot_histogram_button = Button(description="Equalize Reconstruction",layout=buttons_layout,icon='play')
     plot_histogram_button.trigger(equalize)
 
-    remove_outliers_slider        = Input(global_dict,"tomo_remove_outliers",      description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
-    remove_local_offset_field     = Input(global_dict,"tomo_local_offset",  description='Remove Background Offset',layout=items_layout)
+    remove_outliers_slider    = Input(global_dict,"tomo_remove_outliers",  description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
+    remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Remove Background Offset',layout=items_layout)
     hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
     def save_on_click(dummy):
@@ -1047,7 +1051,7 @@ def tomo_tab():
     save_dict_button.trigger(save_on_click)    
     
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
-    start_box = widgets.HBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
+    start_box = widgets.VBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
     threshold_box = widgets.VBox([remove_outliers_slider.widget,remove_local_offset_field.widget,tomo_threshold.widget,hist_max.widget,plot_histogram_button.widget])#, plot_histogram_button.widget])
     slurm_box = widgets.VBox([cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
     controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,threshold_box])
