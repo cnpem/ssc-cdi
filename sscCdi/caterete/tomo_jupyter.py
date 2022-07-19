@@ -21,10 +21,10 @@ global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
 
 """ Standard folders definitions"""
-if 1: # paths for beamline use
+if 0: # paths for beamline use
     tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_raft.py' # path with python script to run
 else: # paths for GCC tests       
-    tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' # NEED TO CHANGE FOR EACH USER? 
+    tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
 
 """ Standard dictionary definition """
 global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
@@ -93,6 +93,8 @@ style = {'description_width': 'initial'}
 
 def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
+
+machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
@@ -222,10 +224,10 @@ def update_gpu_limits(machine_selection):
         gpus_slider.widget.value = 0
         gpus_slider.widget.max = 1
 
-def update_cpus_gpus(cpus,gpus):
+def update_cpus_gpus(cpus,gpus,machine_selection):
     global_dict["CPUs"] = cpus
 
-    if machine_selection.value == 'Cluster':
+    if machine_selection == 'Cluster':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
@@ -236,7 +238,7 @@ def update_cpus_gpus(cpus,gpus):
             global_dict["GPUs"] = [0,1,2]
         elif gpus == 4:
             global_dict["GPUs"] = [0,1,2,3]
-    elif machine_selection.value == 'Local':
+    elif machine_selection == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
@@ -749,7 +751,6 @@ def wiggle_tab():
         print('Finished vertical wiggle. Starting horizontal wiggle...')
         wiggled_sinogram, shifth, wiggle_cmas_temp = radon.get_wiggle( temp_tomogram, "horizontal", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
         wiggle_cmas = [[],[]]
-        print(wiggle_cmas_temp.shape)
         wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
         global_dict["wiggle_ctr_of_mas"] = wiggle_cmas
         print("\t Wiggle done!")
@@ -808,7 +809,11 @@ def wiggle_tab():
         global bad_frames3
         bad_frames3 = ast.literal_eval(bad_frames_before_wiggle)
 
+    def update_dict(reference_frame):
+        global_dict["wiggle_reference_frame"] = reference_frame
+
     play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
+    widgets.interactive_output(update_dict,{ "reference_frame":selection_slider.widget})
 
     simulation_button = Button(description='Simulate Projection',icon='play',layout=buttons_layout)
     simulation_button.trigger(preview_angle_projection)
@@ -837,10 +842,10 @@ def wiggle_tab():
     load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(load_sinogram)
     
-    global cpus_slider, gpus_slider
+    global cpus_slider, gpus_slider, machine_selection
     gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="# of GPUs:")
     cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="# of CPUs:")
-    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget})
+    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
 
     args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
@@ -990,7 +995,7 @@ def tomo_tab():
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
-    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget})
+    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
     queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=items_layout)
     jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=items_layout)
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
@@ -1079,7 +1084,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                "bottom_crop":0,
                "left_crop":0,
                "right_crop":0,
-               "bad_frames_before_unwrap": [7,20,36,65,94,123,152,181,210,239,268,296,324],
+               "bad_frames_before_unwrap": [],
                "unwrap_iterations": 0,
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
@@ -1112,8 +1117,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
     load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
-    global machine_selection
-    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
+
     widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
     global data_selection

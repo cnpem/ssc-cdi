@@ -65,7 +65,7 @@ convex_hull     = input_dictionary["chull_param"]
 wiggle_sinogram_selection = input_dictionary["wiggle_sinogram_selection"]
 bad_frames_before_wiggle = input_dictionary["bad_frames_before_wiggle"] # set to zero those frames that are still bad after phase unwrapping or convex Hull
 reference_frame = input_dictionary["wiggle_reference_frame"] ## MANUAL!! 
-n_of_wiggle_processes = input_dictionary["wiggle_cpus"]
+n_of_wiggle_processes = input_dictionary["CPUs"]
 
 """ Regularization: https://doi.org/10.1016/j.rinam.2019.100088  """
 do_regularization = input_dictionary["tomo_regularization"]
@@ -74,7 +74,7 @@ regularization_parameter = input_dictionary["tomo_regularization_param"]   #tira
 """ Tomo Parameters """
 iterations = input_dictionary["tomo_iterations"] # number of iterations of tomographic algorithms
 which_reconstruction = input_dictionary["tomo_algorithm"] #"EEM" # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-GPUs = input_dictionary["tomo_n_of_gpus"] #[0,1] # GPUs to use. GPUs = -1, use default of [0]
+GPUs = input_dictionary["GPUs"] #[0,1] # GPUs to use. GPUs = -1, use default of [0]
 threshold_object = input_dictionary["tomo_threshold"]
 
 """             INPUTS -> SET OUTPUT FILES AND FOLDERS                """
@@ -89,13 +89,13 @@ object_tomogram_filepath = input_dictionary["wiggle_sinogram_filepath"] #contras
 
 """ Select filenames of reconstructed object """
 recon_object_filepath = input_dictionary['reconstruction_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '.npy'
-recon_object_filepath_thresholded = input_dictionary['reconstruction_thresholded_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
+recon_object_filepath_thresholded = input_dictionary['reconstruction_equalized_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
 
 """ Output plot folders """
-originals_filepath  = [False ,os.path.join(sinogram_folder, '00_frames_original')]
-ordered_filepath    = [False,os.path.join(sinogram_folder, '01_frames_ordered')]
-cropped_filepath    = [False ,os.path.join(sinogram_folder, '02_frames_cropped')]
-unwrapped_filepath  = [False ,os.path.join(sinogram_folder, '03_frames_unwrapped')]
+originals_filepath  = [True ,os.path.join(sinogram_folder, '00_frames_original')]
+ordered_filepath    = [True,os.path.join(sinogram_folder, '01_frames_ordered')]
+cropped_filepath    = [True ,os.path.join(sinogram_folder, '02_frames_cropped')]
+unwrapped_filepath  = [True ,os.path.join(sinogram_folder, '03_frames_unwrapped')]
 equalized_filepath  = [True ,os.path.join(sinogram_folder, '04_frames_convexHull')]
 cHull_filepath      = [True ,os.path.join(sinogram_folder, '05_frames_convexHull')]
 create_directory_if_doesnt_exist(originals_filepath[1],ordered_filepath[1],cropped_filepath[1],unwrapped_filepath[1],cHull_filepath[1],equalized_filepath[1])
@@ -252,18 +252,24 @@ if processing_steps["Wiggle"]:
     """ ######################## Project Angles and Padding to 180 degrees ################################ """
 
     angles  = np.load(angles_filepath)
-    angles = (np.pi/180.) * angles
+    # angles = (np.pi/180.) * angles
 
     object, idxP, firstP, projected_angles = angle_mesh_organize(object, angles)
-
     np.save(input_dictionary["projected_angles_filepath"],projected_angles)
 
     """ ######################## Wiggle ################################ """
     print('\tStarting Wiggle')
     start = time()
 
-    updateTomoP_0 = radon.get_wiggle( object, 'vertical', n_of_wiggle_processes, reference_frame )[0]
-    tomoP = radon.get_wiggle( updateTomoP_0, 'horizontal', n_of_wiggle_processes, reference_frame)[0]
+    temp_tomogram, shiftv = radon.get_wiggle( object, "vertical", input_dictionary["CPUs"], input_dictionary["wiggle_reference_frame"] )
+    temp_tomogram, shiftv = radon.get_wiggle( temp_tomogram, "vertical", input_dictionary["CPUs"], input_dictionary["wiggle_reference_frame"] )
+    print('Finished vertical wiggle. Starting horizontal wiggle...')
+    tomoP, shifth, wiggle_cmas_temp = radon.get_wiggle( temp_tomogram, "horizontal", input_dictionary["CPUs"], input_dictionary["wiggle_reference_frame"] )
+    wiggle_cmas = [[],[]]
+    wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
+    input_dictionary["wiggle_ctr_of_mas"] = wiggle_cmas
+
+
     np.save(object_tomogram_filepath,tomoP)
 
     elapsed = time() - start
