@@ -28,8 +28,6 @@ from numpy.fft import ifft2 as ifft2
 from .misc import create_directory_if_doesnt_exist
 
 def cat_ptycho_3d(difpads,jason):
-    t2 = time()
-
     sinogram = []
     probe = []
     background = [] 
@@ -56,9 +54,7 @@ def cat_ptycho_3d(difpads,jason):
         probe.append(probe3d)
         background.append(background3d)
     
-    t3 = time()
-
-    return sinogram,probe,background,t2,t3, jason
+    return sinogram,probe,background,jason
 
 
 def cat_ptycho_serial(jason):
@@ -69,6 +65,8 @@ def cat_ptycho_serial(jason):
     counter = 0
     first_iteration = True
     first_of_folder = True
+    time_elasped_restauration = 0
+    time_elasped_ptycho = 0
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
 
@@ -77,9 +75,9 @@ def cat_ptycho_serial(jason):
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
-
+            t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
-
+            time_elasped_restauration += time() - t_start
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
                 jason["object_pixel"] = object_pixel_size
@@ -91,11 +89,9 @@ def cat_ptycho_serial(jason):
             
             args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
 
-            t2 = time() 
-
+            t_start2 = time()
             object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
-            
-            t3 = time()
+            time_elasped_ptycho += time() - t_start2
 
             if first_of_folder:
                 object = object2d
@@ -114,7 +110,7 @@ def cat_ptycho_serial(jason):
         probe_list.append(probe)
         background_list.append(background)
 
-    return sinogram_list, probe_list, background_list, t2, t3, jason
+    return sinogram_list, probe_list, background_list, time_elasped_restauration, time_elasped_ptycho, jason
 
 def define_paths(jason):
     if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
@@ -126,25 +122,21 @@ def define_paths(jason):
     if jason["PreviewGCC"][0] == True: # path convention for GCC users
         if 'LogfilePath' not in jason: jason['LogfilePath'] = ''
         jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
-        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1],'preview')
-        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1],'difpads')
-        jason["ObjPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
-        jason["ProbePath"]      = os.path.join(jason["PreviewGCC"][1],'reconstruction')
-        jason["BkgPath"]        = os.path.join(jason["PreviewGCC"][1],'reconstruction')
+        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1])
+        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1])
+        jason["ReconsPath"]     = os.path.join(jason["PreviewGCC"][1])
     else:
         beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
         print("Output path:",     beamline_outputs_path)
         jason["LogfilePath"]    = beamline_outputs_path
         jason["PreviewFolder"]  = beamline_outputs_path
         jason["SaveDifpadPath"] = beamline_outputs_path
-        jason["ObjPath"]        = beamline_outputs_path
-        jason["ProbePath"]      = beamline_outputs_path
-        jason["BkgPath"]        = beamline_outputs_path
+        jason["ReconsPath"]     = beamline_outputs_path
 
 
-    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ObjPath'],   jason['InitialObj']) # append initialObj filename to path
-    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ProbePath'], jason['InitialProbe'])
-    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['BkgPath'],   jason['InitialBkg'])
+    if jason['InitialObj'] in jason and jason['InitialObj']   != "": jason['InitialObj']   = os.path.join(jason['ReconsPath'], jason['InitialObj']) # append initialObj filename to path
+    if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ReconsPath'], jason['InitialProbe'])
+    if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['ReconsPath'], jason['InitialBkg'])
 
     jason['scans_string'] = 'scans'
     jason['positions_string']  = 'positions'
@@ -938,10 +930,10 @@ def create_output_directories(jason):
         create_directory_if_doesnt_exist(jason["LogfilePath"])
     if jason["PreviewFolder"] != "":
         create_directory_if_doesnt_exist(jason["PreviewFolder"])
-    if jason["ObjPath"] != "":
-        create_directory_if_doesnt_exist(jason["ObjPath"])
-    if jason["ProbePath"] != "":
-        create_directory_if_doesnt_exist(jason["ProbePath"])
+    if jason["ReconsPath"] != "":
+        create_directory_if_doesnt_exist(jason["ReconsPath"])
+    if jason["ReconsPath"] != "":
+        create_directory_if_doesnt_exist(jason["ReconsPath"])
     if jason["SaveDifpadPath"] != "":
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
 
@@ -1386,6 +1378,6 @@ def preview_ptycho(jason, phase, absol, probe, frame = 0):
         plt.close()
         '''
 
-        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_2d_' + str(frame), nlines=2)
-        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'], file=jason['PreviewFolder'] + '/object_2d_' + str(frame), cmap='gray', nlines=1)
+        plotshow([abs(Prop(p, jason['f1'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['PreviewFolder'] + '/probe_'  + str(frame), nlines=2)
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=jason['PreviewFolder'] + '/object_' + str(frame), nlines=1, cmap='gray')
         
