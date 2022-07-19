@@ -4,13 +4,13 @@ from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
 from functools import partial
+import ast
 
 from .misc import list_files_in_folder
+from .unwrap import RemoveGrad
 
 from sscRaft import parallel
-
-
-
+from sscRadon import radon
 
 ####################### SORTING ###################################
 
@@ -66,7 +66,6 @@ def sort_frames_by_angle(ibira_path,foldernames):
         filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
 
         print('\t # of files in folder:',len(filenames))
-
         for filepath in filepaths:
             roisname = filepath  
             if roisname == os.path.join(ibira_path,folder, 'positions', folder + '_Ry_positions.txt'): # ignore this file, to use only the positions file inside /positions/ folder
@@ -81,8 +80,10 @@ def sort_frames_by_angle(ibira_path,foldernames):
                     if a < 1: # get value from first line of the file only
                         angle = line.split(':')[1].split('\t')[0]
                         rois.append([int(counter),float(angle)])
+                        break    
                     a += 1
 
+    
     rois = np.asarray(rois)
     rois = rois[rois[:,1].argsort(axis=0)]
     return rois 
@@ -96,6 +97,84 @@ def reorder_slices_low_to_high_angle(object, rois):
 
     return object_temporary
 
+######################### EQUALIZATION #################################################
+
+def remove_outliers(data,sigma):
+    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
+    # print(f'Min \t Mean-{sigma}*sigma \t Mean \t Mean+{sigma}*sigma \t Max ')
+    # print('Old',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
+    data = np.where(data > mean + sigma*std,0,data)
+    data = np.where(data < mean - sigma*std,0,data)
+    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
+    # print('New',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
+    return data
+
+def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset,frame):
+
+    # Remove Gradient
+    for i in range(0,remove_gradient):
+        frame = RemoveGrad(frame,np.ones_like(frame,dtype=bool))
+
+    # Check for NaNs
+    whereNaN = np.isnan(frame)
+    if whereNaN.any():
+        print("NaN values found in frame after removing gradient. Removing them!")
+        frame = np.where(whereNaN,0,frame)
+
+    # Remove outliers
+    for i in range(0,remove_outlier):
+        frame = remove_outliers(frame,3)
+
+    # Remove global offsset
+    if remove_global_offset:
+        frame -= np.min(frame)
+
+    # Remove average offset from specific region
+    if remove_avg_offset != []:
+        frame -= np.mean(frame[remove_avg_offset[0]:remove_avg_offset[1],remove_avg_offset[2]:remove_avg_offset[3]])
+        frame = np.where(frame<0,0,frame)
+
+    return frame
+
+def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
+
+    minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
+    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
+    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    
+    # Invert sinogram
+    if invert == True:
+        sinogram = -sinogram
+
+    # Remove NaNs
+    whereNaN = np.isnan(sinogram)
+    if whereNaN.any():
+        print("NaN values found in unwrapped sinogram. Removing them!")
+        sinogram = np.where(whereNaN,0,sinogram)
+
+    # Call parallel equalization
+    equalize_frame_partial = partial(equalize_frame, remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset)
+    print('Sinogram shape to unwrap: ', sinogram.shape)
+
+    n_frames = sinogram.shape[0]
+
+    processes = min(os.cpu_count(),32)
+    print(f'Using {processes} parallel processes')
+
+
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        equalized_sinogram = np.empty_like(sinogram)
+        results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        for counter, result in enumerate(results):
+            if counter % 100 == 0: print('Populating results matrix...',counter)
+            minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
+            print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+            equalized_sinogram[counter,:,:] = result
+
+    minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
+    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+
+    return equalized_sinogram
 
 ######################### CONVEX HULL #################################################
 
@@ -141,7 +220,6 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
             chull_sinogram[counter,:,:] = img_masked
     return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
 
-
 ####################### TOMOGRAPHY ###########################################3
 
 def save_json_logfile(jason,output_folder):
@@ -184,27 +262,42 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
+def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[],[]]):
+    
+    if type(bkg_window) == type("a_string"):
+        bkg_window = ast.literal_eval(bkg_window) # read string as list
+    
+    equalized_tomogram = recon
+
+    print(type(threshold),threshold)
+    if threshold != 0:
+        equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
+
+    if remove_outliers != 0:
+        for i in range(remove_outliers):
+            equalized_tomogram = np.where( equalized_tomogram > mean+3*std,0,equalized_tomogram)
+            equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
+
+    if bkg_window !=[]:
+        window = recon[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
+        offset = np.mean(window)
+        equalized_tomogram = equalized_tomogram - offset
+        equalized_tomogram = np.where(equalized_tomogram<0,0,equalized_tomogram)
+
+    return equalized_tomogram
 
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
-    # input_dict = {} 
-    # global_dict["tomo_algorithm"]
-    # contrast_type
-    # ordered_angles_filename
-    # global_dict["tomo_iterations"]
-    # global_dict["tomo_n_of_gpus"]
-    # global_dict["tomo_regularization"]
-    # global_dict["tomo_regularization_param"]
-    # output_folder
-
     algorithm                = input_dict["tomo_algorithm"]
     data_selection           = input_dict["contrast_type"]
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
-    GPUs                     = input_dict["tomo_n_of_gpus"]
+    GPUs                     = input_dict["GPUs"]
+    CPUs                     = input_dict["CPUs"]
     do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
     output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
+    wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
 
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
@@ -267,6 +360,11 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     else:
         import sys
         sys.exit('Select a proper reconstruction method')
+    
+    print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
+    reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
+    print('\t\t Correction done!')
+
     print('\t Tomography done!')
 
     print('Saving tomography logfile...')

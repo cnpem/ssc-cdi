@@ -172,10 +172,10 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         print('Raw diffraction pattern shape: ', raw_difpads.shape)
         difpad_number = 0 # selects which difpad to preview
         mean_raw_difpads = np.mean(raw_difpads, axis=0)
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_mean.npy',mean_raw_difpads)
+        np.save(jason[ 'PreviewFolder'] + '/02_difpad_raw_mean.npy',mean_raw_difpads)
     if preview and first_iteration:
-        sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/03_difpad_raw.png')
-        sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/03_difpad_raw_mean.png')
+        sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/02_difpad_raw.png')
+        sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/02_difpad_raw_mean.png')
 
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
     geometry = Geometry(z1)
@@ -201,7 +201,10 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
         # mask = np.flip(mask,0)
         
-    # sscCdi.caterete.misc.plotshow_cmap2(mask, title=f'Mask', savepath=jason['PreviewFolder'] + '/02_mask.png')
+    if preview and first_iteration:
+        sscCdi.caterete.misc.plotshow_cmap2(empty, title=f'Empty', savepath=jason['PreviewFolder'] + '/01_empty.png')
+        sscCdi.caterete.misc.plotshow_cmap2(flat,  title=f'Flat',  savepath=jason['PreviewFolder'] + '/01_flat.png')
+        sscCdi.caterete.misc.plotshow_cmap2(mask,  title=f'Mask',  savepath=jason['PreviewFolder'] + '/01_mask.png')
 
     if jason['DifpadCenter'] == []:
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
@@ -220,11 +223,12 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
 
-    print('Restaurating single difpad to save preview difpad of 3072^2 shape')
-    difpad_number = 0
-    img = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
-    np.save(jason[ 'PreviewFolder'] + '/03_difpad_raw_flipped_3072.npy',img)
-    sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_raw_flipped_3072.png')
+    if first_iteration: # difpad used in jupyter to find center position!
+        print('Restaurating single difpad to save preview difpad of 3072^2 shape')
+        difpad_number = 0
+        img = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',img)
+        sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
 
     t0 = time()
     output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restauration_processing_binning,  r_params, 'only')
@@ -251,7 +255,7 @@ def restauration_processing_binning(img, args):
     
     unbinned_mask = True
     if unbinned_mask: # if mask before restauration with 3072x3072 size
-        img[mask ==1] = -1 # Apply Mask
+        img[np.abs(mask) ==1] = -1 # Apply Mask
     
     img = Restaurate(img, geometry) # restaurate
 
@@ -316,7 +320,7 @@ def restauration_processing_binning(img, args):
         img[img < 0] = -1
 
     if unbinned_mask == False: # if mask after restauration with 640x640 size
-        img[mask ==1] = -1 # Apply Mask
+        img[np.abs(mask) ==1] = -1 # Apply Mask
 
     t1 = time()
 
