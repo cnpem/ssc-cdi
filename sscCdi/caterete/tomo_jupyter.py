@@ -21,7 +21,7 @@ global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
 
 """ Standard folders definitions"""
-if 0: # paths for beamline use
+if 1: # paths for beamline use
     tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_raft.py' # path with python script to run
 else: # paths for GCC tests       
     tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
