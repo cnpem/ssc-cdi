@@ -76,8 +76,11 @@ def get_simulated_data():
                 
         medidas.append(medida)
 
+    posY = np.array([positions[1]]).T 
+    posX = np.array([positions[0]]).T
+    positions = np.hstack((posY,posX)) # adjust positions format for proper input
 
-    return medidas, (posX,posY), img, P
+    return medidas, positions, img, P
 
 
 def propagate_beam(wavefront, dx, wavelength,distance,propagator='fresnel'):
@@ -122,7 +125,7 @@ def propagate_beam(wavefront, dx, wavelength,distance,propagator='fresnel'):
     return output
 
 
-def update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
+def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
 
     m,n = probe.shape
     k,l = object_shape
@@ -142,7 +145,7 @@ def update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
     return object
 
 
-def update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
+def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
 
     m,n = probe_shape
 
@@ -161,7 +164,7 @@ def update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
     return probe
 
 
-def update_exit_wave(wavefront,measurement,distance,dx,wavelength,epsilon=0.01,propagator = 'fourier'):
+def RAAR_update_exit_wave(wavefront,measurement,distance,dx,wavelength,epsilon=0.01,propagator = 'fourier'):
     wave_at_detector = propagate_beam(wavefront, dx, wavelength,distance,propagator=propagator)
     corrected_wave = np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)+epsilon)
     updated_exit_wave = propagate_beam(corrected_wave, dx, wavelength,-distance,propagator=propagator)
@@ -190,11 +193,11 @@ def RAAR_loop(obj,probe,positions,difpads,beta,distance,dx,wavelength, iteration
             posy, posx = pos[0], pos[1]
             reconBox = obj[posy:posy + m , posx:posx+n]
             waveToPropagate = 2*probe*reconBox-exitWaves[index]
-            exitWaveNew = update_exit_wave(waveToPropagate,difpads[index],distance,dx,wavelength,epsilon=eps)
+            exitWaveNew = RAAR_update_exit_wave(waveToPropagate,difpads[index],distance,dx,wavelength,epsilon=eps)
             exitWaves[index] = beta*(exitWaves[index] + exitWaveNew) + (1-2*beta)*probe*reconBox
 
-        probe = update_probe(exitWaves, obj, probe.shape,positions, epsilon=eps)
-        obj   = update_object(exitWaves, probe, obj.shape, positions,epsilon=eps)
+        probe = RAAR_update_probe(exitWaves, obj, probe.shape,positions, epsilon=eps)
+        obj   = RAAR_update_object(exitWaves, probe, obj.shape, positions,epsilon=eps)
 
         error.append(np.sum(np.abs(model - obj))) #absolute error
 
@@ -208,20 +211,8 @@ def mPIE_loop(medidas, positions,probe,object):
     mPIE = True
     use_rPIE_update_function = True
     correct_momentum = True
-    iterations = 50
 
-    if 1: # suggested min from paper
-        alpha, beta = 0.05, 0.5
-        gamma_obj, gamma_probe = 0.1, 0.2
-        eta_obj, eta_probe = 0.5, 0.75
-        T_lim = 10
-    else: #suggested max
-        alpha, beta = 0.25, 5
-        gamma_obj, gamma_probe = 0.5, 1
-        eta_obj, eta_probe = 0.9, 0.99
-        T_lim = 100 
-
-    print('len medidas',len(medidas))
+    print('# of Measurements',len(medidas))
 
     offset = probe.shape[1]
     probeVelocity = 0
@@ -304,35 +295,6 @@ def mPIE_loop(medidas, positions,probe,object):
     probe = probe.get() # get from cupy to numpy
     obj = obj.get()
 
-    now = datetime.datetime.now().strftime("%H_%M_%S")
-
-    #np.save('probe_chute.npy',P)
-    figure, subplot = plt.subplots(1,2,dpi=300)
-    subplot[0].imshow(np.absolute(probe))
-    subplot[1].imshow(np.angle(probe))
-    subplot[0].set_title('Magnitude')
-    subplot[1].set_title('Phase')
-    # plt.savefig(f"{now}_probe.png",format='png')
-
-    # obj = obj[50:-50,50:-50]#shift:-shift,shift:-shift]
-
-    figure, subplot = plt.subplots(1,2,dpi=300)
-    subplot[0].imshow(np.absolute(obj))
-    subplot[0].imshow((np.absolute(obj)))
-    subplot[1].imshow(np.angle(obj))
-    subplot[0].set_title('Magnitude')
-    subplot[1].set_title('Phase')
-    figure.suptitle('Object Reconstruction')
-    # plt.savefig(f"{now}_obj.png",format='png')
-    # plt.close()
-    plt.show()
-
-    figure, subplot = plt.subplots()
-    subplot.plot(error_list[1::])
-    subplot.set_yscale('log')
-    subplot.grid()
-    # plt.savefig(f"{now}_error.png")
-
     t1 = time.perf_counter()
 
     print(f'Total time = {(t1-t0)/60} min' )
@@ -341,50 +303,68 @@ def mPIE_loop(medidas, positions,probe,object):
 if __name__ == "__main__":
 
     difpads, positions, img, probe_guess = get_simulated_data()
+    
+    obj_guess = np.ones_like(img) # constant object
 
     plt.figure(dpi=300)
     plt.imshow(difpads[0],norm=LogNorm())
 
-    posY = np.array([positions[1]]).T 
-    posX = np.array([positions[0]]).T
-    positions = np.hstack((posY,posX)) # adjust positions format for proper input
 
-    beta = 0.995
+    """ Parameters """
     iterations = 30
-
     distance = 30  # meters
     energy = 10    # keV
     n_pixels = 3072
     pixel_size = 55.13e-6  # meters
     c_speed = 299792458    # Velocity of Light [m/s]
-    planck = 4.135667662E-18  # Plank constant [keV*s]
+    planck  = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = c_speed * planck / energy
-    
     dx = wavelength*distance/(n_pixels*pixel_size)
-
     print('Object pixel:',dx)
+    print("Oversampling: ?")
 
-    obj_guess = np.ones_like(img)
+    """ mPIE params """
+    if 1: # suggested min from paper
+        alpha, beta = 0.05, 0.5
+        gamma_obj, gamma_probe = 0.1, 0.2
+        eta_obj, eta_probe = 0.5, 0.75
+        T_lim = 10
+    else: #suggested max
+        alpha, beta = 0.25, 5
+        gamma_obj, gamma_probe = 0.5, 1
+        eta_obj, eta_probe = 0.9, 0.99
+        T_lim = 100 
 
-    obj, probe, difference = RAAR_loop(obj_guess,probe_guess,positions,difpads,beta,distance,dx,wavelength, iterations,img)
-
-    figure, subplot = plt.subplots(2,3,figsize=(10,10))
-    subplot[0,0].imshow(np.abs(img))   
-    subplot[0,1].imshow(np.angle(img))   
-    subplot[0,2].imshow(probe_guess)
-    subplot[1,0].imshow(np.abs(obj))   
-    subplot[1,1].imshow(np.angle(obj))
-    subplot[1,2].imshow(np.abs(probe))
-    subplot[0,0].set_title('Obj Magnitude')
-    subplot[0,1].set_title('Obj Phase')
-    subplot[0,2].set_title('Probe Magnitude')
+    """ RAAR params """
+    beta = 0.995
 
 
-    figure, ax = plt.subplots(dpi=300)
-    ax.plot(difference,'-o' )
-    ax.grid()
-    ax.set_xlabel('Iterations')
-    ax.set_ylabel('Error')
+    if 0: #mPIE
+        # PIE_obj = 0
+        # PIE_probe = 0
+        # PIE_error = 0
+        pass
+
+    if 1: #RAAR 
+        RAAR_obj, RAAR_probe, RAAR_error = RAAR_loop(obj_guess,probe_guess,positions,difpads,beta,distance,dx,wavelength, iterations,img)
+
+        figure, subplot = plt.subplots(2,3,figsize=(10,10))
+        subplot[0,0].imshow(np.abs(img))   
+        subplot[0,1].imshow(np.angle(img))   
+        subplot[0,2].imshow(probe_guess)
+        subplot[1,0].imshow(np.abs(RAAR_obj))   
+        subplot[1,1].imshow(np.angle(RAAR_obj))
+        subplot[1,2].imshow(np.abs(RAAR_probe))
+        subplot[0,0].set_title('Object Magnitude')
+        subplot[0,1].set_title('Object Phase')
+        subplot[0,2].set_title('Probe Magnitude')
+
+
+        figure, ax = plt.subplots(dpi=300)
+        ax.plot(RAAR_error,'-o' )
+        ax.grid()
+        ax.set_xlabel('Iterations')
+        ax.set_ylabel('Error')
 
 
 
