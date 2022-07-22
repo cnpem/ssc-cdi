@@ -15,7 +15,7 @@ from .unwrap import phase_unwrap
 
 from .misc import create_directory_if_doesnt_exist
 
-if 0: # paths for beamline use
+if 1: # paths for beamline use
     pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
