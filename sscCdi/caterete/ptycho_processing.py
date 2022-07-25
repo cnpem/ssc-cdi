@@ -39,7 +39,7 @@ def cat_ptycho_3d(difpads,jason):
 
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
-        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         print('\nFilenames: ', filenames)
 
@@ -69,11 +69,11 @@ def cat_ptycho_serial(jason):
     time_elasped_ptycho = 0
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
-
-        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+        print('Acquisiton folder: ',acquisitions_folder)
+        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
-            
+            print('File: ',measurement_file)
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
             t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
@@ -154,8 +154,12 @@ def define_paths(jason):
     return jason
 
 
-def get_files_of_interest(jason):
-    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
+def get_files_of_interest(jason,acquistion_folder=''):
+
+    if acquistion_folder != '':
+            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , acquistion_folder,jason['scans_string'] ), look_for_extension=".hdf5")
+    else:
+        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
 
     if jason['Projections'] != []:
         filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
@@ -220,7 +224,7 @@ def crop_sinogram(sinogram, jason):
             ibira_datafolder = jason["ProposalPath"]
             for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
                 
-                filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+                filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
                 for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
