@@ -1198,7 +1198,6 @@ def masks_application(difpad, jason):
         difpad_rescaled = difpad_region / detector_exposure_time # apply threshold
         difpad[difpad_rescaled > detector_pileup_count] = -1
     elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
-        print("Applying circular mask to central pixels")
         radius = jason["CentralMask"][1] # pixels
         central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
         difpad[central_mask > 0] = -1
@@ -1218,7 +1217,6 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
     Returns:
         [2-dimensional ndarrya]: array containing 1s within the disk, 0 otherwise
     """
-    print('Using manually set circular mask to the diffraction pattern...')
     """ All values in pixels """
     mask = np.zeros(mask_shape)
     y_array = np.arange(0, mask_shape[0], 1)
