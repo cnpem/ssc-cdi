@@ -108,7 +108,7 @@ def update_paths(global_dict,dummy1,dummy2):
     else: # if string
         global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"])
 
-    global_dict["complex_object_filepath"]           = os.path.join(global_dict["output_folder"],'object_' + global_dict["folders_list"][0] + '.npy')
+    global_dict["complex_object_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_object.npy')
     global_dict["ordered_angles_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_angles.npy')
     global_dict["ordered_object_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["folders_list"][0] + '_ordered_object.npy')
     global_dict["reconstruction_equalized_filepath"] = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_' + global_dict["folders_list"][0] + '_reconstruction3D_' + global_dict["tomo_algorithm"] + '_equalized.npy')
