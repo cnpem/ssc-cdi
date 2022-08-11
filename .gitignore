@@ -4,6 +4,7 @@ sscCdi/__pycache__/*
 dist/*
 build/*
 sscCdi/caterete/jupyter_notebooks/.ipynb_checkpoints/*
+sscCdi/caterete/jupyter_notebooks/images/.ipynb_checkpoints/*
 sscCdi.egg-info/*
 sscCdi/caterete/new_ptychos/.ipynb_checkpoints/*
 
