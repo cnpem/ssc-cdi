@@ -269,7 +269,6 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[
     
     equalized_tomogram = recon
 
-    print(type(threshold),threshold)
     if threshold != 0:
         equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
 
