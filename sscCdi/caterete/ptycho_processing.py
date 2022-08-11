@@ -353,6 +353,11 @@ def apply_phase_unwrap(sinogram, jason):
 
 def calculate_FRC(sinogram, jason):
 
+    if sinogram.shape[1]%2!=0:
+        sinogram = sinogram[:,0:-1,:]
+    if sinogram.shape[2]%2!=0:
+        sinogram = sinogram[:,:,0:-1]
+
     object_pixel_size = jason["object_pixel"] 
 
     frame = 0 # selects first frame of the sinogram to calculate resolution
