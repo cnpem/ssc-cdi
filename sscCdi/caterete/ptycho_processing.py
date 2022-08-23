@@ -78,6 +78,7 @@ def cat_ptycho_serial(jason):
             t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
             time_elasped_restauration += time() - t_start
+            
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
                 jason["object_pixel"] = object_pixel_size
