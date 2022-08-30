@@ -83,7 +83,7 @@ def get_simulated_data():
     return medidas, positions, img, P
 
 
-def propagate_beam(wavefront, dx, wavelength,distance,propagator='fresnel'):
+def propagate_beam(wavefront, dx, wavelength,distance,propagator='fourier'):
     """ Propagate a wavefront using fresnel ou fourier propagator
 
     Args:
