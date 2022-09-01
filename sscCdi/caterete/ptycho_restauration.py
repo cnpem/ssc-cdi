@@ -165,7 +165,12 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     """    
 
     fullpath = os.path.join(path, name)
-    raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
+
+    import silx.gui.hdf5
+    NPath="silx:"+fullpath+'::/entry/data/data'
+    raw_difpads = (np.uint32(silx.io.get_data(NPath))).squeeze().astype(np.float32)
+
+    # raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
 
     if first_iteration:  # preview only 
         print('Raw diffraction pattern shape: ', raw_difpads.shape)
@@ -181,7 +186,6 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     # empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
     
-    import silx.gui.hdf5
     Path= jason['EmptyFrame']
     NPath="silx:"+Path+'::/entry/data/data'
     empty = (np.uint32(silx.io.get_data(NPath))).squeeze().astype(np.float32)

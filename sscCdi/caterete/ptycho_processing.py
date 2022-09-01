@@ -455,8 +455,13 @@ def read_probe_positions(probe_positions_filepath, measurement):
 
     pshape = pd.read_csv(probe_positions_filepath,sep=' ').shape  # why read pshape from file? can it be different from probe_positions.shape+1?
 
-    with h5py.File(measurement, 'r') as file:
-        mshape = file['entry/data/data'].shape
+
+    import silx.gui.hdf5
+    NPath="silx:"+measurement+'::/entry/data/data'
+    file = (np.uint32(silx.io.get_data(NPath))).squeeze().astype(np.float32)
+    mshape = file.shape
+    # with h5py.File(measurement, 'r') as file:
+        # mshape = file['entry/data/data'].shape
 
     if pshape[0] == mshape[0]:  # check if number of recorded beam positions in txt matches the positions saved to the hdf
         print('\tSuccess in reading positions file:' + probe_positions_filepath)
