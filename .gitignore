@@ -7,4 +7,6 @@ sscCdi/caterete/jupyter_notebooks/.ipynb_checkpoints/*
 sscCdi/caterete/jupyter_notebooks/images/.ipynb_checkpoints/*
 sscCdi.egg-info/*
 sscCdi/caterete/new_ptychos/.ipynb_checkpoints/*
-
+sscCdi/caterete/PWCDI/ibiraData/*
+sscCdi/caterete/PWCDI/.ipynb_checkpoints/*
+sscCdi/caterete/__pycache__/*
