@@ -43,21 +43,6 @@ def Restaurate(img, geom):
 def UnRestaurate(img, geom):
     return opt540D._worker_annotation_image(pi540D.forward540D(img, geom))
 
-def _get_center(dbeam, project):
-    aimg = opt540D._worker_annotation_image( np.clip( dbeam, 0, 100) )
-    aimg = ndimage.gaussian_filter( aimg, sigma=0.95, order=0 )
-    aimg = aimg/aimg.max()
-    aimg = 1.0 * ( aimg > 0.98 )    
-    u = np.array(range(3072))
-    xx,yy = np.meshgrid(u,u)
-    xc = ((aimg * xx).sum() / aimg.sum() ).astype(int)
-    yc = ((aimg * yy).sum() / aimg.sum() ).astype(int)
-    annotation = np.array([ [xc, yc] ])
-    tracking = opt540D.annotation_points_standard ( annotation )
-    tracking = opt540D.tracking540D_vec_standard ( project, tracking ) 
-    xc = int( tracking[0][2] )
-    yc = int( tracking[0][3] ) 
-    return xc, yc
 
 def pi540_restauration_cat_block(args, savepath = '', preview = False, save = False):
     jason               = args[0]
