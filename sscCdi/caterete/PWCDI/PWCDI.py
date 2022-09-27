@@ -80,9 +80,9 @@ def propagation_fresnel(E0, z,energy,ps ):
     
     # Fresnel kernel / point spread function h = H(kx, ky)
     # from Fourier Optics, chapter 4
-    # H = sqrt(z*lambda0)*exp(1i*pi*lambda0*z*(Fx.^2+Fy.^2));
+    # H = sqrt(z*lambda0)*exp(1i*pi*lambda0*z*(Fx.^2+Fy.^2)); 
     # sphere=exp(i*k/2/zc*(xx.^2+yy.^2));
-    H = np.exp(1j*(2 * np.pi / lambda0) * z) * np.exp(1j * np.pi * lambda0 * z * (Fx**2 + Fy**2))
+    H = np.exp(1j*(2 * np.pi / lambda0) * z) * np.exp(1j * np.pi * lambda0 * z * (Fx**2 + Fy**2)) # (4.21)
     #H= cos(pi*lambda0*z*(Fx.^2+Fy.^2)+(2*pi*z)/lambda0)+1i.*sin(pi*lambda0*z*(Fx.^2+Fy.^2)+(2*pi*z)/lambda0);
     
     # Compute FFT centered about 0
