@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import os
 import time
 
+speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
 
 # %load_ext autoreload
 # %reload_ext autoreload
@@ -58,6 +59,8 @@ def iFT(x):
     return np.fft.ifft2(np.fft.ifftshift(x)) # inverse Fourier transform and shift
     
 def propagation_fresnel(E0, z,energy,ps ):
+    speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
+
     # Parameters: E0 - initial complex field in x-y source plane
     #             ps - pixel size in microns
     #             lambda0 - wavelength in nm
@@ -233,6 +236,9 @@ def magnitude_constraint(estimate,data):
 def pinhole_constraint(wavefront,pinhole):
     wavefront[pinhole<=0] = 0
     return wavefront
+
+def modulator_constraint(wavefront,pinhole):
+    return wavefront*pinhole
 
 def support_constraint(wavefront,support):
     wavefront[support <= 0] = 0
