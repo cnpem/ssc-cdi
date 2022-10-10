@@ -37,8 +37,6 @@ deploy_dgx:
     tags:
         - x86_64
         - cuda11
-        - ppc64le
-        - cuda10
 
     dependencies:
         - build_dgx
