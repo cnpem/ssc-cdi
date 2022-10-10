@@ -10,6 +10,8 @@ build_dgx:
     tags:
         - x86_64
         - cuda11
+        - shell
+        - docker
     artifacts:
         paths:
             - ./dist/*whl
@@ -22,6 +24,8 @@ build_power:
     tags:
         - ppc64le
         - cuda10
+        - shell
+        - docker
     artifacts:
         paths:
             - ./dist/*whl
@@ -37,6 +41,8 @@ deploy_dgx:
     tags:
         - x86_64
         - cuda11
+        - shell
+        - docker
 
     dependencies:
         - build_dgx
@@ -52,6 +58,9 @@ deploy_power:
     tags:
         - ppc64le
         - cuda10
+        - shell
+        - docker
+        
     dependencies:
         - build_power
     only:
