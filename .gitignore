@@ -6,8 +6,8 @@ build/*
 sscCdi/caterete/jupyter_notebooks/.ipynb_checkpoints/*
 sscCdi/caterete/jupyter_notebooks/images/.ipynb_checkpoints/*
 sscCdi.egg-info/*
-sscCdi/caterete/PTYCHO/.ipynb_checkpoints/*
 sscCdi/caterete/PWCDI/ibiraData/*
 sscCdi/caterete/PWCDI/.ipynb_checkpoints/*
 sscCdi/caterete/__pycache__/*
 sscCdi/caterete/PWCDI/__pycache__/*
+sscCdi/caterete/PTYCHO/.ipynb_checkpoints/*
