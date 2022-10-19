@@ -39,7 +39,7 @@ def cat_ptycho_3d(difpads,jason):
 
         print('Starting restauration for acquisition: ', acquisitions_folder)
 
-        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         print('\nFilenames: ', filenames)
 
@@ -69,11 +69,11 @@ def cat_ptycho_serial(jason):
     time_elasped_ptycho = 0
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
-
-        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+        print('Acquisiton folder: ',acquisitions_folder)
+        filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
-            
+            print('File: ',measurement_file)
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
             t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
@@ -155,8 +155,12 @@ def define_paths(jason):
     return jason
 
 
-def get_files_of_interest(jason):
-    filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
+def get_files_of_interest(jason,acquistion_folder=''):
+
+    if acquistion_folder != '':
+            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , acquistion_folder,jason['scans_string'] ), look_for_extension=".hdf5")
+    else:
+        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
 
     if jason['Projections'] != []:
         filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
@@ -221,7 +225,7 @@ def crop_sinogram(sinogram, jason):
             ibira_datafolder = jason["ProposalPath"]
             for acquisitions_folder in jason['Acquisition_Folders']:  # loop when multiple acquisitions were performed for a 3D recon
                 
-                filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+                filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
                 for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
@@ -350,7 +354,10 @@ def apply_phase_unwrap(sinogram, jason):
 
 def calculate_FRC(sinogram, jason):
 
-    
+    if sinogram.shape[1]%2!=0:
+        sinogram = sinogram[:,0:-1,:]
+    if sinogram.shape[2]%2!=0:
+        sinogram = sinogram[:,:,0:-1]
 
     object_pixel_size = jason["object_pixel"] 
 
@@ -449,6 +456,7 @@ def read_probe_positions(probe_positions_filepath, measurement):
 
     pshape = pd.read_csv(probe_positions_filepath,sep=' ').shape  # why read pshape from file? can it be different from probe_positions.shape+1?
 
+    os.system(f"h5clear -s {measurement}")
     with h5py.File(measurement, 'r') as file:
         mshape = file['entry/data/data'].shape
 
@@ -1201,7 +1209,6 @@ def masks_application(difpad, jason):
         difpad_rescaled = difpad_region / detector_exposure_time # apply threshold
         difpad[difpad_rescaled > detector_pileup_count] = -1
     elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
-        print("Applying circular mask to central pixels")
         radius = jason["CentralMask"][1] # pixels
         central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
         difpad[central_mask > 0] = -1
@@ -1221,7 +1228,6 @@ def create_circular_mask(center_row, center_col, radius, mask_shape):
     Returns:
         [2-dimensional ndarrya]: array containing 1s within the disk, 0 otherwise
     """
-    print('Using manually set circular mask to the diffraction pattern...')
     """ All values in pixels """
     mask = np.zeros(mask_shape)
     y_array = np.arange(0, mask_shape[0], 1)
