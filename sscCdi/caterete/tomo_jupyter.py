@@ -713,22 +713,20 @@ def wiggle_tab():
         total_n_of_angles = angles.shape[0]
         
         _, selected_indices, n_of_padding_frames, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
-        print('N of padding frames: ',n_of_padding_frames)
-
         n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
-        print("N of negative indices:", n_of_negative_idxs, len([ i for i in selected_indices if i < -1]))
-
-        print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
-        selected_positive_indices = [ i for i in selected_indices if i > 0]
-
+        selected_positive_indices = [ i for i in selected_indices if i >= 0]
         complete_array = [i for i in range(total_n_of_angles)]
-        print(selected_positive_indices==complete_array,len(selected_positive_indices),len(complete_array))
+
+        # print('Selected indices: \n',selected_indices)
+        print('Before+after frames added:',n_of_padding_frames)
+        print('Intermediate null frames :',len([ i for i in selected_indices if i < -1]))
+        print('                        + -----')
+        print("Total null frames        :", n_of_negative_idxs)
+        print("Frames being used        :", len(selected_positive_indices)," of ",len(complete_array))
+        print('                        + -----')
+        print('Projected Angles         :', projected_angles.shape[0])
+
         
-        number_of_repeated_indices = len(selected_positive_indices) - len(set(selected_positive_indices))
-        print("Repeated indices: ", set([x for x in selected_positive_indices if selected_positive_indices.count(x) > 1]))
-        
-        print(f"{number_of_repeated_indices} frames are being repeated!")
-        print(selected_indices)
     def project_angles_to_regular_mesh(dummy):
 
         global sinogram 
