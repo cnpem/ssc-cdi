@@ -150,6 +150,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     """    
 
     fullpath = os.path.join(path, name)
+    os.system(f"h5clear -s {fullpath}")
     raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
 
     if first_iteration:  # preview only 
@@ -164,8 +165,9 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
     geometry = Geometry(z1)
 
+    os.system(f"h5clear -s {jason['EmptyFrame']}")
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
-    
+
     if 'OldFormat' not in jason:
         flat = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :]
     else:

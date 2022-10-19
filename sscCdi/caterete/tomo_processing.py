@@ -14,11 +14,77 @@ from sscRadon import radon
 
 ####################### SORTING ###################################
 
-def angle_mesh_organize( mdata, angles, percentage = 100 ): 
+def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
+    """ Project angles to regular mesh and pad it to run from 0 to 180
+
+    Args:
+        original_frames (_type_): _description_
+        angles (_type_): _description_
+        
+    Returns:
+        _type_: _description_
+    """
+    
+    angles_list = []
+    padding_frames_counter = 0
+
+    start_angle = angles[:,1].min()
+    end_angle   = angles[:,1].max()
+
+    neighbor_differences = angles[1::,1] - angles[0:-1,1]  # shift and subtract to get difference between neighbors
+    
+    maxdtheta = abs(neighbor_differences).max() 
+    mindtheta = abs(neighbor_differences).min()
+
+    divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
+
+    n_of_angles = int(np.ceil( np.pi/divider))
+    
+    dtheta = np.pi / (n_of_angles)
+    projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
+
+    previous_idx = -1
+    previous_min_dif = neighbor_differences[0]
+    idx = np.zeros([n_of_angles], dtype=int)
+    for k in range(n_of_angles):
+
+        angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
+        angles_list.append(angle*180/np.pi)
+        if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
+            padding_frames_counter += 1
+            idx[k] = -1
+            projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+        else:
+            difference_array = abs(angle - angles[:,1]) 
+            arg_min_dif = np.argmin( difference_array )
+            min_diff = difference_array[arg_min_dif]
+            idx[k] = int( arg_min_dif)
+
+            if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
+                if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
+                    projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+                    idx[k-1] = -2
+                    projected_frames[k,:,:] = original_frames[idx[k],:]
+                else: 
+                    idx[k] = -3
+                    continue 
+            else:
+                projected_frames[k,:,:] = original_frames[idx[k],:]
+
+            previous_idx = idx[k]
+            previous_min_dif = min_diff
+        
+    angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
+    
+    return projected_frames, idx, padding_frames_counter, angles_array 
+
+ 
+
+def angle_mesh_organize_old( original_frames, angles, percentage = 100 ): 
         """ Project angles to regular mesh and pad it to run from 0 to 180
 
         Args:
-            mdata (_type_): _description_
+            original_frames (_type_): _description_
             angles (_type_): _description_
             use_max (bool, optional): _description_. Defaults to True.
 
@@ -27,34 +93,35 @@ def angle_mesh_organize( mdata, angles, percentage = 100 ):
         """
         angles_list = []
 
-        starta = angles[:,1].min()
-        enda   = angles[:,1].max()
-        rangea = enda - starta
-        forw = np.roll(angles[:,1],1,0) - angles[:,1]
-        forw[-1] = forw[-2]
-        forw[0] = forw[1]
-        maxdth = abs(forw).max() 
-        mindth = abs(forw).min()
+        start_angle = angles[:,1].min()
+        end_angle   = angles[:,1].max()
+        rangea = end_angle - start_angle
+        neighbor_differences = np.roll(angles[:,1],1,0) - angles[:,1]
+        neighbor_differences[-1] = neighbor_differences[-2]
+        neighbor_differences[0] = neighbor_differences[1]
+        maxdtheta = abs(neighbor_differences).max() 
+        mindtheta = abs(neighbor_differences).min()
 
-        divider = (percentage*maxdth - (percentage-100)*mindth)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
+        divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
         print(f'Chosen regular interval: {divider}')
         
-        nangles = int( (np.pi)/divider ) 
-        dth = np.pi / (nangles-1)
-        ndata = np.zeros([nangles,mdata.shape[1],mdata.shape[2]])
-        idx = np.zeros([nangles], dtype=np.int)
-        for k in range(nangles):
-            angle = -np.pi/2.0 + k*dth
-            if angle > enda or angle < starta:
+        n_of_angles = int( (np.pi)/divider ) 
+        dtheta = np.pi / (n_of_angles-1)
+        projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
+        idx = np.zeros([n_of_angles], dtype=np.int)
+        for k in range(n_of_angles):
+            angle = -np.pi/2.0 + k*dtheta
+            if angle > end_angle or angle < start_angle:
                 idx[k] = -1
-                ndata[k,:,:] = np.zeros([mdata.shape[1],mdata.shape[2]])
+                projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
             else:
                 idx[k] = int( np.argmin( abs(angle - angles[:,1]) ) )
-                ndata[k,:,:] = mdata[idx[k],:]
+                projected_frames[k,:,:] = original_frames[idx[k],:]
             angles_list.append(angle*180/np.pi)
         first = np.argmin((idx < 0)) - 1
         angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
-        return ndata, idx, first, angles_array 
+        return projected_frames, idx, first, angles_array 
+
 
 def sort_frames_by_angle(ibira_path,foldernames):
     rois = []
@@ -351,10 +418,10 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
                 reconstruction3D[:,i,:]= SIRT_FST(sinogram, iter=iterations, zpad=2, step=1.0, csino=0, device=GPUs, art_alpha=0.2, reg_mu=0.2, param_alpha=0, supp_reg=0.2, img=None)
     elif algorithm == "EEM": #data é o que sai do wiggle! 
         data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
-        nangles = data.shape[1]
+        n_of_angles = data.shape[1]
         recsize = data.shape[2]
         iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': nangles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
+        dic = {'gpu': GPUs, 'blocksize':20, 'n_of_angles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
         reconstruction3D = parallel.emfs( data, dic )
     else:
         import sys
