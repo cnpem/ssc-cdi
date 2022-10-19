@@ -733,9 +733,23 @@ def wiggle_tab():
         print('Projecting angles to regular mesh...')
         angles  = np.load(global_dict["ordered_angles_filepath"])
         angles = (np.pi/180.) * angles
-        sinogram, _, _, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
-        print(f'Sinogram max = {np.max(sinogram)} \t Sinogram min = {np.min(sinogram)}')
-        print(f' Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
+        total_n_of_angles = angles.shape[0]
+        sinogram, selected_indices, n_of_padding_frames, projected_angles = angle_mesh_organize(sinogram, angles,percentage=angle_step_slider.widget.value)
+        print(f'Sinogram shape {sinogram.shape} \n Number of Original Angles: {angles.shape} \n Number of Projected Angles: {projected_angles.shape}')
+        n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
+        selected_positive_indices = [ i for i in selected_indices if i >= 0]
+        complete_array = [i for i in range(total_n_of_angles)]
+
+        # print('Selected indices: \n',selected_indices)
+        print('Before+after frames added:',n_of_padding_frames)
+        print('Intermediate null frames :',len([ i for i in selected_indices if i < -1]))
+        print('                        + -----')
+        print("Total null frames        :", n_of_negative_idxs)
+        print("Frames being used        :", len(selected_positive_indices)," of ",len(complete_array))
+        print('                        + -----')
+        print('Projected Angles         :', projected_angles.shape[0])
+
+
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
         widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
