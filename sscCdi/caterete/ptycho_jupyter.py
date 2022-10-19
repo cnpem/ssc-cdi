@@ -271,8 +271,8 @@ def inputs_tab():
     
     label2 = create_label_widget("Restauration")
     global centerx, centery
-    centerx    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row",layout=slider_layout)
-    centery    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column",layout=slider_layout)
+    centerx    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
+    centery    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
     center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layout3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
