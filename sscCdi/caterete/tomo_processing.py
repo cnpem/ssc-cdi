@@ -15,76 +15,70 @@ from sscRadon import radon
 ####################### SORTING ###################################
 
 def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
-        """ Project angles to regular mesh and pad it to run from 0 to 180
+    """ Project angles to regular mesh and pad it to run from 0 to 180
 
-        Args:
-            original_frames (_type_): _description_
-            angles (_type_): _description_
-            use_max (bool, optional): _description_. Defaults to True.
-
-        Returns:
-            _type_: _description_
-        """
-        angles_list = []
-        padding_frames_counter = 0
-
-        print(angles[:,1])
-        start_angle = angles[:,1].min()
-        end_angle   = angles[:,1].max()
-
-        neighbor_differences = angles[:,1:] - angles[:,0:-1]  # shift and subtract to get difference between neighbors
-
-        print("Unique dTheta: ",set(neighbor_differences))
-
-        maxdtheta = abs(neighbor_differences).max() 
-        mindtheta = abs(neighbor_differences).min()
-
-        divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
-        print(f'Chosen regular interval: {divider}')
-        n_of_angles = int( (np.pi)/divider ) 
-        dtheta = np.pi / (n_of_angles-1)
-        projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
-
-        previous_idx = -1
-        previous_min_dif = neighbor_differences[0]
-        idx = np.zeros([n_of_angles], dtype=np.int)
-        for k in range(n_of_angles):
-            
-            angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
-            angles_list.append(angle*180/np.pi)
-
-            if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
-                padding_frames_counter += 1
-                idx[k] = -1
-                projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-            
-            else:
-                difference_array = abs(angle - angles[:,1]) 
-                print(angle,angles[0,1],angle-angles[0,1],angles[1,1],angle-angles[1,1])
-                arg_min_dif = np.argmin( difference_array )
-                min_diff = difference_array[arg_min_dif]
-                idx[k] = int( arg_min_dif)
-                if idx[k-1]!=-1: print(difference_array[0:5],k,idx[k])
-
-                if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
-                    if idx[k] == 0: print("null idx[k]")
-                    if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
-                        projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-                        idx[k-1] = -2
-                        projected_frames[k,:,:] = original_frames[idx[k],:]
-                    else: 
-                        idx[k] = -3
-                        continue 
-
-                else:
-                    projected_frames[k,:,:] = original_frames[idx[k],:]
-
-                previous_idx = idx[k]
-                previous_min_dif = min_diff
-
-        angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
+    Args:
+        original_frames (_type_): _description_
+        angles (_type_): _description_
         
-        return projected_frames, idx, padding_frames_counter, angles_array 
+    Returns:
+        _type_: _description_
+    """
+    
+    angles_list = []
+    padding_frames_counter = 0
+
+    start_angle = angles[:,1].min()
+    end_angle   = angles[:,1].max()
+
+    neighbor_differences = angles[1::,1] - angles[0:-1,1]  # shift and subtract to get difference between neighbors
+    
+    maxdtheta = abs(neighbor_differences).max() 
+    mindtheta = abs(neighbor_differences).min()
+
+    divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
+
+    n_of_angles = int(np.ceil( np.pi/divider))
+    
+    dtheta = np.pi / (n_of_angles)
+    projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
+
+    previous_idx = -1
+    previous_min_dif = neighbor_differences[0]
+    idx = np.zeros([n_of_angles], dtype=int)
+    for k in range(n_of_angles):
+
+        angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
+        angles_list.append(angle*180/np.pi)
+        if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
+            padding_frames_counter += 1
+            idx[k] = -1
+            projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+        else:
+            difference_array = abs(angle - angles[:,1]) 
+            arg_min_dif = np.argmin( difference_array )
+            min_diff = difference_array[arg_min_dif]
+            idx[k] = int( arg_min_dif)
+
+            if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
+                if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
+                    projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+                    idx[k-1] = -2
+                    projected_frames[k,:,:] = original_frames[idx[k],:]
+                else: 
+                    idx[k] = -3
+                    continue 
+            else:
+                projected_frames[k,:,:] = original_frames[idx[k],:]
+
+            previous_idx = idx[k]
+            previous_min_dif = min_diff
+        
+    angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
+    
+    return projected_frames, idx, padding_frames_counter, angles_array 
+
+ 
 
 def angle_mesh_organize_old( original_frames, angles, percentage = 100 ): 
         """ Project angles to regular mesh and pad it to run from 0 to 180
