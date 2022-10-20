@@ -85,7 +85,8 @@ def Fspace_update_multiprobe(wavefront_modes,DP_magnitude):
     
     total_wave_intensity = np.zeros_like(wavefront_modes[0])
     for mode in wavefront_modes:
-        total_wave_intensity += np.abs(mode)**2    
+        total_wave_intensity += np.abs(mode)**2 # TODO: OVERFLOW
+        # print(np.max(total_wave_intensity))
     total_wave_intensity = np.sqrt(total_wave_intensity)
     
     wavefront_diff_modes = np.zeros_like(wavefront_modes,dtype=complex)
@@ -116,7 +117,7 @@ def update_exit_wave_multiprobe(wavefront_modes,DP_magnitude):
 
     return wavefront_modes
 
-def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = True):
+def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
     t0 = time.perf_counter()
     print("Starting PIE algorithm...")
     
@@ -141,10 +142,10 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
     obj_velocity   = np.zeros_like(obj,dtype=complex)
 
     momentum_counter = 0
-    print(1)
+    error_list = []
     for i in range(iterations):
 
-        if i%50 == 0 : print(f'\tIteration {i}/{iterations}')
+        if i%20 == 0 : print(f'\tIteration {i}/{iterations}')
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
@@ -168,10 +169,12 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
 
             obj[:,py:py+offset[0],px:px+offset[1]] = single_obj_box
 
+        error_list.append(calculate_recon_error(model_obj,obj)) #absolute error
+
     dt = time.perf_counter() - t0
     print(f"PIE algorithm ended in {dt} seconds")
     
-    return obj, probe_modes, dt
+    return obj, probe_modes, error_list, dt
 
 def momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,O_aux,P_aux,obj,probe,friction_object,friction_probe,momentum_type=""):
     
@@ -370,7 +373,6 @@ def mPIE_loop(difpads, positions,object_guess,probe_guess, mPIE_params,experimen
 
     return obj, probe, error_list, time.perf_counter() - t0
 
-    
 """ MAIN CODE """
     
 difpads, positions, model_obj, model_probe = get_simulated_data(random_positions=False)
@@ -393,7 +395,7 @@ oversampling_ratio = wavelength*distance/(position_step*pixel_size)
 print('Object pixel size:',dx)
 print("Oversampling: ",oversampling_ratio)
 
-iterations = 100
+iterations = 10
 
 """ mPIE params """
 if 0: # suggested min from paper
@@ -406,28 +408,30 @@ else: # suggested max from paper
     gamma_obj, gamma_probe = 0.5, 1
     eta_obj, eta_probe = 0.9, 0.99
     T_lim = 100 
-# mPIE_params = (alpha,beta,gamma_obj,gamma_probe,eta_obj,eta_probe,T_lim)
 
-mPIE_params = {}
-mPIE_params["regularization_object"] = 0.01
-mPIE_params["regularization_probe"]  = 0.01
-mPIE_params["step_object"]           = 0.1
-mPIE_params["step_probe"]            = 0.1
-mPIE_params["friction_object"]       = 0.9
-mPIE_params["friction_probe"]        = 0.9
-mPIE_params["momentum_counter"]      = 10
 
+if 0:
+    mPIE_params = (alpha,beta,gamma_obj,gamma_probe,eta_obj,eta_probe,T_lim)
+    PIE_obj, PIE_probe, PIE_error, PIE_time = mPIE_loop(difpads, positions,obj_guess,probe_guess, mPIE_params, experiment_params, iterations, model_obj)
+else:
+    mPIE_params = {}
+    mPIE_params["regularization_object"] = 0.05
+    mPIE_params["regularization_probe"]  = 0.5
+    mPIE_params["step_object"]           = 0.1
+    mPIE_params["step_probe"]            = 0.2
+    mPIE_params["friction_object"]       = 0
+    mPIE_params["friction_probe"]        = 0
+    mPIE_params["momentum_counter"]      = 10
+    PIE_obj0, PIE_probe0, PIE_error, PIE_time  = PIE_multiprobe_loop(difpads, positions, iterations, mPIE_params, model_obj,n_of_modes = 1, object_guess=obj_guess, probe_guess=probe_guess, use_momentum = False)
+
+    print(PIE_obj0.shape,PIE_probe0.shape)
+    PIE_obj = PIE_obj0[0]
+    PIE_probe = PIE_probe0[0]
+    
 """ RAAR params """
 beta = 0.995
 epsilon = 0.01
 RAAR_params = (beta,epsilon)
-
-# PIE_obj, PIE_probe, PIE_error, PIE_time = mPIE_loop(difpads, positions,obj_guess,probe_guess, mPIE_params, experiment_params, iterations, model_obj)
-PIE_obj0, PIE_probe0, PIE_time  = PIE_multiprobe_loop(difpads, positions, iterations, mPIE_params, n_of_modes = 1, object_guess=obj_guess, probe_guess=probe_guess, use_momentum = False)
 RAAR_obj, RAAR_probe, RAAR_error, RAAR_time = RAAR_loop(difpads,positions,obj_guess, probe_guess, RAAR_params,experiment_params, iterations,model_obj)
 
-PIE_obj = PIE_obj0[0]
-PIE_probe = PIE_probe0[0]
-PIE_error = RAAR_error
 plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time)
-

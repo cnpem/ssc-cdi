@@ -235,11 +235,11 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
         for counter, result in enumerate(results):
             if counter % 100 == 0: print('Populating results matrix...',counter)
             minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
-            print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+            # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
             equalized_sinogram[counter,:,:] = result
 
     minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
-    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
 
     return equalized_sinogram
 
