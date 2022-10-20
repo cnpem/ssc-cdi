@@ -1269,7 +1269,7 @@ def get_central_region(difpad, center_estimate, radius):
 
     Args:
         difpad : 2d diffraction pattern data
-        center_estimate : the center of the image to be extracted
+        center_estimate : the center of the image to be extracteddata
         radius : size of the squared region to be extracted
 
     Returns:
