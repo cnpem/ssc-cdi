@@ -421,7 +421,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         n_of_angles = data.shape[1]
         recsize = data.shape[2]
         iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'n_of_angles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
+        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
         reconstruction3D = parallel.emfs( data, dic )
     else:
         import sys
