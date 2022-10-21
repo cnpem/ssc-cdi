@@ -15,6 +15,7 @@ import random
 random.seed(0)
 
 from ptycho_functions import *
+from numpy.fft import fft2, fftshift, ifftshift, ifft2
 
 
 def PIE_update_func(obj,probe,s_o=1,s_p=1,r_o=0.1,r_p=0.1,algo='rPIE'):
@@ -36,7 +37,7 @@ def PIE_update_func(obj,probe,s_o=1,s_p=1,r_o=0.1,r_p=0.1,algo='rPIE'):
 
     return obj, probe
 
-def denominator_obj(obj,reg_o,algo='rPIE'):
+def denominator_probe(obj,reg_o,algo='rPIE'):
     
     power = np.abs(obj)**2
     
@@ -47,7 +48,7 @@ def denominator_obj(obj,reg_o,algo='rPIE'):
     
     return denominator  
 
-def denominator_probe(wavefront_modes,reg_p,algo='rPIE'):
+def denominator_obj(wavefront_modes,reg_p,algo='rPIE'):
     
     total_probe_power = np.zeros_like(wavefront_modes[0])
     for mode in wavefront_modes:
@@ -60,23 +61,22 @@ def denominator_probe(wavefront_modes,reg_p,algo='rPIE'):
     
     return denominator  
 
-def PIE_update_func_multiprobe(obj,probe_modes,wavefront_diff_modes,s_o=1,s_p=1,r_o=0.1,r_p=0.1,algo='rPIE'):
-
+def PIE_update_func_multiprobe(obj,probe_modes,updated_wavefront_modes,wavefront_modes,s_o=1,s_p=1,r_o=0.1,r_p=0.1,algo='rPIE'):
     """ 
     s: step constant
     r: regularization constant
     """
     
     # Pre-calculating to avoid repeated operations
-    denominator = denominator_probe(probe_modes,r_p,algo)
+    denominator_o = denominator_obj(probe_modes,r_p,algo)
     obj_conj = obj.conj()
     
     if algo == 'rPIE':
         
         for m, mode in enumerate(probe_modes):
-            probe_modes[m] = probe_modes[m] + s_p * obj_conj*wavefront_diff_modes[m] / denominator # probe update
+            probe_modes[m] = probe_modes[m] + s_p * obj_conj*(updated_wavefront_modes[m]-wavefront_modes[m] ) / denominator_probe(obj,r_o,algo) # probe update
         
-        obj = obj + s_o * np.sum(probe_modes.conj()*wavefront_diff_modes,axis=0) / denominator_obj(obj,r_o,algo) # object update
+        obj = obj + s_o * np.sum(probe_modes.conj()*(updated_wavefront_modes[m]-wavefront_modes),axis=0) / denominator_o # object update
         
     return obj, probe_modes
 
@@ -92,29 +92,23 @@ def Fspace_update_multiprobe(wavefront_modes,DP_magnitude):
     wavefront_diff_modes = np.zeros_like(wavefront_modes,dtype=complex)
     for m, mode in enumerate(wavefront_modes): #TODO: worth updating in parallel?
         #TODO: update only where difpad is valid
-        wavefront_diff_modes[m] = DP_magnitude*mode/total_wave_intensity - mode
-    
-    return wavefront_diff_modes
-    
-def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
-    
-    if backpropagate == False:
-        for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
-            wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(wavefront_modes[m]))
-    else:
-        for m, mode in enumerate(wavefront_modes):
-            wavefront_modes[m] = np.fft.fftshift(np.fft.ifft2(wavefront_modes[m]))
+        wavefront_modes[m] = DP_magnitude*mode/total_wave_intensity
     
     return wavefront_modes
-
+    
+def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
+    if backpropagate == False:
+        for m in range(wavefront_modes.shape[0]): #TODO: worth propagating in parallel?
+            wavefront_modes[m] = fftshift(fft2(fftshift(wavefront_modes[m])))
+    else:
+        for m in range(wavefront_modes.shape[0]): #TODO: worth propagating in parallel?
+            wavefront_modes[m] = fftshift(ifft2(fftshift(wavefront_modes[m])))
+    return wavefront_modes
 
 def update_exit_wave_multiprobe(wavefront_modes,DP_magnitude):
     wavefront_modes = propagate_farfield_multiprobe(wavefront_modes)
-    
     wavefront_modes = Fspace_update_multiprobe(wavefront_modes,DP_magnitude)
-    
     wavefront_modes = propagate_farfield_multiprobe(wavefront_modes,backpropagate=True)
-
     return wavefront_modes
 
 def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
@@ -147,7 +141,8 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
 
         if i%20 == 0 : print(f'\tIteration {i}/{iterations}')
         
-        temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
+        if use_momentum == True: # momentum addition
+            temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
         for j in np.random.permutation(len(diffractions_patterns)):  
             
@@ -160,9 +155,9 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
             wavefront_modes = obj_box*probe_modes
 
             """ Propagate + Update + Backpropagate """
-            wavefront_modes = update_exit_wave_multiprobe(wavefront_modes,DP_magnitude)
+            updated_wavefront_modes = update_exit_wave_multiprobe(wavefront_modes,DP_magnitude)
 
-            single_obj_box, probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,s_o,s_p,r_o,r_p)
+            single_obj_box, probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,updated_wavefront_modes,wavefront_modes,s_o,s_p,r_o,r_p)
 
             if use_momentum == True: # momentum addition
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,temporary_obj,temporary_probe,single_obj_box, probe_modes,f_o,f_p)
@@ -395,7 +390,7 @@ oversampling_ratio = wavelength*distance/(position_step*pixel_size)
 print('Object pixel size:',dx)
 print("Oversampling: ",oversampling_ratio)
 
-iterations = 10
+iterations = 100
 
 """ mPIE params """
 if 0: # suggested min from paper
