@@ -1209,7 +1209,7 @@ def masks_application(difpad, jason):
         difpad[difpad_rescaled > detector_pileup_count] = -1
     elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
         radius = jason["CentralMask"][1] # pixels
-        central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
+        central_mask = create_circular_mask(center_row,center_col, radius, difpad.shape)
         difpad[central_mask > 0] = -1
 
     return difpad
