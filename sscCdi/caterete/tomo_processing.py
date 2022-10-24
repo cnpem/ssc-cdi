@@ -426,7 +426,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     else:
         import sys
         sys.exit('Select a proper reconstruction method')
-    
+     
     print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
     reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
     print('\t\t Correction done!')
