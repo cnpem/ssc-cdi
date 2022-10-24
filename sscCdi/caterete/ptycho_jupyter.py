@@ -198,7 +198,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,centerx,centery,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,center_y,center_x,detector_ROI,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -220,7 +220,7 @@ def inputs_tab():
         global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
 
-        global_dict["DifpadCenter"] = [centerx,centery]
+        global_dict["DifpadCenter"] = [center_y,center_x]
 
         global_dict["DetectorROI"] = detector_ROI
 
@@ -270,10 +270,10 @@ def inputs_tab():
     projections           = Input(global_dict,"Projections",description="Projections",layout=items_layout2)
     
     label2 = create_label_widget("Restauration")
-    global centerx, centery
-    centerx    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
-    centery    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
-    center_box = widgets.Box([centerx.widget,centery.widget],layout=slider_layout3)
+    global center_y, center_x
+    center_y    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
+    center_x    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
+    center_box = widgets.Box([center_y.widget,center_x.widget],layout=slider_layout3)
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
@@ -320,8 +320,8 @@ def inputs_tab():
     widgets.interactive_output(update_global_dict,{'proposal_path_str':proposal_path_str.widget,
                                                     'acquisition_folders': acquisition_folders.widget,
                                                     'projections': projections.widget,                                                    
-                                                    'centerx':centerx.widget,
-                                                    'centery':centery.widget,
+                                                    'center_y':center_y.widget,
+                                                    'center_x':center_x.widget,
                                                     'detector_ROI':detector_ROI.widget,
                                                     'save_or_load_difpads':save_or_load_difpads,
                                                     'CentralMask_bool': CentralMask_bool.widget,
@@ -423,10 +423,10 @@ def center_tab():
 
         figure.canvas.draw_idle()
 
-    def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cx,cy,button,exposure,exposure_time,radius):
+    def update_mask(figure, subplot,output_dictionary,image,key1,key2,key3,cy,cx,button,exposure,exposure_time,radius):
 
 
-        output_dictionary[key1] = [cx,cy]
+        output_dictionary[key1] = [cy,cx]
         output_dictionary[key2] = [button,radius]
         output_dictionary[key3] = [exposure,exposure_time]
         if exposure == True or button == True:
@@ -444,7 +444,7 @@ def center_tab():
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(global_dict),'image':fixed(image),
                                                 'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
-                                                'cx':centerx.widget,'cy':centery.widget,
+                                                'cy':center_y.widget,'cx':center_x.widget,
                                                 'button':CentralMask_bool.widget,
                                                 'exposure':DetectorPileup.widget,
                                                 'exposure_time':fixed(input_dict['/entry/beamline/detector']['pimega']["exposure time"]),
@@ -454,7 +454,7 @@ def center_tab():
     load_difpad_button.trigger(load_difpad)
 
     """ Difpad center boxes """
-    sliders_box = widgets.HBox([centerx.widget,centery.widget,CentralMask_radius.widget],layout=box_layout)
+    sliders_box = widgets.HBox([center_y.widget,center_x.widget,CentralMask_radius.widget],layout=box_layout)
     controls = widgets.Box([load_difpad_button.widget,sliders_box,CentralMask_bool.widget,DetectorPileup.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([controls,vbar,output])
     return box

@@ -235,11 +235,11 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
         for counter, result in enumerate(results):
             if counter % 100 == 0: print('Populating results matrix...',counter)
             minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
-            print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+            # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
             equalized_sinogram[counter,:,:] = result
 
     minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
-    print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
 
     return equalized_sinogram
 
@@ -336,7 +336,6 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[
     
     equalized_tomogram = recon
 
-    print(type(threshold),threshold)
     if threshold != 0:
         equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
 
@@ -422,12 +421,12 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         n_of_angles = data.shape[1]
         recsize = data.shape[2]
         iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'n_of_angles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
+        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
         reconstruction3D = parallel.emfs( data, dic )
     else:
         import sys
         sys.exit('Select a proper reconstruction method')
-    
+     
     print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
     reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
     print('\t\t Correction done!')
