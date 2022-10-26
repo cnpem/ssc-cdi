@@ -119,6 +119,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["chull_sinogram_filepath"]           = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_chull_sinogram.npy')
     global_dict["wiggle_sinogram_filepath"]          = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_sinogram.npy')
     global_dict["projected_angles_filepath"]         = os.path.join(global_dict["output_folder"],global_dict["ordered_angles_filepath"][:-4]+'_projected.npy')
+    global_dict["wiggle_ctr_mass_filepath"]          = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_ctr_mass.npy')
     return global_dict
 
 def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
@@ -245,6 +246,17 @@ def update_cpus_gpus(cpus,gpus,machine_selection):
             global_dict["GPUs"] = [5] 
     else:
         print('You can only use 1 GPU to run in the local machine!')
+
+def save_or_load_wiggle_ctr_mass(wiggle_cmass = [[],[]],save=True):
+    global global_dict
+    if save:
+        wiggle_cmass = np.asarray(wiggle_cmass)
+        np.save(global_dict["wiggle_ctr_mass_filepath"], wiggle_cmass)
+        return 0
+    else:
+        array = np.load(global_dict["wiggle_ctr_mass_filepath"])
+        wiggle_cmas = [array[0,:],array[1,:]]
+        return wiggle_cmas
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
@@ -778,6 +790,9 @@ def wiggle_tab():
         wiggle_cmas = [[],[]]
         wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
         global_dict["wiggle_ctr_of_mas"] = wiggle_cmas
+        
+        save_or_load_wiggle_ctr_mass(wiggle_cmas,save=True)
+
         print("\t Wiggle done!")
         
         print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )

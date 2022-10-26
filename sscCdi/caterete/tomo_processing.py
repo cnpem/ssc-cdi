@@ -6,6 +6,8 @@ from skimage.morphology import square, erosion, opening, convex_hull_image, dila
 from functools import partial
 import ast
 
+from sscCdi.caterete.tomo_jupyter import save_or_load_wiggle_ctr_mass
+
 from .misc import list_files_in_folder
 from .unwrap import RemoveGrad
 
@@ -364,6 +366,9 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     regularization_parameter = input_dict["tomo_regularization_param"]
     output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
     wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
+
+    if wiggle_cmas == [[],[]]:
+        wiggle_cmas = save_or_load_wiggle_ctr_mass(save=False)
 
     data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
 
