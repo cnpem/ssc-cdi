@@ -15,7 +15,7 @@ import subprocess
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
-from .tomo_processing import equalize_tomogram, save_or_load_wiggle_ctr_mass, get_and_save_downsampled_sinogram
+from .tomo_processing import equalize_tomogram, save_or_load_wiggle_ctr_mass, get_and_save_downsampled_sinogram, add_plot_suffix_to_file
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
@@ -36,7 +36,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "folders_list": ["phantom_complex"],
                "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/phantom_complex/object_phantom_complex.npy",
 
-               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
+               "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
                "contrast_type": "Phase", # Phase or Absolute
 
                "top_crop": 0,
@@ -308,6 +308,7 @@ def folders_tab():
         np.save(global_dict["ordered_angles_filepath"],rois)
         print('Saving ordered sinogram: ', global_dict["ordered_object_filepath"])
         np.save(global_dict["ordered_object_filepath"], object) 
+
         downsampled_object = get_and_save_downsampled_sinogram(object,global_dict["ordered_object_filepath"],downsampling=downsampling_value)
         print('\tSaved! Sinogram shape: ',object.shape)
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
@@ -358,14 +359,13 @@ def crop_tab():
         
         print("Loading sinogram from: ",global_dict["ordered_object_filepath"] )
         sinogram = np.load(global_dict["ordered_object_filepath"] ) 
-        downsampled_object = get_and_save_downsampled_sinogram(sinogram,global_dict["ordered_object_filepath"],downsampling=downsampling_value)
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
       
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_object),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
 
     def save_cropped_sinogram(dummy,args=()):
@@ -420,7 +420,7 @@ def unwrap_tab():
         global unwrapped_sinogram
         print('Performing phase unwrap...')
         unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
-        downsampled_unwrapped_sinogram = get_and_save_downsampled_sinogram(cropped_sinogram,global_dict["cropped_sinogram_filepath"],downsampling=downsampling_value)
+        downsampled_unwrapped_sinogram = get_and_save_downsampled_sinogram(unwrapped_sinogram,global_dict["unwrapped_sinogram_filepath"],downsampling=downsampling_value)
         print('\t Done!')
         widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_unwrapped_sinogram),'figure':fixed(figure_unwrap),'title':fixed(True),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
         
@@ -696,8 +696,6 @@ def wiggle_tab():
         
         if sinogram_selection.value == "unwrapped":
             filepath = global_dict["unwrapped_sinogram_filepath"]
-        elif sinogram_selection.value == "convexHull":
-            filepath = global_dict["chull_sinogram_filepath"]
         elif sinogram_selection.value == "equalized":
             filepath = global_dict["equalized_sinogram_filepath"]
         elif sinogram_selection.value == "cropped":
@@ -874,7 +872,7 @@ def wiggle_tab():
     correct_bad_frames_button.trigger(correct_bad_frames)
 
 
-    sinogram_selection = widgets.RadioButtons(options=['cropped','unwrapped', 'convexHull','equalized'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
+    sinogram_selection = widgets.RadioButtons(options=['cropped','unwrapped','equalized'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
     sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
 
@@ -947,7 +945,7 @@ def tomo_tab():
     def run_tomo(dummy,args=()):
         iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
 
-        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value,"ConvexHull":checkboxes2[0].value, "Wiggle":checkboxes2[1].value, "Tomo":checkboxes2[2].value, "Equalize Recon":checkboxes2[3].value } # select steps when performing full recon
+        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes2[0].value, "Tomo":checkboxes2[1].value, "Equalize Recon":checkboxes2[2].value } # select steps when performing full recon
 
         output_path = global_dict["jupyter_folder"] 
         
@@ -1045,18 +1043,17 @@ def tomo_tab():
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
     load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "Equalize Frames"]]
-    checkboxes2     = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["ConvexHull", "Wiggle", "Tomo", "Equalize Recon"]]
+    checkboxes2     = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in [ "Wiggle", "Tomo", "Equalize Recon"]]
     checkboxes_box  = widgets.VBox([widgets.HBox([*checkboxes]),widgets.HBox([*checkboxes2])])
 
     widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':algo_dropdown,'dummy2':fixed(algo_dropdown)})
 
-    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,chull_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
-        # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "ConvexHull":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
+    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
+        # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
         dictionary["processing_steps"]["Sort"]            = sort_checkbox 
         dictionary["processing_steps"]["Crop"]            = crop_checkbox 
         dictionary["processing_steps"]["Unwrap"]          = unwrap_checkbox 
         dictionary["processing_steps"]["Equalize Frames"] = equalize_frames_checkbox 
-        dictionary["processing_steps"]["ConvexHull"]      = chull_checkbox 
         dictionary["processing_steps"]["Wiggle"]          = wiggle_checkbox 
         dictionary["processing_steps"]["Tomo"]            = tomo_checkbox 
         dictionary["processing_steps"]["Equalize Recon"]  = equalize_recon_checkbox 
@@ -1151,15 +1148,11 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
     global mafalda
     mafalda = mafalda_session
-
-    load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
-    load_json_button.trigger(partial(load_json,dictionary=global_dict))
     
-
     widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
     global data_selection
-    data_selection = widgets.RadioButtons(options=['Magnitude', 'Phase'], value='Phase', layout={'width': '30%'},description='Visualize',disabled=False)
+    data_selection = widgets.RadioButtons(options=['Absorption', 'Phase'], value='Phase', layout={'width': '30%'},description='Contrast',disabled=False)
     widgets.interactive_output(update_fields,{'global_dict':fixed(global_dict),'contrast_type':data_selection,'machine_selection':machine_selection})
     widgets.interactive_output(update_paths, {'global_dict':fixed(global_dict),'dummy1':data_selection,'dummy2':machine_selection})
 
@@ -1187,8 +1180,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         folderpaths_to_remove =[os.path.join(global_dict["output_folder"],'00_frames_original'),
                                 os.path.join(global_dict["output_folder"],'01_frames_ordered'),
                                 os.path.join(global_dict["output_folder"],'02_frames_cropped'),
-                                os.path.join(global_dict["output_folder"],'03_frames_unwrapped'),
-                                os.path.join(global_dict["output_folder"],'04_frames_convexHull')]
+                                os.path.join(global_dict["output_folder"],'03_frames_unwrapped')]
                                 
         import shutil
         for folderpath in folderpaths_to_remove:
@@ -1203,7 +1195,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
-    box = widgets.HBox([machine_selection,data_selection,load_json_button.widget,delete_temporary_files_button.widget])
+    box = widgets.HBox([machine_selection,data_selection,delete_temporary_files_button.widget])
 
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
