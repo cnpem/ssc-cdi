@@ -14,11 +14,14 @@ import subprocess
 
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
-from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel, equalize_tomogram, save_or_load_wiggle_ctr_mass
+from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
+from .tomo_processing import equalize_tomogram, save_or_load_wiggle_ctr_mass, get_and_save_downsampled_sinogram
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
+
+downsampling_value = 4
 
 """ Standard folders definitions"""
 if 1: # paths for beamline use
@@ -273,13 +276,14 @@ def folders_tab():
         global_dict["folders_list"]    = folders_list
         global_dict["sinogram_path"]   = sinogram_path
 
-
     def load_sinogram(dummy):
         global object
 
         print('Loading sinogram: ',global_dict["complex_object_filepath"])
         object = np.load(global_dict["complex_object_filepath"])
         print('\t Loaded!')
+
+        downsampled_object = get_and_save_downsampled_sinogram(object,global_dict["complex_object_filepath"],downsampling=downsampling_value)
 
         print(f'Extracting sinogram {data_selection.value}...')
         global_dict["contrast_type"] = data_selection.value
@@ -291,7 +295,7 @@ def folders_tab():
 
         selection_slider2.widget.max, selection_slider2.widget.value = object.shape[0] - 1, object.shape[0]//2
         play_control2.widget.max =  selection_slider2.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider2.widget})  
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_object),'figure':fixed(figure2),'subplot':fixed(subplot2),'title':fixed(True), 'frame_number': selection_slider2.widget})  
 
 
     def sort_frames(dummy):
@@ -304,11 +308,12 @@ def folders_tab():
         np.save(global_dict["ordered_angles_filepath"],rois)
         print('Saving ordered sinogram: ', global_dict["ordered_object_filepath"])
         np.save(global_dict["ordered_object_filepath"], object) 
+        downsampled_object = get_and_save_downsampled_sinogram(object,global_dict["ordered_object_filepath"],downsampling=downsampling_value)
         print('\tSaved! Sinogram shape: ',object.shape)
         selection_slider.widget.max, selection_slider.widget.value = object.shape[0] - 1, object.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
 
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(object),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})  
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_object),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True), 'frame_number': selection_slider.widget})  
 
 
     ibira_data_path = Input(global_dict,"ibira_data_path",layout=items_layout,description='Ibira Datapath (str)')
@@ -353,13 +358,14 @@ def crop_tab():
         
         print("Loading sinogram from: ",global_dict["ordered_object_filepath"] )
         sinogram = np.load(global_dict["ordered_object_filepath"] ) 
+        downsampled_object = get_and_save_downsampled_sinogram(sinogram,global_dict["ordered_object_filepath"],downsampling=downsampling_value)
         print(f'\t Loaded! Sinogram shape: {sinogram.shape}. Type: {type(sinogram)}' )
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0]-1, sinogram.shape[0]//2
         play_control.widget.max = selection_slider.widget.max
         top_crop.widget.max  = bottom_crop.widget.max = sinogram.shape[1]//2 - 1
         left_crop.widget.max = right_crop.widget.max  = sinogram.shape[2]//2 - 1
       
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_object),'figure':fixed(figure),'subplot':fixed(subplot),'title':fixed(True),'top': top_crop.widget, 'bottom': bottom_crop.widget, 'left': left_crop.widget, 'right': right_crop.widget, 'frame_number': selection_slider.widget})
 
 
     def save_cropped_sinogram(dummy,args=()):
@@ -414,8 +420,9 @@ def unwrap_tab():
         global unwrapped_sinogram
         print('Performing phase unwrap...')
         unwrapped_sinogram = unwrap_in_parallel(cropped_sinogram,iterations_slider.widget.value,non_negativity=non_negativity_checkbox.widget.value,remove_gradient = gradient_checkbox.widget.value)
+        downsampled_unwrapped_sinogram = get_and_save_downsampled_sinogram(cropped_sinogram,global_dict["cropped_sinogram_filepath"],downsampling=downsampling_value)
         print('\t Done!')
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure_unwrap),'title':fixed(True),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_unwrapped_sinogram),'figure':fixed(figure_unwrap),'title':fixed(True),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
         
 
     def format_chull_plot(figure,subplots,frame_number):
@@ -432,10 +439,11 @@ def unwrap_tab():
         selection_slider, play_control = args
         print('Loading cropped sinogram...')
         cropped_sinogram = np.load(global_dict["cropped_sinogram_filepath"])
+        downsampled_cropped_sinogram = get_and_save_downsampled_sinogram(cropped_sinogram,global_dict["cropped_sinogram_filepath"],downsampling=downsampling_value)
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = cropped_sinogram.shape[0] - 1, cropped_sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_cropped_sinogram),'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap[0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
         widgets.interactive_output(format_chull_plot, {'figure':fixed(figure_unwrap),'subplot':fixed(subplot_unwrap), 'frame_number': selection_slider.widget})    
 
     def correct_bad_frames(dummy):
@@ -1096,14 +1104,13 @@ def tomo_tab():
     
     return box 
 
-def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab4=chull_tab(),tab5=wiggle_tab(),tab6=tomo_tab(),tab7=equalizer_tab()):
+def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab5=wiggle_tab(),tab6=tomo_tab(),tab7=equalizer_tab()):
     
     children_dict = {
     "Select and Sort"       : tab1,
     "Cropping"              : tab2,
     "Phase Unwrap"          : tab3,
     "Frame Equalizer"       : tab7,
-    "Convex Hull"           : tab4,
     "Wiggle"                : tab5,
     "Tomography"            : tab6}
     

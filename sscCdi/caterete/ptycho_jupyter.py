@@ -279,7 +279,7 @@ def inputs_tab():
 
 
     detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
-    suspect_pixels        = Input({'dummy-key':5},'dummy-key',bounded=(0,20,1),slider=True,description="Suspect pixels",layout=slider_layout2)
+    suspect_pixels        = Input({'dummy-key':5},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
     # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 

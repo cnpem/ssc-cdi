@@ -362,6 +362,17 @@ def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
         wiggle_cmas = [array[0,:],array[1,:]]
         return wiggle_cmas
 
+def add_plot_suffix_to_file(path):
+    first_part = path.split(".")[0]
+    second_part = path.split(".")[-1]
+    return first_part + "_PLOT." + second_part
+
+def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
+    downsampled_sinogram = sinogram[:,::downsampling,::downsampling]
+    np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
+    return downsampled_sinogram
+
+
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
     algorithm                = input_dict["tomo_algorithm"]
