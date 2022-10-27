@@ -493,7 +493,7 @@ def unwrap_tab():
     save_unwrapped_button.trigger(save_sinogram)
     
     unwrap_params_box = widgets.Box([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget],layout=get_box_layout('100%'))
-    controls_box = widgets.Box([load_cropped_frames_button.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box,bad_frames_before_unwrap.widget],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_cropped_frames_button.widget,bad_frames_before_unwrap.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box],layout=get_box_layout('500px'))
     plot_box = widgets.VBox([output])
         
     box = widgets.HBox([controls_box,vbar,plot_box])
@@ -561,6 +561,7 @@ def equalizer_tab():
 
     return box
 
+#TODO: delete chull tabs and variables!
 def chull_tab():
     
     def format_chull_plot(figure,subplots):
@@ -1057,7 +1058,7 @@ def tomo_tab():
         dictionary["processing_steps"]["Wiggle"]          = wiggle_checkbox 
         dictionary["processing_steps"]["Tomo"]            = tomo_checkbox 
         dictionary["processing_steps"]["Equalize Recon"]  = equalize_recon_checkbox 
-    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'chull_checkbox':checkboxes2[0],'wiggle_checkbox':checkboxes2[1],'tomo_checkbox':checkboxes2[2],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes2[3]})
+    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes2[0],'tomo_checkbox':checkboxes2[1],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes2[2]})
 
     start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
     args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
