@@ -14,7 +14,7 @@ import subprocess
 
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
-from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel, equalize_tomogram
+from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel, equalize_tomogram, save_or_load_wiggle_ctr_mass
 from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
@@ -247,16 +247,7 @@ def update_cpus_gpus(cpus,gpus,machine_selection):
     else:
         print('You can only use 1 GPU to run in the local machine!')
 
-def save_or_load_wiggle_ctr_mass(wiggle_cmass = [[],[]],save=True):
-    global global_dict
-    if save:
-        wiggle_cmass = np.asarray(wiggle_cmass)
-        np.save(global_dict["wiggle_ctr_mass_filepath"], wiggle_cmass)
-        return 0
-    else:
-        array = np.load(global_dict["wiggle_ctr_mass_filepath"])
-        wiggle_cmas = [array[0,:],array[1,:]]
-        return wiggle_cmas
+
 ############################################ INTERFACE / GUI : TABS ###########################################################################
             
 def folders_tab():
@@ -791,7 +782,7 @@ def wiggle_tab():
         wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
         global_dict["wiggle_ctr_of_mas"] = wiggle_cmas
         
-        save_or_load_wiggle_ctr_mass(wiggle_cmas,save=True)
+        save_or_load_wiggle_ctr_mass(global_dict["wiggle_ctr_mass_filepath"],wiggle_cmas,save=True)
 
         print("\t Wiggle done!")
         
