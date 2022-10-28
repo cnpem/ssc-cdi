@@ -90,6 +90,7 @@ slider_layout = widgets.Layout(width='90%')
 items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
 buttons_layout = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
+buttons_layout_fixed = widgets.Layout( width='400px',height="40px")     # override the default width of the button to 'auto' to let the button grow
 center_all_layout = widgets.Layout(align_items='center',width='100%',border=standard_border) #align_content='center',justify_content='center'
 box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
@@ -98,7 +99,7 @@ style = {'description_width': 'initial'}
 def get_box_layout(width,flex_flow='column',align_items='center',border=standard_border):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
-machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '30%'},description='Machine',disabled=False)
+machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Local', layout={'width': '10%'},description='Machine',disabled=False)
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
@@ -911,33 +912,6 @@ def tomo_tab():
         format_tomo_plot(figure,subplot)
 
 
-    def run_tomo(dummy,args=()):
-        iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
-
-        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes2[0].value, "Tomo":checkboxes2[1].value, "Equalize Recon":checkboxes2[2].value } # select steps when performing full recon
-
-        output_path = global_dict["jupyter_folder"] 
-        
-        slurm_filepath = os.path.join(output_path,'tomo_job.srm')
-
-        jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
-
-
-        global machine_selection
-        print(f'Running tomo with {machine_selection.value}...')
-        if machine_selection.value == 'Local':               
-            reconstruction3D = tomography(global_dict)
-            print('\t Done! Please, load the reconstruction with the button...')
-            reconstruction3D = reconstruction3D.astype(np.float32)
-            print('Saving 3D recon...')
-            if type(global_dict["folders_list"]) == type('a'):
-                global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
-            np.save(global_dict["reconstruction_filepath"],reconstruction3D)
-            imsave(global_dict["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
-            print('\t Saved!')
-
-        elif machine_selection.value == "Cluster": 
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
 
     def load_recon(dummy):
 
@@ -1002,8 +976,7 @@ def tomo_tab():
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
-    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=items_layout)
-    jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=items_layout)
+
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
     tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold",layout=items_layout)
     tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
@@ -1011,27 +984,8 @@ def tomo_tab():
     tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
     load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
-    checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Sort", "Crop", "Unwrap", "Equalize Frames"]]
-    checkboxes2     = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in [ "Wiggle", "Tomo", "Equalize Recon"]]
-    checkboxes_box  = widgets.VBox([widgets.HBox([*checkboxes]),widgets.HBox([*checkboxes2])])
 
     widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':algo_dropdown,'dummy2':fixed(algo_dropdown)})
-
-    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
-        # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
-        dictionary["processing_steps"]["Sort"]            = sort_checkbox 
-        dictionary["processing_steps"]["Crop"]            = crop_checkbox 
-        dictionary["processing_steps"]["Unwrap"]          = unwrap_checkbox 
-        dictionary["processing_steps"]["Equalize Frames"] = equalize_frames_checkbox 
-        dictionary["processing_steps"]["Wiggle"]          = wiggle_checkbox 
-        dictionary["processing_steps"]["Tomo"]            = tomo_checkbox 
-        dictionary["processing_steps"]["Equalize Recon"]  = equalize_recon_checkbox 
-    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes2[0],'tomo_checkbox':checkboxes2[1],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes2[2]})
-
-    start_tomo = Button(description="Start",layout=buttons_layout,icon='play')
-    args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
-    start_tomo.trigger(partial(run_tomo,args=args))
-    start_tomo_box = widgets.Box([start_tomo.widget],layout=center_all_layout)
 
     load_recon_button = Button(description="Load recon slices",layout=buttons_layout,icon='play')
     load_recon_button.trigger(load_recon)
@@ -1043,30 +997,11 @@ def tomo_tab():
     remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Remove Background Offset',layout=items_layout)
     hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
-    def save_on_click(dummy):
-        print('Saving JSON input file...')
-        global_dict["contrast_type"]  = data_selection.value
-        global_dict["tomo_algorithm"] = algo_dropdown.value
-        if type(global_dict["folders_list"]) == type('a'):
-            global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
-        json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
-        with open(json_filepath, 'w') as file:
-            json.dump(global_dict, file)
-        
-        from pprint import pprint
-        pprint(global_dict)
-        print('\t Saved!')
-
-    save_dict_button  = Button(description="Save JSON",layout=buttons_layout,icon='fa-floppy-o')
-    save_dict_button.trigger(save_on_click)    
-    
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
-    start_box = widgets.VBox([checkboxes_box,start_tomo_box])#,layout=widgets.Layout(flex_flow='row',width='100%',border=standard_border))
     threshold_box = widgets.VBox([remove_outliers_slider.widget,remove_local_offset_field.widget,tomo_threshold.widget,hist_max.widget,plot_histogram_button.widget])#, plot_histogram_button.widget])
-    slurm_box = widgets.VBox([cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
-    controls = widgets.VBox([algo_dropdown,reg_checkbox.widget,reg_param.widget,iter_slider.widget,slurm_box,hbar2,save_dict_button.widget,start_box,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,threshold_box])
+    controls = widgets.VBox([reg_checkbox.widget,reg_param.widget,iter_slider.widget,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,threshold_box])
     plots = widgets.VBox([output,hbar,output2])
-    box = widgets.HBox([controls,vbar2,plots])
+    box = widgets.HBox([controls,vbar,plots])
     
     return box 
 
@@ -1081,50 +1016,53 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     "Tomography"            : tab6}
     
     def load_json(dummy,dictionary={}):
-        template_dict = {"ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho2d/",
-               "folders_list": ["SS61"],
-               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/SS61/phase_microagg_P2_01.npy",
-               "top_crop": 0,
-               "bottom_crop":0,
-               "left_crop":0,
-               "right_crop":0,
-               "bad_frames_before_unwrap": [],
-               "unwrap_iterations": 0,
-               "unwrap_non_negativity": False,
-               "unwrap_gradient_removal": False,
-               "bad_frames_before_cHull": [],
-               "chull_invert": False,
-               "chull_tolerance": 1e-5,
-               "chull_opening": 10,
-               "chull_erosion": 10,
-               "chull_param": 10,               
-               "wiggle_reference_frame": 0,
-               "CPUs": 32,
-               "tomo_regularization": True,
-               "tomo_regularization_param": 0.001, # arbitrary value
-               "tomo_iterations": 10,
-               "tomo_algorithm": "EEM", # "ART", "EM", "EEM", "FBP", "RegBackprojection"
-               "GPUs": [0],
-               "tomo_threshold" : float(0.0), # max value to be left in reconstructed absorption
-               "run_all_tomo_steps":False}
-    
-        for key in template_dict:
-            dictionary[key] = template_dict[key]
+        # FIND MOST RECENT USER INPUT FILE FROM THAT USER AND SET NEW VALUES!
+        pass
+        # for key in template_dict:
+            # dictionary[key] = template_dict[key]
     
     def update_fields(global_dict,contrast_type,machine_selection):
         global_dict["contrast_type"] = contrast_type
         global_dict["machine_selection"]    = machine_selection
     
-    global mafalda
-    mafalda = mafalda_session
-    
-    widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
-    global data_selection
-    data_selection = widgets.RadioButtons(options=['Absorption', 'Phase'], value='Phase', layout={'width': '30%'},description='Contrast',disabled=False)
-    widgets.interactive_output(update_fields,{'global_dict':fixed(global_dict),'contrast_type':data_selection,'machine_selection':machine_selection})
-    widgets.interactive_output(update_paths, {'global_dict':fixed(global_dict),'dummy1':data_selection,'dummy2':machine_selection})
+    def run_tomo(dummy,args=()):
+        iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
 
+        global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value, "Equalize Recon":checkboxes[6].value } # select steps when performing full recon
+
+        output_path = global_dict["jupyter_folder"] 
+        
+        slurm_filepath = os.path.join(output_path,'tomo_job.srm')
+
+        jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
+
+
+        global machine_selection
+        print(f'Running tomo with {machine_selection.value}...')
+        if machine_selection.value == 'Local':               
+            reconstruction3D = tomography(global_dict)
+            print('\t Done! Please, load the reconstruction with the button...')
+            reconstruction3D = reconstruction3D.astype(np.float32)
+            print('Saving 3D recon...')
+            if type(global_dict["folders_list"]) == type('a'):
+                global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
+            np.save(global_dict["reconstruction_filepath"],reconstruction3D)
+            imsave(global_dict["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
+            print('\t Saved!')
+
+        elif machine_selection.value == "Cluster": 
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
+
+    def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
+        # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
+        dictionary["processing_steps"]["Sort"]            = sort_checkbox 
+        dictionary["processing_steps"]["Crop"]            = crop_checkbox 
+        dictionary["processing_steps"]["Unwrap"]          = unwrap_checkbox 
+        dictionary["processing_steps"]["Equalize Frames"] = equalize_frames_checkbox 
+        dictionary["processing_steps"]["Wiggle"]          = wiggle_checkbox 
+        dictionary["processing_steps"]["Tomo"]            = tomo_checkbox 
+        dictionary["processing_steps"]["Equalize Recon"]  = equalize_recon_checkbox 
 
     def delete_files(dummy):
         sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
@@ -1160,12 +1098,59 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             else:
                 print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
+    def load_on_click(dummy):
+        print("TO BE DONE!")
 
-    delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
+    def save_on_click(dummy):
+        print('Saving JSON input file...')
+        global_dict["contrast_type"]  = data_selection.value
+        global_dict["tomo_algorithm"] = "EEM"#algo_dropdown.value
+        if type(global_dict["folders_list"]) == type('a'):
+            global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
+        json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
+        with open(json_filepath, 'w') as file:
+            json.dump(global_dict, file)
+        
+        from pprint import pprint
+        pprint(global_dict)
+        print('\t Saved!')
+
+
+    global mafalda
+    mafalda = mafalda_session
+    
+    widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
+
+    global data_selection
+    data_selection = widgets.RadioButtons(options=['Absorption', 'Phase'], value='Phase', layout={'width': '10%'},description='Contrast',disabled=False)
+    widgets.interactive_output(update_fields,{'global_dict':fixed(global_dict),'contrast_type':data_selection,'machine_selection':machine_selection})
+    widgets.interactive_output(update_paths, {'global_dict':fixed(global_dict),'dummy1':data_selection,'dummy2':machine_selection})
+
+    delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout_fixed,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
-    box = widgets.HBox([machine_selection,data_selection,delete_temporary_files_button.widget])
+    checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Select and Sort", "Cropping", "Phase Unwrap", "Frame Equalizer", "Wiggle", "Tomography", "Equalize Tomo"]]
+    widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes[6]})
 
+    # args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
+    args = 0 #TODO: FIX ARGS
+    start_tomo = Button(description="Start",layout=buttons_layout_fixed,icon='play')
+    start_tomo.trigger(partial(run_tomo,args=args))
+
+    load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
+    load_dict_button.trigger(load_on_click)    
+
+    save_dict_button  = Button(description="Save inputs",layout=buttons_layout_fixed,icon='fa-floppy-o')
+    save_dict_button.trigger(save_on_click)    
+
+    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='150px',border=standard_border))
+    jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=widgets.Layout( width='300px',border=standard_border))
+    
+
+    slurm_box = widgets.HBox([data_selection,machine_selection,cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
+    checkboxes_box  = widgets.HBox([widgets.HTML(f'<b><font size=2.0px>Steps to perform on cluster: \t \t  </b>' ),widgets.HBox([*checkboxes])])
+    buttons_box = widgets.HBox([load_dict_button.widget,save_dict_button.widget,start_tomo.widget,delete_temporary_files_button.widget])
+    box = widgets.VBox([hbar,slurm_box,checkboxes_box,buttons_box])
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
     for i in range(len(children_dict)): tab.set_title(i,list(children_dict.keys())[i]) # insert title in the tabs
