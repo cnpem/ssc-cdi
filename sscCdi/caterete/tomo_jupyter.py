@@ -28,18 +28,18 @@ username = getpass.getuser()
 
 """ Standard folders definitions"""
 if 1: # paths for beamline use
-    tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi-v0.1.5/bin/sscptycho_raft.py' # path with python script to run
+    tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/ssc-cdi/bin/sscptycho_raft.py' # path with python script to run
 else: # paths for GCC tests       
     tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
 
 """ Standard dictionary definition """
 global_dict = {
                "00_versions": f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
-               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
+               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/", # FIXED PATH FOR BEAMLINE
 
-               "ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho3d/",
+               "ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho3d/",
                "folders_list": ["phantom_complex"],
-               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/proc/recons/phantom_complex/object_phantom_complex.npy",
+               "sinogram_path": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/phantom_complex/object_phantom_complex.npy",
 
                "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 }, # select steps when performing full recon
                "contrast_type": "Phase", # Phase or Absolute
@@ -140,7 +140,7 @@ def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = '
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o ./slurm.out        # Select output path of slurm file
+#SBATCH -o ../logfiles/{username}_slurm.log        # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
@@ -148,7 +148,7 @@ module load python3/3.9.2
 module load cuda/11.2
 module load hdf5/1.12.0_parallel
 
-python3 {tomo_script_path} {jsonFile_path} > {os.path.join(output_path,'output.log')} 2> {os.path.join(output_path,'error.log')}
+python3 {tomo_script_path} {jsonFile_path} > {os.path.join(output_path,'logfiles',f'{username}_tomo_output.log')} 2> {os.path.join(output_path,'logfiles',f'{username}_tomo_error.log')}
 """
     
     with open(slurmFile,'w') as the_file:
@@ -1024,12 +1024,10 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         gpus_slider, cpus_slider,jobname_field,queue_field, checkboxes = args
 
         global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value, "Equalize Recon":checkboxes[6].value } # select steps when performing full recon
-
-        output_path = global_dict["jupyter_folder"] 
         
-        slurm_filepath = os.path.join(output_path,'tomo_job.srm')
+        slurm_filepath = os.path.join(global_dict["jupyter_folder"] ,'inputs',f'{username}_tomo_job.srm')
 
-        jsonFile_path = os.path.join(output_path,'user_input_tomo.json')
+        jsonFile_path = os.path.join(global_dict["jupyter_folder"] ,f'{username}_tomo_input.json')
 
 
         global machine_selection
@@ -1046,7 +1044,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             print('\t Saved!')
 
         elif machine_selection.value == "Cluster": 
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=output_path,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=global_dict["jupyter_folder"] ,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
 
     def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
         # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
@@ -1101,7 +1099,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         global_dict["tomo_algorithm"] = "EEM"#algo_dropdown.value
         if type(global_dict["folders_list"]) == type('a'):
             global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
-        json_filepath = os.path.join(global_dict["jupyter_folder"],'user_input_tomo.json') #INPUT
+        json_filepath = os.path.join(global_dict["jupyter_folder"],f'{username}_tomo_input.json') #INPUT
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
         
