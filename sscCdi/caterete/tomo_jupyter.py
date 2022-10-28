@@ -871,19 +871,17 @@ def tomo_tab():
             subplot.set_aspect('equal')
             subplot.set_xticks([])
             subplot.set_yticks([])
-        subplots[0].set_title("Ptycho frame")
-        subplots[1].set_title("Tomo projection")
-        subplots[2].set_title("Tomo slice")
+        subplots[0].set_title("Tomo projection")
+        subplots[1].set_title("Tomo slice")
         figure.canvas.header_visible = False 
         figure.tight_layout()
 
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(1,3,figsize=(10,5))
+        figure, subplot = plt.subplots(1,2,figsize=(10,5))
         subplot[0].imshow(np.random.random((4,4)),cmap='gray')
         subplot[1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[2].imshow(np.random.random((4,4)),cmap='gray')
         format_tomo_plot(figure,subplot)
         plt.show()
 
@@ -934,7 +932,7 @@ def tomo_tab():
         tomo_slice.widget.max, tomo_slice.widget.value = reconstruction.shape[axis_direction], reconstruction.shape[axis_direction]//2
         norm = colors.Normalize(vmin=np.min(reconstruction), vmax=np.max(reconstruction))
 
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[2]), 'axis':fixed(axis_direction), 'frame_number': tomo_slice.widget,'norm':fixed(norm)})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0]), 'axis':fixed(axis_direction), 'frame_number': tomo_slice.widget,'norm':fixed(norm)})    
         subplot[1].imshow(np.sum(reconstruction,axis=axis_direction),cmap='gray')
         format_tomo_plot(figure,subplot)
 
@@ -978,7 +976,7 @@ def tomo_tab():
 
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
     tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold",layout=items_layout)
-    tomo_slice     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
+    tomo_slice     = Input({"dummy_key":1},"dummy_key", description="Slice #", bounded=(1,10,1),slider=True,layout=slider_layout)
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
     load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
 
