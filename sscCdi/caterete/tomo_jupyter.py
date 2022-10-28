@@ -12,6 +12,8 @@ import asyncio
 from functools import partial
 import subprocess
 
+import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
+
 from sscRadon import radon
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
@@ -21,6 +23,8 @@ from .jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_ter
 global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
 
+import getpass
+username = getpass.getuser()
 downsampling_value = 4
 
 """ Standard folders definitions"""
@@ -30,7 +34,9 @@ else: # paths for GCC tests
     tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
 
 """ Standard dictionary definition """
-global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
+global_dict = {
+               "00_versions": f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
+               "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", # FIXED PATH FOR BEAMLINE
 
                "ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho3d/",
                "folders_list": ["phantom_complex"],
@@ -325,8 +331,8 @@ def folders_tab():
     widgets.interactive_output(update_fields, {'ibira_data_path':ibira_data_path.widget,'folders_list':folders_list.widget,'sinogram_path':sinogram_path.widget})
     widgets.interactive_output(update_paths,{'global_dict':fixed(global_dict),'dummy1':sinogram_path.widget,'dummy2':folders_list.widget})
 
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector (Angle)")
-    play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector (Time)")
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector (Angle)",frame_time_milisec=300)
+    play_box2, selection_slider2,play_control2 = slide_and_play(label="Frame Selector (Time)",frame_time_milisec=300)
 
     load_button = Button(description="Load Data",layout=buttons_layout, icon='folder-open-o')
     load_button.trigger(load_sinogram)
@@ -380,12 +386,12 @@ def crop_tab():
         np.save(global_dict['cropped_sinogram_filepath'],cropped_sinogram)
         print('\t Saved!')
 
-    top_crop      = Input(global_dict,"top_crop"   ,description="Top",   bounded=(0,vertical_max,1),  slider=True,layout=slider_layout)
-    bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom",bounded=(1,vertical_max,1),  slider=True,layout=slider_layout)
-    left_crop     = Input(global_dict,"left_crop"  ,description="Left",  bounded=(0,horizontal_max,1),slider=True,layout=slider_layout)
+    top_crop      = Input(global_dict,"top_crop"   ,description="Top", bounded=(0,vertical_max,1),  slider=True,layout=slider_layout)
+    bottom_crop   = Input(global_dict,"bottom_crop",description="Bottom", bounded=(1,vertical_max,1),  slider=True,layout=slider_layout)
+    left_crop     = Input(global_dict,"left_crop"  ,description="Left", bounded=(0,horizontal_max,1),slider=True,layout=slider_layout)
     right_crop    = Input(global_dict,"right_crop" ,description="Right", bounded=(1,horizontal_max,1),slider=True,layout=slider_layout)
 
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
     
     load_frames_button  = Button(description="Load Frames",layout=buttons_layout,icon='folder-open-o')
     args = (top_crop, bottom_crop, left_crop, right_crop, selection_slider, play_control)
@@ -425,7 +431,7 @@ def unwrap_tab():
         downsampled_unwrapped_sinogram = get_and_save_downsampled_sinogram(unwrapped_sinogram,global_dict["unwrapped_sinogram_filepath"],downsampling=downsampling_value)
         print('\t Done!')
         widgets.interactive_output(update_imshow, {'sinogram':fixed(downsampled_unwrapped_sinogram),'figure':fixed(figure_unwrap),'title':fixed(True),'subplot':fixed(subplot_unwrap[1]), 'frame_number': selection_slider.widget})    
-        
+        save_sinogram()
 
     def format_chull_plot(figure,subplots,frame_number):
         subplots[0].set_title(f'Frame #{frame_number}')
@@ -461,7 +467,7 @@ def unwrap_tab():
         global bad_frames
         bad_frames = ast.literal_eval(bad_frames_list1)
 
-    def save_sinogram(dummy):
+    def save_sinogram():
         global unwrapped_sinogram
         if np.isnan(unwrapped_sinogram).any() == True:
             print('Removing NaN values from unwrapped sinogram...')
@@ -482,6 +488,7 @@ def unwrap_tab():
     iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
     non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
     gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=items_layout,description='Gradient')
+    
     preview_unwrap_button = Button(description="Perform Unwrap",layout=buttons_layout,icon='play')
     preview_unwrap_button.trigger(phase_unwrap)
     
@@ -490,12 +497,8 @@ def unwrap_tab():
     args = (selection_slider,play_control)
     load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
 
-
-    save_unwrapped_button = Button(description="Save unwrapped frames",layout=buttons_layout,icon='fa-floppy-o') 
-    save_unwrapped_button.trigger(save_sinogram)
-    
     unwrap_params_box = widgets.Box([iterations_slider.widget,non_negativity_checkbox.widget,gradient_checkbox.widget],layout=get_box_layout('100%'))
-    controls_box = widgets.Box([load_cropped_frames_button.widget,bad_frames_before_unwrap.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,save_unwrapped_button.widget,play_box, unwrap_params_box],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_cropped_frames_button.widget,bad_frames_before_unwrap.widget,correct_bad_frames_button.widget,preview_unwrap_button.widget,play_box, unwrap_params_box],layout=get_box_layout('500px'))
     plot_box = widgets.VBox([output])
         
     box = widgets.HBox([controls_box,vbar,plot_box])
@@ -535,30 +538,30 @@ def equalizer_tab():
         global equalized_sinogram
         equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,invert_checkbox.widget.value,remove_gradient_slider.widget.value, remove_outliers_slider.widget.value, remove_global_offset_checkbox.widget.value, ast.literal_eval(remove_local_offset_field.widget.value))
         widgets.interactive_output(update_imshow, {'sinogram':fixed(equalized_sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+        save_sinogram()
 
-    def save_sinogram(dummy):
+    def save_sinogram():
         print('Saving equalized sinogram...')
         np.save(global_dict["equalized_sinogram_filepath"] ,equalized_sinogram)
         print('\tSaved sinogram at: ',global_dict["equalized_sinogram_filepath"])
 
-    # def correct_bad_frames(dummy):
-    #     print('Zeroing frames: ', bad_frames3)
-    #     global sinogram
-    #     sinogram[bad_frames3,:,:] = np.zeros((sinogram.shape[1],sinogram.shape[2]))
-    #     print('\t Done!')
-    #     widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+    def correct_bad_frames(dummy):
+        print('Zeroing frames: ', bad_frames4)
+        global unwrapped_sinogram
+        unwrapped_sinogram[bad_frames4,:,:] = np.zeros((unwrapped_sinogram.shape[1],unwrapped_sinogram.shape[2]))
+        print('\t Done!')
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(unwrapped_sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+    @debounce(0.5) # check changes every 0.5sec
+    def update_lists(bad_frames_before_equalization):
+        global bad_frames4
+        bad_frames4 = ast.literal_eval(bad_frames_before_equalization)
 
-    # @debounce(0.5) # check changes every 0.5sec
-    # def update_lists(bad_frames_before_equalization):
-    #     global bad_frames3
-    #     bad_frames3 = ast.literal_eval(bad_frames_before_equalization)
+    bad_frames_before_equalization  = Input(global_dict,"bad_frames_before_equalization", description = 'Bad frames',layout=items_layout)
+    widgets.interactive_output(update_lists,{ "bad_frames_before_equalization":bad_frames_before_equalization.widget})
+    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    correct_bad_frames_button.trigger(correct_bad_frames)
 
-    # bad_frames_before_equalization  = Input(global_dict,"bad_frames_before_equalization", description = 'Bad frames',layout=items_layout)
-    # widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_before_equalization.widget})
-    # correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
-    # correct_bad_frames_button.trigger(correct_bad_frames)
-
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
     
     load_button = Button(description="Load unwrapped sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
@@ -566,16 +569,13 @@ def equalizer_tab():
     start_button = Button(description="Start equalization",layout=buttons_layout,icon='play')
     start_button.trigger(start_equalization)
 
-    save_equalized_button = Button(description="Save equalized frames",layout=buttons_layout,icon='fa-floppy-o') 
-    save_equalized_button.trigger(save_sinogram)
-
     invert_checkbox               = Input(global_dict,"equalize_invert",        description='Invert',layout=items_layout)
     remove_gradient_slider        = Input(global_dict,"equalize_gradient",      description="Remove Gradient", bounded=(0,10,1), slider=True,layout=slider_layout)
     remove_outliers_slider        = Input(global_dict,"equalize_outliers",      description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
     remove_global_offset_checkbox = Input(global_dict,"equalize_global_offset", description='Remove Global Offset',layout=items_layout)
     remove_local_offset_field     = Input(global_dict,"equalize_local_offset",  description='Remove Local Offset',layout=items_layout)
 
-    controls_box = widgets.Box([load_button.widget,play_box, invert_checkbox.widget,remove_gradient_slider.widget,remove_outliers_slider.widget,remove_global_offset_checkbox.widget,remove_local_offset_field.widget,start_button.widget,save_equalized_button.widget],layout=get_box_layout('500px'))
+    controls_box = widgets.Box([load_button.widget,bad_frames_before_equalization.widget,correct_bad_frames_button.widget,play_box, invert_checkbox.widget,remove_gradient_slider.widget,remove_outliers_slider.widget,remove_global_offset_checkbox.widget,remove_local_offset_field.widget,start_button.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([controls_box,vbar, output]) 
 
     return box
@@ -647,7 +647,7 @@ def chull_tab():
         global bad_frames2
         bad_frames2 = ast.literal_eval(bad_frames_before_cHull)
 
-    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
     
     load_button = Button(description="Load unwrapped sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(partial(load_unwrapped_sinogram,args=(selection_slider,play_control)))
@@ -693,7 +693,7 @@ def wiggle_tab():
     
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots(1,3,figsize=(6,6))
+        figure2, subplot2 = plt.subplots(1,3,figsize=(10,5))
         subplot2[0].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[1].imshow(np.random.random((4,4)),cmap='gray')
         subplot2[2].imshow(np.random.random((4,4)),cmap='gray')
@@ -716,7 +716,7 @@ def wiggle_tab():
         print('\t Loaded!')
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
     
     def update_imshow_with_format(sinogram,figure,subplot,frame_number,axis):
         update_imshow(sinogram,figure,subplot,frame_number,axis=axis)
@@ -770,7 +770,7 @@ def wiggle_tab():
 
         selection_slider.widget.max, selection_slider.widget.value = sinogram.shape[0] - 1, sinogram.shape[0]//2
         play_control.widget.max =  selection_slider.widget.max
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0]),'title':fixed(True), 'frame_number': selection_slider.widget})    
 
         global_dict['NumberOriginalAngles'] = angles.shape # save to output log
         global_dict['NumberUsedAngles']     = projected_angles.shape 
@@ -782,7 +782,7 @@ def wiggle_tab():
 
         global sinogram
 
-        _,_,_,_,selection_slider = args
+        _,_,_,selection_slider = args
 
         global_dict["wiggle_reference_frame"] = selection_slider.widget.value 
         global_dict["wiggle_sinogram_selection"] = sinogram_selection.value
@@ -801,15 +801,21 @@ def wiggle_tab():
         print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )
         np.save(global_dict["wiggle_sinogram_filepath"] ,wiggled_sinogram)
         print("\t Saved!")
+        load_wiggle()
 
-
-    def load_wiggle(dummy):
+    def load_wiggle():
         global wiggled_sinogram
         print('Loading wiggled frames from:',global_dict["wiggle_sinogram_filepath"])
+        if direction_selector.value == "X":
+            axis_direction = 0
+        elif direction_selector.value == "Y":
+            axis_direction = 1
+        elif direction_selector.value == "Z":
+            axis_direction = 2
         wiggled_sinogram = np.load(global_dict["wiggle_sinogram_filepath"])
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[2]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1]), 'axis':fixed(axis_direction),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[2]), 'axis':fixed(axis_direction),'frame_number': sinogram_slider1.widget})    
         print('\tLoaded!')
 
     def correct_bad_frames(dummy):
@@ -817,8 +823,7 @@ def wiggle_tab():
         global sinogram
         sinogram[bad_frames3,:,:] = np.zeros((sinogram.shape[1],sinogram.shape[2]))
         print('\t Done!')
-        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
-
+        widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0]), 'title':fixed(True),'frame_number': selection_slider.widget})    
     @debounce(0.5) # check changes every 0.5sec
     def update_lists(bad_frames_before_wiggle):
         global bad_frames3
@@ -827,7 +832,7 @@ def wiggle_tab():
     def update_dict(reference_frame):
         global_dict["wiggle_reference_frame"] = reference_frame
 
-    play_box, selection_slider,play_control = slide_and_play(label="Reference Frame")
+    play_box, selection_slider,play_control = slide_and_play(label="Reference Frame",frame_time_milisec=300)
     widgets.interactive_output(update_dict,{ "reference_frame":selection_slider.widget})
 
     simulation_button = Button(description='Simulate Projection',icon='play',layout=buttons_layout)
@@ -837,8 +842,8 @@ def wiggle_tab():
     angle_step_slider = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
     projection_box = widgets.VBox([angle_step_slider.widget,simulation_button.widget,projection_button.widget,play_box])
 
+    direction_selector = widgets.RadioButtons(options=['X','Y','Z'], value='Z', style=style,layout=items_layout,description='Plot direction:',disabled=False)
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
-    load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
 
     bad_frames_before_wiggle = Input(global_dict,"bad_frames_before_wiggle",description='Bad Frames',  layout=items_layout)
     widgets.interactive_output(update_lists,{ "bad_frames_before_wiggle":bad_frames_before_wiggle.widget})
@@ -850,9 +855,6 @@ def wiggle_tab():
     sinogram_selection = widgets.RadioButtons(options=['cropped','unwrapped','equalized'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice", bounded=(1,10,1),slider=True,layout=slider_layout)
 
-    load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
-    load_button.trigger(load_sinogram)
-    
     global cpus_slider, gpus_slider, machine_selection
     gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="# of GPUs:")
     cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="# of CPUs:")
@@ -860,9 +862,11 @@ def wiggle_tab():
 
     args2 = (sinogram_selection,sinogram_slider1,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
-    load_wiggle_button.trigger(load_wiggle)
 
-    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget])
+    load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
+    load_button.trigger(load_sinogram)
+
+    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,direction_selector, wiggle_button.widget,sinogram_slider1.widget])
     box = widgets.HBox([controls,vbar,output2])
     
     return box
@@ -874,30 +878,28 @@ def tomo_tab():
             subplot.set_aspect('equal')
             subplot.set_xticks([])
             subplot.set_yticks([])
-        subplots[0,0].set_ylabel("Slice")
-        subplots[1,0].set_ylabel("Projection")
+        subplots[0].set_title("Ptycho frame")
+        subplots[1].set_title("Tomo projection")
+        subplots[2].set_title("Tomo slice")
         figure.canvas.header_visible = False 
         figure.tight_layout()
 
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(2,3,figsize=(10,5))
-        subplot[0,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[0,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[0,2].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[1,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[1,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot[1,2].imshow(np.random.random((4,4)),cmap='gray')
+        figure, subplot = plt.subplots(1,3,figsize=(10,5))
+        subplot[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot[2].imshow(np.random.random((4,4)),cmap='gray')
         format_tomo_plot(figure,subplot)
         plt.show()
 
 
     output2 = widgets.Output()
     with output2:
-        figure2, axs = plt.subplots(2,1,figsize=(10,5))
-        axs[0].hist(np.random.normal((100,100)).flatten(),bins=10)
-        axs[1].hist(np.random.normal((100,100)).flatten(),bins=10,color='green')
+        figure2, axs = plt.subplots(1,2,figsize=(13,2))
+        axs[0].hist(np.random.normal(size=(100,100)).flatten(),bins=50)
+        axs[1].hist(np.random.normal(size=(100,100)).flatten(),bins=50,color='green')
         axs[0].set_title("Histogram: Original")
         axs[1].set_title("Histogram: Equalized")
         axs[0].set_yscale('log')
@@ -928,17 +930,19 @@ def tomo_tab():
         reconstruction = np.load(savepath)
         print('\t Loaded!')
         print(f'Max = {np.max(reconstruction)}, Min = {np.min(reconstruction)}, Mean = {np.mean(reconstruction)}')
-        tomo_sliceX.widget.max, tomo_sliceX.widget.value = reconstruction.shape[0], reconstruction.shape[0]//2
-        tomo_sliceY.widget.max, tomo_sliceY.widget.value = reconstruction.shape[1], reconstruction.shape[1]//2
-        tomo_sliceZ.widget.max, tomo_sliceZ.widget.value = reconstruction.shape[2], reconstruction.shape[2]//2
+      
+        if direction_selector.value == "X":
+            axis_direction = 0
+        elif direction_selector.value == "Y":
+            axis_direction = 1
+        elif direction_selector.value == "Z":
+            axis_direction = 2
+      
+        tomo_slice.widget.max, tomo_slice.widget.value = reconstruction.shape[axis_direction], reconstruction.shape[axis_direction]//2
         norm = colors.Normalize(vmin=np.min(reconstruction), vmax=np.max(reconstruction))
-        # norm = None
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,0]), 'axis':fixed(0), 'frame_number': tomo_sliceX.widget,'norm':fixed(norm)})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,1]), 'axis':fixed(1), 'frame_number': tomo_sliceY.widget,'norm':fixed(norm)})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[0,2]), 'axis':fixed(2), 'frame_number': tomo_sliceZ.widget,'norm':fixed(norm)})    
-        subplot[1,0].imshow(np.sum(reconstruction,axis=0),cmap='gray')
-        subplot[1,1].imshow(np.sum(reconstruction,axis=1),cmap='gray')
-        subplot[1,2].imshow(np.sum(reconstruction,axis=2),cmap='gray')
+
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(reconstruction),'figure1':fixed(figure),'subplot1':fixed(subplot[2]), 'axis':fixed(axis_direction), 'frame_number': tomo_slice.widget,'norm':fixed(norm)})    
+        subplot[1].imshow(np.sum(reconstruction,axis=axis_direction),cmap='gray')
         format_tomo_plot(figure,subplot)
 
         axs[0].clear()
@@ -972,6 +976,8 @@ def tomo_tab():
         imsave(global_dict["reconstruction_equalized_filepath"][:-4] + '.tif',equalized_tomogram)
         print('\tSaved reconstruction at: ',global_dict["reconstruction_equalized_filepath"])
 
+    direction_selector = widgets.RadioButtons(options=['X','Y','Z'], value='Z', style=style,layout=items_layout,description='Plot direction:',disabled=False)
+
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
@@ -979,9 +985,7 @@ def tomo_tab():
 
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
     tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold",layout=items_layout)
-    tomo_sliceX     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
-    tomo_sliceY     = Input({"dummy_key":1},"dummy_key", description="Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
-    tomo_sliceZ     = Input({"dummy_key":1},"dummy_key", description="Slice Z", bounded=(1,10,1),slider=True,layout=slider_layout)
+    tomo_slice     = Input({"dummy_key":1},"dummy_key", description="Slice X", bounded=(1,10,1),slider=True,layout=slider_layout)
     algo_dropdown   = widgets.Dropdown(options=['EEM','EM', 'ART','FBP'], value='EEM',description='Algorithm:',layout=items_layout)
     load_selection  = widgets.RadioButtons(options=['Original', 'Equalized'], value='Original',style=style, layout=items_layout,description='Load:',disabled=False)
 
@@ -999,10 +1003,9 @@ def tomo_tab():
 
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
     threshold_box = widgets.VBox([remove_outliers_slider.widget,remove_local_offset_field.widget,tomo_threshold.widget,hist_max.widget,plot_histogram_button.widget])#, plot_histogram_button.widget])
-    controls = widgets.VBox([reg_checkbox.widget,reg_param.widget,iter_slider.widget,hbar2,load_box,tomo_sliceX.widget,tomo_sliceY.widget,tomo_sliceZ.widget,hbar2,threshold_box])
-    plots = widgets.VBox([output,hbar,output2])
-    box = widgets.HBox([controls,vbar,plots])
-    
+    controls = widgets.VBox([reg_checkbox.widget,reg_param.widget,iter_slider.widget,direction_selector,hbar2,load_box,tomo_slice.widget,hbar2,threshold_box])
+    box = widgets.HBox([controls,vbar,output])
+    box = widgets.VBox([box,hbar,output2])
     return box 
 
 def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_tab(),tab5=wiggle_tab(),tab6=tomo_tab(),tab7=equalizer_tab()):
@@ -1027,7 +1030,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
 
     def run_tomo(dummy,args=()):
-        iter_slider,gpus_slider,filename_field, cpus_slider,jobname_field,queue_field, checkboxes = args
+        gpus_slider, cpus_slider,jobname_field,queue_field, checkboxes = args
 
         global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value, "Equalize Recon":checkboxes[6].value } # select steps when performing full recon
 
@@ -1132,10 +1135,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Select and Sort", "Cropping", "Phase Unwrap", "Frame Equalizer", "Wiggle", "Tomography", "Equalize Tomo"]]
     widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes[6]})
 
-    # args = iter_slider,gpus_slider,filename_field,cpus_slider,jobname_field,queue_field, checkboxes
-    args = 0 #TODO: FIX ARGS
-    start_tomo = Button(description="Start",layout=buttons_layout_fixed,icon='play')
-    start_tomo.trigger(partial(run_tomo,args=args))
+
 
     load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
     load_dict_button.trigger(load_on_click)    
@@ -1143,9 +1143,12 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     save_dict_button  = Button(description="Save inputs",layout=buttons_layout_fixed,icon='fa-floppy-o')
     save_dict_button.trigger(save_on_click)    
 
-    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='150px',border=standard_border))
-    jobname_field   = Input({"dummy_str":'myTomography'},"dummy_str",description = "Slurm Job Name",layout=widgets.Layout( width='300px',border=standard_border))
+    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='180px',border=standard_border))
+    jobname_field   = Input({"dummy_str":f"{username}_tomo"},"dummy_str",description = "Slurm Job Name",layout=widgets.Layout( width='300px',border=standard_border))
     
+    args = gpus_slider,cpus_slider,jobname_field,queue_field, checkboxes
+    start_tomo = Button(description="Start",layout=buttons_layout_fixed,icon='play')
+    start_tomo.trigger(partial(run_tomo,args=args))
 
     slurm_box = widgets.HBox([data_selection,machine_selection,cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
     checkboxes_box  = widgets.HBox([widgets.HTML(f'<b><font size=2.0px>Steps to perform on cluster: \t \t  </b>' ),widgets.HBox([*checkboxes])])
