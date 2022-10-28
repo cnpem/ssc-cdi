@@ -49,6 +49,7 @@ global_dict = {"jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/jupyter/", 
                "unwrap_non_negativity": False,
                "unwrap_gradient_removal": False,
 
+                "bad_frames_before_equalization": [],
                 "equalize_invert":False,
                 "equalize_gradient":0,
                 "equalize_outliers":0,
@@ -474,7 +475,9 @@ def unwrap_tab():
 
     bad_frames_before_unwrap  = Input(global_dict,"bad_frames_before_unwrap", description = 'Bad frames',layout=items_layout)
     widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_before_unwrap.widget})
-    
+    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    correct_bad_frames_button.trigger(correct_bad_frames)
+
     iterations_slider = Input(global_dict,"unwrap_iterations",bounded=(0,10,1),slider=True, description='Unwrap Iterations',layout=slider_layout)
     non_negativity_checkbox = Input(global_dict,"unwrap_non_negativity",layout=items_layout,description='Non-negativity')
     gradient_checkbox = Input(global_dict,"unwrap_gradient_removal",layout=items_layout,description='Gradient')
@@ -486,8 +489,6 @@ def unwrap_tab():
     args = (selection_slider,play_control)
     load_cropped_frames_button.trigger(partial(load_cropped_frames,args=args))
 
-    correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
-    correct_bad_frames_button.trigger(correct_bad_frames)
 
     save_unwrapped_button = Button(description="Save unwrapped frames",layout=buttons_layout,icon='fa-floppy-o') 
     save_unwrapped_button.trigger(save_sinogram)
@@ -538,6 +539,23 @@ def equalizer_tab():
         print('Saving equalized sinogram...')
         np.save(global_dict["equalized_sinogram_filepath"] ,equalized_sinogram)
         print('\tSaved sinogram at: ',global_dict["equalized_sinogram_filepath"])
+
+    # def correct_bad_frames(dummy):
+    #     print('Zeroing frames: ', bad_frames3)
+    #     global sinogram
+    #     sinogram[bad_frames3,:,:] = np.zeros((sinogram.shape[1],sinogram.shape[2]))
+    #     print('\t Done!')
+    #     widgets.interactive_output(update_imshow, {'sinogram':fixed(sinogram),'figure':fixed(figure),'subplot':fixed(subplot), 'title':fixed(True),'frame_number': selection_slider.widget})    
+
+    # @debounce(0.5) # check changes every 0.5sec
+    # def update_lists(bad_frames_before_equalization):
+    #     global bad_frames3
+    #     bad_frames3 = ast.literal_eval(bad_frames_before_equalization)
+
+    # bad_frames_before_equalization  = Input(global_dict,"bad_frames_before_equalization", description = 'Bad frames',layout=items_layout)
+    # widgets.interactive_output(update_lists,{ "bad_frames_list1":bad_frames_before_equalization.widget})
+    # correct_bad_frames_button = Button(description='Remove Bad Frames',layout=buttons_layout,icon='fa-check-square-o')
+    # correct_bad_frames_button.trigger(correct_bad_frames)
 
     play_box, selection_slider,play_control = slide_and_play(label="Frame Selector")
     
@@ -660,35 +678,24 @@ def chull_tab():
 def wiggle_tab():
     
     def format_wiggle_plot(figure,subplots):
-        subplots[0,0].set_title('Pre-wiggle')
-        subplots[0,1].set_title('Wiggled')
-        subplots[0,2].set_title('Reconstruction')
-        subplots[0,0].set_ylabel('YZ')
-        subplots[1,0].set_ylabel('XY')
-        subplots[2,0].set_ylabel('XZ')
+        subplots[0].set_title('Pre-wiggle sample')
+        subplots[1].set_title('Pre-wiggle sinogram')
+        subplots[2].set_title('Wiggled sinogram')
         
         for subplot in subplots.reshape(-1):
             subplot.set_aspect('auto')
             subplot.set_xticks([])
             subplot.set_yticks([])
 
-        subplots[0,0].set_aspect('equal', adjustable='box')
-        subplots[0,1].set_aspect('equal', adjustable='box')
         figure.canvas.header_visible = False 
         figure.tight_layout()
     
     output2 = widgets.Output()
     with output2:
-        figure2, subplot2 = plt.subplots(3,3,figsize=(6,6))
-        subplot2[0,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[0,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[0,2].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[1,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[1,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[1,2].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[2,0].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[2,1].imshow(np.random.random((4,4)),cmap='gray')
-        subplot2[2,2].imshow(np.random.random((4,4)),cmap='gray')
+        figure2, subplot2 = plt.subplots(1,3,figsize=(6,6))
+        subplot2[0].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[1].imshow(np.random.random((4,4)),cmap='gray')
+        subplot2[2].imshow(np.random.random((4,4)),cmap='gray')
         format_wiggle_plot(figure2,subplot2)
         plt.show()
 
@@ -788,11 +795,8 @@ def wiggle_tab():
         wiggle_cmas = [[],[]]
         wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
         global_dict["wiggle_ctr_of_mas"] = wiggle_cmas
-        
         save_or_load_wiggle_ctr_mass(global_dict["wiggle_ctr_mass_filepath"],wiggle_cmas,save=True)
-
         print("\t Wiggle done!")
-        
         print("Saving wiggle sinogram to: ", global_dict["wiggle_sinogram_filepath"] )
         np.save(global_dict["wiggle_sinogram_filepath"] ,wiggled_sinogram)
         print("\t Saved!")
@@ -803,37 +807,9 @@ def wiggle_tab():
         print('Loading wiggled frames from:',global_dict["wiggle_sinogram_filepath"])
         wiggled_sinogram = np.load(global_dict["wiggle_sinogram_filepath"])
         sinogram_slider1.widget.max, sinogram_slider1.widget.value = wiggled_sinogram.shape[1] - 1, wiggled_sinogram.shape[1]//2
-        sinogram_slider2.widget.max, sinogram_slider2.widget.value = wiggled_sinogram.shape[2] - 1, wiggled_sinogram.shape[2]//2
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1,0]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[2,0]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[0,1]), 'axis':fixed(0),'frame_number': selection_slider.widget})        
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[1,1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[2,1]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(sinogram),        'figure':fixed(figure2),'subplot':fixed(subplot2[1]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
+        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(wiggled_sinogram),'figure':fixed(figure2),'subplot':fixed(subplot2[2]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
         print('\tLoaded!')
-
-    def load_recon(dummy):
-        # try:
-        if os.path.getmtime(global_dict["reconstruction_equalized_filepath"]) > os.path.getmtime(global_dict["reconstruction_filepath"]):
-            print('Loading reconstruction sinogram. :',global_dict["reconstruction_equalized_filepath"])
-            recon3D = np.load(global_dict["reconstruction_equalized_filepath"])
-        else:
-            print('Loading reconstruction sinogram. :',global_dict["reconstruction_filepath"])
-            recon3D = np.load(global_dict["reconstruction_filepath"])
-        tomogram_cmas_adjusted = np.swapaxes( radon.radon_gpu_block( recon3D, wiggled_sinogram.shape[0], global_dict["GPUs"], blocksize=10 ), 0, 1)
-        # except:
-            # print("No reconstruction file was found! Please perform the tomography first.")
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[0,2]), 'axis':fixed(0),'frame_number': selection_slider.widget})        
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[1,2]), 'axis':fixed(1),'frame_number': sinogram_slider1.widget})    
-        widgets.interactive_output(update_imshow_with_format, {'sinogram':fixed(tomogram_cmas_adjusted),'figure':fixed(figure2),'subplot':fixed(subplot2[2,2]), 'axis':fixed(2),'frame_number': sinogram_slider2.widget})    
-        print('\tLoaded!')
-
-
-    def save_inverted_sinogram(dummy):
-        print('Multiplying sinogram by -1 and saving at:',global_dict["wiggle_sinogram_filepath"])
-        global wiggled_sinogram
-        wiggled_sinogram = -1*wiggled_sinogram
-        np.save(global_dict["wiggle_sinogram_filepath"],wiggled_sinogram)
-        print(f'\t Saved! New max = {np.max(wiggled_sinogram)}. New min = {np.min(wiggled_sinogram)}')
 
     def correct_bad_frames(dummy):
         print('Zeroing frames: ', bad_frames3)
@@ -863,9 +839,6 @@ def wiggle_tab():
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
     load_wiggle_button   = Button(description='Load Wiggle',icon='folder-open-o',layout=buttons_layout)
 
-    load_recon_button   = Button(description='Load Recon',icon='folder-open-o',layout=buttons_layout)
-    load_recon_button.trigger(load_recon)
-
     bad_frames_before_wiggle = Input(global_dict,"bad_frames_before_wiggle",description='Bad Frames',  layout=items_layout)
     widgets.interactive_output(update_lists,{ "bad_frames_before_wiggle":bad_frames_before_wiggle.widget})
 
@@ -874,8 +847,7 @@ def wiggle_tab():
 
 
     sinogram_selection = widgets.RadioButtons(options=['cropped','unwrapped','equalized'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
-    sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Y", bounded=(1,10,1),slider=True,layout=slider_layout)
-    sinogram_slider2   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice Z", bounded=(1,10,1),slider=True,layout = slider_layout)
+    sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice", bounded=(1,10,1),slider=True,layout=slider_layout)
 
     load_button = Button(description="Load sinogram",layout=buttons_layout,icon='folder-open-o')
     load_button.trigger(load_sinogram)
@@ -885,15 +857,11 @@ def wiggle_tab():
     cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="# of CPUs:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
 
-    args2 = (sinogram_selection,sinogram_slider1,sinogram_slider2,cpus_slider,selection_slider)
+    args2 = (sinogram_selection,sinogram_slider1,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
     load_wiggle_button.trigger(load_wiggle)
 
-    invert_sinogram_buttom = Button(description='Invert Sinogram',icon='undo',layout=buttons_layout)
-    invert_sinogram_buttom.trigger(save_inverted_sinogram)
-
-
-    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,load_recon_button.widget,sinogram_slider1.widget,sinogram_slider2.widget,invert_sinogram_buttom.widget])
+    controls = widgets.VBox([sinogram_selection,load_button.widget,correct_bad_frames_button.widget,bad_frames_before_wiggle.widget,hbar2,projection_box,hbar2,cpus_slider.widget,wiggle_button.widget,load_wiggle_button.widget,sinogram_slider1.widget])
     box = widgets.HBox([controls,vbar,output2])
     
     return box
