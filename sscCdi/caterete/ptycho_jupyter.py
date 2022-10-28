@@ -20,16 +20,19 @@ if 1: # paths for beamline use
 else: # paths for GCC tests       
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
 
-jupyter_folder = "/ibira/lnls/beamlines/caterete/apps/jupyter/"
+import getpass
+username = getpass.getuser()
+
+jupyter_folder = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/"
 
 acquisition_folder = 'SS61'
-output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
+output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
-global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/jupyter/",
+global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/",
                     "ptycho_script_path"       : pythonScript,
                     "template_json"            : "000000_template.json",
-                    "slurm_filepath"           : os.path.join(jupyter_folder,'slurm_job.srm'), # path to create slurm_file
-                    "json_filepath"            : os.path.join(jupyter_folder,'user_input.json'), # path with input json to run
+                    "slurm_filepath"           : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_job.srm'), # path to create slurm_file
+                    "json_filepath"            : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
@@ -75,7 +78,7 @@ def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o ./slurm.out      # Select output path of slurm file
+#SBATCH -o ../logfiles/{username}_slurm.out      # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
@@ -83,7 +86,7 @@ module load python3/3.9.2
 module load cuda/11.2
 module load hdf5/1.12.0_parallel
 
-python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'log_output.log')} 2> {os.path.join(output_path,'log_error.log')}
+python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(output_path,'logfiles',f'{username}_ptycho_error.log')}
 """
     
     with open(slurm_filepath,'w') as the_file:
