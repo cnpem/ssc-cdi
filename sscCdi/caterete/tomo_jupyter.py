@@ -140,7 +140,7 @@ def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = '
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o ../logfiles/{username}_slurm.log        # Select output path of slurm file
+#SBATCH -o {output_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
@@ -1091,15 +1091,19 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
                 print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
     def load_on_click(dummy):
-        print("TO BE DONE!")
+        global global_dict
+        json_filepath = os.path.join(global_dict["jupyter_folder"],f'{username}_tomo_input.json') #INPUT
+        with open(json_filepath) as json_file:
+            global_dict = json.load(json_file)
+        print("Inputs loaded from ",json_filepath)
 
     def save_on_click(dummy):
-        print('Saving JSON input file...')
         global_dict["contrast_type"]  = data_selection.value
         global_dict["tomo_algorithm"] = "EEM"#algo_dropdown.value
         if type(global_dict["folders_list"]) == type('a'):
             global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
         json_filepath = os.path.join(global_dict["jupyter_folder"],f'{username}_tomo_input.json') #INPUT
+        print('Saving JSON input file at: ',json_filepath)
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
         
@@ -1123,8 +1127,6 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
 
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Select and Sort", "Cropping", "Phase Unwrap", "Frame Equalizer", "Wiggle", "Tomography", "Equalize Tomo"]]
     widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes[6]})
-
-
 
     load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
     load_dict_button.trigger(load_on_click)    

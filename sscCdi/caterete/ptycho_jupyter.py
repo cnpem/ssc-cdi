@@ -16,7 +16,7 @@ from .unwrap import phase_unwrap
 from .misc import create_directory_if_doesnt_exist
 
 if 1: # paths for beamline use
-    pythonScript    = '/ibira/lnls/beamlines/caterete/apps/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
+    pythonScript    = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
 else: # paths for GCC tests       
     pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
 
@@ -72,13 +72,14 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
     # Create slurm file
+    logfiles_path = slurm_filepath.rsplit('/',2)[0]
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
 #SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o ../logfiles/{username}_slurm.out      # Select output path of slurm file
+#SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
 
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
@@ -86,7 +87,7 @@ module load python3/3.9.2
 module load cuda/11.2
 module load hdf5/1.12.0_parallel
 
-python3 {python_script_path} {json_filepath_path} > {os.path.join(output_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(output_path,'logfiles',f'{username}_ptycho_error.log')}
+python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_error.log')}
 """
     
     with open(slurm_filepath,'w') as the_file:
