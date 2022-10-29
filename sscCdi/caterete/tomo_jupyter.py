@@ -835,7 +835,7 @@ def wiggle_tab():
     angle_step_slider = Input({"dummy_key":100},"dummy_key", description="Angle Step", bounded=(0,100,1),slider=True,layout=slider_layout)
     projection_box = widgets.VBox([angle_step_slider.widget,simulation_button.widget,projection_button.widget,play_box])
 
-    direction_selector = widgets.RadioButtons(options=['X','Y','Z'], value='Z', style=style,layout=items_layout,description='Plot direction:',disabled=False)
+    direction_selector = widgets.RadioButtons(options=['X','Y','Z'], value='Y', style=style,layout=items_layout,description='Plot direction:',disabled=False)
     wiggle_button = Button(description='Perform Wiggle',icon='play',layout=buttons_layout)
 
     bad_frames_before_wiggle = Input(global_dict,"bad_frames_before_wiggle",description='Bad Frames',  layout=items_layout)
