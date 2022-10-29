@@ -25,7 +25,7 @@ Changed
 - Unification of functions that null bad frames at each step of the tomography interface
 
 
-[0.3.0] - 2022-03-03
+[0.3.0] - 2022-10-29
 --------------------
 
 Added
