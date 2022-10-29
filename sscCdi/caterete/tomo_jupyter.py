@@ -1099,7 +1099,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
 
     def load_on_click(dummy):
         global global_dict
-        json_filepath = os.path.join(global_dict["jupyter_folder"],f'{username}_tomo_input.json') #INPUT
+        json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs', f'{username}_tomo_input.json') #INPUT
         with open(json_filepath) as json_file:
             global_dict = json.load(json_file)
         print("Inputs loaded from ",json_filepath)
@@ -1109,7 +1109,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         global_dict["tomo_algorithm"] = "EEM"#algo_dropdown.value
         if type(global_dict["folders_list"]) == type('a'):
             global_dict["folders_list"] = ast.literal_eval(global_dict["folders_list"]) # convert string to literal list
-        json_filepath = os.path.join(global_dict["jupyter_folder"],f'{username}_tomo_input.json') #INPUT
+        json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs',f'{username}_tomo_input.json') #INPUT
         print('Saving JSON input file at: ',json_filepath)
         with open(json_filepath, 'w') as file:
             json.dump(global_dict, file)
