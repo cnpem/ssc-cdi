@@ -7,6 +7,8 @@ from functools import partial
 import ipywidgets as widgets 
 from ipywidgets import fixed
 
+import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
+
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
 from .misc import miqueles_colormap
@@ -42,8 +44,10 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                 }
 
 
-
 global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
+
+global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
+
 
 ############################################ Global Layout ###########################################################################
 
@@ -163,6 +167,14 @@ def run_ptycho(dummy):
     slurm_filepath = global_paths_dict["slurm_filepath"]
 
     print(f'Running ptycho with {machine_selection.value} machine...')
+
+    global global_dict
+
+    from pprint import pprint
+    pprint(global_dict)
+
+    print(f'\nWARNING: IS CENTER {global_dict["DifpadCenter"]} CORRECT?\n')
+
     if machine_selection.value == 'Local':
         cmd = f'python3 {pythonScript} {json_filepath}'
         # cmd = f'python3 ~/ssc-cdi/bin/sscptycho_main_test.py {json_filepath}'
@@ -179,10 +191,11 @@ def run_ptycho(dummy):
         run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
 def load_json(dummy):
-    json_path = os.path.join(global_paths_dict["jupyter_folder" ] ,global_paths_dict["template_json"])
-    template_dict = json.load(open(json_path))
-    for key in template_dict:
-        global_dict[key] = template_dict[key]
+    global global_dict
+    json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
+    with open(json_filepath) as json_file:
+        global_dict = json.load(json_file)
+    print("Inputs loaded from ",json_filepath)
 
 def create_label_widget(text):
     # label = widgets.Label(value=text)
@@ -590,7 +603,7 @@ def ptycho_tab():
         print(f'Cancelling job {job_number.widget.value}')    
         call_and_read_terminal(f'scancel {job_number.widget.value}',mafalda)
 
-    job_number = Input({"dummy-key":00000},"dummy-key",description="Job ID number",layout=items_layout)
+    job_number = Input({"dummy-key":00000},"dummy-key",description="Job ID",layout=items_layout)
 
     view_jobs_button = Button(description='List Jobs',layout=buttons_layout,icon='fa-eye')
     view_jobs_button.trigger(view_jobs)
