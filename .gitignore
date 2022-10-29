@@ -1,4 +1,9 @@
-docs/build/*
+docs/*
+!docs/doxyconf
+!docs/io.log
+!docs/Makefile
+!docs/README.md
+!docs/source/
 __pycache__/*
 sscCdi/__pycache__/*
 dist/*
