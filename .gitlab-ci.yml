@@ -2,6 +2,7 @@ stages:
     - build
     - deploy
 
+
 build_dgx_docker:
     image: gccdockers/annotat3d:cuda-11.2
     stage: build
@@ -11,20 +12,6 @@ build_dgx_docker:
         - x86_64
         - cuda11
         - docker
-    artifacts:
-        paths:
-            - ./dist/*whl
-        expire_in: 1 day
-
-
-build_power_shell:
-    stage: build
-    script:
-        - python3 setup.py bdist_wheel --cuda
-    tags:
-        - ppc64le
-        - cuda10
-        - shell
     artifacts:
         paths:
             - ./dist/*whl
@@ -47,6 +34,51 @@ deploy_dgx_docker:
     only:
         - tags
 
+
+
+build_dgx_shell:
+    image: gccdockers/annotat3d:cuda-11.2
+    stage: build
+    script:
+        - python3 setup.py bdist_wheel --cuda
+    tags:
+        - x86_64
+        - cuda11
+        - shell
+    artifacts:
+        paths:
+            - ./dist/*whl
+        expire_in: 1 day
+
+deploy_dgx_shell:
+    stage: deploy
+    script:
+        - python3 -m pip install keyring==12.0.0 keyrings.alt
+        - python3 -m pip install twine==2.0.0 passlib
+        - twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
+    tags:
+        - x86_64
+        - cuda11
+        - shell
+    dependencies:
+        - build_dgx_shell
+    only:
+        - tags
+
+
+build_power_shell:
+    stage: build
+    script:
+        - python3 setup.py bdist_wheel --cuda
+    tags:
+        - ppc64le
+        - cuda10
+        - shell
+    artifacts:
+        paths:
+            - ./dist/*whl
+        expire_in: 1 day
+
 deploy_power_shell:
     stage: deploy
     script:
@@ -62,3 +94,58 @@ deploy_power_shell:
     only:
         - tags
 
+
+build_power_docker:
+    image: gccdockers/annotat3d:cuda-10.2
+    stage: build
+    script:
+        - python3 setup.py bdist_wheel --cuda
+    tags:
+        - ppc64le
+        - cuda10
+        - docker
+    artifacts:
+        paths:
+            - ./dist/*whl
+        expire_in: 1 day
+
+deploy_power_docker:
+    image: gccdockers/annotat3d:cuda-10.2
+    stage: deploy
+    script:
+        - python3 -m pip install keyring==12.0.0 keyrings.alt
+        - python3 -m pip install twine==2.0.0 passlib
+        - python3 -m twine upload ./dist/*.whl --repository-url="$GCC_PYPI_HOST"
+    tags:
+        - ppc64le
+        - cuda10
+        - docker
+        
+    dependencies:
+        - build_power_docker
+    only:
+        - tags
+
+
+build_docs:
+  stage: build
+  script:
+    - cd docs
+    - make
+  tags:
+    - x86_64
+    - docker
+  artifacts:
+    paths:
+      - ./docs/build/
+    expire_in: 1 day
+
+deploy_docs:
+  stage: deploy
+  image: ubuntu:latest
+  script:
+    - mkdir -p /var/www/html/ssc/ssc-cdi/
+    - rm -rf /var/www/html/ssc/ssc-cdi/*
+    - cp -r ./docs/build/html/* /var/www/html/ssc/ssc-cdi/
+  tags:
+    - wiki
