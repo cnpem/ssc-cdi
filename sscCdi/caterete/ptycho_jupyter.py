@@ -266,7 +266,7 @@ def inputs_tab():
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
 
     global saveJsonButton
-    saveJsonButton = Button(description="Save Inputs",layout=buttons_layout)
+    saveJsonButton = Button(description="Save Inputs",layout=buttons_layout,icon='fa-floppy-o')
     saveJsonButton.trigger(save_on_click_partial)
 
     label1 = create_label_widget("Data Selection")
@@ -318,10 +318,10 @@ def inputs_tab():
     Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
     phase_unwrap_box = widgets.Box([Phaseunwrap.widget],layout=items_layout2)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
-    top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),  description="Top",   slider=True,layout=slider_layout)
-    bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1),  description="Bottom",   slider=True,layout=slider_layout)
-    left_crop     = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1),description="Left", slider=True,layout=slider_layout)
-    right_crop    = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1),description="Right", slider=True,layout=slider_layout)
+    top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1), description="Top", slider=True,layout=slider_layout)
+    bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1), description="Bottom", slider=True,layout=slider_layout)
+    left_crop     = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1), description="Left", slider=True,layout=slider_layout)
+    right_crop    = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1), description="Right", slider=True,layout=slider_layout)
 
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
@@ -350,7 +350,7 @@ def inputs_tab():
                                                     "DetectorPileup":DetectorPileup.widget
                                                      })
 
-    box = widgets.Box([saveJsonButton.widget,label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,suspect_pixels.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,suspect_pixels.widget,save_or_load_difpads],layout=box_layout)
     box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
@@ -661,14 +661,36 @@ def reconstruction_tab():
 
     return box
 
-def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab5=ptycho_tab(),tab6=reconstruction_tab(),tab1=cropunwrap_tab(),tab7=mask_tab()):
+def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel_tab(),tab6=reconstruction_tab(),tab1=cropunwrap_tab(),tab7=mask_tab()):
     
     __name__ = "__main__"
 
+    def view_jobs(dummy):
+        output = call_and_read_terminal('squeue',mafalda)
+        print(output.decode("utf-8"))
+    def cancel_job(dummy):
+        print(f'Cancelling job {job_number.widget.value}')    
+        call_and_read_terminal(f'scancel {job_number.widget.value}',mafalda)
+
+    job_number = Input({"dummy-key":00000},"dummy-key",description="Job ID number",layout=items_layout)
+
+    view_jobs_button = Button(description='List Jobs',layout=buttons_layout,icon='fa-eye')
+    view_jobs_button.trigger(view_jobs)
+
+    cancel_job_button = Button(description='Cancel Job',layout=buttons_layout,icon='fa-stop-circle')
+    cancel_job_button.trigger(cancel_job)    
+
+    run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
+    run_button.trigger(run_ptycho)
+
+    load_json_button  = Button(description="Load inputs",layout=buttons_layout,icon='folder-open-o')
+    load_json_button.trigger(load_json)
+
+    ptycho_box = widgets.Box([saveJsonButton.widget,load_json_button.widget,run_button.widget,view_jobs_button.widget,cancel_job_button.widget,job_number.widget],layout=get_box_layout('1000px',flex_flow='row'))
+
 
     children_dict = {
-    "Ptycho Inputs"     : tab2,
-    "Ptychography"      : tab5,
+    "Inputs"     : tab2,
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
@@ -678,28 +700,24 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     
     global mafalda
     mafalda = mafalda_session
-
-    load_json_button  = Button(description="Reset JSON",layout=buttons_layout,icon='folder-open-o')
-    load_json_button.trigger(load_json)
     
     global machine_selection
-    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Cluster', layout={'width': '70%'},description='Machine',disabled=False)
+    machine_selection = widgets.RadioButtons(options=['Local', 'Cluster'], value='Cluster', layout={'width': '10%'},description='Machine',disabled=False)
     widgets.interactive_output(update_gpu_limits,{"machine_selection":machine_selection})
 
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
     global jobNameField, jobQueueField
-    jobNameField  = Input({'dummy_key':'CateretePtycho'},'dummy_key',description="Insert slurm job name:")
+    jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
     gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
-    box = widgets.HBox([machine_selection,load_json_button.widget])
-    boxSlurm = widgets.HBox([gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
-    box = widgets.VBox([box,boxSlurm])
+    boxSlurm = widgets.HBox([machine_selection,gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
+    box = widgets.VBox([boxSlurm,ptycho_box])
 
     tab = widgets.Tab()
     tab.children = list(children_dict.values())
