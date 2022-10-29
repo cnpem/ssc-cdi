@@ -329,7 +329,7 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
-def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[],[]]):
+def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[],[]],axis_direction=1):
     
     if type(bkg_window) == type("a_string"):
         bkg_window = ast.literal_eval(bkg_window) # read string as list
@@ -345,7 +345,14 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[
             equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
 
     if bkg_window !=[]:
-        window = recon[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
+
+        if axis_direction == 0:
+            window = recon[:,bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
+        elif axis_direction == 1:
+            window = recon[bkg_window[0]:bkg_window[1],:,bkg_window[2]:bkg_window[3]]
+        elif axis_direction == 2:
+            window = recon[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3],:]
+
         offset = np.mean(window)
         equalized_tomogram = equalized_tomogram - offset
         equalized_tomogram = np.where(equalized_tomogram<0,0,equalized_tomogram)

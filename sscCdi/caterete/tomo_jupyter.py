@@ -947,8 +947,15 @@ def tomo_tab():
         statistics_raw = (np.max(reconstruction),np.min(reconstruction),np.mean(reconstruction),np.std(reconstruction))
         print('Raw data statistics: ',  f'\n\tMax = {statistics_raw[0]:.2e}\t Min = {statistics_raw[1]:.2e}\t Mean = {statistics_raw[2]:.2e}\t StdDev = {statistics_raw[3]:.2e}')
 
+        if direction_selector.value == "X":
+            axis_direction = 0
+        elif direction_selector.value == "Y":
+            axis_direction = 1
+        elif direction_selector.value == "Z":
+            axis_direction = 2
+
         global equalized_tomogram 
-        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value)
+        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value,axis_direction=axis_direction)
 
         statistics_equalized = (np.max(equalized_tomogram),np.min(equalized_tomogram),np.mean(equalized_tomogram),np.std(equalized_tomogram))
         print('Thresholded data statistics: ',f'\n\tMax = {statistics_equalized[0]:.2e}\n\t Min = {statistics_equalized[1]:.2e}\n\t Mean = {statistics_equalized[2]:.2e}\n\t StdDev = {statistics_equalized[3]:.2e}')
@@ -989,7 +996,7 @@ def tomo_tab():
     plot_histogram_button.trigger(equalize)
 
     remove_outliers_slider    = Input(global_dict,"tomo_remove_outliers",  description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
-    remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Remove Background Offset',layout=items_layout)
+    remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Bkg Offset [yu,yd,xl,xr]',layout=items_layout)
     hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
     load_box = widgets.HBox([load_recon_button.widget,load_selection])
