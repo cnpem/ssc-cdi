@@ -95,6 +95,7 @@ deploy_power_shell:
         - tags
 
 build_docs:
+  image: gccdockers/annotat3d:cuda-11.2
   stage: build
   script:
     - cd docs
