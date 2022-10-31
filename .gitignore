@@ -18,3 +18,9 @@ sscCdi/caterete/__pycache__/*
 sscCdi/caterete/PWCDI/__pycache__/*
 sscCdi/caterete/PTYCHO/.ipynb_checkpoints/*
 sscCdi/caterete/PTYCHO/__pycache__/*
+bin/.DS_Store
+bin/._.DS_Store
+sscCdi/.DS_Store
+sscCdi/._.DS_Store
+sscCdi/caterete/.DS_Store
+sscCdi/caterete/._.DS_Store
