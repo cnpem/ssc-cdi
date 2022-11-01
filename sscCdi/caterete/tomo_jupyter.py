@@ -1034,7 +1034,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
         
         slurm_filepath = os.path.join(global_dict["jupyter_folder"] ,'inputs',f'{username}_tomo_job.srm')
 
-        jsonFile_path = os.path.join(global_dict["jupyter_folder"] ,f'{username}_tomo_input.json')
+        jsonFile_path = os.path.join(global_dict["jupyter_folder"] ,'inputs', f'{username}_tomo_input.json')
 
 
         global machine_selection

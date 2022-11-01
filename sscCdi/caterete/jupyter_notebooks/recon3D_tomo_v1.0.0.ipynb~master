@@ -12,6 +12,7 @@
     "- #### To visualize outputs in real time, open the log console at: View > Show Log Console\n",
     "- #### Questions? E-mail gcc@lnls.br\n",
     "- #### Installation and User guide [available here](https://10.10.10.141/ssc/wiki/). \n",
+    "- #### Documentation about the ssc-cdi package: https://gcc.lnls.br/ssc/ssc-cdi/index.html\n",
     "- #### About sscPimega:\n",
     "    - Measurements done up to July 1st, 2022: use version sscPimega = '0.0.4'\n",
     "    - Measurements made between July 2nd and October 23rd, 2022: use version sscPimega = '0.0.6'\n",
@@ -27,9 +28,9 @@
     "%matplotlib widget\n",
     "import sscInstall\n",
     "server = sscInstall.connect_server()\n",
-    "sscInstall.install_jupyter(server,beamline='caterete',sscCdi='0.1.14',sscPtycho='1.0.2',sscPimega='0.1.1',sscRaft='1.0.3',sscRadon='1.0.0',sscResolution='1.2.3')\n",
+    "sscInstall.install_jupyter(server,beamline='caterete',sscCdi='0.3.2',sscPtycho='1.0.2',sscPimega='0.1.1',sscRaft='1.0.3',sscRadon='1.0.0',sscResolution='1.2.3')\n",
     "from sscCdi import jupyter, tomo_jupyter\n",
-    "header,tabs, input_variables_dict = tomo_jupyter.deploy_tabs(0)\n",
+    "header,tabs, input_variables_dict = tomo_jupyter.deploy_tabs(server)\n",
     "display(header,tabs)"
    ]
   }

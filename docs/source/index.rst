@@ -27,6 +27,7 @@ Currently, the ssc-cdi module performs Ptycography reconstructions for the Cater
    :numbered:
    :caption: Contents:
    
+   changelog
    public
    private
    install
