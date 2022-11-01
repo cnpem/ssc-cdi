@@ -94,4 +94,26 @@ deploy_power_shell:
     only:
         - tags
 
+build_docs:
+  image: gccdockers/annotat3d:cuda-11.2
+  stage: build
+  script:
+    - cd docs
+    - make
+  tags:
+    - x86_64
+    - docker
+  artifacts:
+    paths:
+      - ./docs/build/
+    expire_in: 1 day
 
+deploy_docs:
+  stage: deploy
+  image: ubuntu:latest
+  script:
+    - mkdir -p /var/www/html/ssc/ssc-cdi/
+    - rm -rf /var/www/html/ssc/ssc-cdi/*
+    - cp -r ./docs/build/html/* /var/www/html/ssc/ssc-cdi/
+  tags:
+    - wiki

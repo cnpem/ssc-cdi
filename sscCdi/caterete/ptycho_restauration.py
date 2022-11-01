@@ -27,8 +27,7 @@ def Geometry(L):
     """ Detector geometry parameters for sscPimega restauration
 
     Args:
-        L : sample-detector distance
-
+        L : sample-detector distancef
     Returns:
         geo : geometry 
     """    
