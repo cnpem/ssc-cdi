@@ -14,6 +14,9 @@ from sscPimega import misc
 import random
 random.seed(0)
 
+from numpy.fft import fft2, fftshift, ifftshift, ifft2
+
+
 def set_object_pixel_size(jason,half_size):
     c = 299792458             # Speed of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
@@ -172,8 +175,6 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
         output: propagated wavefront
     """    
     
-    from numpy.fft import fft2, fftshift, ifftshift, ifft2
-
     dx, wavelength,distance = experiment_params 
     
     if propagator == 'fourier':
