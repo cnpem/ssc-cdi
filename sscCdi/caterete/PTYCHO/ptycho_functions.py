@@ -176,30 +176,33 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
     """    
     
     dx, wavelength,distance = experiment_params 
-    
+    # plt.figure()
+    # plt.imshow(np.abs(wavefront),norm=LogNorm())
+    # plt.show()
+    # plt.close()
     if propagator == 'fourier':
         if distance > 0:
             output = fftshift(fft2(fftshift(wavefront)))
         else:
             output = ifftshift(ifft2(ifftshift(wavefront)))            
-    
-    elif propagator == 'fresnel':
-    
-        ysize, xsize = wavefront.shape
-        x_array = np.linspace(-xsize/2,xsize/2-1,xsize)
-        y_array = np.linspace(-ysize/2,ysize/2-1,ysize)
 
-        fx = x_array/(xsize)
-        fy = y_array/(ysize)
+    # elif propagator == 'fresnel':
+    
+    #     ysize, xsize = wavefront.shape
+    #     x_array = np.linspace(-xsize/2,xsize/2-1,xsize)
+    #     y_array = np.linspace(-ysize/2,ysize/2-1,ysize)
 
-        FX,FY = np.meshgrid(fx,fy)
-        # Calculate approx phase distribution for each plane wave component
-        w = FX**2 + FY**2 
-        # Compute FFT
-        F = fftshift(fft2(fftshift(wavefront)))
-        # multiply by phase-shift and inverse transform 
-        a = np.exp(-1j*np.pi*( distance*wavelength/dx**2)*w)
-        output = ifftshift(ifft2(ifftshift(F*a)))
+    #     fx = x_array/(xsize)
+    #     fy = y_array/(ysize)
+
+    #     FX,FY = np.meshgrid(fx,fy)
+    #     # Calculate approx phase distribution for each plane wave component
+    #     w = FX**2 + FY**2 
+    #     # Compute FFT
+    #     F = fftshift(fft2(fftshift(wavefront)))
+    #     # multiply by phase-shift and inverse transform 
+    #     a = np.exp(-1j*np.pi*( distance*wavelength/dx**2)*w)
+    #     output = ifftshift(ifft2(ifftshift(F*a)))
 
     return output
 
