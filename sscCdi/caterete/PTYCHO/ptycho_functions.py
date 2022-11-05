@@ -16,6 +16,55 @@ random.seed(0)
 
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
 
+def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time):
+    colormap = 'jet'    
+    figure, ax = plt.subplots(3,5,dpi=150,figsize=(10,6))
+    count = -1
+    for i,ax0 in enumerate(ax.reshape(-1)):
+        count += 1
+        if count == 5: 
+            ax0.grid()
+            continue
+        ax0.set_yticks([])
+        ax0.set_xticks([])
+    ax[0,0].imshow(np.sum(difpads,axis=0),norm=LogNorm(),cmap=colormap)
+    ax[0,0].set_title("Sum of difpads")
+    ax[0,1].imshow(np.abs(model_obj),cmap=colormap)
+    ax[0,1].set_title("Magnitude")
+    ax[0,2].imshow(np.angle(model_obj),cmap=colormap)
+    ax[0,2].set_title("Phase")
+    ax[0,3].imshow(np.abs(probe_guess),cmap=colormap)
+    ax[0,3].set_title("Magnitude")
+    ax[0,4].imshow(np.angle(probe_guess),cmap=colormap)
+    ax[0,4].set_title("Phase")
+    ax[1,0].plot(RAAR_error,'.-',label='RAAR')
+    ax[1,1].imshow(np.abs(RAAR_obj),cmap=colormap)
+    ax[1,2].imshow(np.angle(RAAR_obj),cmap=colormap)
+    ax[1,3].imshow(np.abs(RAAR_probe),cmap=colormap)
+    ax[1,4].imshow(np.angle(RAAR_probe),cmap=colormap)
+    ax[0,0].set_ylabel('Model')
+    ax[1,0].set_ylabel('RAAR')
+    ax[2,0].set_ylabel('mPIE')
+    ax[1,0].plot(PIE_error,'.-',label='PIE')
+    ax[2,1].imshow(np.abs(PIE_obj),cmap=colormap)
+    crop = 25
+    ax[2,0].imshow(np.abs(PIE_obj[crop:-crop,crop:-crop]),cmap=colormap)
+    ax[2,2].imshow(np.angle(PIE_obj),cmap=colormap)
+    ax[2,3].imshow(np.abs(PIE_probe),cmap=colormap)
+    ax[2,4].imshow(np.angle(PIE_probe),cmap=colormap)
+    ax[1,0].legend()
+    figure.tight_layout()
+    
+
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function=True):
+    alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
+    objbx = obj[py:py+offset[0],px:px+offset[1]]
+    
+    if use_rPIE_update_function: # rPIE update function
+        objbx = objbx + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
+        probe = probe + gamma_prb*difference*objbx.conj()/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() )
+    obj[py:py+offset[0],px:px+offset[1]] = objbx
+    return obj, probe, objbx
 
 def set_object_pixel_size(jason,half_size):
     c = 299792458             # Speed of Light [m/s]
@@ -176,33 +225,30 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
     """    
     
     dx, wavelength,distance = experiment_params 
-    # plt.figure()
-    # plt.imshow(np.abs(wavefront),norm=LogNorm())
-    # plt.show()
-    # plt.close()
+    
     if propagator == 'fourier':
         if distance > 0:
             output = fftshift(fft2(fftshift(wavefront)))
         else:
             output = ifftshift(ifft2(ifftshift(wavefront)))            
-
-    # elif propagator == 'fresnel':
     
-    #     ysize, xsize = wavefront.shape
-    #     x_array = np.linspace(-xsize/2,xsize/2-1,xsize)
-    #     y_array = np.linspace(-ysize/2,ysize/2-1,ysize)
+    elif propagator == 'fresnel':
+    
+        ysize, xsize = wavefront.shape
+        x_array = np.linspace(-xsize/2,xsize/2-1,xsize)
+        y_array = np.linspace(-ysize/2,ysize/2-1,ysize)
 
-    #     fx = x_array/(xsize)
-    #     fy = y_array/(ysize)
+        fx = x_array/(xsize)
+        fy = y_array/(ysize)
 
-    #     FX,FY = np.meshgrid(fx,fy)
-    #     # Calculate approx phase distribution for each plane wave component
-    #     w = FX**2 + FY**2 
-    #     # Compute FFT
-    #     F = fftshift(fft2(fftshift(wavefront)))
-    #     # multiply by phase-shift and inverse transform 
-    #     a = np.exp(-1j*np.pi*( distance*wavelength/dx**2)*w)
-    #     output = ifftshift(ifft2(ifftshift(F*a)))
+        FX,FY = np.meshgrid(fx,fy)
+        # Calculate approx phase distribution for each plane wave component
+        w = FX**2 + FY**2 
+        # Compute FFT
+        F = fftshift(fft2(fftshift(wavefront)))
+        # multiply by phase-shift and inverse transform 
+        a = np.exp(-1j*np.pi*( distance*wavelength/dx**2)*w)
+        output = ifftshift(ifft2(ifftshift(F*a)))
 
     return output
 
@@ -254,3 +300,16 @@ def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propag
     # wave_at_detector[measurement>=0] = (np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)))[measurement>=0]
     updated_exit_wave = propagate_beam(wave_at_detector, (experiment_params[0],experiment_params[1],-experiment_params[2]),propagator=propagator)
     return updated_exit_wave
+
+def momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe):
+    T_counter += 1 
+    if T_counter == T_lim : # T parameter in mPIE paper
+        probeVelocity  = probeVelocity*eta_probe + (probe - P_aux)
+        objVelocity = objVelocity*eta_obj  + (obj - O_aux)  
+        obj = O_aux + objVelocity
+        probe = P_aux + probeVelocity 
+
+        O_aux = obj
+        P_aux = probe            
+        T_counter = 0
+    return T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe
