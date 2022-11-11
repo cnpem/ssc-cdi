@@ -9,6 +9,7 @@ Created on Thu Nov 10 14:25:39 2022
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.fft import fft2, ifft2, fftshift, fftfreq
+from skimage.restoration import unwrap_phase
 
 data = np.load('corn_fluorescence.npy')
 
@@ -85,4 +86,5 @@ if 1:
     ax[0].imshow(data), ax[0].set_title('Data')
     ax[1].imshow(wrapped_data),  ax[1].set_title("Wrapped")
     ax[2].imshow(phi), ax[2].set_title("Unwrapped")
+    ax[3].imshow(unwrap_phase(wrapped_data)), ax[3].set_title("skimage")
     
