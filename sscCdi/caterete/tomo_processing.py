@@ -470,3 +470,184 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     print('\tSaved!')
 
     return reconstruction3D
+
+
+
+####################### EXTRA ###########################################3
+"""
+Created on Fri Nov 11 08:03:31 2022
+
+@author: yuri
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from functools import partial
+from concurrent.futures import ProcessPoolExecutor
+from tqdm import tqdm
+import os
+
+
+
+def plane(variables,u,v,a):
+    Xmesh,Ymesh = variables
+    return np.ravel(u*Xmesh+v*Ymesh+a)
+
+def RemoveGrad_3( img, mask ):
+    xy = np.argwhere( mask > 0)
+    n = len(xy)
+    y = xy[:,0].reshape([n,1])
+    x = xy[:,1].reshape([n,1])
+    F = np.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
+    mat = np.zeros([3,3])
+    vec = np.zeros([3,1])
+    mat[0,0] = (x*x).sum()
+    mat[0,1] = (x*y).sum()
+    mat[0,2] = (x).sum()
+    mat[1,0] = mat[0,1]
+    mat[1,1] = (y*y).sum()
+    mat[1,2] = (y).sum()
+    mat[2,0] = mat[0,2]
+    mat[2,1] = mat[1,2]
+    mat[2,2] = n
+    vec[0,0] = (x*F).sum()
+    vec[1,0] = (y*F).sum()
+    vec[2,0] = (F).sum()
+    eye = np.eye(mat.shape[0])
+    eps = 1e-3 # valor tirado do *
+    if 1: # com regularização
+        abc = np.dot( np.linalg.inv(mat + eps * eye), vec).flatten() 
+    else: # sem regularização
+        abc = np.dot( np.linalg.inv(mat), vec).flatten()
+    a = abc[0]
+    b = abc[1]
+    c = abc[2]
+    new   = np.zeros(img.shape)
+    row   = new.shape[0]
+    col   = new.shape[1]
+    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
+    new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c )
+    #for k in range(n):
+    #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
+    return new, a,b,c
+
+def func(x,alpha,cut=8):
+    maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
+    # func += np.where(np.abs(x) < cut,maximum,1 - np.exp(alpha*x))
+    func = np.where(np.abs(x) < cut ,1 - np.exp(alpha*x),0)
+    func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
+    return func
+
+def get_best_plane_fit_inside_mask(mask2,frame ):
+    new   = np.zeros(frame.shape)
+    row   = new.shape[0]
+    col   = new.shape[1]
+    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
+
+    a = b = c = 1e9
+    counter = 0
+    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter > 5:
+        grad_removed, a,b,c = RemoveGrad_3(frame,mask2)
+        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
+        frame = frame - plane_fit
+        counter += 1
+    return frame
+
+def pad_sinogram_frames(padding,sinogram):
+    pad_row, pad_col = padding
+    print("\tOld shape: ",sinogram.shape)
+    sinogram = np.pad(sinogram,((0,0),(pad_row,pad_row),(pad_col,pad_col)),mode='constant')#,constant_values=((1,),(1,)))
+    print("\tNew shape: ",sinogram.shape)
+    return sinogram
+
+def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding, preview, n_frame=0):
+
+    print("Loading data from ",loadpath)
+    data = np.load(loadpath)
+    original_frame = data[n_frame]
+
+    if background_region != ():
+        figure, ax = plt.subplots(1,2,figsize=(10,5))
+        ax[0].imshow(data[n_frame])
+        print("Removing background from frames based on region ",background_region)
+        top, bottom, left, right = background_region
+        mask = np.zeros_like(data[0],dtype=bool) # mask indicating where to fit plane
+        mask[top:bottom,left:right] = True
+        get_best_plane_fit_inside_mask_partial = partial(get_best_plane_fit_inside_mask,mask)
+        frames = [data[i] for i in range(data.shape[0])]
+        """ Remove gradient from bkg """
+        processes = min(os.cpu_count(),32)
+        print(f'Using {processes} parallel processes')
+        with ProcessPoolExecutor(max_workers=processes) as executor:
+            results = list(tqdm(executor.map(get_best_plane_fit_inside_mask_partial,frames),total=data.shape[0]))
+            for i, result in enumerate(results):
+                data[i] = result - np.min(result)
+        
+        ax[1].imshow(data[n_frame])
+        ax[0].set_title('Original')
+        ax[1].set_title("Background removed")
+        plt.show()                      
+                          
+    if filter_params != ():
+        print("Filtering borders")
+        cutoff, decay, null_size = filter_params
+        
+        frame = data[0]
+        if 1: # exponential decay at border
+            N = null_size
+            x = np.linspace(-N,N,frame.shape[1])
+            y = np.linspace(-N,N,frame.shape[0])
+            func_x = np.where(x>=0,func(x,decay,cut=cutoff) , func(x,-decay,cut=cutoff))
+            func_y = np.where(y>=0,func(y,decay,cut=cutoff) , func(y,-decay,cut=cutoff))
+            meshY, meshX = np.meshgrid(func_x,func_y)
+            border_attenuation_matrix = meshY*meshX
+        elif 0: #. gaussian filter
+            sigma = 2
+            x = np.linspace(-5, 5,frame.shape[1])
+            y = np.linspace(-5, 5,frame.shape[0])
+            x, y = np.meshgrid(x, y) # get 2D variables instead of 1D
+            border_attenuation_matrix = gaus2d(x, y,sx=sigma,sy=sigma)
+
+        """ Apply border filter """
+        figure, ax = plt.subplots(1,4,figsize=(10,5))
+        ax[0].imshow(data[n_frame])
+        data[:] = data[:]*border_attenuation_matrix
+        ax[3].imshow(data[n_frame])
+        ax[2].imshow(border_attenuation_matrix)
+        ax[1].plot(border_attenuation_matrix[border_attenuation_matrix.shape[0]//2,:])
+        ax[1].set_aspect(100)
+        ax[0].set_title('Before')
+        ax[3].set_title("After filtering")
+        plt.show()
+        
+    if padding != ():
+        figure, ax = plt.subplots(1,2,figsize=(10,5))
+        ax[0].imshow(data[n_frame])
+        data = pad_sinogram_frames(padding,data)
+        ax[1].imshow(data[n_frame])
+        ax[0].set_title('Before')
+        ax[1].set_title("After padding")
+        plt.show()
+        
+    if savepath != '': 
+        print("Saving data...")
+        np.save(savepath,data) 
+        print("Saved @ ",savepath)
+        
+    figure, ax = plt.subplots(1,2,figsize=(10,5))
+    ax[0].imshow(original_frame)
+    ax[1].imshow(data[n_frame])
+    plt.show()
+        
+frame = np.random.rand(1,100,100)
+
+loadpath = 'data.npy'
+savepath = 'data2.npy' # if "", data won't be saved
+background_region = (500,650,850,1100) # Use () to skip gradient removal for the background
+filter_params = (40,1,50) # (cutoff, decay, null_size). Use () to skip filtering
+padding = (10,20) # (rows, columns). Use () to skip padding
+frame_preview = 0 # select which frame of the sinogram to preview in the plots
+
+np.save(loadpath,frame)
+
+gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding,frame_preview)
