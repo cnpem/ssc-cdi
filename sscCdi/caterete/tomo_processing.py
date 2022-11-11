@@ -639,15 +639,13 @@ def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, p
     ax[1].imshow(data[n_frame])
     plt.show()
         
-frame = np.random.rand(1,100,100)
+    # from sscCdi.caterete.tomo_processing import gradient_filter_and_pad
 
-loadpath = 'data.npy'
-savepath = 'data2.npy' # if "", data won't be saved
-background_region = (500,650,850,1100) # Use () to skip gradient removal for the background
-filter_params = (40,1,50) # (cutoff, decay, null_size). Use () to skip filtering
-padding = (10,20) # (rows, columns). Use () to skip padding
-frame_preview = 0 # select which frame of the sinogram to preview in the plots
+    # loadpath = 'data.npy'
+    # savepath = 'data2.npy' # if "", data won't be saved
+    # background_region = (500,650,850,1100) # Rectangular region of the background. Use () to skip gradient removal for the background
+    # filter_params = (40,1,50) # Parameters for the filter: (cutoff, decay, null_size). Use () to skip filtering
+    # padding = (10,20) # Number of pixels to add: (rows, columns). Use () to skip padding
+    # frame_preview = 0 # select which frame of the sinogram to preview in the plots
 
-np.save(loadpath,frame)
-
-gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding,frame_preview)
+    # gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding,frame_preview)        
