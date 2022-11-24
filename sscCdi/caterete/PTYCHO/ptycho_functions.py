@@ -256,6 +256,10 @@ def calculate_recon_error(model,obj):
     error = np.sum(np.abs(model - obj))/model.size
     return error 
 
+def projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon):
+    probe = RAAR_update_probe(wavefronts, obj, probe.shape,positions, epsilon=epsilon)# Projection in Real space
+    obj   = RAAR_update_object(wavefronts, probe, obj.shape, positions,epsilon=epsilon)
+    return probe, obj
 
 def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
 
