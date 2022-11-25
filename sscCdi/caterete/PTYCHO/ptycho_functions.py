@@ -28,7 +28,7 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
         ax0.set_yticks([])
         ax0.set_xticks([])
     ax[0,0].imshow(np.sum(difpads,axis=0),norm=LogNorm(),cmap=colormap)
-    ax[0,0].set_title("Sum of difpads")
+    ax[0,0].set_title("_sum of difpads")
     ax[0,1].imshow(np.abs(model_obj),cmap=colormap)
     ax[0,1].set_title("Magnitude")
     ax[0,2].imshow(np.angle(model_obj),cmap=colormap)
@@ -257,7 +257,7 @@ def calculate_recon_error(model,obj):
     return error 
 
 def projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon):
-    probe = RAAR_update_probe(wavefronts, obj, probe.shape,positions, epsilon=epsilon)# Projection in Real space
+    probe = RAAR_update_probe(wavefronts, obj, probe.shape,positions, epsilon=epsilon) 
     obj   = RAAR_update_object(wavefronts, probe, obj.shape, positions,epsilon=epsilon)
     return probe, obj
 
@@ -266,17 +266,17 @@ def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
     m,n = probe.shape
     k,l = object_shape
 
-    probeSum  = np.zeros((k,l),dtype=complex)
-    waveSum   = np.zeros((k,l),dtype=complex)
-    probeInt  = np.abs(probe)**2
-    conjProbe = np.conj(probe)
+    probe_sum  = np.zeros((k,l),dtype=complex)
+    wave_sum   = np.zeros((k,l),dtype=complex)
+    probe_intensity  = np.abs(probe)**2
+    probe_conj = np.conj(probe)
 
     for index, pos in enumerate((positions)):
         posy, posx = pos[0], pos[1]
-        probeSum[posy:posy + m , posx:posx+n] = probeSum[posy:posy + m , posx:posx+n] + probeInt
-        waveSum[posy:posy + m , posx:posx+n]  = waveSum[posy:posy + m , posx:posx+n]  + conjProbe*exit_waves[index] 
+        probe_sum[posy:posy + m , posx:posx+n] = probe_sum[posy:posy + m , posx:posx+n] + probe_intensity
+        wave_sum[posy:posy + m , posx:posx+n]  = wave_sum[posy:posy + m , posx:posx+n]  + probe_conj*exit_waves[index] 
 
-    object = waveSum/(probeSum + epsilon)
+    object = wave_sum/(probe_sum + epsilon)
 
     return object
 
@@ -284,19 +284,65 @@ def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
 def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
     m,n = probe_shape
 
-    objectSum = np.zeros((m,n),dtype=complex)
-    waveSum = np.zeros((m,n),dtype=complex)
-    objectInt = np.abs(obj)**2
-    conjObject = np.conj(obj)
+    object_sum = np.zeros((m,n),dtype=complex)
+    wave_sum = np.zeros((m,n),dtype=complex)
+    obj_intensity = np.abs(obj)**2
+    obj_conj = np.conj(obj)
 
     for index, pos in enumerate((positions)):
         posy, posx = pos[0], pos[1]
-        objectSum = objectSum + objectInt[posy:posy + m , posx:posx+n]
-        waveSum = waveSum + conjObject[posy:posy + m , posx:posx+n]*exit_waves[index]
+        object_sum = object_sum + obj_intensity[posy:posy + m , posx:posx+n]
+        wave_sum = wave_sum + obj_conj[posy:posy + m , posx:posx+n]*exit_waves[index]
 
-    probe = waveSum/(objectSum + epsilon)
+    probe = wave_sum/(object_sum + epsilon)
 
     return probe
+
+# def projection_Rspace_multiprobe_RAAR(wavefronts,obj,probes,positions,epsilon):
+#     probes = RAAR_multiprobe_update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
+#     obj   = RAAR_multiprobe_update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
+#     return probes, obj
+
+def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,epsilon=0.01):
+
+    k,l = object_shape
+
+    probe_sum  = np.zeros((k,l),dtype=complex)
+    wave_sum   = np.zeros((k,l),dtype=complex)
+    probe_intensity  = np.abs(probe)**2
+    probe_conj = np.conj(probe)
+
+    for mode in range(wavefronts.shape[1]):
+        for index, (posy, posx) in enumerate((positions)):
+            probe_sum[posy:posy + m , posx:posx+n] += probe_intensity[mode]
+            wave_sum[posy:posy + m , posx:posx+n]  += probe_conj[mode]*wavefronts[index,mode] 
+
+    obj = wave_sum/(probe_sum + epsilon)
+
+    return obj
+
+
+# def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
+    
+#     print(probe_shape)
+#     l,m,n = probe_shape
+
+#     object_sum = np.zeros((m,n),dtype=complex)
+#     wave_sum = np.zeros((l,m,n),dtype=complex)
+#     probe = np.zeros((l,m,n),dtype=complex)
+    
+#     obj_intensity = np.abs(obj)**2
+#     obj_conj = np.conj(obj)
+    
+    
+#     for mode in range(l):
+#         for index, (posy, posx) in enumerate(positions):
+#             object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
+#             wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
+
+#     probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
+
+#     return probes
 
 def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propagator = 'fourier'):
     wave_at_detector = propagate_beam(wavefront, experiment_params,propagator=propagator)
