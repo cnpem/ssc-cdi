@@ -298,13 +298,14 @@ def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
 
     return probe
 
-# def projection_Rspace_multiprobe_RAAR(wavefronts,obj,probes,positions,epsilon):
-#     probes = RAAR_multiprobe_update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
-#     obj   = RAAR_multiprobe_update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
-#     return probes, obj
+def projection_Rspace_multiprobe_RAAR(wavefronts,obj,probes,positions,epsilon):
+    probes = RAAR_multiprobe_update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
+    obj   = RAAR_multiprobe_update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
+    return probes, obj
 
 def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,epsilon=0.01):
 
+    modes,m,n = probe.shape
     k,l = object_shape
 
     probe_sum  = np.zeros((k,l),dtype=complex)
@@ -312,7 +313,7 @@ def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,eps
     probe_intensity  = np.abs(probe)**2
     probe_conj = np.conj(probe)
 
-    for mode in range(wavefronts.shape[1]):
+    for mode in range(modes):
         for index, (posy, posx) in enumerate((positions)):
             probe_sum[posy:posy + m , posx:posx+n] += probe_intensity[mode]
             wave_sum[posy:posy + m , posx:posx+n]  += probe_conj[mode]*wavefronts[index,mode] 
@@ -321,28 +322,26 @@ def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,eps
 
     return obj
 
-
-# def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
+def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
     
-#     print(probe_shape)
-#     l,m,n = probe_shape
+    l,m,n = probe_shape
 
-#     object_sum = np.zeros((m,n),dtype=complex)
-#     wave_sum = np.zeros((l,m,n),dtype=complex)
-#     probe = np.zeros((l,m,n),dtype=complex)
+    object_sum = np.zeros((m,n),dtype=complex)
+    wave_sum = np.zeros((l,m,n),dtype=complex)
+    probe = np.zeros((l,m,n),dtype=complex)
     
-#     obj_intensity = np.abs(obj)**2
-#     obj_conj = np.conj(obj)
+    obj_intensity = np.abs(obj)**2
+    obj_conj = np.conj(obj)
     
     
-#     for mode in range(l):
-#         for index, (posy, posx) in enumerate(positions):
-#             object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
-#             wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
+    for mode in range(l):
+        for index, (posy, posx) in enumerate(positions):
+            object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
+            wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
 
-#     probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
+    probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
 
-#     return probes
+    return probes
 
 def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propagator = 'fourier'):
     wave_at_detector = propagate_beam(wavefront, experiment_params,propagator=propagator)
