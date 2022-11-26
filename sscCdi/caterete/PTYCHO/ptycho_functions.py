@@ -328,15 +328,13 @@ def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon
 
     object_sum = np.zeros((m,n),dtype=complex)
     wave_sum = np.zeros((l,m,n),dtype=complex)
-    probe = np.zeros((l,m,n),dtype=complex)
     
     obj_intensity = np.abs(obj)**2
     obj_conj = np.conj(obj)
     
-    
-    for mode in range(l):
-        for index, (posy, posx) in enumerate(positions):
-            object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
+    for index, (posy, posx) in enumerate(positions):
+        object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
+        for mode in range(l):
             wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
 
     probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
