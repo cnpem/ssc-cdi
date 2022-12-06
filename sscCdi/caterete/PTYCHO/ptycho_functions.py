@@ -161,7 +161,7 @@ def apply_invalid_regions(difpad):
         difpad[:,0:difpad.shape[1]:delta] = -1
     return  difpad
     
-def get_simulated_data(random_positions=False,use_bad_points=False):
+def get_simulated_data(random_positions=False,use_bad_points=False, add_position_errors=False):
 
     positionsX,positionsY = get_positions_array(random_positions)
 
@@ -207,7 +207,14 @@ def get_simulated_data(random_positions=False,use_bad_points=False):
     positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positionsitions format for proper input
     difpads = np.asarray(difpads)
     
-    return difpads, positions, model_object, probe
+    if add_position_errors:
+        max_error = 0.1*np.mean(positions)
+        positions_errors = max_error*np.random.rand(*positions.shape)
+        positions += positions_errors
+        print(positions_errors)
+        return difpads, positions, model_object, probe, positions_errors
+    else:
+        return difpads, positions, model_object, probe
 
 
 def propagate_beam(wavefront, experiment_params,propagator='fourier'):
