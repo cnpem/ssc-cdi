@@ -1,18 +1,15 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from skimage import data, img_as_float, color, exposure
+from skimage import img_as_float
 from skimage.restoration import unwrap_phase
-import sscPhantom
-import numpy
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
 import os
-from tqdm import tqdm
 from scipy.ndimage import rotate
-from PIL import Image
-from matplotlib.colors import LogNorm
 import json
 import h5py 
+from tqdm import tqdm
+import sscPhantom
 
 """ Copies from sscCdi functions """
 
@@ -152,7 +149,7 @@ def calculate_diffraction_pattern(idx,obj,probe,wavelength,distance,obj_pxl):
     DP = np.abs(propagate_beam(wavefront_box, (obj_pxl,wavelength,distance)))**2
     return DP
 
-def save_angles_file_CAT_standard():
+def save_angles_file_CAT_standard(path,angles,tomogram):
     for i, angle_number in enumerate(range(tomogram.shape[0])): 
         filename = str(angle_number).zfill(4)+f"_complex_phantom_001.txt"
         line = f"Ry: {angles[i]}\tPiezoB2\tPiezoB3\tPiezoB1\t"
@@ -218,8 +215,8 @@ def set_object_size_pxls(x_pos,y_pos,probe_size,gap=10):
 def get_difpads2(frame,probe,obj_pxl,wavelength,distance,filename,path):
 
     dx, dy = 10, 10 # INPUT
-    y_pxls = np.arange(0,phantom.shape[1]+1,dy)
-    x_pxls = np.arange(0,phantom.shape[2]+1,dx)
+    y_pxls = np.arange(0,frame.shape[0]+1,dy)
+    x_pxls = np.arange(0,frame.shape[1]+1,dx)
 
     obj_size = set_object_size_pxls(x_pxls,y_pxls,probe.shape)
 
@@ -255,7 +252,7 @@ def get_difpads2(frame,probe,obj_pxl,wavelength,distance,filename,path):
     return difpads
 
 
-def get_donut(N,nproc,energy,load=False):
+def get_donut(path,N,nproc,energy,load=False):
 
     if load:
         params = { 'HowMany': 3,
@@ -300,16 +297,14 @@ def get_donut(N,nproc,energy,load=False):
 
     return magnitude, phase, phantom, magnitude_view, phase_view
 
-def get_sinogram(N, magnitude, phase,wavelength,phantom,load=False):
-
-    speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
-    wavelength = planck * speed_of_light / energy # meters
-    wavevector = 2*np.pi/wavelength
+def get_sinogram(path, N, magnitude, phase,wavelength,phantom,load=False):
 
     if N!=0:
         angles = np.linspace(0,180,2*N)
     else:
         angles = np.array([0])
+
+    wavevector = 2*np.pi/wavelength
 
     get_projection_partial = partial(get_projection,magnitude=magnitude,phase=phase,wavevector=wavevector)
 
@@ -328,7 +323,7 @@ def get_sinogram(N, magnitude, phase,wavelength,phantom,load=False):
 
     return sinogram
 
-def get_diffraction_data(path, probe='round'):
+def get_diffraction_data(sinogram, probe_pxl, wavelength, distance, phantom,path, probe='round'):
 
     if probe == "real": # Realistic Probe """
         probe = np.load(os.path.join(path,'model','probe_at_focus_1.25156micros_pixel.npy'))
@@ -384,18 +379,22 @@ def create_phantom_data(inputs,object='donut',probe='round',load=False):
     distance     = inputs["distance"]
     probe_pxl    = inputs["probe_pxl"]
 
+    speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
+    wavelength = planck * speed_of_light / energy # meters
+
     create_dummy_input_json(distance, energy, probe_pxl,path)
 
     """ Get Donut """
     magnitude, phase, phantom, _, _ = get_donut(N,n_processes,energy,load=True)
 
     """ Rotate and get projections """
-    sinogram = get_sinogram(N, magnitude, phase, energy,phantom)
+    sinogram = get_sinogram(path, N, magnitude, phase, wavelength,phantom)
 
     """ Calculate Diffraction Patterns """
-    diffraction_patterns = get_diffraction_data(path, probe='round')
+    diffraction_patterns = get_diffraction_data(sinogram, probe_pxl, wavelength, distance, phantom,path, probe='round')
 
-    print("Phantom created at:", path)
+    print("Simulation data created at:", path)
+    return 0
 
 if __name__ == '__main__':
 
