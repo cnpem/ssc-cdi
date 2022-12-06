@@ -358,12 +358,14 @@ def get_diffraction_data(sinogram, probe_pxl, wavelength, distance, phantom,path
         create_hdf_file(difpads,path,filename)
 
         difpads = np.squeeze(difpads)
-        np.save(os.path.join("/ibira/lnls/labs/tepui/proposals/20210062/yuri/yuri_ssc-cdi/00000000/proc/recons/complex_phantom",f'{filename}_001.hdf5.npy'),difpads)
-        np.save(os.path.join("/ibira/lnls/labs/tepui/proposals/20210062/yuri/yuri_ssc-cdi/00000000/data/ptycho3d/complex_phantom/",f'{filename}_001.hdf5.npy'),difpads)
+        path1 = os.path.join("/ibira/lnls/labs/tepui/proposals/20210062/yuri/yuri_ssc-cdi/00000000/proc/recons/complex_phantom",f'{filename}_001.hdf5.npy')
+        np.save(path1,difpads)
+        path2 = os.path.join("/ibira/lnls/labs/tepui/proposals/20210062/yuri/yuri_ssc-cdi/00000000/data/ptycho3d/complex_phantom/",f'{filename}_001.hdf5.npy')
+        np.save(path2,difpads)
     
     print("Diffraction data saved!")
     
-    return difpads
+    return path1, path2
 
 
 def create_dummy_input_json(distance, energy, probe_pxl,path):
@@ -391,9 +393,10 @@ def create_phantom_data(inputs,object='donut',probe='round',load=False):
     sinogram = get_sinogram(path, N, magnitude, phase, wavelength,phantom)
 
     """ Calculate Diffraction Patterns """
-    diffraction_patterns = get_diffraction_data(sinogram, probe_pxl, wavelength, distance, phantom,path, probe='round')
+    path1, path2 = get_diffraction_data(sinogram, probe_pxl, wavelength, distance, phantom,path, probe='round')
 
-    print("Simulation data created at:", path)
+    print("Simulation data created at:", path1)
+    print("Simulation data created at:", path2)
     return 0
 
 if __name__ == '__main__':
