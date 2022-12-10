@@ -33,6 +33,7 @@ else: # paths for GCC tests
     tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
 
 """ Standard dictionary definition """
+global global_dict
 global_dict = {
                "00_versions": f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
                "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/", # FIXED PATH FOR BEAMLINE
@@ -84,6 +85,10 @@ global_dict = {
                "tomo_local_offset":[]
 }
 
+json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs', f'{username}_tomo_input.json') #INPUT
+if os.path.exists(json_filepath):  
+    with open(json_filepath) as json_file:
+        global_dict = json.load(json_file)
 
 """ Standard styling definitions """
 standard_border='1px none black'
@@ -680,6 +685,7 @@ def wiggle_tab():
             subplot.set_aspect('auto')
             subplot.set_xticks([])
             subplot.set_yticks([])
+        subplots[0].set_aspect('equal')
 
         figure.canvas.header_visible = False 
         figure.tight_layout()
@@ -871,15 +877,15 @@ def tomo_tab():
             subplot.set_aspect('equal')
             subplot.set_xticks([])
             subplot.set_yticks([])
-        subplots[0].set_title("Tomo projection")
-        subplots[1].set_title("Tomo slice")
+        subplots[0].set_title("Tomo slice")
+        subplots[1].set_title("Tomo projection")
         figure.canvas.header_visible = False 
         figure.tight_layout()
 
 
     output = widgets.Output()
     with output:
-        figure, subplot = plt.subplots(1,2,figsize=(10,5))
+        figure, subplot = plt.subplots(1,2,figsize=(10,6))
         subplot[0].imshow(np.random.random((4,4)),cmap='gray')
         subplot[1].imshow(np.random.random((4,4)),cmap='gray')
         format_tomo_plot(figure,subplot)
@@ -1016,11 +1022,6 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     "Wiggle"                : tab5,
     "Tomography"            : tab6}
     
-    def load_json(dummy,dictionary={}):
-        # FIND MOST RECENT USER INPUT FILE FROM THAT USER AND SET NEW VALUES!
-        pass
-        # for key in template_dict:
-            # dictionary[key] = template_dict[key]
     
     def update_fields(global_dict,contrast_type,machine_selection):
         global_dict["contrast_type"] = contrast_type
@@ -1097,12 +1098,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             else:
                 print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
-    def load_on_click(dummy):
-        global global_dict
-        json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs', f'{username}_tomo_input.json') #INPUT
-        with open(json_filepath) as json_file:
-            global_dict = json.load(json_file)
-        print("Inputs loaded from ",json_filepath)
+
 
     def save_on_click(dummy):
         global_dict["contrast_type"]  = data_selection.value
@@ -1115,9 +1111,17 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             json.dump(global_dict, file)
         
         from pprint import pprint
-        pprint(global_dict)
+        pprint(global_dict,width=200,compact=True)
         print('\t Saved!')
 
+    # def load_on_click(dummy):
+    #     global global_dict
+    #     from pprint import pprint
+    #     pprint(global_dict,width=200,compact=True)
+    #     json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs', f'{username}_tomo_input.json') #INPUT
+    #     with open(json_filepath) as json_file:
+    #         global_dict = json.load(json_file)
+    #     print("Inputs loaded from ",json_filepath)
 
     global mafalda
     mafalda = mafalda_session
@@ -1135,22 +1139,22 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Select and Sort", "Cropping", "Phase Unwrap", "Frame Equalizer", "Wiggle", "Tomography", "Equalize Tomo"]]
     widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes[6]})
 
-    load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
-    load_dict_button.trigger(load_on_click)    
-
-    save_dict_button  = Button(description="Save inputs",layout=buttons_layout_fixed,icon='fa-floppy-o')
-    save_dict_button.trigger(save_on_click)    
-
     queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='180px',border=standard_border))
     jobname_field   = Input({"dummy_str":f"{username}_tomo"},"dummy_str",description = "Slurm Job Name",layout=widgets.Layout( width='300px',border=standard_border))
     
+    save_dict_button  = Button(description="Save inputs",layout=buttons_layout_fixed,icon='fa-floppy-o')
+    save_dict_button.trigger(save_on_click)    
+
+    # load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
+    # load_dict_button.trigger(load_on_click)  
+
     args = gpus_slider,cpus_slider,jobname_field,queue_field, checkboxes
     start_tomo = Button(description="Start",layout=buttons_layout_fixed,icon='play')
     start_tomo.trigger(partial(run_tomo,args=args))
 
     slurm_box = widgets.HBox([data_selection,machine_selection,cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
     checkboxes_box  = widgets.HBox([widgets.HTML(f'<b><font size=2.0px>Steps to perform on cluster: \t \t  </b>' ),widgets.HBox([*checkboxes])])
-    buttons_box = widgets.HBox([load_dict_button.widget,save_dict_button.widget,start_tomo.widget,delete_temporary_files_button.widget])
+    buttons_box = widgets.HBox([save_dict_button.widget,start_tomo.widget,delete_temporary_files_button.widget])
     box = widgets.VBox([hbar,slurm_box,checkboxes_box,buttons_box])
     tab = widgets.Tab()
     tab.children = list(children_dict.values())

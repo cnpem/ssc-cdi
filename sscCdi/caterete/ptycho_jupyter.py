@@ -46,7 +46,12 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
 
 global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
-global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
+json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
+if os.path.exists(json_filepath):  
+    with open(json_filepath) as json_file:
+        global_dict = json.load(json_file)
+
+global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
 
 
 ############################################ Global Layout ###########################################################################
@@ -190,12 +195,12 @@ def run_ptycho(dummy):
         create_directory_if_doesnt_exist(global_paths_dict["output_folder"])
         run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
 
-def load_json(dummy):
-    global global_dict
-    json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
-    with open(json_filepath) as json_file:
-        global_dict = json.load(json_file)
-    print("Inputs loaded from ",json_filepath)
+# def load_json(dummy):
+#     global global_dict
+#     json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
+#     with open(json_filepath) as json_file:
+#         global_dict = json.load(json_file)
+#     print("Inputs loaded from ",json_filepath)
 
 def create_label_widget(text):
     # label = widgets.Label(value=text)
@@ -696,10 +701,10 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     run_button = Button(description='Run Ptycho',layout=buttons_layout,icon='play')
     run_button.trigger(run_ptycho)
 
-    load_json_button  = Button(description="Load inputs",layout=buttons_layout,icon='folder-open-o')
-    load_json_button.trigger(load_json)
+    # load_json_button  = Button(description="Load inputs",layout=buttons_layout,icon='folder-open-o')
+    # load_json_button.trigger(load_json)
 
-    ptycho_box = widgets.Box([saveJsonButton.widget,load_json_button.widget,run_button.widget,view_jobs_button.widget,cancel_job_button.widget,job_number.widget],layout=get_box_layout('1000px',flex_flow='row'))
+    ptycho_box = widgets.Box([saveJsonButton.widget,run_button.widget,view_jobs_button.widget,cancel_job_button.widget,job_number.widget],layout=get_box_layout('1000px',flex_flow='row'))
 
 
     children_dict = {
