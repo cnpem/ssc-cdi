@@ -82,7 +82,8 @@ global_dict = {
                "GPUs": [0],
                "tomo_threshold" : 0.0, # max value to be left in reconstructed matrix
                "tomo_remove_outliers": 0,
-               "tomo_local_offset":[]
+               "tomo_local_offset":[],
+               "tomo_mask":[]
 }
 
 json_filepath = os.path.join(global_dict["jupyter_folder"],'inputs', f'{username}_tomo_input.json') #INPUT
@@ -961,7 +962,7 @@ def tomo_tab():
             axis_direction = 2
 
         global equalized_tomogram 
-        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value,axis_direction=axis_direction)
+        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value,axis_direction=axis_direction)#,mask_slice=mask_final_tomo.widget.value)
 
         statistics_equalized = (np.max(equalized_tomogram),np.min(equalized_tomogram),np.mean(equalized_tomogram),np.std(equalized_tomogram))
         print('Thresholded data statistics: ',f'\n\tMax = {statistics_equalized[0]:.2e}\n\t Min = {statistics_equalized[1]:.2e}\n\t Mean = {statistics_equalized[2]:.2e}\n\t StdDev = {statistics_equalized[3]:.2e}')
@@ -1003,6 +1004,7 @@ def tomo_tab():
 
     remove_outliers_slider    = Input(global_dict,"tomo_remove_outliers",  description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
     remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Bkg Offset [yu,yd,xl,xr]',layout=items_layout)
+    # mask_final_tomo = Input(global_dict,"tomo_mask",  description='Mask [yu,yd,xl,xr]',layout=items_layout)
     hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
     load_box = widgets.HBox([load_recon_button.widget,load_selection])

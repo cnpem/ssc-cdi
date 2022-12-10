@@ -329,10 +329,11 @@ def regularization(sino, L):
     D = np.fft.ifft(B * G, axis=1).real
     return D
 
-def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[],[]],axis_direction=1):
+def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[],axis_direction=1,mask_slice=[]):
     
     if type(bkg_window) == type("a_string"):
         bkg_window = ast.literal_eval(bkg_window) # read string as list
+        mask_slice = ast.literal_eval(mask_slice) # read string as list
     
     equalized_tomogram = recon
 
@@ -343,6 +344,16 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[[
         for i in range(remove_outliers):
             equalized_tomogram = np.where( equalized_tomogram > mean+3*std,0,equalized_tomogram)
             equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
+
+    if mask_slice != []:
+        mask_matrix = np.zeros_like(recon)
+        if axis_direction == 0:
+            mask_matrix[:,mask_slice[0]:mask_slice[1],mask_slice[2]:mask_slice[3]] = 1
+        elif axis_direction == 1:
+            mask_matrix[mask_slice[0]:mask_slice[1],:,mask_slice[2]:mask_slice[3]] = 1
+        elif axis_direction == 2:
+            mask_matrix[mask_slice[0]:mask_slice[1],mask_slice[2]:mask_slice[3],:] = 1
+        recon = recon*mask_matrix
 
     if bkg_window !=[]:
 
