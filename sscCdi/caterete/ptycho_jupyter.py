@@ -32,7 +32,7 @@ output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00
 
 global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/",
                     "ptycho_script_path"       : pythonScript,
-                    "template_json"            : "000000_template.json",
+                    "template_json"            : "00000000/000000_template.json",
                     "slurm_filepath"           : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_job.srm'), # path to create slurm_file
                     "json_filepath"            : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
@@ -294,29 +294,29 @@ def inputs_tab():
     
     label2 = create_label_widget("Restoration")
     global center_y, center_x
-    center_y    = Input({'dummy-key':1345},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
-    center_x    = Input({'dummy-key':1375},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
+    center_x    = Input({'dummy-key':global_dict["DifpadCenter"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
+    center_y    = Input({'dummy-key':global_dict["DifpadCenter"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
     center_box = widgets.Box([center_y.widget,center_x.widget],layout=slider_layout3)
 
 
 
-    detector_ROI          = Input({'dummy-key':1280},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
-    suspect_pixels        = Input({'dummy-key':5},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
+    detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
+    suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
     # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
     label3 = create_label_widget("Diffraction Pattern Processing")
     autocrop           = Input(global_dict,"AutoCrop",description="Auto Crop borders",layout=items_layout2)
     global CentralMask_radius, CentralMask_bool, DetectorPileup
-    CentralMask_bool   = Input({'dummy-key':False},'dummy-key',description="Use Central Mask",layout=items_layout2)
-    CentralMask_radius = Input({'dummy-key':3},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
+    CentralMask_bool   = Input({'dummy-key':global_dict["CentralMask"][0]},'dummy-key',description="Use Central Mask",layout=items_layout2)
+    CentralMask_radius = Input({'dummy-key':global_dict["CentralMask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
     central_mask_box   = widgets.Box([CentralMask_bool.widget,CentralMask_radius.widget],layout=slider_layout3)
-    DetectorPileup   = Input({'dummy-key':False},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
+    DetectorPileup   = Input({'dummy-key':global_dict["DetectorExposure"][0]},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
 
     label4 = create_label_widget("Probe Adjustment")
-    ProbeSupport_radius   = Input({'dummy-key':300},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
-    ProbeSupport_centerX  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
-    ProbeSupport_centerY  = Input({'dummy-key':0},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
+    ProbeSupport_radius   = Input({'dummy-key':global_dict["ProbeSupport"][0]},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
+    ProbeSupport_centerX  = Input({'dummy-key':global_dict["ProbeSupport"][1]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
+    ProbeSupport_centerY  = Input({'dummy-key':global_dict["ProbeSupport"][2]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
     probe_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layout3)
 
     global fresnel_number
@@ -332,8 +332,8 @@ def inputs_tab():
     Algorithm3 = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
 
     label6 = create_label_widget("Post-processing")
-    Phaseunwrap      = Input({'dummy-key':False},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
-    Phaseunwrap_iter = Input({'dummy-key':3},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
+    Phaseunwrap      = Input({'dummy-key':global_dict["Phaseunwrap"][0]},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
+    Phaseunwrap_iter = Input({'dummy-key':global_dict["Phaseunwrap"][1]},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
     phase_unwrap_box = widgets.Box([Phaseunwrap.widget],layout=items_layout2)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1), description="Top", slider=True,layout=slider_layout)
