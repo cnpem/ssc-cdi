@@ -24,6 +24,15 @@ Changed
 - Improvement of the Input class for more types of widgets
 - Unification of functions that null bad frames at each step of the tomography interface
 
+[0.3.5] - 2022-12-15
+--------------------
+Fixed
+~~~~~
+- Fixed selection of diffraction pattern center in Jupyter interface. Coordinates are correct in the GUI and inside the code for restoration
+
+Changed
+~~~~~
+- Removed load input buttons from Ptycho and Tomo GUIs. Last used input by the user will now be loaded at startup of the GUI
 
 [0.3.0] - 2022-10-29
 --------------------
