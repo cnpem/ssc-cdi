@@ -294,8 +294,8 @@ def inputs_tab():
     
     label2 = create_label_widget("Restoration")
     global center_y, center_x
-    center_x    = Input({'dummy-key':global_dict["DifpadCenter"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)",layout=slider_layout)
-    center_y    = Input({'dummy-key':global_dict["DifpadCenter"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
+    center_x    = Input({'dummy-key':global_dict["DifpadCenter"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
+    center_y    = Input({'dummy-key':global_dict["DifpadCenter"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)   ",layout=slider_layout)
     center_box = widgets.Box([center_y.widget,center_x.widget],layout=slider_layout3)
 
 

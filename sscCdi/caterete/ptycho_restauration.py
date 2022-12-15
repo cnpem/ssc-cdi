@@ -199,7 +199,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         print('Yuri Automatic Difpad Center :', cx, cy)
         print('sscPimega Automatic Difpad Center:',centerx, centery)
     else:
-        centerx, centery = jason['DifpadCenter']
+        centery, centerx = jason['DifpadCenter']
         print('Manual Difpad Center :',centerx, centery)
 
     hsize = jason['DetectorROI']   
