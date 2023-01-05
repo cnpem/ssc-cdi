@@ -7,6 +7,7 @@ import matplotlib.cm
 import json
 import os
 import h5py
+import sys
 
 from sscIO import io
 from sscPimega import pi540D
@@ -121,7 +122,8 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
         h5f.close()
 
     print("Done!")
-
+    print(f"Output data shape {output.shape}. Type: {output.dtype}")
+    print(f"Dataset size: {sys.getsizeof(output)/(1e6):.2f} MBs = {sys.getsizeof(output)/(1e9):.2f} GBs")
     return output, restored_full_DP
 
 
