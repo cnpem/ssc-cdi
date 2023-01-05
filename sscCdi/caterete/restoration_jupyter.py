@@ -14,21 +14,23 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,apply_mask=True, save_data=True, preview=True):
+def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,apply_mask=True, save_data=True, preview=True,hdf5_datapath='/entry/data/data'):
     
+    n_of_threads, centerx, centery, distance, apply_crop, apply_binning = inputs
+
     metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
     empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
     flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
     mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')    
-    distance = float(metadata['/entry/beamline/experiment']["distance"])
+    if 0: # not yet automatic for all techniques; use manual input for now
+        distance = float(metadata['/entry/beamline/experiment']["distance"])
+    else: 
+        distance = distance*1000 # convert from m to mm
 
     """ Get detector geometry from distance """
     geometry = Geometry(distance)
     
-    n_of_threads, centerx, centery = inputs
 
-    L = 3072 # PIMEGA540D size
-    half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
 
     os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
     os.system(f"h5clear -s {empty_path}") # gambiarra because file is not closed at the backend!
@@ -38,7 +40,8 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
     
     """ SIMPLE RESTORATION PRIOR TO CENTER SELECTION. USED TO FIND CENTER """
     restored_full_DP = Restaurate(raw_difpads[0,:,:].astype(np.float32), geometry) # restaurate
-    
+    restored_full_DP = restored_full_DP.astype(np.int32)
+
     """ How the corrections are made prior to restoration:
     
         img[empty > 1] = -1 # Apply empty 
@@ -48,19 +51,19 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
 
     """
     if apply_empty:
-        empty = np.asarray(h5py.File(empty_path, 'r')['/entry/data/data']).squeeze().astype(np.float32)
+        empty = np.asarray(h5py.File(empty_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
     else:
         empty = np.zeros_like(raw_difpads[0])
 
     if apply_flat:
-        flat = np.array(h5py.File(flat_path, 'r')['entry/data/data'][()][0, 0, :, :])
+        flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
         flat[flat == 0] = 1
     else:
         flat = np.ones_like(raw_difpads[0])
     
     if apply_mask:
-        mask = h5py.File(mask_path, 'r')['entry/data/data'][()][0, 0, :, :]
+        mask = h5py.File(mask_path, 'r')[hdf5_datapath][()][0, 0, :, :]
     else:
         mask  = np.zeros_like(raw_difpads[0])
 
@@ -68,11 +71,11 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
     if preview:
         img = np.ones_like(mask)
         plot1, plot2, plot3 = empty, flat, mask
-        empty = np.asarray(h5py.File(empty_path, 'r')['/entry/data/data']).squeeze().astype(np.float32)
-        flat = np.array(h5py.File(flat_path, 'r')['entry/data/data'][()][0, 0, :, :])
+        empty = np.asarray(h5py.File(empty_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
+        flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
         flat[flat == 0] = 1
-        mask = h5py.File(mask_path, 'r')['entry/data/data'][()][0, 0, :, :]
+        mask = h5py.File(mask_path, 'r')[hdf5_datapath][()][0, 0, :, :]
 
         img[empty > 1] = -1 # Apply empty 
         img = img * np.squeeze(flat) # Apply flatfield
@@ -87,18 +90,26 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
         
     Binning = 4 # standard is 4 for now
 
-
-
     jason = {} # dummy dictionary with dummy values to be used within restoration function 
     jason["DetectorExposure"] = [False,0.15]
     jason["CentralMask"] = [False,5]
     jason["DifpadCenter"] = [centery, centerx]
     
+
+    if apply_crop:
+        L = 3072 # PIMEGA540D size
+        half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
+    else:
+        half_square_side = 3072*2
+
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
-    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason)
+    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning)
     output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ half_square_side//2 , half_square_side//2 ], restauration_processing_binning,  r_params, 'only') # Apply empty, flatfield, mask and restore!
+    output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
+
+
 
     if save_data:
         savepath = os.path.join(data_path.rsplit('/',5)[0],'proc','recons',data_path.rsplit('/',3)[-3],'restoration',data_path.rsplit('/',2)[-1])
