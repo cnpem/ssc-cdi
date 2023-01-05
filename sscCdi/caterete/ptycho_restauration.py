@@ -202,11 +202,15 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         centery, centerx = jason['DifpadCenter']
         print('Manual Difpad Center :',centerx, centery)
 
-    hsize = jason['DetectorROI']   
 
     Binning = int(jason['Binning'])
 
-    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason)
+    apply_crop, apply_binning = True, True
+    if apply_crop:
+        hsize = jason['DetectorROI']   
+    else:
+        hsize = 2*1536
+    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason, apply_crop, apply_binning)
 
     if first_iteration: # difpad used in jupyter to find center position!
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
@@ -230,7 +234,7 @@ def restauration_processing_binning(img, args):
         img (array): image to be restaured and binned
     """    
 
-    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason = args
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning = args
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
@@ -248,66 +252,68 @@ def restauration_processing_binning(img, args):
 
     img = sscCdi.ptycho_processing.masks_application(img,jason)
 
-    # select ROI from the center (cx,cy)
-    img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
+    if apply_crop:
+        # select ROI from the center (cx,cy)
+        img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
 
-    # Binning
-    while binning % 2 == 0 and binning > 0:
-        avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
+    if apply_binning:
+        # Binning
+        while binning % 2 == 0 and binning > 0:
+            avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
 
-        div = 1 * (img >= 0) + np.roll(1 * (img >= 0), -1, -1) + np.roll(1 * (img >= 0), -1, -2) + np.roll( np.roll(1 * (img >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
+            div = 1 * (img >= 0) + np.roll(1 * (img >= 0), -1, -1) + np.roll(1 * (img >= 0), -1, -2) + np.roll( np.roll(1 * (img >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
 
-        avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
+            avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
 
-        avgmask = (img < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
+            avgmask = (img < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
 
-        img[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
+            img[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
 
-        img = img[:, 0::2] + img[:, 1::2]  # Binning columns
-        img = img[0::2] + img[1::2]  # Binning lines
+            img = img[:, 0::2] + img[:, 1::2]  # Binning columns
+            img = img[0::2] + img[1::2]  # Binning lines
 
-        img[img < 0] = -1
+            img[img < 0] = -1
 
-        img[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
+            img[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
 
-        binning = binning // 2
+            binning = binning // 2
 
-    while binning % 3 == 0 and binning > 0:
-        avg = np.roll(img, 1, -1) + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(img, 1, -2) + np.roll( np.roll(img, 1, -2), 1, -1) + np.roll(np.roll(img, 1, -2), -1, -1) + np.roll(np.roll(img, -1, -2), 1, -1) + np.roll( np.roll(img, -1, -2), -1, -1)
-        div = np.roll(img > 0, 1, -1) + np.roll(img > 0, -1, -1) + np.roll(img > 0, -1, -2) + np.roll(img > 0, 1, -2) + np.roll( np.roll(img > 0, 1, -2), 1, -1) + np.roll(np.roll(img > 0, 1, -2), -1, -1) + np.roll( np.roll(img > 0, -1, -2), 1, -1) + np.roll(np.roll(img > 0, -1, -2), -1, -1)
+        while binning % 3 == 0 and binning > 0:
+            avg = np.roll(img, 1, -1) + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(img, 1, -2) + np.roll( np.roll(img, 1, -2), 1, -1) + np.roll(np.roll(img, 1, -2), -1, -1) + np.roll(np.roll(img, -1, -2), 1, -1) + np.roll( np.roll(img, -1, -2), -1, -1)
+            div = np.roll(img > 0, 1, -1) + np.roll(img > 0, -1, -1) + np.roll(img > 0, -1, -2) + np.roll(img > 0, 1, -2) + np.roll( np.roll(img > 0, 1, -2), 1, -1) + np.roll(np.roll(img > 0, 1, -2), -1, -1) + np.roll( np.roll(img > 0, -1, -2), 1, -1) + np.roll(np.roll(img > 0, -1, -2), -1, -1)
 
-        avgmask = (img < 0) & (div > 0) / div[avgmask]
+            avgmask = (img < 0) & (div > 0) / div[avgmask]
 
-        img = img[:, 0::3] + img[:, 1::3] + img[:, 2::3]
-        img = img[0::3] + img[1::3] + img[2::3]
+            img = img[:, 0::3] + img[:, 1::3] + img[:, 2::3]
+            img = img[0::3] + img[1::3] + img[2::3]
 
-        img[img < 0] = -1
-        binning = binning // 3
+            img[img < 0] = -1
+            binning = binning // 3
 
-    if binning > 1:
-        print('Entering binning > 1 only')
-        avg = -img * 1.0 + binning ** 2 - 1
-        div = img * 0
-        for j in range(0, binning):
-            for i in range(0, binning):
-                avg += np.roll(np.roll(img, j, -2), i, -1)
-                div += np.roll(np.roll(img > 0, j, -2), i, -1)
+        if binning > 1:
+            print('Entering binning > 1 only')
+            avg = -img * 1.0 + binning ** 2 - 1
+            div = img * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    avg += np.roll(np.roll(img, j, -2), i, -1)
+                    div += np.roll(np.roll(img > 0, j, -2), i, -1)
 
-        avgmask = (img < 0) & (div > 0)
-        img[avgmask] = avg[avgmask] / div[avgmask]
+            avgmask = (img < 0) & (div > 0)
+            img[avgmask] = avg[avgmask] / div[avgmask]
 
-        imgold = img + 0
-        img = img[0::binning, 0::binning] * 0
-        for j in range(0, binning):
-            for i in range(0, binning):
-                img += imgold[j::binning, i::binning]
+            imgold = img + 0
+            img = img[0::binning, 0::binning] * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    img += imgold[j::binning, i::binning]
 
-        img[img < 0] = -1
+            img[img < 0] = -1
 
-    if unbinned_mask == False: # if mask after restauration with 640x640 size
-        img[np.abs(mask) ==1] = -1 # Apply Mask
+        if unbinned_mask == False: # if mask after restauration with 640x640 size
+            img[np.abs(mask) ==1] = -1 # Apply Mask
 
-    t1 = time()
+        t1 = time()
 
     return img
 
