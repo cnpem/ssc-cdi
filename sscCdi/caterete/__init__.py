@@ -7,3 +7,4 @@ from .tomo_processing import *
 from .ptycho_jupyter import *
 from .tomo_jupyter import *
 from .jupyter import *
+from .restoration_jupyter import *
