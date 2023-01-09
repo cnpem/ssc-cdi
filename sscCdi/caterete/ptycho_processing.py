@@ -443,7 +443,7 @@ def read_probe_positions(probe_positions_filepath, measurement):
     line_counter = 0
     for line in positions_file:
         line = str(line)
-        if line_counter > 1:  # skip first line, which is the header
+        if line_counter >= 1:  # skip first line, which is the header
             T = -3E-3  # why did Giovanni rotated by this amount? not using this correction seems to result in an error in the number of positions
             pxl = float(line.split()[1])
             pyl = float(line.split()[0])

@@ -126,13 +126,13 @@ def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offse
 
     return (object_shape,object_shape), half_size, dx, jason
     
-def apply_random_shifts_to_positions(positionsX,positionsY ):
+def apply_random_shifts_to_positions(positionsX,positionsY):
         mu, sigma = 0, 1 # mean and standard deviation
         deltaX = np.random.normal(mu, sigma, positionsX.shape)
         deltaY = np.random.normal(mu, sigma, positionsY.shape)
         return positionsX+deltaX,positionsY+deltaY 
 
-def get_positions_array(random_positions=False):
+def get_positions_array(random_positions=True):
     positions = [2,16,32,64,96,126]
     # positions = [  2,  10,  18,  26,  34,  42,  50,  58,  66,  74,  82,  90,  98,  106, 114, 122]
     # positions = [2,   6,  10,  14,  18,  22,  26,  30,  34,  38,  42,  46,  50, 54,  58,  62,  66,  70,  74,  78,  82,  86,  90,  94,  98, 102, 106, 110, 114, 118, 122
@@ -141,7 +141,7 @@ def get_positions_array(random_positions=False):
 
     if random_positions == True:
         positionsX,positionsY = apply_random_shifts_to_positions(positionsX,positionsY)
-        # print(positionsX,positionsY)
+        
         
     if 1: # Plot positions map
         figure, ax = plt.subplots(dpi=100)
@@ -184,7 +184,7 @@ def get_simulated_data(random_positions=False,use_bad_points=False, add_position
 
     difpads = []
     for px,py in zip(positionsX,positionsY):
-
+    
         """ Exit wave-field """
         W = model_object[py:py+dimension,px:px+dimension]*probe
     
@@ -204,20 +204,25 @@ def get_simulated_data(random_positions=False,use_bad_points=False, add_position
 
         difpads.append(difpad)
 
-    positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positionsitions format for proper input
+    positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positions format for proper input
     difpads = np.asarray(difpads)
     
     if add_position_errors:
         max_error = 0.1*np.mean(positions)
         positions_errors = max_error*np.random.rand(*positions.shape)
         positions += positions_errors
-        print(positions_errors)
         return difpads, positions, model_object, probe, positions_errors
     else:
         positions_errors = []
         return difpads, positions, model_object, probe, positions_errors
 
 
+def add_error_to_positions(positionsX,positionsY):
+        mu, sigma = 0, 1 # mean and standard deviation
+        deltaX = np.random.normal(mu, sigma, positionsX.shape)
+        deltaY = np.random.normal(mu, sigma, positionsY.shape)
+        return positionsX+deltaX,positionsY+deltaY     
+    
 def propagate_beam(wavefront, experiment_params,propagator='fourier'):
     """ Propagate a wavefront using fresnel ou fourier propagator
 
@@ -368,3 +373,56 @@ def momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj,
         P_aux = probe            
         T_counter = 0
     return T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe
+
+
+def create_correction_masks(N,M,path,bad_points_percentage=0.05,detector='540D',save=True):
+    
+    invalid_points = np.where(np.random.rand(N,M)>1-bad_points_percentage,1,0)
+    
+    invalid_grid = np.zeros((N,M))
+    if detector == '540D':
+        chip_size = N//12
+        line_thickness = 1
+        
+        for i in range(1,12):
+            start = int(i*chip_size)
+            end = int(i*chip_size + line_thickness)
+            invalid_grid[start:end,:] = 1
+            invalid_grid[:,start:end] = 1
+    
+    mask = invalid_grid+invalid_points
+    mask = np.where(mask>0,1,0)
+    
+    empty = np.zeros_like(invalid_points)
+    empty[N//20:N//10,M//20:M//10] = 1
+    empty[-N//10:-N//20,M//20:M//10] = 1
+    empty[-N//10:-N//20,-M//10:-M//20] = 1
+
+    flatfield = np.ones_like(invalid_points)
+    
+    total = empty+flatfield+invalid_grid+invalid_points
+    total = np.where(total>1,1,0)
+    
+    if save:
+        masks_path = os.path.join(path,'images')
+        if not os.path.exists(masks_path):
+            os.makedirs(masks_path)
+        files = ['flat.hdf5','mask.hdf5','empty.hdf5']
+        datasets = [flatfield, mask, empty]
+        for file,data in zip(files,datasets):
+            savepath = os.path.join(masks_path,file)
+            print("Saving data at: ",savepath)
+            h5f = h5py.File(savepath, 'w')
+            h5f.create_dataset(savepath, data=data)
+            h5f.close()
+    
+    if 1:
+        fig, ax = plt.subplots(1,5,figsize=(30,30))
+        ax1, ax2, ax3, ax4, ax5 = ax.ravel()
+        ax1.imshow(empty), ax1.set_title("Empty")
+        ax2.imshow(flatfield), ax2.set_title("Flatfield")
+        ax3.imshow(invalid_grid), ax3.set_title("Grid")
+        ax4.imshow(invalid_points), ax4.set_title("Mask")
+        ax5.imshow(total), ax5.set_title("all")
+    
+    return empty, flatfield, invalid_grid, invalid_points
