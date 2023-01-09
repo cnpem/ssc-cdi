@@ -30,8 +30,6 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
 
     """ Get detector geometry from distance """
     geometry = Geometry(distance)
-    
-
 
     os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
     os.system(f"h5clear -s {empty_path}") # gambiarra because file is not closed at the backend!
