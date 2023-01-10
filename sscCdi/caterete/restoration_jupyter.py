@@ -13,7 +13,7 @@ from sscIO import io
 from sscPimega import pi540D
 
 from .jupyter import slide_and_play
-from ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
+from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
 
 def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,apply_mask=True, save_data=True, preview=True,hdf5_datapath='/entry/data/data'):
     
