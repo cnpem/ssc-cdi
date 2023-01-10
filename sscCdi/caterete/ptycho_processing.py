@@ -425,17 +425,25 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
     plt.clf()
     plt.close()
 
+def read_probe_positions_new(path,filename):
+    print('Reading probe positions (probe_positions)...')
+    probe_positions = []
+    positions_file = open(os.path.join(path,'positions',f"{filename}_001.txt"))
+
+    line_counter = 0
+    for line in positions_file:
+        line = str(line)
+        if line_counter >= 1:  # skip first line, which is the header
+            pxl = float(line.split()[1])
+            pyl = float(line.split()[0])
+            probe_positions.append([pxl, pyl, 1, 1])
+        line_counter += 1
+
+    probe_positions = np.asarray(probe_positions)
+
+    return probe_positions
 
 def read_probe_positions(probe_positions_filepath, measurement):
-    """Read probe positions from .txt data file
-
-    Args:
-        probe_positions_filepath (string): path to file storing the probe positions
-        measurement (string): path to measurement folder
-
-    Returns:
-        probe_positions: array, each item is an array with [x position, y position, 1, 1]
-    """    
     print('Reading probe positions (probe_positions)...')
     probe_positions = []
     positions_file = open(probe_positions_filepath)
