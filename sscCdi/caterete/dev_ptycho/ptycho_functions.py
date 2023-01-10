@@ -173,11 +173,11 @@ def get_simulated_data(random_positions=False,use_bad_points=False, add_position
     probe = np.where(X**2 + Y**2 < 0.9,1,0)  # Probe
 
     """ Create object """
-    phase = np.array( np.load('data/data1.npy')) # Load Imagem
+    phase = np.array( np.load('data/data2.npy')) # Load Imagem
     phase = phase - np.min(phase)
     phase = 2*np.pi*phase/np.max(phase) - np.pi # rescale from 0 to 2pi
 
-    magnitude = Image.open('data/data2.png' ).convert('L').resize(phase.shape)
+    magnitude = Image.open('data/data1.png' ).convert('L').resize(phase.shape)
     magnitude = magnitude/np.max(magnitude)
     
     model_object = np.abs(magnitude)*np.exp(-1j*phase)
