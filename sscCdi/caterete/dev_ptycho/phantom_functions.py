@@ -169,10 +169,7 @@ def add_error_to_positions(positionsX,positionsY,mu=0,sigma=1e-6):
     print(deltaX[0:5])
     return positionsX+deltaX,positionsY+deltaY     
 
-def set_object_size_pxls(x_pos,y_pos,probe_size,gap=0):
-    return (np.int(gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
-
-def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=1,random_shift_range = 3):
+def create_positions_file(probe_steps_xy,obj_pxl,filename,position_errors=False)
 
     """ Probe """
     dx, dy = probe_steps_xy # probe step size in each direction
@@ -195,32 +192,48 @@ def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename
     if position_errors == True:
         print( "Adding errors to position")
         x_meters, y_meters = add_error_to_positions(x_meters,y_meters)
-    
-    save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
-    probe_positions = read_probe_positions_new(os.path.join(path,'positions'),filename)
 
-    """ Object """
-    obj_size = set_object_size_pxls(x_pxls,y_pxls,probe.shape)
-    obj = np.zeros(obj_size,dtype=complex)
+    save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
+
+    return x_meters_original, y_meters_original, x_meters, y_meters
+
+def set_object_size_pxls(x_pos,y_pos,probe_size,gap=0):
+    return (np.int(gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+
+def set_object_frame(probe_positions,frame,probe,object_offset)
+    y_pxls, x_pxls = probe_positions[:,0], probe_positions[:,1]
+    obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape),dtype=complex)
     obj[object_offset:object_offset+frame.shape[0],object_offset:object_offset+frame.shape[1]] = frame
 
     model_path = os.path.join(path,'model_obj.npy')
     np.save(model_path,obj)
-    print(f"Calculating diffraction data for object of size {model_object.shape}. Used {object_offset} pixel of offset.")
-    print(f"\tData saved at: ',model_path)
+    print(f"Calculating diffraction data for object of size {obj.shape}. Used {object_offset} pixel of offset at the border.")
+    print(f"\tData saved at: ",model_path)
+    return obj
 
+def convert_positions_to_pixels(pixel_size,probe_positions):
+    return convert_probe_positions(pixel_size, probe_positions, offset_topleft = 1)
+
+def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=1,random_shift_range = 3):
+
+    create_positions_file(probe_steps_xy,obj_pxl,filename)
+
+    probe_positions = read_probe_positions_new(os.path.join(path,'positions'),filename)
+
+    Y_pxls, X_pxls = convert_positions_to_pixels(probe_positions,frame,probe,object_offset)
+
+    obj = set_object_frame(probe_positions,frame,probe,object_offset)
 
     """ Loop through positions """ 
-    difpads = np.zeros((X_pxls.flatten().shape[0],1,probe.shape[0],probe.shape[1]))
-    counter = 0
+    diffraction_patterns = np.zeros((X_pxls.flatten().shape[0],1,probe.shape[0],probe.shape[1]))
     calculate_diffraction_pattern_partial = partial(calculate_diffraction_pattern,obj=obj,probe=probe,wavelength=wavelength,distance=distance,obj_pxl=obj_pxl)
     idx_list = [ [y,x] for y, x in zip(Y_pxls.flatten(),X_pxls.flatten()) ]
-    processes = min(os.cpu_count(),32)
-    with ProcessPoolExecutor(max_workers=processes) as executor:
+    with ProcessPoolExecutor(max_workers=min(os.cpu_count(),32)) as executor:
         results = executor.map(calculate_diffraction_pattern_partial,idx_list)
         for counter, result in enumerate(results):
-            difpads[counter,0,:,:] = result
-    return difpads
+            diffraction_patterns[counter,0,:,:] = result
+
+    return diffraction_patterns
 
 
 
@@ -352,7 +365,7 @@ def get_probe(inputs,probe='circle',preview = True):
     
     return probe
 
-def get_detector_data(inputs,phantom,sinogram, probe,position_errors=False):
+def get_detector_data(inputs,sinogram, probe,position_errors=False):
 
     obj_pxl   = get_object_pixel(probe.shape[0],inputs["probe_pxl"],inputs["wavelength"],inputs["distance"])
 
@@ -363,7 +376,7 @@ def get_detector_data(inputs,phantom,sinogram, probe,position_errors=False):
     for i in range(sinogram.shape[0]):
         if i%25==0: print(f"Creating dataset {i}/{sinogram.shape[0]}")
         filename = str(i).zfill(4)+f"_complex_phantom"
-        difpads = get_ptycho_diffraction_data(phantom,sinogram[i],probe,obj_pxl,inputs["wavelength"],inputs["distance"],filename,inputs["path"],inputs["probe_steps_xy"],position_errors=position_errors)
+        difpads = get_ptycho_diffraction_data(sinogram[i],probe,obj_pxl,inputs["wavelength"],inputs["distance"],filename,inputs["path"],inputs["probe_steps_xy"],position_errors=position_errors)
 
         """ Save to hdf5 file """
         create_hdf_file(difpads,inputs["path"],filename)
@@ -387,9 +400,9 @@ def create_ptycho_phantom(inputs,sample="donut",probe="circle",position_errors=F
     
     probe = get_probe(inputs,probe)
     
-    data = get_detector_data(inputs,phantom,sinogram, probe,position_errors=position_errors)
+    diffraction_data = get_detector_data(inputs,sinogram, probe,position_errors=position_errors)
     
     print("Phantom created!")
     
-    return phantom, magnitude, phase, sinogram, probe, data
+    return phantom, magnitude, phase, sinogram, probe, diffraction_data
 
