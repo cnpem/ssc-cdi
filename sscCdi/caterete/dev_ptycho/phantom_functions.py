@@ -11,7 +11,7 @@ from scipy.ndimage import rotate
 from PIL import Image
 import sscPhantom
 
-from sscCdi.caterete.ptycho_processing import read_probe_positions_new, convert_probe_positions, set_object_shape
+from sscCdi.caterete.ptycho_processing import convert_probe_positions, set_object_shape
 
 """ New functions """
 
@@ -165,22 +165,23 @@ def add_error_to_positions(positionsX,positionsY,mu=0,sigma=1e-6):
     # sigma controls how big the error is
     deltaX = np.random.normal(mu, sigma, positionsX.shape)
     deltaY = np.random.normal(mu, sigma, positionsY.shape)
-    print(positionsX[0:5])
-    print(deltaX[0:5])
     return positionsX+deltaX,positionsY+deltaY     
 
-def create_positions_file(probe_steps_xy,obj_pxl,filename,position_errors=False)
+def create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shift_range,position_errors=False):
 
     """ Probe """
     dx, dy = probe_steps_xy # probe step size in each direction
     y_pxls = np.arange(0,frame.shape[0]+1,dy)
     x_pxls = np.arange(0,frame.shape[1]+1,dx)
 
-    random_shift_y = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(y_pxls.shape[0])] # generate random shift between -random_shift_range and +random_shift_range
-    random_shift_x = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(x_pxls.shape[0])]
-    y_pxls, x_pxls = random_shift_y + y_pxls, random_shift_x + x_pxls
+    if 1: # apply random shifts to avoid ptycho periodic features
+        random_shift_y = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(y_pxls.shape[0])] # generate random shift between -random_shift_range and +random_shift_range
+        random_shift_x = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(x_pxls.shape[0])]
+        y_pxls, x_pxls = random_shift_y + y_pxls, random_shift_x + x_pxls
+    
     y_pxls, x_pxls = y_pxls - np.min(y_pxls), x_pxls - np.min(x_pxls)
     Y_pxls, X_pxls = np.meshgrid(y_pxls,x_pxls)
+    # print('Original pxls',y_pxls,y_pxls.shape,'\n',x_pxls,x_pxls.shape)
 
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
@@ -195,46 +196,104 @@ def create_positions_file(probe_steps_xy,obj_pxl,filename,position_errors=False)
 
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
 
-    return x_meters_original, y_meters_original, x_meters, y_meters
 
-def set_object_size_pxls(x_pos,y_pos,probe_size,gap=0):
-    return (np.int(gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+def set_object_size_pxls(x_pos,y_pos,probe_size,bottom_right_gap=0):
+    return (np.int(bottom_right_gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(bottom_right_gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
 
-def set_object_frame(probe_positions,frame,probe,object_offset)
-    y_pxls, x_pxls = probe_positions[:,0], probe_positions[:,1]
-    obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape),dtype=complex)
+def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path):
+    obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape,object_offset),dtype=complex)
     obj[object_offset:object_offset+frame.shape[0],object_offset:object_offset+frame.shape[1]] = frame
 
-    model_path = os.path.join(path,'model_obj.npy')
+    model_path = os.path.join(path,'model','model_obj.npy')
     np.save(model_path,obj)
     print(f"Calculating diffraction data for object of size {obj.shape}. Used {object_offset} pixel of offset at the border.")
     print(f"\tData saved at: ",model_path)
     return obj
 
-def convert_positions_to_pixels(pixel_size,probe_positions):
-    return convert_probe_positions(pixel_size, probe_positions, offset_topleft = 1)
+def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
+    """Set probe positions considering maxroi and effective pixel size
 
-def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=1,random_shift_range = 3):
+    Args:
+        difpads (3D array): measured diffraction patterns
+        jason (json file): file with the setted parameters and directories for reconstruction
+        probe_positions (array): each element is an 2-array with x and y probe positions
+        offset_topleft (int, optional): [description]. Defaults to 20.
 
-    create_positions_file(probe_steps_xy,obj_pxl,filename)
+    Returns:
+        object pixel size (float), maximum roi (int), probe positions (array)
+    """    
 
-    probe_positions = read_probe_positions_new(os.path.join(path,'positions'),filename)
+    # Subtract the probe positions minimum to start at 0
+    probe_positions[:, 0] -= np.min(probe_positions[:, 0])
+    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
 
-    Y_pxls, X_pxls = convert_positions_to_pixels(probe_positions,frame,probe,object_offset)
+    offset_bottomright = offset_topleft #define padding width
+    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
+    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
 
-    obj = set_object_frame(probe_positions,frame,probe,object_offset)
+    return np.round(probe_positions).astype(np.int32), offset_bottomright
+
+def get_xy_positions(probe_positions):
+    # Get unique X and Y probe posiitons from the file
+    first = probe_positions[0,0]
+    uniques_list = [first]
+    uniques_list2 = []
+    for i,item in enumerate(probe_positions[:,0]):
+        if item == first:
+            uniques_list2.append(probe_positions[i,1])
+        else:
+            first = item
+            uniques_list.append(first)
+    uniques_list2 = [*set(uniques_list2)] #remove duplicates  
+    return np.asarray(uniques_list), np.sort(np.asarray(uniques_list2))
+
+def convert_positions_to_pixels(pixel_size,probe_positions,offset_topleft):
+    probe_positions, offset_bottomright = convert_probe_positions(pixel_size, probe_positions, offset_topleft)
+    uniqueX, uniqueY = get_xy_positions(probe_positions)
+    Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
+    return Y_pxls, X_pxls
+
+def read_probe_positions_new(path,filename):
+    # print('Reading probe_positions...')
+    probe_positions = []
+    positions_file = open(os.path.join(path,'positions',f"{filename}_001.txt"))
+
+    line_counter = 0
+    for line in positions_file:
+        line = str(line)
+        if line_counter >= 1:  # skip first line, which is the header
+            pxl = float(line.split()[1])
+            pyl = float(line.split()[0])
+            probe_positions.append([pxl, pyl, 1, 1])
+        line_counter += 1
+
+    probe_positions = np.asarray(probe_positions)
+
+    return probe_positions
+
+def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=10):
+
+    random_shift_range = np.int(0.5*object_offset) # the amount of shift will be only a fraction of the padding borders; that way we guarantee probe scan positions won't required values bigger than the object matrix size
+    create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shift_range)
+
+    probe_positions = read_probe_positions_new(path,filename)
+
+    Y_pxls, X_pxls = convert_positions_to_pixels(obj_pxl,probe_positions,object_offset)
+    
+    obj = set_object_frame(Y_pxls, X_pxls,frame,probe,object_offset,path)
 
     """ Loop through positions """ 
     diffraction_patterns = np.zeros((X_pxls.flatten().shape[0],1,probe.shape[0],probe.shape[1]))
+
     calculate_diffraction_pattern_partial = partial(calculate_diffraction_pattern,obj=obj,probe=probe,wavelength=wavelength,distance=distance,obj_pxl=obj_pxl)
     idx_list = [ [y,x] for y, x in zip(Y_pxls.flatten(),X_pxls.flatten()) ]
+    
     with ProcessPoolExecutor(max_workers=min(os.cpu_count(),32)) as executor:
         results = executor.map(calculate_diffraction_pattern_partial,idx_list)
         for counter, result in enumerate(results):
             diffraction_patterns[counter,0,:,:] = result
 
     return diffraction_patterns
-
 
 
 def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):
@@ -253,11 +312,11 @@ def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):
     
     json.dump(mdata,open(os.path.join(inputs["path"],"mdata.json"), "w"))
     
-    print("Metadata created successfuly")
+    # print("Metadata created successfuly")
 
     return inputs
 
-def get_phantom(inputs,sample,load,preview=True):
+def get_phantom(inputs,sample,load):
     
     if sample == 'donut':
     
@@ -281,27 +340,16 @@ def get_phantom(inputs,sample,load,preview=True):
             magnitude = 0.016*magnitude/np.max(magnitude)
             phase = 6*phase/np.max(phase) # 3 complete unwraps in total
 
-            np.save(os.path.join(inputs["path"],'magnitude.npy'),magnitude)
-            np.save(os.path.join(inputs["path"],'phase.npy'),phase)
+            np.save(os.path.join(inputs["path"],'model','magnitude.npy'),magnitude)
+            np.save(os.path.join(inputs["path"],'model','phase.npy'),phase)
         else:
-            phase = np.load(os.path.join(inputs["path"],'magnitude.npy'))
-            magnitude = np.load(os.path.join(inputs["path"],'phase.npy'))
+            phase = np.load(os.path.join(inputs["path"],'model','magnitude.npy'))
+            magnitude = np.load(os.path.join(inputs["path"],'model','phase.npy'))
     else:
         pass # no other object for now
 
     phantom, magnitude_view, phase_view = build_complex_object(magnitude,phase)
 
-    if preview == True:
-        print(f'Phase: Max={np.max(phase)}. Min={np.min(phase)}')
-        print(f'Wrapped phase: Max={np.max(phase_view)}. Min={np.min(phase_view)}')
-        figure, ax = plt.subplots(1,4,dpi=180)
-        ax[0].imshow(np.sum(magnitude,axis=0)), ax[0].set_title('Magnitude')
-        ax[1].imshow(np.sum(phase,axis=0)), ax[1].set_title('Phase')
-        ax[2].imshow(np.sum(magnitude_view,axis=0)), ax[2].set_title('-log(abs(phantom))')
-        ax[3].imshow(np.sum(phase_view,axis=0)), ax[3].set_title('angle(phantom)')
-        for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
-        plt.show()
-    
     return phantom, magnitude, phase
 
 def build_complex_object(magnitude,phase):
@@ -317,7 +365,7 @@ def get_sinogram(inputs,magnitude, phase,load):
     else:
         angles = np.array([0])
 
-    data_path = os.path.join(inputs["path"],'complex_sinogram.npy')
+    data_path = os.path.join(inputs["path"],'model','complex_sinogram.npy')
 
     get_projection_partial = partial(get_projection,magnitude=magnitude,phase=phase,wavevector=inputs["wavevector"])
 
@@ -334,35 +382,30 @@ def get_sinogram(inputs,magnitude, phase,load):
     else:
         sinogram = np.load(data_path)
     
-    print(f"Created complex sinogram of shape {sinogram.shape} from object of size {magnitude.shape}. Saved at {data_path}.")
+    print(f"Created complex sinogram of shape {sinogram.shape} from object of size {magnitude.shape}")
+    print(f"\tData saved at {data_path}")
 
     return sinogram 
 
-def get_probe(inputs,probe='circle',preview = True):
+def get_probe(inputs,probe_type='circle',size=50,preview = True):
     
-    if probe=='CAT': # Realistic Probe """
+    if probe_type=='CAT': # Realistic Probe """
         probe = np.load(os.path.join(inputs["path"],'model','probe_at_focus_1.25156micros_pixel.npy'))
-        half=50 # half the size you want in one dimension
+        half=size//2 # half the size you want in one dimension
         probe = probe[probe.shape[0]//2-half:probe.shape[0]//2+half,probe.shape[1]//2-half:probe.shape[1]//2+half]
         np.save(os.path.join(inputs["path"],'model','processed_probe.npy'),probe)
         
-    elif probe=='circle': #Round probe """
+    elif probe_type=='circle': #Round probe """
         probe = np.ones((100,100))
         xprobe = np.linspace(0,probe.shape[0]-1,probe.shape[0])
         xprobe -= probe.shape[0]//2
         Y,X = np.meshgrid(xprobe,xprobe)
         probe = np.where(X**2+Y**2<=45**2,1,0)
     else:
-        print("Select 'CAT' or 'circle' for probe type")
+        print("ERROR: Please select 'CAT' or 'circle' for probe type!")
     
-    print(f"Load probe of type -{probe}- with shape {probe.shape}")
+    print(f"Loading probe of type -{probe_type}- with shape {probe.shape}")
 
-    if preview:
-        figure, ax = plt.subplots(1,2,dpi=150)
-        ax[0].imshow(np.abs(probe),cmap='jet'), ax[0].set_title(abs)
-        ax[1].imshow(np.angle(probe),cmap='hsv'), ax[1].set_title(angle)
-        plt.show()
-    
     return probe
 
 def get_detector_data(inputs,sinogram, probe,position_errors=False):
@@ -374,7 +417,7 @@ def get_detector_data(inputs,sinogram, probe,position_errors=False):
 
     """ Loop through all frames"""
     for i in range(sinogram.shape[0]):
-        if i%25==0: print(f"Creating dataset {i}/{sinogram.shape[0]}")
+        if i%25==0: print(f"Creating dataset {i+1}/{sinogram.shape[0]}")
         filename = str(i).zfill(4)+f"_complex_phantom"
         difpads = get_ptycho_diffraction_data(sinogram[i],probe,obj_pxl,inputs["wavelength"],inputs["distance"],filename,inputs["path"],inputs["probe_steps_xy"],position_errors=position_errors)
 
@@ -390,7 +433,7 @@ def get_detector_data(inputs,sinogram, probe,position_errors=False):
     
     return difpads
     
-def create_ptycho_phantom(inputs,sample="donut",probe="circle",position_errors=False,load=False):
+def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_errors=False,load=False):
     
     create_metadata_with_beamline_standard(inputs)
     
@@ -398,11 +441,23 @@ def create_ptycho_phantom(inputs,sample="donut",probe="circle",position_errors=F
     
     sinogram = get_sinogram(inputs,magnitude, phase,load=load)
     
-    probe = get_probe(inputs,probe)
+    probe = get_probe(inputs,probe_type)
     
     diffraction_data = get_detector_data(inputs,sinogram, probe,position_errors=position_errors)
     
-    print("Phantom created!")
+    figure, ax = plt.subplots(1,7,dpi=200,figsize=(15,15))
+    ax[0].imshow(np.sum(magnitude,axis=0)), ax[0].set_title('Magnitude')
+    ax[1].imshow(np.sum(phase,axis=0)), ax[1].set_title('Phase')
+    ax[2].imshow(np.sum(-np.log(np.abs(phantom)),axis=0)), ax[2].set_title('-log(abs(phantom))')
+    ax[3].imshow(np.sum(np.angle(phantom),axis=0)), ax[3].set_title('angle(phantom)')
+    ax[4].imshow(np.abs(probe),cmap='jet'), ax[4].set_title('abs')
+    ax[5].imshow(np.angle(probe),cmap='hsv'), ax[5].set_title('angle')
+    ax[6].imshow(np.mean(diffraction_data,axis=0),norm=LogNorm()), ax[6].set_title('DPs mean')
+    for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
+    plt.show()
+    
+
+    print("Phantom created at",inputs["path"])
     
     return phantom, magnitude, phase, sinogram, probe, diffraction_data
 
