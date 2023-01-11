@@ -134,8 +134,6 @@ def apply_random_shifts_to_positions(positionsX,positionsY):
 
 def get_positions_array(random_positions=True):
     positions = [2,16,32,64,96,126]
-    # positions = [  2,  10,  18,  26,  34,  42,  50,  58,  66,  74,  82,  90,  98,  106, 114, 122]
-    # positions = [2,   6,  10,  14,  18,  22,  26,  30,  34,  38,  42,  46,  50, 54,  58,  62,  66,  70,  74,  78,  82,  86,  90,  94,  98, 102, 106, 110, 114, 118, 122
 
     positionsX,positionsY = np.meshgrid(positions,positions)
 
