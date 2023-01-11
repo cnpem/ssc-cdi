@@ -248,15 +248,14 @@ def get_xy_positions(probe_positions):
     return np.asarray(uniques_list), np.sort(np.asarray(uniques_list2))
 
 def convert_positions_to_pixels(pixel_size,probe_positions,offset_topleft):
-    probe_positions, offset_bottomright = convert_probe_positions(pixel_size, probe_positions, offset_topleft)
+    probe_positions, _ = convert_probe_positions(pixel_size, probe_positions, offset_topleft)
     uniqueX, uniqueY = get_xy_positions(probe_positions)
     Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
     return Y_pxls, X_pxls
 
-def read_probe_positions_new(path,filename):
-    # print('Reading probe_positions...')
+def read_probe_positions_new(filepath):
     probe_positions = []
-    positions_file = open(os.path.join(path,'positions',f"{filename}_001.txt"))
+    positions_file = open(filepath)
 
     line_counter = 0
     for line in positions_file:
@@ -269,14 +268,14 @@ def read_probe_positions_new(path,filename):
 
     probe_positions = np.asarray(probe_positions)
 
-    return probe_positions
+    return probe_positions.astype(np.int)
 
 def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=10):
 
     random_shift_range = np.int(0.5*object_offset) # the amount of shift will be only a fraction of the padding borders; that way we guarantee probe scan positions won't required values bigger than the object matrix size
     create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shift_range)
 
-    probe_positions = read_probe_positions_new(path,filename)
+    probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
 
     Y_pxls, X_pxls = convert_positions_to_pixels(obj_pxl,probe_positions,object_offset)
     
@@ -295,20 +294,22 @@ def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename
 
     return diffraction_patterns
 
+def calculate_wavelength(energy):
+    # energy input in keV
+    speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
+    wavelength = planck * speed_of_light / energy # meters
+    wavevector = 2*np.pi/wavelength
+    return wavelength, wavevector
 
 def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):
     
-    speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
-    wavelength = planck * speed_of_light / inputs["energy"] # meters
-    wavevector = 2*np.pi/wavelength
-    
     mdata = {"/entry/beamline/experiment": {"distance": inputs["distance"]*1e3, "energy": inputs["energy"]},
-             "/entry/beamline/detector": {"pimega": {"exposure time": 10.0, "pixel size": inputs["probe_pxl"]*1e6}}}
+             "/entry/beamline/detector": {"pimega": {"exposure time": 10.0, "pixel size": inputs["detector_pixel"]*1e6}}
+            }
 
     inputs["/entry/beamline/experiment"] = mdata["/entry/beamline/experiment"]
     inputs["/entry/beamline/detector"] = mdata["/entry/beamline/detector"]
-    inputs["wavelength"] = wavelength
-    inputs["wavevector"] = wavevector
+    inputs["wavelength"], inputs["wavevector"] = calculate_wavelength(mdata["/entry/beamline/experiment"]["energy"])
     
     json.dump(mdata,open(os.path.join(inputs["path"],"mdata.json"), "w"))
     
@@ -410,7 +411,7 @@ def get_probe(inputs,probe_type='circle',size=50,preview = True):
 
 def get_detector_data(inputs,sinogram, probe,position_errors=False):
 
-    obj_pxl   = get_object_pixel(probe.shape[0],inputs["probe_pxl"],inputs["wavelength"],inputs["distance"])
+    obj_pxl   = get_object_pixel(probe.shape[0],inputs["detector_pixel"],inputs["wavelength"],inputs["distance"])
 
     save_hdf_masks(inputs["path"],probe.shape)
     #TODO: apply masks to DPs
@@ -433,7 +434,7 @@ def get_detector_data(inputs,sinogram, probe,position_errors=False):
     
     return difpads
     
-def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_errors=False,load=False):
+def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_errors=False,load=False,preview=True):
     
     create_metadata_with_beamline_standard(inputs)
     
@@ -445,19 +446,40 @@ def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_err
     
     diffraction_data = get_detector_data(inputs,sinogram, probe,position_errors=position_errors)
     
-    figure, ax = plt.subplots(1,7,dpi=200,figsize=(15,15))
-    ax[0].imshow(np.sum(magnitude,axis=0)), ax[0].set_title('Magnitude')
-    ax[1].imshow(np.sum(phase,axis=0)), ax[1].set_title('Phase')
-    ax[2].imshow(np.sum(-np.log(np.abs(phantom)),axis=0)), ax[2].set_title('-log(abs(phantom))')
-    ax[3].imshow(np.sum(np.angle(phantom),axis=0)), ax[3].set_title('angle(phantom)')
-    ax[4].imshow(np.abs(probe),cmap='jet'), ax[4].set_title('abs')
-    ax[5].imshow(np.angle(probe),cmap='hsv'), ax[5].set_title('angle')
-    ax[6].imshow(np.mean(diffraction_data,axis=0),norm=LogNorm()), ax[6].set_title('DPs mean')
-    for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
-    plt.show()
+    if preview:
+        figure, ax = plt.subplots(1,7,dpi=200,figsize=(15,15))
+        ax[0].imshow(np.sum(magnitude,axis=0)), ax[0].set_title('Magnitude')
+        ax[1].imshow(np.sum(phase,axis=0)), ax[1].set_title('Phase')
+        ax[2].imshow(np.sum(-np.log(np.abs(phantom)),axis=0)), ax[2].set_title('-log(abs(phantom))')
+        ax[3].imshow(np.sum(np.angle(phantom),axis=0)), ax[3].set_title('angle(phantom)')
+        ax[4].imshow(np.abs(probe),cmap='jet'), ax[4].set_title('abs')
+        ax[5].imshow(np.angle(probe),cmap='hsv'), ax[5].set_title('angle')
+        ax[6].imshow(np.mean(diffraction_data,axis=0),norm=LogNorm()), ax[6].set_title('DPs mean')
+        for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
+        plt.show()
     
-
     print("Phantom created at",inputs["path"])
     
     return phantom, magnitude, phase, sinogram, probe, diffraction_data
 
+def load_data(data_folder,dataname):
+    
+    metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
+    distance = metadata['/entry/beamline/experiment']['distance']*1e-3
+    energy = metadata['/entry/beamline/experiment']['energy']
+    pixel_size = metadata['/entry/beamline/detector']['pimega']['pixel size']*1e-6
+    wavelength, wavevector = calculate_wavelength(energy)
+    
+    diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
+    n_pixels = diffraction_patterns.shape[1]
+
+    obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
+
+    positions = read_probe_positions_new(os.path.join(data_folder,dataname,'positions',f"0000_{dataname}_001.txt"))
+    model_obj = np.load(os.path.join(data_folder,dataname,'model','model_obj.npy'))
+    model_probe = np.load(os.path.join(data_folder,dataname,'model','processed_probe.npy'))
+    
+    # position_step = np.max([positions[i]-positions[i-1] for i in range(1,len(positions))])*1e-6
+    # oversampling_ratio = wavelength*distance/(position_step*pixel_size)
+
+    return diffraction_patterns, positions, model_obj, model_probe, obj_pixel_size, wavelength,distance
