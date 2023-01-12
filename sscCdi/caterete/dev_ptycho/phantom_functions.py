@@ -264,7 +264,7 @@ def read_probe_positions_new(filepath):
         if line_counter >= 1:  # skip first line, which is the header
             pxl = float(line.split()[1])
             pyl = float(line.split()[0])
-            probe_positions.append([pxl, pyl, 1, 1])
+            probe_positions.append([pxl, pyl])
         line_counter += 1
 
     probe_positions = np.asarray(probe_positions)
@@ -391,21 +391,21 @@ def get_sinogram(inputs,magnitude, phase,load):
 
 def get_probe(inputs,probe_type='circle',size=50,preview = True):
     
-    if probe_type=='CAT': # Realistic Probe """
+    if probe_type=='CAT': # Realistic probe simulated with SRW by Sergio Lordano
         probe = np.load(os.path.join(inputs["path"],'model','probe_at_focus_1.25156micros_pixel.npy'))
         half=size//2 # half the size you want in one dimension
         probe = probe[probe.shape[0]//2-half:probe.shape[0]//2+half,probe.shape[1]//2-half:probe.shape[1]//2+half]
-        np.save(os.path.join(inputs["path"],'model','processed_probe.npy'),probe)
-        
-    elif probe_type=='circle': #Round probe """
-        probe = np.ones((100,100))
+    elif probe_type=='circle': # Round probe
+        probe = np.ones((size,size))
         xprobe = np.linspace(0,probe.shape[0]-1,probe.shape[0])
         xprobe -= probe.shape[0]//2
         Y,X = np.meshgrid(xprobe,xprobe)
-        probe = np.where(X**2+Y**2<=45**2,1,0)
+        probe = np.where(X**2+Y**2<=(size//2)**2,1,0)
     else:
         print("ERROR: Please select 'CAT' or 'circle' for probe type!")
     
+    np.save(os.path.join(inputs["path"],'model','processed_probe.npy'),probe)
+
     print(f"Loading probe of type -{probe_type}- with shape {probe.shape}")
 
     return probe
