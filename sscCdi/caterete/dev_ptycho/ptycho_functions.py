@@ -105,7 +105,7 @@ def apply_random_shifts_to_positions(positionsX,positionsY):
         mu, sigma = 0, 1 # mean and standard deviation
         deltaX = np.random.normal(mu, sigma, positionsX.shape)
         deltaY = np.random.normal(mu, sigma, positionsY.shape)
-        return positionsX+deltaX,positionsY+deltaY 
+        return np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
     # positions = [2,16,32,64,96,126]
@@ -114,18 +114,18 @@ def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
     y_pxls = np.arange(0,frame_shape[0]+1,dy)
     x_pxls = np.arange(0,frame_shape[1]+1,dx)
 
+    if random_positions == True:
+        x_pxls,y_pxls = apply_random_shifts_to_positions(x_pxls,y_pxls)
+
     positionsY,positionsX = np.meshgrid(y_pxls,x_pxls)
 
-    if random_positions == True:
-        positionsX,positionsY = apply_random_shifts_to_positions(positionsX,positionsY)
-        
-    if 1: # Plot positions map
-        figure, ax = plt.subplots(dpi=100)
-        ax.plot(positionsX,positionsY,'x',label='Original')
-        ax.set_title('Positions') 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_aspect('equal')
+    # if 1: # Plot positions map
+    #     figure, ax = plt.subplots(dpi=100)
+    #     ax.plot(positionsX,positionsY,'x',label='Original')
+    #     ax.set_title('Positions') 
+    #     ax.set_xlabel('X')
+    #     ax.set_ylabel('Y')
+    #     ax.set_aspect('equal')
     
     return positionsX.flatten(),positionsY.flatten()
 
@@ -138,7 +138,7 @@ def apply_invalid_regions(difpad):
         difpad[:,0:difpad.shape[1]:delta] = -1
     return  difpad
     
-def get_simulated_data(probe_steps_xy,random_positions=False,use_bad_points=False, add_position_errors=False):
+def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False):
 
     from phantom_functions import  set_object_frame
 
@@ -163,7 +163,6 @@ def get_simulated_data(probe_steps_xy,random_positions=False,use_bad_points=Fals
     difpads = []
     for px,py in zip(positionsX,positionsY):
     
-        # print(probe.shape,model_object.shape,py,)
         """ Exit wave-field """
         W = model_object[py:py+dimension,px:px+dimension]*probe
     
@@ -183,7 +182,7 @@ def get_simulated_data(probe_steps_xy,random_positions=False,use_bad_points=Fals
 
         difpads.append(difpad)
 
-    positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positions format for proper input
+    positions = np.hstack((np.array([positionsX]).T ,np.array([positionsY]).T)) # adjust positions format for proper input
     difpads = np.asarray(difpads)
     
     if add_position_errors:
@@ -264,8 +263,8 @@ def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
     probe_conj = np.conj(probe)
 
     for index, pos in enumerate((positions)):
-        posy, posx = pos[0], pos[1]
-        # posy, posx = pos[1], pos[0]
+        # posy, posx = pos[0], pos[1]
+        posy, posx = pos[1], pos[0]
         probe_sum[posy:posy + m , posx:posx+n] = probe_sum[posy:posy + m , posx:posx+n] + probe_intensity
         wave_sum[posy:posy + m , posx:posx+n]  = wave_sum[posy:posy + m , posx:posx+n]  + probe_conj*exit_waves[index] 
 
@@ -283,8 +282,8 @@ def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
     obj_conj = np.conj(obj)
 
     for index, pos in enumerate((positions)):
-        posy, posx = pos[0], pos[1]
-        # posy, posx = pos[1], pos[0]
+        # posy, posx = pos[0], pos[1]
+        posy, posx = pos[1], pos[0]
         object_sum = object_sum + obj_intensity[posy:posy + m , posx:posx+n]
         wave_sum = wave_sum + obj_conj[posy:posy + m , posx:posx+n]*exit_waves[index]
 
@@ -308,7 +307,7 @@ def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,eps
     probe_conj = np.conj(probe)
 
     for mode in range(modes):
-        for index, (posy, posx) in enumerate((positions)):
+        for index, (posx, posy) in enumerate((positions)):
             probe_sum[posy:posy + m , posx:posx+n] += probe_intensity[mode]
             wave_sum[posy:posy + m , posx:posx+n]  += probe_conj[mode]*wavefronts[index,mode] 
 
@@ -326,7 +325,7 @@ def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon
     obj_intensity = np.abs(obj)**2
     obj_conj = np.conj(obj)
     
-    for index, (posy, posx) in enumerate(positions):
+    for index, (posx, posy) in enumerate(positions):
         object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
         for mode in range(l):
             wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
@@ -518,9 +517,9 @@ def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_erro
     
     ax[0,0].set_ylabel('Model')
     ax[1,0].set_ylabel('RAAR')
-    ax[2,0].set_ylabel('mPIE')
-    ax[3,0].set_ylabel('mPIE multi')
-    ax[4,0].set_ylabel('RAAR multi')
+    ax[2,0].set_ylabel('RAAR multi')
+    ax[3,0].set_ylabel('mPIE')
+    ax[4,0].set_ylabel('mPIE multi')
     
     ax[1,0].plot(RAAR_error,'.-',label='RAAR')
     ax[1,0].plot(PIE_error,'.-',label='PIE')
@@ -626,17 +625,15 @@ def plot_probe_modes(probes):
     figure, axes = plt.subplots(2,n_probes,figsize=(20,5))
     if len(axes.shape) > 1:
         for column in range(axes.shape[1]):
-            axes[0,column].imshow(np.abs(probes[column]),cmap='jet')
-            axes[1,column].imshow(np.angle(probes[column]),cmap='jet')
+            axes[0,column].imshow(np.abs(probes[column]),cmap='viridis')
+            axes[1,column].imshow(np.angle(probes[column]),cmap='hsv')
             axes[0,column].set_title(f"{100*mode_power[column]:.2f}%")
         axes[0,0].set_ylabel(f"Magnitude")
         axes[1,0].set_ylabel(f"Phase")
     else:
-        for column in range(axes.shape[0]):
-            print(column,axes.shape)
-            axes[column].imshow(np.abs(probes[0]),cmap='jet')
-            axes[column].imshow(np.angle(probes[0]),cmap='jet')
-            axes[column].set_title(f"{100*mode_power[0]:.2f}%")
+        axes[0].imshow(np.abs(probes[0]),cmap='viridis')
+        axes[1].imshow(np.angle(probes[0]),cmap='hsv')
+        axes[0].set_title(f"{100*mode_power[0]:.2f}%")
         axes[0].set_ylabel(f"Magnitude")
         axes[1].set_ylabel(f"Phase")    
            
@@ -764,7 +761,8 @@ def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_p
     wavefronts = np.zeros((len(positions),probe.shape[0],probe.shape[1]),dtype=complex)
 
     for index, pos in enumerate((positions)):
-        posy, posx = pos[0], pos[1]
+        posy, posx = pos[1], pos[0]
+        # posy, posx = pos[0], pos[1]
         obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe*obj_box
 
@@ -781,7 +779,8 @@ def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_p
 
         for index in range(len(positions)): 
             pos = positions[index]
-            posy, posx = pos[0], pos[1]
+            posy, posx = pos[1], pos[0]
+            # posy, posx = pos[0], pos[1]
             obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
             
             psi_after_Pr = probe*obj_box
@@ -814,7 +813,7 @@ def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,e
         probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
         probe_modes[:] = probe
     
-    for index, (posy, posx) in enumerate((positions)):
+    for index, (posx, posy) in enumerate(positions):
         obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe_modes*obj_box
 
@@ -824,7 +823,7 @@ def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,e
     for iteration in range(0,iterations):
         if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
 
-        for index, (posy, posx) in enumerate(positions):
+        for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
             
@@ -873,7 +872,7 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
         for i in np.random.permutation(len(diffractions_patterns)):  
         # for i in range(len(diffractions_patterns)):  
             
-            px, py = positions[:,1][i],  positions[:,0][i]
+            py, px = positions[:,1][i],  positions[:,0][i]
 
             measurement = diffractions_patterns[i]
             
@@ -936,7 +935,7 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
         for j in np.random.permutation(len(diffractions_patterns)):  
         # for j in range(len(diffractions_patterns)):
             
-            px, py = positions[:,1][j],  positions[:,0][j]
+            py, px = positions[:,1][j],  positions[:,0][j]
 
             
             obj_box = obj[:,py:py+offset[0],px:px+offset[1]]
