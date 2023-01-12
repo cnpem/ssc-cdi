@@ -167,7 +167,7 @@ def add_error_to_positions(positionsX,positionsY,mu=0,sigma=1e-6):
     deltaY = np.random.normal(mu, sigma, positionsY.shape)
     return positionsX+deltaX,positionsY+deltaY     
 
-def create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shift_range,position_errors=False):
+def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,random_shift_range,position_errors=False):
 
     """ Probe """
     dx, dy = probe_steps_xy # probe step size in each direction
@@ -180,8 +180,6 @@ def create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shif
         y_pxls, x_pxls = random_shift_y + y_pxls, random_shift_x + x_pxls
     
     y_pxls, x_pxls = y_pxls - np.min(y_pxls), x_pxls - np.min(x_pxls)
-    # Y_pxls, X_pxls = np.meshgrid(y_pxls,x_pxls)
-    # print('Original pxls',y_pxls,y_pxls.shape,'\n',x_pxls,x_pxls.shape)
 
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
@@ -252,6 +250,13 @@ def convert_positions_to_pixels(pixel_size,probe_positions,offset_topleft):
     probe_positions, _ = convert_probe_positions(pixel_size, probe_positions, offset_topleft)
     uniqueX, uniqueY = get_xy_positions(probe_positions)
     Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
+    if 1: # Plot positions map
+        figure, ax = plt.subplots(dpi=100)
+        ax.plot(X_pxls,Y_pxls,'x',label='Original')
+        ax.set_title('Positions') 
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_aspect('equal')
     return Y_pxls, X_pxls
 
 def read_probe_positions_new(filepath):
@@ -274,7 +279,7 @@ def read_probe_positions_new(filepath):
 def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=10):
 
     random_shift_range = np.int(0.5*object_offset) # the amount of shift will be only a fraction of the padding borders; that way we guarantee probe scan positions won't required values bigger than the object matrix size
-    create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shift_range)
+    create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,random_shift_range)
 
     probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
 
@@ -350,7 +355,7 @@ def get_phantom(inputs,sample,load):
     else:
         pass # no other object for now
 
-    phantom, magnitude_view, phase_view = build_complex_object(magnitude,phase)
+    phantom, _, _ = build_complex_object(magnitude,phase)
 
     return phantom, magnitude, phase
 

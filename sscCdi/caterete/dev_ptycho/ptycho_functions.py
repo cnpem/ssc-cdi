@@ -102,13 +102,15 @@ def set_object_pixel_size(jason,half_size):
     return dx, jason
     
 def apply_random_shifts_to_positions(positionsX,positionsY):
-        mu, sigma = 0, 1 # mean and standard deviation
+        mu, sigma = 0, 5 # mean and standard deviation
         deltaX = np.random.normal(mu, sigma, positionsX.shape)
         deltaY = np.random.normal(mu, sigma, positionsY.shape)
-        return np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
+        X, Y = np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
+        X -= np.min(X)
+        Y -= np.min(Y)
+        return X, Y
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
-    # positions = [2,16,32,64,96,126]
 
     dx, dy = probe_steps_xy # probe step size in each direction
     y_pxls = np.arange(0,frame_shape[0]+1,dy)
@@ -118,14 +120,14 @@ def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
         x_pxls,y_pxls = apply_random_shifts_to_positions(x_pxls,y_pxls)
 
     positionsY,positionsX = np.meshgrid(y_pxls,x_pxls)
-
-    # if 1: # Plot positions map
-    #     figure, ax = plt.subplots(dpi=100)
-    #     ax.plot(positionsX,positionsY,'x',label='Original')
-    #     ax.set_title('Positions') 
-    #     ax.set_xlabel('X')
-    #     ax.set_ylabel('Y')
-    #     ax.set_aspect('equal')
+    
+    if 1: # Plot positions map
+        figure, ax = plt.subplots(dpi=100)
+        ax.plot(positionsX,positionsY,'x',label='Original')
+        ax.set_title('Positions') 
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_aspect('equal')
     
     return positionsX.flatten(),positionsY.flatten()
 
@@ -492,7 +494,7 @@ random.seed(0)
 
 from ptycho_functions import *
 
-def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ):
+def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ):
     colormap = 'viridis'
     colormap2 = 'hsv'    
     figure, ax = plt.subplots(5,5,dpi=150,figsize=(15,10))
@@ -510,9 +512,9 @@ def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_erro
     ax[0,1].set_title("Magnitude")
     ax[0,2].imshow(np.angle(model_obj),cmap=colormap2)
     ax[0,2].set_title("Phase")
-    ax[0,3].imshow(np.abs(probe_guess),cmap=colormap)
+    ax[0,3].imshow(np.abs(probe),cmap=colormap)
     ax[0,3].set_title("Magnitude")
-    ax[0,4].imshow(np.angle(probe_guess),cmap=colormap2)
+    ax[0,4].imshow(np.angle(probe),cmap=colormap2)
     ax[0,4].set_title("Phase")
     
     ax[0,0].set_ylabel('Model')
@@ -534,6 +536,7 @@ def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_erro
     
     crop = 25        
     ax[2,0].imshow(np.abs(RAAR2_obj[crop:-crop,crop:-crop]),cmap=colormap)
+    # ax[2,0].axis('off')
     ax[2,1].imshow(np.abs(RAAR2_obj),cmap=colormap)
     ax[2,2].imshow(np.angle(RAAR2_obj),cmap=colormap2)
     ax[2,3].imshow(np.abs(RAAR2_probe),cmap=colormap)
@@ -541,6 +544,7 @@ def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_erro
     
     
     ax[3,0].imshow(np.abs(PIE_obj[crop:-crop,crop:-crop]),cmap=colormap)
+    # ax[3,0].axis('off')
     ax[3,1].imshow(np.abs(PIE_obj),cmap=colormap)
     ax[3,2].imshow(np.angle(PIE_obj),cmap=colormap2)
     ax[3,3].imshow(np.abs(PIE_probe),cmap=colormap)
@@ -548,6 +552,7 @@ def plot_results3(difpads, model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_erro
 
     
     ax[4,0].imshow(np.abs(PIE2_obj[crop:-crop,crop:-crop]),cmap=colormap)
+    # ax[4,0].axis('off')
     ax[4,1].imshow(np.abs(PIE2_obj),cmap=colormap)
     ax[4,2].imshow(np.angle(PIE2_obj),cmap=colormap2)
     ax[4,3].imshow(np.abs(PIE2_probe),cmap=colormap)
@@ -797,7 +802,7 @@ def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_p
 
 def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model,n_of_modes = 1):
     t0 = time.perf_counter()
-    print("\n\nStarting multiprobe RAAR...")
+    print("Starting multiprobe RAAR...")
     
     beta, epsilon = RAAR_params
 
@@ -847,7 +852,7 @@ def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,e
 
 def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj):
     t0 = time.perf_counter()
-    print("\n\nStarting PIE...")
+    print("Starting PIE...")
     
     mPIE = True
     use_rPIE_update_function = True
@@ -899,7 +904,7 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
     
 def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
     t0 = time.perf_counter()
-    print("\n\nStarting multiprobe PIE algorithm...")
+    print("Starting multiprobe PIE algorithm...")
     
     r_o = parameters["regularization_object"]
     r_p = parameters["regularization_probe"]
