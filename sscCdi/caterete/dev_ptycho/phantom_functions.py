@@ -180,7 +180,7 @@ def create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shif
         y_pxls, x_pxls = random_shift_y + y_pxls, random_shift_x + x_pxls
     
     y_pxls, x_pxls = y_pxls - np.min(y_pxls), x_pxls - np.min(x_pxls)
-    Y_pxls, X_pxls = np.meshgrid(y_pxls,x_pxls)
+    # Y_pxls, X_pxls = np.meshgrid(y_pxls,x_pxls)
     # print('Original pxls',y_pxls,y_pxls.shape,'\n',x_pxls,x_pxls.shape)
 
     """ Convert to metric units """
@@ -200,14 +200,15 @@ def create_positions_file(frame,probe_steps_xy,obj_pxl,filename,path,random_shif
 def set_object_size_pxls(x_pos,y_pos,probe_size,bottom_right_gap=0):
     return (np.int(bottom_right_gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(bottom_right_gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
 
-def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path):
+def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
     obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape,object_offset),dtype=complex)
     obj[object_offset:object_offset+frame.shape[0],object_offset:object_offset+frame.shape[1]] = frame
 
-    model_path = os.path.join(path,'model','model_obj.npy')
-    np.save(model_path,obj)
-    print(f"Calculating diffraction data for object of size {obj.shape}. Used {object_offset} pixel of offset at the border.")
-    print(f"\tData saved at: ",model_path)
+    if save:
+        model_path = os.path.join(path,'model','model_obj.npy')
+        np.save(model_path,obj)
+        print(f"Calculating diffraction data for object of size {obj.shape}. Used {object_offset} pixel of offset at the border.")
+        print(f"\tData saved at: ",model_path)
     return obj
 
 def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
