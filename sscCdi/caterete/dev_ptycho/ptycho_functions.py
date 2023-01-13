@@ -16,13 +16,16 @@ random.seed(0)
 
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
 
-def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess):
+def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess,positions):
+    from matplotlib.patches import Rectangle
+    from sscMisc.plots import convert_complex_to_RGB
+
     colormap = 'viridis'
     colormap2 = 'hsv'    
-    figure, ax = plt.subplots(2,4,dpi=150,figsize=(15,5))
+    figure, ax = plt.subplots(2,5,dpi=150,figsize=(15,5))
     count = -1
-    for i,ax0 in enumerate(ax.reshape(-1)):
-        ax0.set_yticks([]), ax0.set_xticks([])
+    # for i,ax0 in enumerate(ax.reshape(-1)):
+        # ax0.set_yticks([]), ax0.set_xticks([])
     ax[0,0].imshow(np.abs(model_obj),cmap=colormap)
     ax[0,0].set_title("Obj Abs")
     ax[0,1].imshow(np.angle(model_obj),cmap=colormap2)
@@ -39,6 +42,17 @@ def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess):
     ax[1,2].set_title("Probe Guess")
     ax[1,3].imshow(np.angle(probe_guess),cmap=colormap2)
     ax[1,3].set_title("Probe Guess")
+    
+    data_rgb = convert_complex_to_RGB(model_obj)
+    ax[0,4].imshow(data_rgb)
+    cmap = plt.get_cmap('jet',positions.shape[0])
+    mycm = cmap(np.arange(0,positions.shape[0]+1,1))
+    for i, (x,y) in enumerate(positions):
+        rect = Rectangle((x,y),probe_guess.shape[1],probe_guess.shape[0],linestyle='-',linewidth=1,edgecolor=mycm[i],facecolor='none',alpha=1)
+        ax[0,4].add_patch(rect)
+    ax[1,4].axis('off')
+    ax[0,4].set_title("Scan region")
+    figure.tight_layout()
 
 def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time):
     colormap = 'jet'    
@@ -95,10 +109,8 @@ def set_object_pixel_size(jason,half_size):
     planck = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
-    
     # Convert pixel size:
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * half_size * 2)
-
     return dx, jason
     
 def apply_random_shifts_to_positions(positionsX,positionsY):
@@ -121,7 +133,7 @@ def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
 
     positionsY,positionsX = np.meshgrid(y_pxls,x_pxls)
     
-    if 1: # Plot positions map
+    if 0: # Plot positions map
         figure, ax = plt.subplots(dpi=100)
         ax.plot(positionsX,positionsY,'x',label='Original')
         ax.set_title('Positions') 
@@ -438,7 +450,7 @@ def update_beta(positions1,positions2, beta):
     return beta
 
 def get_illuminated_mask(probe,probe_threshold):
-    mask = np.where(probe > np.max(probe)*probe_threhsold, 1, 0)
+    mask = np.where(probe > np.max(probe)*probe_threshold, 1, 0)
     return mask
 
 def correct_position(probe, probe_threshold, upsampling, beta, data):
@@ -494,18 +506,21 @@ random.seed(0)
 
 from ptycho_functions import *
 
-def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ):
+def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ,axis=False):
     colormap = 'viridis'
     colormap2 = 'hsv'    
     figure, ax = plt.subplots(5,5,dpi=150,figsize=(15,10))
-    count = -1
-    for i,ax0 in enumerate(ax.reshape(-1)):
-        count += 1
-        if count == 5: 
-            ax0.grid()
-            continue
-        ax0.set_yticks([])
-        ax0.set_xticks([])
+    
+    if axis == False: # remove ticks and values
+        count = -1
+        for i,ax0 in enumerate(ax.reshape(-1)):
+            count += 1
+            if count == 5: 
+                ax0.grid()
+                continue
+            ax0.set_yticks([])
+            ax0.set_xticks([])
+
     ax[0,0].imshow(np.sum(difpads,axis=0),norm=LogNorm(),cmap=colormap)
     ax[0,0].set_title("Sum of difpads")
     ax[0,1].imshow(np.abs(model_obj),cmap=colormap)
@@ -523,93 +538,56 @@ def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAA
     ax[3,0].set_ylabel('mPIE')
     ax[4,0].set_ylabel('mPIE multi')
     
-    ax[1,0].plot(RAAR_error,'.-',label='RAAR')
-    ax[1,0].plot(PIE_error,'.-',label='PIE')
-    ax[1,0].plot(PIE2_error,'.-',label='PIE-multi')
-    ax[1,0].plot(RAAR2_error,'.-',label='RAAR-multi')
+    try:
+        ax[1,0].plot(RAAR_error,'.-',label='RAAR')
+        ax[1,0].plot(RAAR2_error,'.-',label='RAAR-multi')
+        ax[1,0].plot(PIE_error,'.-',label='PIE')
+        ax[1,0].plot(PIE2_error,'.-',label='PIE-multi')
+    except:
+        pass
     
-    ax[1,1].imshow(np.abs(RAAR_obj),cmap=colormap)
-    ax[1,2].imshow(np.angle(RAAR_obj),cmap=colormap2)
-    ax[1,3].imshow(np.abs(RAAR_probe),cmap=colormap)
-    ax[1,4].imshow(np.angle(RAAR_probe),cmap=colormap2)
-
+    try:
+        ax[1,1].imshow(np.abs(RAAR_obj),cmap=colormap)
+        ax[1,2].imshow(np.angle(RAAR_obj),cmap=colormap2)
+        ax[1,3].imshow(np.abs(RAAR_probe),cmap=colormap)
+        ax[1,4].imshow(np.angle(RAAR_probe),cmap=colormap2)
+    except:
+        pass
     
-    crop = 25        
-    ax[2,0].imshow(np.abs(RAAR2_obj[crop:-crop,crop:-crop]),cmap=colormap)
-    # ax[2,0].axis('off')
-    ax[2,1].imshow(np.abs(RAAR2_obj),cmap=colormap)
-    ax[2,2].imshow(np.angle(RAAR2_obj),cmap=colormap2)
-    ax[2,3].imshow(np.abs(RAAR2_probe),cmap=colormap)
-    ax[2,4].imshow(np.angle(RAAR2_probe),cmap=colormap2)    
+    try:
+        crop = 25        
+        ax[2,0].imshow(np.abs(RAAR2_obj[crop:-crop,crop:-crop]),cmap=colormap)
+        # ax[2,0].axis('off')
+        ax[2,1].imshow(np.abs(RAAR2_obj),cmap=colormap)
+        ax[2,2].imshow(np.angle(RAAR2_obj),cmap=colormap2)
+        ax[2,3].imshow(np.abs(RAAR2_probe),cmap=colormap)
+        ax[2,4].imshow(np.angle(RAAR2_probe),cmap=colormap2)    
+    except:
+        pass    
     
+    try:
+        ax[3,0].imshow(np.abs(PIE_obj[crop:-crop,crop:-crop]),cmap=colormap)
+        # ax[3,0].axis('off')
+        ax[3,1].imshow(np.abs(PIE_obj),cmap=colormap)
+        ax[3,2].imshow(np.angle(PIE_obj),cmap=colormap2)
+        ax[3,3].imshow(np.abs(PIE_probe),cmap=colormap)
+        ax[3,4].imshow(np.angle(PIE_probe),cmap=colormap2)
+    except:
+        pass
     
-    ax[3,0].imshow(np.abs(PIE_obj[crop:-crop,crop:-crop]),cmap=colormap)
-    # ax[3,0].axis('off')
-    ax[3,1].imshow(np.abs(PIE_obj),cmap=colormap)
-    ax[3,2].imshow(np.angle(PIE_obj),cmap=colormap2)
-    ax[3,3].imshow(np.abs(PIE_probe),cmap=colormap)
-    ax[3,4].imshow(np.angle(PIE_probe),cmap=colormap2)
-
-    
-    ax[4,0].imshow(np.abs(PIE2_obj[crop:-crop,crop:-crop]),cmap=colormap)
-    # ax[4,0].axis('off')
-    ax[4,1].imshow(np.abs(PIE2_obj),cmap=colormap)
-    ax[4,2].imshow(np.angle(PIE2_obj),cmap=colormap2)
-    ax[4,3].imshow(np.abs(PIE2_probe),cmap=colormap)
-    ax[4,4].imshow(np.angle(PIE2_probe),cmap=colormap2)    
-
-
-    ax[1,0].legend()
-    figure.tight_layout()
-    
-def plot_results2(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time):
-    colormap = 'jet'    
-    figure, ax = plt.subplots(4,5,dpi=150,figsize=(15,10))
-    count = -1
-    for i,ax0 in enumerate(ax.reshape(-1)):
-        count += 1
-        if count == 5: 
-            ax0.grid()
-            continue
-        ax0.set_yticks([])
-        ax0.set_xticks([])
-    ax[0,0].imshow(np.sum(difpads,axis=0),norm=LogNorm(),cmap=colormap)
-    ax[0,0].set_title("Sum of difpads")
-    ax[0,1].imshow(np.abs(model_obj),cmap=colormap)
-    ax[0,1].set_title("Magnitude")
-    ax[0,2].imshow(np.angle(model_obj),cmap=colormap)
-    ax[0,2].set_title("Phase")
-    ax[0,3].imshow(np.abs(probe_guess),cmap=colormap)
-    ax[0,3].set_title("Magnitude")
-    ax[0,4].imshow(np.angle(probe_guess),cmap=colormap)
-    ax[0,4].set_title("Phase")
-    ax[1,0].plot(RAAR_error,'.-',label='RAAR')
-    ax[1,1].imshow(np.abs(RAAR_obj),cmap=colormap)
-    ax[1,2].imshow(np.angle(RAAR_obj),cmap=colormap)
-    ax[1,3].imshow(np.abs(RAAR_probe),cmap=colormap)
-    ax[1,4].imshow(np.angle(RAAR_probe),cmap=colormap)
-    ax[0,0].set_ylabel('Model')
-    ax[1,0].set_ylabel('RAAR')
-    ax[2,0].set_ylabel('mPIE')
-    ax[3,0].set_ylabel('mPIE multi')
-    ax[1,0].plot(PIE_error,'.-',label='PIE')
-    ax[2,1].imshow(np.abs(PIE_obj),cmap=colormap)
-    crop = 25
-    ax[2,0].imshow(np.abs(PIE_obj[crop:-crop,crop:-crop]),cmap=colormap)
-    ax[2,2].imshow(np.angle(PIE_obj),cmap=colormap)
-    ax[2,3].imshow(np.abs(PIE_probe),cmap=colormap)
-    ax[2,4].imshow(np.angle(PIE_probe),cmap=colormap)
-
-    
-    ax[1,0].plot(PIE2_error,'.-',label='PIE-multi')
-    ax[3,0].imshow(np.abs(PIE2_obj[crop:-crop,crop:-crop]),cmap=colormap)
-    ax[3,1].imshow(np.abs(PIE2_obj),cmap=colormap)
-    ax[3,2].imshow(np.angle(PIE2_obj),cmap=colormap)
-    ax[3,3].imshow(np.abs(PIE2_probe),cmap=colormap)
-    ax[3,4].imshow(np.angle(PIE2_probe),cmap=colormap)    
+    try:
+        ax[4,0].imshow(np.abs(PIE2_obj[crop:-crop,crop:-crop]),cmap=colormap)
+        # ax[4,0].axis('off')
+        ax[4,1].imshow(np.abs(PIE2_obj),cmap=colormap)
+        ax[4,2].imshow(np.angle(PIE2_obj),cmap=colormap2)
+        ax[4,3].imshow(np.abs(PIE2_probe),cmap=colormap)
+        ax[4,4].imshow(np.angle(PIE2_probe),cmap=colormap2)    
+    except:
+        pass
 
     ax[1,0].legend()
     figure.tight_layout()
+    
 
 def calculate_probe_relative_power(probes):
     mode_power = []

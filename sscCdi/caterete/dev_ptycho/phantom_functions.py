@@ -171,16 +171,14 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,rando
 
     """ Probe """
     dx, dy = probe_steps_xy # probe step size in each direction
-    y_pxls = np.arange(0,frame.shape[0]+1,dy)
-    x_pxls = np.arange(0,frame.shape[1]+1,dx)
+    y_pxls = np.arange(0,frame.shape[0]-probe.shape[0]+1,dy)
+    x_pxls = np.arange(0,frame.shape[1]-probe.shape[1]+1,dx)
 
-    if 1: # apply random shifts to avoid ptycho periodic features
-        random_shift_y = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(y_pxls.shape[0])] # generate random shift between -random_shift_range and +random_shift_range
-        random_shift_x = [np.int(i) for i in (-1)**np.int(2*np.random.rand(1))*random_shift_range*np.random.rand(x_pxls.shape[0])]
-        y_pxls, x_pxls = random_shift_y + y_pxls, random_shift_x + x_pxls
+    if 0: # apply random shifts to avoid ptycho periodic features
+        random_shift_y = [np.int(i*(-1)**np.int(2*np.random.rand(1))) for i in random_shift_range*np.random.rand(y_pxls.shape[0])] # generate random shift between -random_shift_range and +random_shift_range
+        random_shift_x = [np.int(i*(-1)**np.int(2*np.random.rand(1))) for i in random_shift_range*np.random.rand(x_pxls.shape[0])]
+        y_pxls, x_pxls = np.abs(random_shift_y + y_pxls), np.abs(random_shift_x + x_pxls) # abs to  remove negative values after random shifts
     
-    y_pxls, x_pxls = y_pxls - np.min(y_pxls), x_pxls - np.min(x_pxls)
-
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
     artificial_shift = x_meters[0] # artificial shift to have value close to the typical ones given by the beamline files (i.e. not starting at zero)
@@ -195,8 +193,9 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,rando
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
 
 
-def set_object_size_pxls(x_pos,y_pos,probe_size,bottom_right_gap=0):
-    return (np.int(bottom_right_gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(bottom_right_gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+def set_object_size_pxls(x_pos,y_pos,probe_size,border):
+    shape = (np.int(2*border + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(2*border+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+    return shape
 
 def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
     obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape,object_offset),dtype=complex)
@@ -243,14 +242,14 @@ def get_xy_positions(probe_positions):
         else:
             first = item
             uniques_list.append(first)
-    uniques_list2 = [*set(uniques_list2)] #remove duplicates  
+    uniques_list2 = np.unique(uniques_list2) #remove duplicates  
     return np.asarray(uniques_list), np.sort(np.asarray(uniques_list2))
 
-def convert_positions_to_pixels(pixel_size,probe_positions,offset_topleft):
-    probe_positions, _ = convert_probe_positions(pixel_size, probe_positions, offset_topleft)
-    uniqueX, uniqueY = get_xy_positions(probe_positions)
+def convert_positions_to_pixels(pixel_size,probe_positions,offset):
+    positions_pxls, _ = convert_probe_positions(pixel_size, probe_positions.copy(), offset) # copy so it isn't altered as a pointer inside the function
+    uniqueX, uniqueY = get_xy_positions(positions_pxls)
     Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
-    if 1: # Plot positions map
+    if 0: # Plot positions map
         figure, ax = plt.subplots(dpi=100)
         ax.plot(X_pxls,Y_pxls,'x',label='Original')
         ax.set_title('Positions') 
@@ -274,18 +273,21 @@ def read_probe_positions_new(filepath):
 
     probe_positions = np.asarray(probe_positions)
 
-    return probe_positions.astype(np.int)
+    return probe_positions
 
-def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,position_errors=False,object_offset=10):
+def read_probe_positions_in_pxls(path,filename,obj_pxl,offset):
+    probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
+    Y_pxls, X_pxls = convert_positions_to_pixels(obj_pxl,probe_positions,offset)
+    positions = np.hstack((np.array([X_pxls.flatten()]).T ,np.array([Y_pxls.flatten()]).T)) # adjust positions format for proper input
+    return Y_pxls, X_pxls, positions
 
-    random_shift_range = np.int(0.5*object_offset) # the amount of shift will be only a fraction of the padding borders; that way we guarantee probe scan positions won't required values bigger than the object matrix size
+def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,offset,position_errors=False):
+
+    random_shift_range = 0
     create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,random_shift_range)
 
-    probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
-
-    Y_pxls, X_pxls = convert_positions_to_pixels(obj_pxl,probe_positions,object_offset)
-    
-    obj = set_object_frame(Y_pxls, X_pxls,frame,probe,object_offset,path)
+    Y_pxls, X_pxls, _ = read_probe_positions_in_pxls(path,filename,obj_pxl,offset)
+    obj = set_object_frame(Y_pxls, X_pxls,frame,probe,offset,path)
 
     """ Loop through positions """ 
     diffraction_patterns = np.zeros((X_pxls.flatten().shape[0],1,probe.shape[0],probe.shape[1]))
@@ -319,9 +321,17 @@ def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):
     
     json.dump(mdata,open(os.path.join(inputs["path"],"mdata.json"), "w"))
     
-    # print("Metadata created successfuly")
-
     return inputs
+
+def refractive_index_from_atomic_scattering_factor(f,wavelength,element='gold'):
+    Na = 6.022e23
+    if element == 'gold':
+        density = 19300 # kg/m3
+        atomic_weight = 196.966 # grams/mol
+    atomic_number_density = density*Na/atomic_weight
+    e_charge = 2.82e-15
+    refractive_index = e_charge*atomic_number_density*wavelength**2*f/(2*np.pi)
+    return refractive_index
 
 def get_phantom(inputs,sample,load):
     
@@ -344,26 +354,23 @@ def get_phantom(inputs,sample,load):
             phase = phantom1 + phantom2
             phase = np.swapaxes(phase,1,0)
 
-            magnitude = 0.016*magnitude/np.max(magnitude)
-            phase = 6*phase/np.max(phase) # 3 complete unwraps in total
+            delta = refractive_index_from_atomic_scattering_factor(np.mean(phase),inputs["wavelength"])
+            beta = refractive_index_from_atomic_scattering_factor(np.mean(magnitude),inputs["wavelength"])
+
+            magnitude = beta*magnitude/np.mean(magnitude)
+            phase = 6*np.pi*phase/np.max(phase) 
 
             np.save(os.path.join(inputs["path"],'model','magnitude.npy'),magnitude)
             np.save(os.path.join(inputs["path"],'model','phase.npy'),phase)
         else:
-            phase = np.load(os.path.join(inputs["path"],'model','magnitude.npy'))
-            magnitude = np.load(os.path.join(inputs["path"],'model','phase.npy'))
+            magnitude = np.load(os.path.join(inputs["path"],'model','magnitude.npy'))
+            phase = np.load(os.path.join(inputs["path"],'model','phase.npy'))
     else:
         pass # no other object for now
 
-    phantom, _, _ = build_complex_object(magnitude,phase)
+    phantom = magnitude*np.exp(1j*phase)
 
     return phantom, magnitude, phase
-
-def build_complex_object(magnitude,phase):
-    phantom = np.exp(-magnitude)*np.exp(1j*phase)
-    magnitude_view = -np.log(np.abs(phantom))
-    phase_view = np.angle(phantom)
-    return phantom, magnitude_view, phase_view
 
 def get_sinogram(inputs,magnitude, phase,load):
 
@@ -415,7 +422,7 @@ def get_probe(inputs,probe_type='circle',size=50,preview = True):
 
     return probe
 
-def get_detector_data(inputs,sinogram, probe,position_errors=False):
+def get_detector_data(inputs,sinogram, probe,offset,position_errors=False):
 
     obj_pxl   = get_object_pixel(probe.shape[0],inputs["detector_pixel"],inputs["wavelength"],inputs["distance"])
 
@@ -426,7 +433,7 @@ def get_detector_data(inputs,sinogram, probe,position_errors=False):
     for i in range(sinogram.shape[0]):
         if i%25==0: print(f"Creating dataset {i+1}/{sinogram.shape[0]}")
         filename = str(i).zfill(4)+f"_complex_phantom"
-        difpads = get_ptycho_diffraction_data(sinogram[i],probe,obj_pxl,inputs["wavelength"],inputs["distance"],filename,inputs["path"],inputs["probe_steps_xy"],position_errors=position_errors)
+        difpads = get_ptycho_diffraction_data(sinogram[i],probe,obj_pxl,inputs["wavelength"],inputs["distance"],filename,inputs["path"],inputs["probe_steps_xy"],offset,position_errors=position_errors)
 
         """ Save to hdf5 file """
         create_hdf_file(difpads,inputs["path"],filename)
@@ -440,24 +447,24 @@ def get_detector_data(inputs,sinogram, probe,position_errors=False):
     
     return difpads
     
-def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_errors=False,load=False,preview=True):
+def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",offset=5,position_errors=False,load=False,preview=True):
     
     create_metadata_with_beamline_standard(inputs)
     
     phantom, magnitude, phase = get_phantom(inputs,sample,load=load)
-    
+
     sinogram = get_sinogram(inputs,magnitude, phase,load=load)
     
     probe = get_probe(inputs,probe_type)
     
-    diffraction_data = get_detector_data(inputs,sinogram, probe,position_errors=position_errors)
+    diffraction_data = get_detector_data(inputs,sinogram, probe,offset,position_errors=position_errors)
     
     if preview:
         figure, ax = plt.subplots(1,7,dpi=200,figsize=(15,15))
         ax[0].imshow(np.sum(magnitude,axis=0)), ax[0].set_title('Magnitude')
-        ax[1].imshow(np.sum(phase,axis=0)), ax[1].set_title('Phase')
-        ax[2].imshow(np.sum(-np.log(np.abs(phantom)),axis=0)), ax[2].set_title('-log(abs(phantom))')
-        ax[3].imshow(np.sum(np.angle(phantom),axis=0)), ax[3].set_title('angle(phantom)')
+        ax[1].imshow(np.sum(phase,axis=0),cmap='hsv'), ax[1].set_title('Phase')
+        ax[2].imshow(np.sum(np.abs(phantom),axis=0)), ax[2].set_title('abs(phantom)')
+        ax[3].imshow(np.sum(np.angle(phantom),axis=0),cmap='hsv'), ax[3].set_title('angle(phantom)')
         ax[4].imshow(np.abs(probe),cmap='jet'), ax[4].set_title('abs')
         ax[5].imshow(np.angle(probe),cmap='hsv'), ax[5].set_title('angle')
         ax[6].imshow(np.mean(diffraction_data,axis=0),norm=LogNorm()), ax[6].set_title('DPs mean')
@@ -468,7 +475,7 @@ def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",position_err
     
     return phantom, magnitude, phase, sinogram, probe, diffraction_data
 
-def load_data(data_folder,dataname):
+def load_data(data_folder,dataname,offset):
     
     metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
     distance = metadata['/entry/beamline/experiment']['distance']*1e-3
@@ -481,7 +488,7 @@ def load_data(data_folder,dataname):
 
     obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
 
-    positions = read_probe_positions_new(os.path.join(data_folder,dataname,'positions',f"0000_{dataname}_001.txt"))
+    _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset)
     model_obj = np.load(os.path.join(data_folder,dataname,'model','model_obj.npy'))
     model_probe = np.load(os.path.join(data_folder,dataname,'model','processed_probe.npy'))
     
