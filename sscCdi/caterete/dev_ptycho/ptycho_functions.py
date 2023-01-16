@@ -197,6 +197,7 @@ def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False
         difpads.append(difpad)
 
     positions = np.hstack((np.array([positionsX]).T ,np.array([positionsY]).T)) # adjust positions format for proper input
+    # positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positions format for proper input
     difpads = np.asarray(difpads)
     
     if add_position_errors:
@@ -852,9 +853,7 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
         if j%50 ==0 : print(f'\tIteration {j}/{iterations}')
         error, O_aux, P_aux = 0, obj+0, probe+0
 
-        for i in np.random.permutation(len(diffractions_patterns)):  
-        # for i in range(len(diffractions_patterns)):  
-            
+        for i in np.random.permutation(len(diffractions_patterns)):  # loop in random order improves results!
             py, px = positions[:,1][i],  positions[:,0][i]
 
             measurement = diffractions_patterns[i]
@@ -916,8 +915,6 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
         for j in np.random.permutation(len(diffractions_patterns)):  
-        # for j in range(len(diffractions_patterns)):
-            
             py, px = positions[:,1][j],  positions[:,0][j]
 
             

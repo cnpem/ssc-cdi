@@ -130,8 +130,10 @@ def rotation_Rz(matrix,angle):
     return rotate(matrix,angle,reshape=False,axes=(1,0))
     
 def get_projection(angle,magnitude,phase,wavevector):
-    return np.exp(-wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)) * np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
-    # return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    # print(wavevector,np.sum(rotation_Rz(magnitude,angle),axis=0),wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0))
+    # return np.exp(-wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)) * np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    wavevector = 1
+    return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
 
 def save_hdf_masks(path,shape):
     path = os.path.join(path,'images')
@@ -357,7 +359,7 @@ def get_phantom(inputs,sample,load):
             delta = refractive_index_from_atomic_scattering_factor(np.mean(phase),inputs["wavelength"])
             beta = refractive_index_from_atomic_scattering_factor(np.mean(magnitude),inputs["wavelength"])
 
-            magnitude = beta*magnitude/np.mean(magnitude)
+            # magnitude = 1e3*beta*magnitude/np.mean(magnitude)
             phase = 6*np.pi*phase/np.max(phase) 
 
             np.save(os.path.join(inputs["path"],'model','magnitude.npy'),magnitude)
