@@ -94,13 +94,19 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
     figure.tight_layout()
     
 
-def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function=True):
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function=True,centralize_probe=False):
     alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
     objbx = obj[py:py+offset[0],px:px+offset[1]]
     
+    if centralize_probe:
+        centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
+
     if use_rPIE_update_function: # rPIE update function
         objbx = objbx + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
-        probe = probe + gamma_prb*difference*objbx.conj()/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() )
+        if centralize_probe:
+            probe = probe + gamma_prb*(difference*objbx.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() + centralization_weight)
+        else:
+            probe = probe + gamma_prb*(difference*objbx.conj())/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max())
     obj[py:py+offset[0],px:px+offset[1]] = objbx
     return obj, probe, objbx
 
@@ -152,62 +158,15 @@ def apply_invalid_regions(difpad):
         difpad[:,0:difpad.shape[1]:delta] = -1
     return  difpad
     
-def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False):
-
-    from phantom_functions import  set_object_frame
-
-    """ Create Probe """
+def get_circular_mask(dimension,radius,invert=False):
     dimension = 100 # Must be < than object!
     x = np.linspace(-1,1,dimension)
     X,Y = np.meshgrid(x,x)
-    probe = np.where(X**2 + Y**2 < 0.9,1,0)  # Probe
-
-    positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
-
-    """ Create object """
-    phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
-
-    magnitude = np.array( np.load('data/star.npy')) # Load Imagem
-    magnitude = magnitude/np.max(magnitude)
-    model_object = np.abs(magnitude)*np.exp(-1j*phase)
-
-    object_offset = 10
-    model_object = set_object_frame(positionsY, positionsX,model_object,probe,object_offset,'',save=False)
-
-    difpads = []
-    for px,py in zip(positionsX,positionsY):
-    
-        """ Exit wave-field """
-        W = model_object[py:py+dimension,px:px+dimension]*probe
-    
-        """ Propagation """
-        difpad = np.fft.fft2(W)
-        difpad = np.fft.fftshift(difpad)
-        
-        """ Measurement """
-        difpad = np.absolute(difpad)**2
-    
-        if use_bad_points:# add invalid grid to data
-            difpad = apply_invalid_regions(difpad)
-        
-        # misc.imshow(np.abs(difpad),(5,5),savename='difpadgrid.png')
-        # plt.show()
-        # plt.close()
-
-        difpads.append(difpad)
-
-    positions = np.hstack((np.array([positionsX]).T ,np.array([positionsY]).T)) # adjust positions format for proper input
-    # positions = np.hstack((np.array([positionsY]).T ,np.array([positionsX]).T)) # adjust positions format for proper input
-    difpads = np.asarray(difpads)
-    
-    if add_position_errors:
-        max_error = 0.1*np.mean(positions)
-        positions_errors = max_error*np.random.rand(*positions.shape)
-        positions += positions_errors
-        return difpads, positions, model_object, probe, positions_errors
+    if invert == True:
+        circular_mask = np.where(X**2 + Y**2 < radius,0,1)  # Probe
     else:
-        positions_errors = []
-        return difpads, positions, model_object, probe, positions_errors
+        circular_mask = np.where(X**2 + Y**2 < radius,1,0)  # Probe
+    return circular_mask
 
 
 def add_error_to_positions(positionsX,positionsY):
@@ -422,12 +381,20 @@ def create_correction_masks(N,M,path,bad_points_percentage=0.05,detector='540D',
     
     return empty, flatfield, invalid_grid, invalid_points
 
+def get_brightest_diff_pattern(diffraction_patterns):
+    maximums = []
+    for i in range(diffraction_patterns.shape[0]):
+        maximums.append(np.max(diffraction_patterns[i]))
+    idx_where_max = np.where(maximums==np.max(maximums))
+    return idx_where_max[0][0]
+
+def probe_power_correction(probe,shape,pre_computed_numerator):
+    correction_factor = np.sqrt( pre_computed_numerator/ (shape[1]*shape[2]*np.sum(np.abs(probe)**2)) )
+    return probe*correction_factor
 
 """ POSITION CORRECTION """
 
-import skimage
 import numpy as np
-import json
 import matplotlib.pyplot as plt
 from skimage.registration import phase_cross_correlation
 from scipy.signal import correlate
@@ -735,7 +702,7 @@ def momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity
 
 """ MAIN LOOPS """
 
-def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model):
+def RAAR_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model):
     t0 = time.perf_counter()
     print("Starting RAAR...")
     
@@ -770,7 +737,7 @@ def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_p
             psi_after_Pr = probe*obj_box
             
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace = update_exit_wave(psi_after_reflection_Rspace,diffractions_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
+            psi_after_projection_Fspace = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
             
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
 
@@ -779,7 +746,7 @@ def RAAR_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_p
         error.append(calculate_recon_error(model,obj)) #absolute error
     return obj, probe, error, time.perf_counter()-t0
 
-def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model,n_of_modes = 1):
+def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model,n_of_modes = 1):
     t0 = time.perf_counter()
     print("Starting multiprobe RAAR...")
     
@@ -801,7 +768,7 @@ def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,e
         obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe_modes*obj_box
 
-    DP_magnitudes = np.sqrt(diffractions_patterns)
+    DP_magnitudes = np.sqrt(diffraction_patterns)
         
     error = []
     for iteration in range(0,iterations):
@@ -829,7 +796,7 @@ def RAAR_multiprobe_loop(diffractions_patterns,positions,obj,probe,RAAR_params,e
     return obj_matrix[0], probe_modes, error, dt
 
 
-def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj):
+def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj):
     t0 = time.perf_counter()
     print("Starting PIE...")
     
@@ -844,19 +811,20 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
     T_counter = 0
 
     obj = object_guess
-
     probe = probe_guess
-    
+
+    pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
+
     error_list = []
     for j in range(iterations):
 
         if j%50 ==0 : print(f'\tIteration {j}/{iterations}')
-        error, O_aux, P_aux = 0, obj+0, probe+0
+        _, O_aux, P_aux = 0, obj+0, probe+0
 
-        for i in np.random.permutation(len(diffractions_patterns)):  # loop in random order improves results!
+        for i in np.random.permutation(len(diffraction_patterns)):  # loop in random order improves results!
             py, px = positions[:,1][i],  positions[:,0][i]
 
-            measurement = diffractions_patterns[i]
+            measurement = diffraction_patterns[i]
             
             """ Exit wavefiled """
             exitWave = obj[py:py+offset[0],px:px+offset[1]]*probe
@@ -866,7 +834,15 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
 
             difference = exitWaveNew - exitWave
 
-            obj, probe, single_obj_box = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function)
+            if 0: #TODO
+                """ Power correction not working properly! See: Further improvements to the ptychographical iterative engine: supplementary material """
+                probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
+
+            if j <= 10: 
+                centralize_probe = True
+            else:
+                centralize_probe = False
+            obj, probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,centralize_probe=centralize_probe)
             
             if mPIE == True: # momentum addition
                 T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
@@ -879,7 +855,7 @@ def mPIE_loop(diffractions_patterns, positions,object_guess,probe_guess, mPIE_pa
     return obj, probe, error_list, time.perf_counter() - t0
           
     
-def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
+def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
     t0 = time.perf_counter()
     print("Starting multiprobe PIE algorithm...")
     
@@ -904,7 +880,7 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
     probe_velocity = np.zeros_like(probe_modes,dtype=complex)
     obj_velocity   = np.zeros_like(obj,dtype=complex)
 
-    DP_magnitudes = np.sqrt(diffractions_patterns)
+    DP_magnitudes = np.sqrt(diffraction_patterns)
     
     momentum_counter = 0
     error_list = []
@@ -914,10 +890,9 @@ def PIE_multiprobe_loop(diffractions_patterns, positions, iterations, parameters
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
-        for j in np.random.permutation(len(diffractions_patterns)):  
+        for j in np.random.permutation(len(diffraction_patterns)):  
             py, px = positions[:,1][j],  positions[:,0][j]
 
-            
             obj_box = obj[:,py:py+offset[0],px:px+offset[1]]
             
             """ Wavefront at object exit plane """
