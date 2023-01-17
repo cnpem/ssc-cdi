@@ -15,7 +15,7 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_data=True, preview=True,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
     
     n_of_threads, distance, apply_binning, apply_crop, centerx, centery = inputs
 
@@ -57,24 +57,26 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     else:
         empty = np.zeros_like(raw_difpads[0])
 
-    if subtraction_path != '':
-        subtraction_mask = np.asarray(h5py.File(subtraction_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
-    else:
-        subtraction_mask = np.zeros_like(raw_difpads[0])
-
-    if flat_path != 0:
+    if flat_path != '':
         flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
         flat[flat == 0] = -1
     else:
         flat = np.ones_like(raw_difpads[0])
     
-    if mask_path != 0:
+    if mask_path != '':
         mask = h5py.File(mask_path, 'r')[hdf5_datapath][()][0, 0, :, :]
     else:
         mask  = np.zeros_like(raw_difpads[0])
 
-    
+    if subtraction_path != '':
+        subtraction_mask = np.asarray(h5py.File(subtraction_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
+        subtraction_mask[empty > 1] = -1 # Apply empty 
+        subtraction_mask = subtraction_mask * np.squeeze(flat) # Apply flatfield
+    else:
+        subtraction_mask = np.zeros_like(raw_difpads[0])
+
+
     if preview:
         img = np.ones_like(mask)
         plot1, plot2, plot3 = empty, flat, mask
@@ -116,12 +118,11 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
 
-    if save_data:
-        savepath = os.path.join(data_path.rsplit('/',5)[0],'proc','recons',data_path.rsplit('/',3)[-3],'restoration',data_path.rsplit('/',2)[-1])
-        if not os.path.exists(savepath.rsplit('/',1)[0]):
-            os.makedirs(savepath.rsplit('/',1)[0])
-        print("Saving data at: ",savepath)
-        h5f = h5py.File(savepath, 'w')
+    if save_path != '':
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        print("Saving data at: ",save_path)
+        h5f = h5py.File(os.path.join(save_path,data_path.rsplit('/',2)[-1]), 'w')
         h5f.create_dataset(data_path.rsplit('/',2)[-1][:-5], data=output)
         h5f.close()
 
