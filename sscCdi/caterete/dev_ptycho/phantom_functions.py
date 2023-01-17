@@ -12,8 +12,64 @@ from PIL import Image
 import sscPhantom
 
 from sscCdi.caterete.ptycho_processing import convert_probe_positions, set_object_shape
+from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions
 
-""" New functions """
+def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):
+
+    """ Create Probe """
+    dimension = 100 # Must be < than object!
+    if 1 :
+        probe = get_circular_mask(dimension,0.5)
+    else:
+        half=dimension//2 # half the size you want in one dimension
+        probe = np.load(os.path.join("/home/ABTLUS/yuri.tonin/00000000/data/ptycho3d/complex_phantom/model/probe_at_focus_1.25156micros_pixel.npy"))
+        probe = probe[probe.shape[0]//2-half:probe.shape[0]//2+half,probe.shape[1]//2-half:probe.shape[1]//2+half]
+
+    positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
+
+    """ Create object """
+    phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
+
+    magnitude = np.array( np.load('data/star.npy')) # Load Imagem
+    magnitude = magnitude/np.max(magnitude)
+    model_object = np.abs(magnitude)*np.exp(-1j*phase)
+
+    object_offset = 10
+    model_object = set_object_frame(positionsY, positionsX,model_object,probe,object_offset,'',save=False)
+
+    difpads = []
+    for px,py in zip(positionsX,positionsY):
+    
+        """ Exit wave-field """
+        W = model_object[py:py+dimension,px:px+dimension]*probe
+    
+        """ Propagation """
+        difpad = np.fft.fft2(W)
+        difpad = np.fft.fftshift(difpad)
+        
+        """ Measurement """
+        difpad = np.absolute(difpad)**2
+    
+        if use_bad_points:# add invalid grid to data
+            difpad = apply_invalid_regions(difpad)
+        
+        # misc.imshow(np.abs(difpad),(5,5),savename='difpadgrid.png')
+        # plt.show()
+        # plt.close()
+
+        difpads.append(difpad)
+
+    positions = np.hstack((np.array([positionsX]).T ,np.array([positionsY]).T)) # adjust positions format for proper input
+    difpads = np.asarray(difpads)
+    
+    if add_position_errors:
+        max_error = 0.1*np.mean(positions)
+        positions_errors = max_error*np.random.rand(*positions.shape)
+        positions += positions_errors
+        return difpads, positions, model_object, probe, positions_errors
+    else:
+        positions_errors = []
+        return difpads, positions, model_object, probe, positions_errors
 
 def match_colorbar(ax):
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -470,7 +526,7 @@ def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",offset=5,pos
         ax[4].imshow(np.abs(probe),cmap='jet'), ax[4].set_title('abs')
         ax[5].imshow(np.angle(probe),cmap='hsv'), ax[5].set_title('angle')
         ax[6].imshow(np.mean(diffraction_data,axis=0),norm=LogNorm()), ax[6].set_title('DPs mean')
-        for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
+        # for axis in ax.ravel(): axis.set_xticks([]), axis.set_yticks([])
         plt.show()
     
     print("Phantom created at",inputs["path"])
