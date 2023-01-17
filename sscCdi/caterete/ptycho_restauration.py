@@ -239,7 +239,7 @@ def restauration_processing_binning(img, args):
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
     img = img * np.squeeze(flat) # Apply flatfield
-    img = img - subtraction_mask # apply subtraction mask
+    img = img - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     img = img.astype(np.float32) # convert to float
     
