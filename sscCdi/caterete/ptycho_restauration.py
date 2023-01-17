@@ -174,7 +174,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     flat = np.array(flat)
     flat[np.isnan(flat)] = -1
-    flat[flat == 0] = 1
+    flat[flat == 0] = -1 # null points at flatfield are indication of bad points
 
     print('Loading Mask from: ',jason['Mask'])
     if 'OldFormat' in jason:
@@ -210,7 +210,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         hsize = jason['DetectorROI']   
     else:
         hsize = 2*1536
-    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason, apply_crop, apply_binning)
+    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]))
 
     if first_iteration: # difpad used in jupyter to find center position!
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
@@ -234,11 +234,12 @@ def restauration_processing_binning(img, args):
         img (array): image to be restaured and binned
     """    
 
-    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning = args
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask = args
 
     binning = Binning + 0
     img[empty > 1] = -1 # Apply empty 
     img = img * np.squeeze(flat) # Apply flatfield
+    img = img - subtraction_mask # apply subtraction mask
 
     img = img.astype(np.float32) # convert to float
     
