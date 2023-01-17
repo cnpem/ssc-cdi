@@ -15,25 +15,26 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,apply_mask=True, save_data=True, preview=True,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_data=True, preview=True,hdf5_datapath='/entry/data/data'):
     
-    n_of_threads, centerx, centery, distance, apply_crop, apply_binning = inputs
+    n_of_threads, distance, apply_binning, apply_crop, centerx, centery = inputs
 
-    metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
-    empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
-    flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
-    mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')    
     if 0: # not yet automatic for all techniques; use manual input for now
+        metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
         distance = float(metadata['/entry/beamline/experiment']["distance"])
+
+        empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
+        flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
+        mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')  
+        subtraction_path = os.path.join(data_path.rsplit('/',2)[0],'images','subtraction.hdf5')    
     else: 
         distance = distance*1000 # convert from m to mm
 
     """ Get detector geometry from distance """
     geometry = Geometry(distance)
-    
-
 
     os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
+    os.system(f"h5clear -s {flat_path}") # gambiarra because file is not closed at the backend!
     os.system(f"h5clear -s {empty_path}") # gambiarra because file is not closed at the backend!
 
     raw_difpads,_ = io.read_volume(data_path, 'numpy', use_MPI=True, nprocs=n_of_threads)
@@ -51,19 +52,24 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
         img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # Center data
 
     """
-    if apply_empty:
+    if empty_path!='':
         empty = np.asarray(h5py.File(empty_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
     else:
         empty = np.zeros_like(raw_difpads[0])
 
-    if apply_flat:
+    if subtraction_path != '':
+        subtraction_mask = np.asarray(h5py.File(subtraction_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
+    else:
+        subtraction_mask = np.zeros_like(raw_difpads[0])
+
+    if flat_path != 0:
         flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
-        flat[flat == 0] = 1
+        flat[flat == 0] = -1
     else:
         flat = np.ones_like(raw_difpads[0])
     
-    if apply_mask:
+    if mask_path != 0:
         mask = h5py.File(mask_path, 'r')[hdf5_datapath][()][0, 0, :, :]
     else:
         mask  = np.zeros_like(raw_difpads[0])
@@ -105,12 +111,10 @@ def restoration_via_interface(data_path,inputs,apply_flat=True,apply_empty=True,
 
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
-    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning)
+    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask)
     output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ half_square_side//2 , half_square_side//2 ], restauration_processing_binning,  r_params, 'only') # Apply empty, flatfield, mask and restore!
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
-
-
 
     if save_data:
         savepath = os.path.join(data_path.rsplit('/',5)[0],'proc','recons',data_path.rsplit('/',3)[-3],'restoration',data_path.rsplit('/',2)[-1])
