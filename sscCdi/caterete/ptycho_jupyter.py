@@ -79,7 +79,7 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
-def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat',gpus=1,cpus=32):
     # Create slurm file
     logfiles_path = slurm_filepath.rsplit('/',2)[0]
     string = f"""#!/bin/bash
@@ -162,7 +162,7 @@ def delete_files(dummy):
         else:
             print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
-def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat',gpus=1,cpus=32):
     slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
     call_cmd_terminal(slurm_file,mafalda,remove=False)
     
@@ -728,7 +728,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
 
     global jobNameField, jobQueueField
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
-    jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
+    jobQueueField = Input({'dummy_key':'cat'},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
     gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
