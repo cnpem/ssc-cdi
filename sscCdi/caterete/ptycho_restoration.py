@@ -205,13 +205,21 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     Binning = int(jason['Binning'])
 
-    # apply_crop, apply_binning = True, True
-    apply_crop, apply_binning = True, False
+    apply_crop = True
+
     if apply_crop:
-        hsize = jason['DetectorROI']   
+        cropsize = jason['DetectorROI']   
     else:
-        hsize = 2*1536
-    r_params = (Binning, empty, flat, centerx, centery, hsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]))
+        cropsize = 2*1536
+
+    if Binning != 1:
+        hsize = cropsize
+        apply_binning = True
+    else: 
+        hsize = 2*2560
+        apply_binning = False
+
+    r_params = (Binning, empty, flat, centerx, centery, cropsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]))
 
     if first_iteration: # difpad used in jupyter to find center position!
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
