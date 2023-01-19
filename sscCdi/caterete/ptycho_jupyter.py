@@ -735,8 +735,8 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':slurmequeue},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
-    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
-    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
+    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,5,1),  slider=True,description="Insert # of GPUs to use:")
+    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
     boxSlurm = widgets.HBox([machine_selection,gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
