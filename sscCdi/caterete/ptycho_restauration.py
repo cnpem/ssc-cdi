@@ -205,7 +205,8 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
     Binning = int(jason['Binning'])
 
-    apply_crop, apply_binning = True, True
+    # apply_crop, apply_binning = True, True
+    apply_crop, apply_binning = True, False
     if apply_crop:
         hsize = jason['DetectorROI']   
     else:
@@ -257,7 +258,9 @@ def restauration_processing_binning(img, args):
         # select ROI from the center (cx,cy)
         img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
 
-    if apply_binning:
+    if apply_binning == False:
+        print("SKIP BINNING")
+    else:
         # Binning
         while binning % 2 == 0 and binning > 0:
             avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
