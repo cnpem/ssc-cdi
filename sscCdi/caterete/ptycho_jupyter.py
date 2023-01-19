@@ -215,8 +215,9 @@ def inputs_tab():
 
     def save_on_click(dummy,json_filepath="",dictionary={}):
         print('Saving input json file at: ',json_filepath)
-        with open(json_filepath, 'w') as file:
-            json.dump(dictionary, file)                                                    
+        file = open(json_filepath,"w")
+        file.write(json.dumps(dictionary,indent=3,sort_keys=True))
+        file.close()
         print('\t Saved!')
 
 
