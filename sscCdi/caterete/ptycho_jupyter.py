@@ -726,9 +726,14 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
+    if username == 'yuri.tonin' or username == 'julia.carvalho' or username == 'paola.ferraz' or username == 'eduardo.miqueles':
+        slurmequeue = 'dev-gcc'
+    else:
+        slurmequeue = 'cat'
+
     global jobNameField, jobQueueField
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
-    jobQueueField = Input({'dummy_key':'cat'},'dummy_key',description="Insert machine queue name:")
+    jobQueueField = Input({'dummy_key':slurmequeue},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
     gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
