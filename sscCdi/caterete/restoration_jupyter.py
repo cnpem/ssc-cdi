@@ -13,7 +13,7 @@ from sscIO import io
 from sscPimega import pi540D
 
 from .jupyter import slide_and_play
-from .ptycho_restoration import restauration_processing_binning, Geometry, Restaurate
+from .ptycho_restoration import restoration_processing_binning, Geometry, Restaurate
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
     
@@ -83,7 +83,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
         empty = np.asarray(h5py.File(empty_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
         flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
-        flat[flat == 0] = 1
+        flat[flat == 0] = -1
         mask = h5py.File(mask_path, 'r')[hdf5_datapath][()][0, 0, :, :]
 
         img[empty > 1] = -1 # Apply empty 
@@ -114,7 +114,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
     r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask)
-    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ half_square_side//2 , half_square_side//2 ], restauration_processing_binning,  r_params, 'only') # Apply empty, flatfield, mask and restore!
+    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ half_square_side//2 , half_square_side//2 ], restoration_processing_binning,  r_params, 'only') # Apply empty, flatfield, mask and restore!
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
 

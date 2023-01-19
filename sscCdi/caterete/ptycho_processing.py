@@ -37,7 +37,7 @@ def cat_ptycho_3d(difpads,jason):
 
         count += 1
 
-        print('Starting restauration for acquisition: ', acquisitions_folder)
+        print('Starting restoration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
@@ -65,7 +65,7 @@ def cat_ptycho_serial(jason):
     counter = 0
     first_iteration = True
     first_of_folder = True
-    time_elasped_restauration = 0
+    time_elasped_restoration = 0
     time_elasped_ptycho = 0
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
@@ -76,8 +76,8 @@ def cat_ptycho_serial(jason):
             print('File: ',measurement_file)
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
             t_start = time()
-            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
-            time_elasped_restauration += time() - t_start
+            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            time_elasped_restoration += time() - t_start
             
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
@@ -111,7 +111,7 @@ def cat_ptycho_serial(jason):
         probe_list.append(probe)
         background_list.append(background)
 
-    return sinogram_list, probe_list, background_list, time_elasped_restauration, time_elasped_ptycho, jason
+    return sinogram_list, probe_list, background_list, time_elasped_restoration, time_elasped_ptycho, jason
 
 def define_paths(jason):
     if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user

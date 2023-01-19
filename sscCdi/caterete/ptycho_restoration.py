@@ -14,17 +14,17 @@ import sscCdi
 from sscPimega import pi540D
 from sscPimega import opt540D
 
-############################ OLD RESTAURATION BY GIOVANNI #####################################################
+############################ OLD restoration BY GIOVANNI #####################################################
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 #
-# MODULES FOR THE RESTAURATION APPLICATION 
+# MODULES FOR THE restoration APPLICATION 
 # (see main code below)
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
 def Geometry(L):
-    """ Detector geometry parameters for sscPimega restauration
+    """ Detector geometry parameters for sscPimega restoration
 
     Args:
         L : sample-detector distancef
@@ -43,7 +43,7 @@ def UnRestaurate(img, geom):
     return opt540D._worker_annotation_image(pi540D.forward540D(img, geom))
 
 
-def pi540_restauration_cat_block(args, savepath = '', preview = False, save = False):
+def pi540_restoration_cat_block(args, savepath = '', preview = False, save = False):
     jason               = args[0]
     filenames           = args[1]
     filepaths           = args[2]
@@ -58,7 +58,7 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
     for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
         param = (jason,ibira_datafolder,measurement_file,acquisitions_folder,scans_string,measurement_filepath)
-        difpad, elapsedtime_one_difpad, jason = pi540_restauration_cat(param,savepath,preview,save, first_iteration)
+        difpad, elapsedtime_one_difpad, jason = pi540_restoration_cat(param,savepath,preview,save, first_iteration)
         
         if difpads == [] or difpads[0].shape == difpad.shape:
             difpads.append(difpad)
@@ -68,7 +68,7 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
         if first_iteration == True: first_iteration == False
 
     difpads = np.asarray(difpads)
-    print('difpads shape after restauration and binning of', jason['Binning'], ':', difpads.shape)
+    print('difpads shape after restoration and binning of', jason['Binning'], ':', difpads.shape)
     
     # if save:
     #     np.save(savepath + measurement_file, difpad)
@@ -78,7 +78,7 @@ def pi540_restauration_cat_block(args, savepath = '', preview = False, save = Fa
 
     return difpads, elapsedtime, elapsedtime_one_difpad, jason
 
-def pi540_restauration_cat(args, savepath = '', preview = False, save = False, first_iteration = True):
+def pi540_restoration_cat(args, savepath = '', preview = False, save = False, first_iteration = True):
     
     jason               = args[0]
     ibira_datafolder    = args[1]
@@ -88,17 +88,17 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
     measurement_filepath= args[5]
 
     t0 = time()
-    print('Begin Restauration')
+    print('Begin restoration')
             
     if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
-        print('\nMeasurement file in pi540_restauration_cat: ', measurement_file)
+        print('\nMeasurement file in pi540_restoration_cat: ', measurement_file)
         difpads, geometry, _, jason = get_restaurated_difpads_old_format(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,first_iteration=first_iteration,preview=preview)
 
         if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
             difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
 
     else:
-        print('Entering Miqueles Restauration.')
+        print('Entering Miqueles restoration.')
         dic = {}
         dic['susp'] = jason["ChipBorderRemoval"]  # parameter to ignore borders of the detector chip
         dic['roi'] = jason["DetectorROI"]  # radius of the diffraction pattern wrt to center. Changes according to the binning value!
@@ -115,7 +115,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
 
         jason['RestauredPixelSize'] = geometry['pxlsize']*1e-6
 
-        print('Diffraction pattern shape (post restauration):', difpads.shape)
+        print('Diffraction pattern shape (post restoration):', difpads.shape)
 
     if preview: # save plots of restaured difpad and mean of all restaured difpads
         difpad_number = 0
@@ -124,7 +124,7 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
         sscCdi.caterete.misc.plotshow_cmap2(difpads[difpad_number, :, :], title=f'Restaured Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/04_difpad_restaured.png')
         sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads, axis=0), title=f'Mean Restaured Diffraction Pattern #{difpad_number}', savepath=jason[ 'PreviewFolder'] + '/04_difpad_restaured_mean.png')
 
-    print('Finished Restauration')
+    print('Finished restoration')
 
     t1 = time()
     elapsedtime = t1-t0
@@ -136,8 +136,8 @@ def pi540_restauration_cat(args, savepath = '', preview = False, save = False, f
 
 
 def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview):
-    """Extracts the data from json and manipulate it according G restauration input format
-        Then, call G restauration
+    """Extracts the data from json and manipulate it according G restoration input format
+        Then, call G restoration
 
     Args:
         jason (json file): json object
@@ -222,39 +222,41 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     r_params = (Binning, empty, flat, centerx, centery, cropsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]))
 
     if first_iteration: # difpad used in jupyter to find center position!
+    
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
-        img = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',img)
+        img0 = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
+        img = corrections_and_restoration(raw_difpads[difpad_number,:,:],empty,flat,np.zeros_like(flat),mask,geometry,jason,apply_crop,centerx,centery,hsize)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',img0)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped_masked.npy',img)
         sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
 
     t0 = time()
-    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restauration_processing_binning,  r_params, 'only')
+    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restoration_processing_binning,  r_params, 'only')
     t1 = time()
 
     elapsedtime = t1-t0
 
     return output, geometry, elapsedtime, jason
 
-def restauration_processing_binning(img, args):
-    """Restaurate and process the binning on the diffraction patterns
-
-    Args:
-        img (array): image to be restaured and binned
-    """    
+def restoration_processing_binning(img, args):
 
     Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask = args
 
-    binning = Binning + 0
+    img = corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize)
+
+    img = G_binning(img,apply_binning,Binning,mask) # binning strategy by G. Baraldi
+    
+    return img
+
+def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize):
     img[empty > 1] = -1 # Apply empty 
     img = img * np.squeeze(flat) # Apply flatfield
     img = img - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     img = img.astype(np.float32) # convert to float
     
-    unbinned_mask = True
-    if unbinned_mask: # if mask before restauration with 3072x3072 size
-        img[np.abs(mask) ==1] = -1 # Apply Mask
+    img[np.abs(mask) ==1] = -1 # Apply Mask
     
     img = Restaurate(img, geometry) # restaurate
 
@@ -263,8 +265,10 @@ def restauration_processing_binning(img, args):
     img = sscCdi.ptycho_processing.masks_application(img,jason)
 
     if apply_crop:
-        # select ROI from the center (cx,cy)
-        img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] 
+        img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+    return img 
+
+def G_binning(img,apply_binning,binning,mask):
 
     if apply_binning == False:
         print("SKIP BINNING")
@@ -322,14 +326,9 @@ def restauration_processing_binning(img, args):
 
             img[img < 0] = -1
 
-        if unbinned_mask == False: # if mask after restauration with 640x640 size
-            img[np.abs(mask) ==1] = -1 # Apply Mask
-
-        t1 = time()
-
     return img
 
-def restauration_cat_3d(args):
+def restoration_cat_3d(args):
     
     ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
     preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
@@ -342,13 +341,13 @@ def restauration_cat_3d(args):
 
         count += 1
 
-        print('Starting restauration for acquisition: ', acquisitions_folder)
+        print('Starting restoration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
         
         if jason['Projections'] != []:
             filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths,  filenames)
-            print('\nMeasurement file in restauration_cat_3d: ', filenames)
+            print('\nMeasurement file in restoration_cat_3d: ', filenames)
         
         params = (jason, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
@@ -360,7 +359,7 @@ def restauration_cat_3d(args):
                 difpads.append(difpad)
             difpads = np.asarray(difpads)
         else: 
-            difpads, time_difpads, _, jason = pi540_restauration_cat_block(params,jason['SaveDifpadPath'],preview,save)
+            difpads, time_difpads, _, jason = pi540_restoration_cat_block(params,jason['SaveDifpadPath'],preview,save)
 
 
         diffractionpattern.append(difpads)
@@ -368,7 +367,7 @@ def restauration_cat_3d(args):
     return diffractionpattern, time_difpads, jason
 
 
-def restauration_cat_2d(args,first_run=True):
+def restoration_cat_2d(args,first_run=True):
 
     jason, acquisition_folder, filename, filepath = args[0] , args[1], args[2], args[3]
     ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
@@ -381,17 +380,17 @@ def restauration_cat_2d(args,first_run=True):
     if read:
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
     else:   
-        difpads, time_difpads, jason = pi540_restauration_cat(params,jason['SaveDifpadPath'],preview,save,first_iteration=first_run)
+        difpads, time_difpads, jason = pi540_restoration_cat(params,jason['SaveDifpadPath'],preview,save,first_iteration=first_run)
 
     difpads = np.expand_dims(difpads,axis=0)
 
     return difpads, time_difpads, jason
 
 
-################# MIQUELES RESTAURATION ###################################
+################# MIQUELES restoration ###################################
 
 def cat_preproc_ptycho_measurement( data, args ):
-    """ Miqueles function for new restauration approach. Passed as an argument (part of dictionary) to cat_preproc_ptycho_projections 
+    """ Miqueles function for new restoration approach. Passed as an argument (part of dictionary) to cat_preproc_ptycho_projections 
 
     Args:
         data (_type_): _description_
@@ -468,14 +467,14 @@ def cat_preproc_ptycho_measurement( data, args ):
     return backroi
 ##############
 def cat_preproc_ptycho_projections( dic ):
-    """ Miqueles' function call to new restauration approach
+    """ Miqueles' function call to new restoration approach
 
     Args:
         dic (_type_): _description_
 
     Returns:
         output : restaured diffraction patterns
-        elapsed_time : restauration time
+        elapsed_time : restoration time
     """    
     #-----------------------
     #read data using ssc-io:
