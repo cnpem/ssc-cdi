@@ -708,7 +708,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
 
 
     children_dict = {
-    "Inputs"     : tab2,
+    "Inputs"            : tab2,
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,

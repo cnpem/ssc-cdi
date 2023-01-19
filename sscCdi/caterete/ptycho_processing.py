@@ -76,7 +76,7 @@ def cat_ptycho_serial(jason):
             print('File: ',measurement_file)
             args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
             t_start = time()
-            difpads, _ , jason = sscCdi.caterete.ptycho_restauration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restauration_cat_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
             time_elasped_restauration += time() - t_start
             
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
@@ -435,7 +435,7 @@ def read_probe_positions(probe_positions_filepath, measurement):
     line_counter = 0
     for line in positions_file:
         line = str(line)
-        if line_counter >= 1:  # skip first line, which is the header
+        if line_counter > 1:  # skip first line, which is the header
             T = -3E-3  # why did Giovanni rotated by this amount? not using this correction seems to result in an error in the number of positions
             pxl = float(line.split()[1])
             pyl = float(line.split()[0])
