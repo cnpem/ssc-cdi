@@ -25,12 +25,12 @@ else: # paths for GCC tests
 import getpass
 username = getpass.getuser()
 
-jupyter_folder = "/home/ABTLUS/yuri.tonin/"
+jupyter_folder = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/"
 
 acquisition_folder = 'SS61'
 output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/', 'proc','recons',acquisition_folder) # changes with control
 
-global_paths_dict = { "jupyter_folder"         : "/home/ABTLUS/yuri.tonin/",
+global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/",
                     "ptycho_script_path"       : pythonScript,
                     "template_json"            : "dummy.json",
                     "slurm_filepath"           : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_job.srm'), # path to create slurm_file
