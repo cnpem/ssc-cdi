@@ -1,4 +1,4 @@
-from .ptycho_restauration import *
+from .ptycho_restoration import *
 from .unwrap import * 
 from .misc import *
 from .ptycho_fresnel import *
