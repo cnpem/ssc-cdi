@@ -23,8 +23,19 @@ else:
     ext = '.so'
 
 _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + _lib + ext
+# print(os.path.dirname(os.path.abspath(__file__)))
 libradon  = ctypes.CDLL(_path)
 
+#########################
+
+# try:
+#     print('to be done!') 
+# except:
+#     print ('ssc-ptycho: No CUDA Functions!!')
+
+##############
+#|          |#
+##############
 
 if __name__ == "__main__":
    pass

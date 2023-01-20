@@ -15,14 +15,13 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restoration import restoration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,hdf5_datapath='/entry/data/data'):
     
-    n_of_threads, distance, apply_binning, apply_crop, centerx, centery = inputs
+    n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx] = inputs
 
     if 0: # not yet automatic for all techniques; use manual input for now
         metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
         distance = float(metadata['/entry/beamline/experiment']["distance"])
-
         empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
         flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
         mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')  
@@ -34,8 +33,6 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     geometry = Geometry(distance)
 
     os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
-    os.system(f"h5clear -s {flat_path}") # gambiarra because file is not closed at the backend!
-    os.system(f"h5clear -s {empty_path}") # gambiarra because file is not closed at the backend!
 
     raw_difpads,_ = io.read_volume(data_path, 'numpy', use_MPI=True, nprocs=n_of_threads)
     print("\tRaw data shape: ", raw_difpads.shape)
@@ -53,11 +50,13 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
 
     """
     if empty_path!='':
+        os.system(f"h5clear -s {empty_path}") # gambiarra because file is not closed at the backend!
         empty = np.asarray(h5py.File(empty_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
     else:
         empty = np.zeros_like(raw_difpads[0])
 
     if flat_path != '':
+        os.system(f"h5clear -s {flat_path}") # gambiarra because file is not closed at the backend!
         flat = np.array(h5py.File(flat_path, 'r')[hdf5_datapath][()][0, 0, :, :])
         flat[np.isnan(flat)] = -1
         flat[flat == 0] = -1
@@ -70,12 +69,12 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
         mask  = np.zeros_like(raw_difpads[0])
 
     if subtraction_path != '':
+        os.system(f"h5clear -s {subtraction_path}") # gambiarra because file is not closed at the backend!
         subtraction_mask = np.asarray(h5py.File(subtraction_path, 'r')[hdf5_datapath]).squeeze().astype(np.float32)
         subtraction_mask[empty > 1] = -1 # Apply empty 
         subtraction_mask = subtraction_mask * np.squeeze(flat) # Apply flatfield
     else:
         subtraction_mask = np.zeros_like(raw_difpads[0])
-
 
     if preview:
         img = np.ones_like(mask)
@@ -104,10 +103,12 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     jason["CentralMask"] = [False,5]
     jason["DifpadCenter"] = [centery, centerx]
     
-
     if apply_crop:
         L = 3072 # PIMEGA540D size
-        half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
+        if crop_size != 0:
+            half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
+        else:
+            half_square_side = crop_size
     else:
         half_square_side = 3072*2
 
