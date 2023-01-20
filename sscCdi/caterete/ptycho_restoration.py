@@ -7,7 +7,7 @@ import os
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 from scipy import ndimage
-from sscCdi.caterete.ptycho_processing import *
+from .ptycho_processing import get_difpad_center, masks_application
 
 from sscIO import io
 import sscCdi
@@ -195,7 +195,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
         centerx, centery = _get_center(raw_difpads[0,:,:], proj)
         jason['DifpadCenter'] = (centerx, centery)
-        cx, cy = sscCdi.ptycho_processing.get_difpad_center(raw_difpads[0,:,:]) #TODO: under test! 
+        cx, cy = get_difpad_center(raw_difpads[0,:,:]) #TODO: under test! 
         print('Yuri Automatic Difpad Center :', cx, cy)
         print('sscPimega Automatic Difpad Center:',centerx, centery)
     else:
@@ -262,7 +262,7 @@ def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,ja
 
     img[img < 0] = -1 # all invalid values must be -1 by convention
 
-    img = sscCdi.ptycho_processing.masks_application(img,jason)
+    img = masks_application(img,jason)
 
     if apply_crop:
         img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
