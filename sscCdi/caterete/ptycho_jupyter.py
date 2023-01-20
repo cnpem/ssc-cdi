@@ -32,7 +32,7 @@ output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00
 
 global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/",
                     "ptycho_script_path"       : pythonScript,
-                    "template_json"            : "00000000/000000_template.json",
+                    "template_json"            : "000000_template.json",
                     "slurm_filepath"           : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_job.srm'), # path to create slurm_file
                     "json_filepath"            : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
@@ -79,7 +79,7 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
-def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat',gpus=1,cpus=32):
     # Create slurm file
     logfiles_path = slurm_filepath.rsplit('/',2)[0]
     string = f"""#!/bin/bash
@@ -162,7 +162,7 @@ def delete_files(dummy):
         else:
             print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
-def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat',gpus=1,cpus=32):
     slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
     call_cmd_terminal(slurm_file,mafalda,remove=False)
     
@@ -215,8 +215,9 @@ def inputs_tab():
 
     def save_on_click(dummy,json_filepath="",dictionary={}):
         print('Saving input json file at: ',json_filepath)
-        with open(json_filepath, 'w') as file:
-            json.dump(dictionary, file)                                                    
+        file = open(json_filepath,"w")
+        file.write(json.dumps(dictionary,indent=3,sort_keys=True))
+        file.close()
         print('\t Saved!')
 
 
@@ -708,7 +709,7 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
 
 
     children_dict = {
-    "Inputs"     : tab2,
+    "Inputs"            : tab2,
     "Mask"              : tab7,
     "Find Center"       : tab3,
     "Probe Propagation" : tab4,
@@ -726,12 +727,17 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     delete_temporary_files_button = Button(description="Delete temporary files",layout=buttons_layout,icon='folder-open-o')
     delete_temporary_files_button.trigger(partial(delete_files))
 
+    if username == 'yuri.tonin' or username == 'julia.carvalho' or username == 'paola.ferraz' or username == 'eduardo.miqueles':
+        slurmequeue = 'dev-gcc'
+    else:
+        slurmequeue = 'cat'
+
     global jobNameField, jobQueueField
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
-    jobQueueField = Input({'dummy_key':'cat-proc'},'dummy_key',description="Insert machine queue name:")
+    jobQueueField = Input({'dummy_key':slurmequeue},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
-    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="Insert # of GPUs to use:")
-    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="Insert # of CPUs to use:")
+    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,5,1),  slider=True,description="Insert # of GPUs to use:")
+    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
     boxSlurm = widgets.HBox([machine_selection,gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])

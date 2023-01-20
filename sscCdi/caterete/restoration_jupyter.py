@@ -77,6 +77,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     else:
         subtraction_mask = np.zeros_like(raw_difpads[0])
 
+
     if preview:
         img = np.ones_like(mask)
         plot1, plot2, plot3 = empty, flat, mask
