@@ -272,7 +272,8 @@ def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,ja
 def G_binning(img,apply_binning,binning,mask):
 
     if apply_binning == False:
-        print("SKIP BINNING")
+        # print("SKIP BINNING")
+        pass
     else:
         # Binning
         while binning % 2 == 0 and binning > 0:
