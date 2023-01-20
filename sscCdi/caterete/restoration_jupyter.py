@@ -13,15 +13,16 @@ from sscIO import io
 from sscPimega import pi540D
 
 from .jupyter import slide_and_play
-from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
+from .ptycho_restauration import restoration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
     
     n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx] = inputs
 
     if 0: # not yet automatic for all techniques; use manual input for now
         metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
         distance = float(metadata['/entry/beamline/experiment']["distance"])
+
         empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
         flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
         mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')  
@@ -102,20 +103,31 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     jason["DetectorExposure"] = [False,0.15]
     jason["CentralMask"] = [False,5]
     jason["DifpadCenter"] = [centery, centerx]
-    
+
+    half_square_side = 1536
+
     if apply_crop:
         L = 3072 # PIMEGA540D size
-        if crop_size != 0:
+        if crop_size == 0:
             half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
         else:
             half_square_side = crop_size
+        
+        if half_square_side % 2 != 0: 
+            half_square_side = half_square_side -  1 # make it even
+        DP_shape = 2*half_square_side
     else:
-        half_square_side = 3072*2
+        DP_shape = 3072
+        half_square_side = DP_shape // 2
+
+    if apply_binning:
+        DP_shape = DP_shape // Binning
+        
 
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
     r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask)
-    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ half_square_side//2 , half_square_side//2 ], restauration_processing_binning,  r_params, 'only') # Apply empty, flatfield, mask and restore!
+    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ DP_shape , DP_shape ], restoration_processing_binning,  r_params, 'only')
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
 
