@@ -15,14 +15,13 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restauration import restauration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,hdf5_datapath='/entry/data/data'):
     
     n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx] = inputs
 
     if 0: # not yet automatic for all techniques; use manual input for now
         metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
         distance = float(metadata['/entry/beamline/experiment']["distance"])
-
         empty_path = os.path.join(data_path.rsplit('/',2)[0],'images','empty.hdf5')
         flat_path = os.path.join(data_path.rsplit('/',2)[0],'images','flat.hdf5')
         mask_path = os.path.join(data_path.rsplit('/',2)[0],'images','mask.hdf5')  
@@ -77,7 +76,6 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     else:
         subtraction_mask = np.zeros_like(raw_difpads[0])
 
-
     if preview:
         img = np.ones_like(mask)
         plot1, plot2, plot3 = empty, flat, mask
@@ -105,7 +103,6 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     jason["CentralMask"] = [False,5]
     jason["DifpadCenter"] = [centery, centerx]
     
-
     if apply_crop:
         L = 3072 # PIMEGA540D size
         if crop_size != 0:
