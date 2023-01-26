@@ -15,7 +15,7 @@ from sscPimega import pi540D
 from .jupyter import slide_and_play
 from .ptycho_restoration import restoration_processing_binning, Geometry, Restaurate
 
-def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=True,hdf5_datapath='/entry/data/data'):
+def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data'):
     
     n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx] = inputs
 
@@ -127,7 +127,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
 
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
-    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask)
+    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives)
     output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, distance, n_of_threads, [ DP_shape , DP_shape ], restoration_processing_binning,  r_params, 'only')
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)

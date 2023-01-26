@@ -220,7 +220,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         hsize = 2*2560
         apply_binning = False
 
-    r_params = (Binning, empty, flat, centerx, centery, cropsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]))
+    r_params = (Binning, empty, flat, centerx, centery, cropsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]),False)
 
     if first_iteration: # difpad used in jupyter to find center position!
     
@@ -242,15 +242,15 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
 
 def restoration_processing_binning(img, args):
 
-    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask = args
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
 
-    img = corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize)
+    img = corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives)
 
     img = G_binning(img,apply_binning,Binning,mask) # binning strategy by G. Baraldi
     
     return img
 
-def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize):
+def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
     img[empty > 1] = -1 # Apply empty 
     img = img * np.squeeze(flat) # Apply flatfield
     img = img - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
@@ -261,7 +261,8 @@ def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,ja
     
     img = Restaurate(img, geometry) # restaurate
 
-    img[img < 0] = -1 # all invalid values must be -1 by convention
+    if keep_original_negatives == False:
+        img[img < 0] = -1 # all invalid values must be -1 by convention
 
     img = masks_application(img,jason)
 
