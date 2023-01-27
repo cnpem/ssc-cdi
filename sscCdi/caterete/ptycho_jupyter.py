@@ -371,7 +371,7 @@ def inputs_tab():
                                                     "DetectorPileup":DetectorPileup.widget
                                                      })
 
-    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,center_box,detector_ROI.widget,suspect_pixels.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,save_or_load_difpads],layout=box_layout)
     box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
