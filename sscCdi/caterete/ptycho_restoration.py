@@ -37,11 +37,11 @@ def Geometry(L):
     geo = pi540D.geometry540D( project )
     return geo
 
-def Restaurate(img, geom):
-    return pi540D.backward540D(img, geom)
+def Restaurate(DP, geom):
+    return pi540D.backward540D(DP, geom)
 
-def UnRestaurate(img, geom):
-    return opt540D._worker_annotation_image(pi540D.forward540D(img, geom))
+def UnRestaurate(DP, geom):
+    return opt540D._worker_annotation_image(pi540D.forward540D(DP, geom))
 
 
 def pi540_restoration_cat_block(args, savepath = '', preview = False, save = False):
@@ -207,70 +207,98 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     Binning = int(jason['Binning'])
 
     apply_crop = True
-
-    if apply_crop:
-        cropsize = jason['DetectorROI']   
-    else:
-        cropsize = 2*1536
-
+    
     if Binning != 1:
-        hsize = cropsize
         apply_binning = True
-    else: 
-        hsize = 2*2560
+    else:
         apply_binning = False
 
-    r_params = (Binning, empty, flat, centerx, centery, cropsize, geometry, mask, jason, apply_crop, apply_binning, np.ones_like(raw_difpads[0]),False)
+    half_square_side = 1536
+
+    if apply_crop:
+        L = 3072 # PIMEGA540D size
+        if jason["DetectorROI"] == 0:
+            half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
+        else:
+            half_square_side = jason["DetectorROI"]
+        
+        if half_square_side % 2 != 0: 
+            half_square_side = half_square_side -  1 # make it even
+        DP_shape = 2*half_square_side
+    else:
+        DP_shape = 3072
+        half_square_side = DP_shape // 2
+
+    if apply_binning:
+        DP_shape = DP_shape // Binning
+
+    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, np.zeros_like(raw_difpads[0]),False)
 
     if first_iteration: # difpad used in jupyter to find center position!
     
         print('Restaurating single difpad to save preview difpad of 3072^2 shape')
         difpad_number = 0
-        img0 = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
-        img = corrections_and_restoration(raw_difpads[difpad_number,:,:],empty,flat,np.zeros_like(flat),mask,geometry,jason,apply_crop,centerx,centery,hsize)
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',img0)
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped_masked.npy',img)
-        sscCdi.caterete.misc.plotshow_cmap2(img, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
+        DP0 = Restaurate(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
+        DP = corrections_and_restoration(raw_difpads[difpad_number,:,:],empty,flat,np.zeros_like(flat),mask,geometry,jason,apply_crop,centerx,centery,DP_shape,False)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',DP0)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped_masked.npy',DP)
+        sscCdi.caterete.misc.plotshow_cmap2(DP, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
 
     t0 = time()
-    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ hsize//2 , hsize//2 ], restoration_processing_binning,  r_params, 'only')
+    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params, 'only')
     t1 = time()
 
     elapsedtime = t1-t0
 
     return output, geometry, elapsedtime, jason
 
-def restoration_processing_binning(img, args):
+def restoration_processing_binning(DP, args):
 
     Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
 
-    img = corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives)
+    img = corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives)
 
     img = G_binning(img,apply_binning,Binning,mask) # binning strategy by G. Baraldi
     
     return img
 
-def corrections_and_restoration(img,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
-    img[empty > 1] = -1 # Apply empty 
-    img = img * np.squeeze(flat) # Apply flatfield
-    img = img - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
+def inpaint_lonely_neighbors(DP):
+    valids_mask = np.where(DP > 0 , 1 , -1)
+    sum_of_mask_neighbors = np.roll(valids_mask,1,0) + np.roll(valids_mask,-1,0) + np.roll(valids_mask,1,1) + np.roll(valids_mask,-1,1) + np.roll(np.roll(valids_mask,1,0),1,1) + np.roll(np.roll(valids_mask,1,0),-1,1) + np.roll(np.roll(valids_mask,-1,0),1,1) + np.roll(np.roll(valids_mask,-1,0),-1,1)
+    sum_of_neighbors = np.roll(DP,1,0) + np.roll(DP,-1,0) + np.roll(DP,1,1) + np.roll(DP,-1,1) + np.roll(np.roll(DP,1,0),1,1) + np.roll(np.roll(DP,1,0),-1,1) + np.roll(np.roll(DP,-1,0),1,1) + np.roll(np.roll(DP,-1,0),-1,1)
+    pixels_to_paint = np.where(sum_of_mask_neighbors == 8,True,False)
+    DP_corrected = DP.copy()
+    DP_corrected[pixels_to_paint] = sum_of_neighbors[pixels_to_paint] / 8
+    return DP_corrected
 
-    img = img.astype(np.float32) # convert to float
+def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
+    DP[empty > 1] = -1 # Apply empty 
+    DP = DP * np.squeeze(flat) # Apply flatfield
+    DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
+
+    DP = DP.astype(np.float32) # convert to float
     
-    img[np.abs(mask) ==1] = -1 # Apply Mask
+    DP[np.abs(mask) ==1] = -1 # Apply Mask
     
-    img = Restaurate(img, geometry) # restaurate
+    DP = Restaurate(DP, geometry) # restaurate
+
+    DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
     if keep_original_negatives == False:
-        img[img < 0] = -1 # all invalid values must be -1 by convention
+        DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
-    img = masks_application(img,jason)
+    if hsize == 0:
+        hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
+        if hsize % 2 != 0: 
+            hsize = hsize -  1 # make it even
 
     if apply_crop:
-        img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
-    return img 
+        DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
-def G_binning(img,apply_binning,binning,mask):
+
+    return DP 
+
+def G_binning(DP,apply_binning,binning,mask):
 
     if apply_binning == False:
         # print("SKIP BINNING")
@@ -278,58 +306,58 @@ def G_binning(img,apply_binning,binning,mask):
     else:
         # Binning
         while binning % 2 == 0 and binning > 0:
-            avg = img + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(np.roll(img, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
+            avg = DP + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(np.roll(DP, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
 
-            div = 1 * (img >= 0) + np.roll(1 * (img >= 0), -1, -1) + np.roll(1 * (img >= 0), -1, -2) + np.roll( np.roll(1 * (img >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
+            div = 1 * (DP >= 0) + np.roll(1 * (DP >= 0), -1, -1) + np.roll(1 * (DP >= 0), -1, -2) + np.roll( np.roll(1 * (DP >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
 
             avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
 
-            avgmask = (img < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. img < 0 means top-left values is invalid.
+            avgmask = (DP < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. DP < 0 means top-left values is invalid.
 
-            img[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
+            DP[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
 
-            img = img[:, 0::2] + img[:, 1::2]  # Binning columns
-            img = img[0::2] + img[1::2]  # Binning lines
+            DP = DP[:, 0::2] + DP[:, 1::2]  # Binning columns
+            DP = DP[0::2] + DP[1::2]  # Binning lines
 
-            img[img < 0] = -1
+            DP[DP < 0] = -1
 
-            img[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
+            DP[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
 
             binning = binning // 2
 
         while binning % 3 == 0 and binning > 0:
-            avg = np.roll(img, 1, -1) + np.roll(img, -1, -1) + np.roll(img, -1, -2) + np.roll(img, 1, -2) + np.roll( np.roll(img, 1, -2), 1, -1) + np.roll(np.roll(img, 1, -2), -1, -1) + np.roll(np.roll(img, -1, -2), 1, -1) + np.roll( np.roll(img, -1, -2), -1, -1)
-            div = np.roll(img > 0, 1, -1) + np.roll(img > 0, -1, -1) + np.roll(img > 0, -1, -2) + np.roll(img > 0, 1, -2) + np.roll( np.roll(img > 0, 1, -2), 1, -1) + np.roll(np.roll(img > 0, 1, -2), -1, -1) + np.roll( np.roll(img > 0, -1, -2), 1, -1) + np.roll(np.roll(img > 0, -1, -2), -1, -1)
+            avg = np.roll(DP, 1, -1) + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(DP, 1, -2) + np.roll( np.roll(DP, 1, -2), 1, -1) + np.roll(np.roll(DP, 1, -2), -1, -1) + np.roll(np.roll(DP, -1, -2), 1, -1) + np.roll( np.roll(DP, -1, -2), -1, -1)
+            div = np.roll(DP > 0, 1, -1) + np.roll(DP > 0, -1, -1) + np.roll(DP > 0, -1, -2) + np.roll(DP > 0, 1, -2) + np.roll( np.roll(DP > 0, 1, -2), 1, -1) + np.roll(np.roll(DP > 0, 1, -2), -1, -1) + np.roll( np.roll(DP > 0, -1, -2), 1, -1) + np.roll(np.roll(DP > 0, -1, -2), -1, -1)
 
-            avgmask = (img < 0) & (div > 0) / div[avgmask]
+            avgmask = (DP < 0) & (div > 0) / div[avgmask]
 
-            img = img[:, 0::3] + img[:, 1::3] + img[:, 2::3]
-            img = img[0::3] + img[1::3] + img[2::3]
+            DP = DP[:, 0::3] + DP[:, 1::3] + DP[:, 2::3]
+            DP = DP[0::3] + DP[1::3] + DP[2::3]
 
-            img[img < 0] = -1
+            DP[DP < 0] = -1
             binning = binning // 3
 
         if binning > 1:
             print('Entering binning > 1 only')
-            avg = -img * 1.0 + binning ** 2 - 1
-            div = img * 0
+            avg = -DP * 1.0 + binning ** 2 - 1
+            div = DP * 0
             for j in range(0, binning):
                 for i in range(0, binning):
-                    avg += np.roll(np.roll(img, j, -2), i, -1)
-                    div += np.roll(np.roll(img > 0, j, -2), i, -1)
+                    avg += np.roll(np.roll(DP, j, -2), i, -1)
+                    div += np.roll(np.roll(DP > 0, j, -2), i, -1)
 
-            avgmask = (img < 0) & (div > 0)
-            img[avgmask] = avg[avgmask] / div[avgmask]
+            avgmask = (DP < 0) & (div > 0)
+            DP[avgmask] = avg[avgmask] / div[avgmask]
 
-            imgold = img + 0
-            img = img[0::binning, 0::binning] * 0
+            DPold = DP + 0
+            DP = DP[0::binning, 0::binning] * 0
             for j in range(0, binning):
                 for i in range(0, binning):
-                    img += imgold[j::binning, i::binning]
+                    DP += DPold[j::binning, i::binning]
 
-            img[img < 0] = -1
+            DP[DP < 0] = -1
 
-    return img
+    return DP
 
 def restoration_cat_3d(args):
     
@@ -403,14 +431,14 @@ def cat_preproc_ptycho_measurement( data, args ):
     """    
 
     def _get_center(dbeam, project):
-        aimg = pi540D._worker_annotation_image ( numpy.clip( dbeam, 0, 100) )
-        aimg = ndimage.gaussian_filter( aimg, sigma=0.95, order=0 )
-        aimg = aimg/aimg.max()
-        aimg = 1.0 * ( aimg > 0.98 )    
+        aDP = pi540D._worker_annotation_image ( numpy.clip( dbeam, 0, 100) )
+        aDP = ndimage.gaussian_filter( aDP, sigma=0.95, order=0 )
+        aDP = aDP/aDP.max()
+        aDP = 1.0 * ( aDP > 0.98 )    
         u = numpy.array(range(3072))
         xx,yy = numpy.meshgrid(u,u)
-        xc = ((aimg * xx).sum() / aimg.sum() ).astype(int)
-        yc = ((aimg * yy).sum() / aimg.sum() ).astype(int)
+        xc = ((aDP * xx).sum() / aDP.sum() ).astype(int)
+        yc = ((aDP * yy).sum() / aDP.sum() ).astype(int)
         annotation = numpy.array([ [xc, yc] ])
         tracking = pi540D.annotation_points_standard ( annotation )
         tracking = pi540D.tracking540D_vec_standard ( project, tracking ) 
@@ -426,9 +454,9 @@ def cat_preproc_ptycho_measurement( data, args ):
         delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
         z = numpy.sqrt( delta )
         return z
-    def _get_roi( img, roi, center,binning):
+    def _get_roi( DP, roi, center,binning):
         xc, yc = center
-        X = img[yc-roi:yc+roi:binning,xc-roi:xc+roi:binning]
+        X = DP[yc-roi:yc+roi:binning,xc-roi:xc+roi:binning]
         return X
     def set_binning(data, binning):
         if binning>0:
