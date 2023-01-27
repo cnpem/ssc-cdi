@@ -221,7 +221,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,center_y,center_x,detector_ROI,ChipBorderRemoval,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -243,6 +243,7 @@ def inputs_tab():
         global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
 
+        global_dict["Binning"] = binning
         global_dict["DifpadCenter"] = [center_y,center_x]
 
         global_dict["DetectorROI"] = detector_ROI
@@ -303,7 +304,7 @@ def inputs_tab():
 
     detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
-    # binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
+    binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
     label3 = create_label_widget("Diffraction Pattern Processing")
@@ -346,7 +347,8 @@ def inputs_tab():
 
     widgets.interactive_output(update_global_dict,{'proposal_path_str':proposal_path_str.widget,
                                                     'acquisition_folders': acquisition_folders.widget,
-                                                    'projections': projections.widget,                                                    
+                                                    'projections': projections.widget,
+                                                    'binning':binning.widget,                                                    
                                                     'center_y':center_y.widget,
                                                     'center_x':center_x.widget,
                                                     'detector_ROI':detector_ROI.widget,
