@@ -499,7 +499,7 @@ def get_detector_data(inputs,sinogram, probe,offset,position_errors=False):
         # save data to numpy
         difpads = np.squeeze(difpads)
         np.save(os.path.join(inputs["path"],f'{filename}_001.hdf5.npy'),difpads)
-        np.save(os.path.join(inputs["path"].rsplit('/',4)[0],'proc','recons',inputs["path"].rsplit('/',4)[-2],f'{filename}_001.hdf5.npy'),difpads)
+        np.save(os.path.join(inputs["path"].rsplit('/',5)[0],'proc','recons',inputs["path"].rsplit('/',4)[-2],f'{filename}_001.hdf5.npy'),difpads)
         
     print(f"Detector data created with shape {difpads.shape}")
     
