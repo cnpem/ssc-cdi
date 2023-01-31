@@ -12,7 +12,7 @@ from PIL import Image
 import sscPhantom
 
 from sscCdi.caterete.ptycho_processing import convert_probe_positions, set_object_shape
-from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions
+from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):
 
@@ -187,9 +187,11 @@ def rotation_Rz(matrix,angle):
     
 def get_projection(angle,magnitude,phase,wavevector):
     # print(wavevector,np.sum(rotation_Rz(magnitude,angle),axis=0),wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0))
-    # return np.exp(-wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)) * np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
     wavevector = 1
-    return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    # print(np.max(wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)),np.max(wavevector*np.sum(rotation_Rz(phase,angle),axis=0)))
+    # return np.exp(-wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)) * np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    # return wavevector*np.sum(magnitude,axis=0)*np.exp(1j*wavevector*np.sum(phase,axis=0))
 
 def save_hdf_masks(path,shape):
     path = os.path.join(path,'images')
@@ -232,10 +234,8 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,rando
     y_pxls = np.arange(0,frame.shape[0]-probe.shape[0]+1,dy)
     x_pxls = np.arange(0,frame.shape[1]-probe.shape[1]+1,dx)
 
-    if 0: # apply random shifts to avoid ptycho periodic features
-        random_shift_y = [np.int(i*(-1)**np.int(2*np.random.rand(1))) for i in random_shift_range*np.random.rand(y_pxls.shape[0])] # generate random shift between -random_shift_range and +random_shift_range
-        random_shift_x = [np.int(i*(-1)**np.int(2*np.random.rand(1))) for i in random_shift_range*np.random.rand(x_pxls.shape[0])]
-        y_pxls, x_pxls = np.abs(random_shift_y + y_pxls), np.abs(random_shift_x + x_pxls) # abs to  remove negative values after random shifts
+    if 1: # apply random shifts to avoid ptycho periodic features
+        x_pxls,y_pxls = apply_random_shifts_to_positions(x_pxls,y_pxls)
     
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
@@ -249,7 +249,6 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,rando
         x_meters, y_meters = add_error_to_positions(x_meters,y_meters)
 
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
-
 
 def set_object_size_pxls(x_pos,y_pos,probe_size,border):
     shape = (np.int(2*border + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(2*border+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
@@ -267,6 +266,7 @@ def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
     return obj
 
 def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
+
     """Set probe positions considering maxroi and effective pixel size
 
     Args:
@@ -365,6 +365,7 @@ def calculate_wavelength(energy):
     speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
     wavelength = planck * speed_of_light / energy # meters
     wavevector = 2*np.pi/wavelength
+    print(f"Energy = {energy} keV \t Wavelength = {wavelength*1e9} nm \t Wavevector = {wavevector*1e-9} nm^-1")
     return wavelength, wavevector
 
 def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):
@@ -413,11 +414,15 @@ def get_phantom(inputs,sample,load):
             phase = np.swapaxes(phase,1,0)
 
             delta = refractive_index_from_atomic_scattering_factor(np.mean(phase),inputs["wavelength"])
-            beta = refractive_index_from_atomic_scattering_factor(np.mean(magnitude),inputs["wavelength"])
+            beta  = refractive_index_from_atomic_scattering_factor(np.mean(magnitude),inputs["wavelength"])
+            print(f"delta = {delta} \t beta = {beta}")
 
-            # magnitude = 1e3*beta*magnitude/np.mean(magnitude)
-            phase = 6*np.pi*phase/np.max(phase) 
+            magnitude = beta*phase/np.mean(phase)
+            phase = delta*phase/np.mean(phase)
+            # magnitude = phase
+            # phase = 6*np.pi*phase/np.max(phase) 
 
+            # print(phase.dtype,magnitude.dtype)
             np.save(os.path.join(inputs["path"],'model','magnitude.npy'),magnitude)
             np.save(os.path.join(inputs["path"],'model','phase.npy'),phase)
         else:
@@ -499,7 +504,7 @@ def get_detector_data(inputs,sinogram, probe,offset,position_errors=False):
         # save data to numpy
         difpads = np.squeeze(difpads)
         np.save(os.path.join(inputs["path"],f'{filename}_001.hdf5.npy'),difpads)
-        np.save(os.path.join(inputs["path"].rsplit('/',5)[0],'proc','recons',inputs["path"].rsplit('/',4)[-2],f'{filename}_001.hdf5.npy'),difpads)
+        np.save(os.path.join(inputs["path"].rsplit('/',4)[0],'proc','recons',inputs["path"].rsplit('/',4)[-2],f'{filename}_001.hdf5.npy'),difpads)
         
     print(f"Detector data created with shape {difpads.shape}")
     
@@ -542,11 +547,12 @@ def load_data(data_folder,dataname,offset):
     wavelength, wavevector = calculate_wavelength(energy)
     
     diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
-    n_pixels = diffraction_patterns.shape[1]
 
+    n_pixels = diffraction_patterns.shape[1]
     obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
 
     _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset)
+   
     model_obj = np.load(os.path.join(data_folder,dataname,'model','model_obj.npy'))
     model_probe = np.load(os.path.join(data_folder,dataname,'model','processed_probe.npy'))
     

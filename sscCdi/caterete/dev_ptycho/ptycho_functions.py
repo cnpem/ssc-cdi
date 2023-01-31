@@ -120,7 +120,7 @@ def set_object_pixel_size(jason,half_size):
     return dx, jason
     
 def apply_random_shifts_to_positions(positionsX,positionsY):
-        mu, sigma = 0, 5 # mean and standard deviation
+        mu, sigma = 0, 3 # mean and standard deviation
         deltaX = np.random.normal(mu, sigma, positionsX.shape)
         deltaY = np.random.normal(mu, sigma, positionsY.shape)
         X, Y = np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
@@ -159,7 +159,7 @@ def apply_invalid_regions(difpad):
     return  difpad
     
 def get_circular_mask(dimension,radius,invert=False):
-    dimension = 100 # Must be < than object!
+    # dimension = 100 # Must be < than object!
     x = np.linspace(-1,1,dimension)
     X,Y = np.meshgrid(x,x)
     if invert == True:
@@ -796,7 +796,7 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
     return obj_matrix[0], probe_modes, error, dt
 
 
-def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj):
+def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj,centralize_probe):
     t0 = time.perf_counter()
     print("Starting PIE...")
     
@@ -838,9 +838,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
                 """ Power correction not working properly! See: Further improvements to the ptychographical iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
-            if j <= 10: 
-                centralize_probe = True
-            else:
+            if j > 10: 
                 centralize_probe = False
             obj, probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,centralize_probe=centralize_probe)
             
