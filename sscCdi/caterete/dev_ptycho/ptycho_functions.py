@@ -1,13 +1,9 @@
 import numpy as np
-import cupy as cp
-
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
-import datetime
 import time
-
-from PIL import Image
+from tqdm import tqdm
 
 from sscPimega import misc
 
@@ -94,20 +90,27 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
     figure.tight_layout()
     
 
-def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function=True,centralize_probe=False):
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,iteration,use_rPIE_update_function=True,i_to_start_p_update=50):
     alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
     objbx = obj[py:py+offset[0],px:px+offset[1]]
-    
+
+    if iteration > 10:    
+        centralize_probe = False
+
     if centralize_probe:
         centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
 
     if use_rPIE_update_function: # rPIE update function
         objbx = objbx + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
-        if centralize_probe:
-            probe = probe + gamma_prb*(difference*objbx.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() + centralization_weight)
-        else:
-            probe = probe + gamma_prb*(difference*objbx.conj())/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max())
+        
+        if iteration > i_to_start_p_update:
+            if centralize_probe:
+                probe = probe + gamma_prb*(difference*objbx.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() + centralization_weight)
+            else:
+                probe = probe + gamma_prb*(difference*objbx.conj())/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max())
+    
     obj[py:py+offset[0],px:px+offset[1]] = objbx
+    
     return obj, probe, objbx
 
 def set_object_pixel_size(jason,half_size):
@@ -436,7 +439,7 @@ def correct_position(probe, probe_threshold, upsampling, beta, data):
     
     return new_position, index
 
-def position_correction(obj,previous_obj,positions, beta, probe_threshold=0.1, upsampling=100):
+def position_correction(obj,probe,previous_obj,positions, beta, probe_threshold=0.1, upsampling=100):
 
     indexes = np.linspace(0,obj.shape[0]-1,obj.shape[0])
     list_of_inputs = list(zip(obj,previous_obj,positions,indexes))
@@ -445,7 +448,7 @@ def position_correction(obj,previous_obj,positions, beta, probe_threshold=0.1, u
     
     new_positions = np.zeros_like(positions)
     with ProcessPoolExecutor() as executor:
-        results = list(tqdm(executor.map(correct_position,list_of_inputs),total=positions.shape[0]))
+        results = list(tqdm(executor.map(correct_position_partial,list_of_inputs),total=positions.shape[0]))
         for result in results:
             position, index = result
             new_positions[index] = position
@@ -838,10 +841,14 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
                 """ Power correction not working properly! See: Further improvements to the ptychographical iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
-            if j > 10: 
-                centralize_probe = False
-            obj, probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,centralize_probe=centralize_probe)
+            new_obj, new_probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,j)
             
+            if j > 3:
+                beta = 100
+                positions = position_correction(new_obj,probe,obj,positions, beta)
+            
+            probe = new_probe
+
             if mPIE == True: # momentum addition
                 T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
             

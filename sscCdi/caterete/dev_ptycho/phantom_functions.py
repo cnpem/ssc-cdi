@@ -11,7 +11,7 @@ from scipy.ndimage import rotate
 from PIL import Image
 import sscPhantom
 
-from sscCdi.caterete.ptycho_processing import convert_probe_positions, set_object_shape
+from sscCdi.caterete.ptycho_processing import convert_probe_positions
 from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):
@@ -161,7 +161,7 @@ def save_positions_file_CAT_standard(x,y,path,filename,x_original, y_original):
 
     line = f"Ry: {0}\tPiezoB2\tPiezoB3\tPiezoB1\t"
     f = open(os.path.join(path,'positions',f"{filename}_001.txt"), 'w')
-    y,x = np.meshgrid(y*1e6,x*1e6) # save in microns
+
     f.write(line)
     columns = np.c_[y.flatten(),x.flatten()]
     for i in range(columns.shape[0]):
@@ -170,9 +170,8 @@ def save_positions_file_CAT_standard(x,y,path,filename,x_original, y_original):
 
     line = f"Ry: {0}\tPiezoB2\tPiezoB3\tPiezoB1\t"
     f = open(os.path.join(path,'positions',f"{filename}_without_error_001.txt"), 'w')
-    y,x = np.meshgrid(y_original*1e6,x_original*1e6) # save in microns
     f.write(line)
-    columns = np.c_[y.flatten(),x.flatten()]
+    columns = np.c_[y_original.flatten(),x_original.flatten()]
     for i in range(columns.shape[0]):
         f.write(f"\n{columns[i,0]}\t{columns[i,1]}")
     f.close()
@@ -226,11 +225,11 @@ def save_hdf_masks(path,shape):
     hdf_file.close()
     return 0
 
-def add_error_to_positions(positionsX,positionsY,mu=0,sigma=10e-6):
+def add_error_to_positions(positionsX,positionsY,mu=0,sigma=1):
     # sigma controls how big the error is
     deltaX = np.random.normal(mu, sigma, positionsX.shape)
     deltaY = np.random.normal(mu, sigma, positionsY.shape)
-    return positionsX+deltaX,positionsY+deltaY     
+    return positionsX+deltaX, positionsY+deltaY
 
 def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,position_errors):
 
@@ -245,12 +244,14 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,posit
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
     artificial_shift = x_meters[0] # artificial shift to have value close to the typical ones given by the beamline files (i.e. not starting at zero)
     x_meters, y_meters = x_meters - artificial_shift, y_meters - artificial_shift
+    y_meters,x_meters = np.meshgrid(y_meters*1e6,x_meters*1e6) # save in microns
+
     x_meters_original, y_meters_original = x_meters, y_meters # save original correct values
 
     """ Add position errors"""
-    if position_errors == True:
+    if position_errors != 0:
         print( "Adding errors to position")
-        x_meters, y_meters = add_error_to_positions(x_meters,y_meters)
+        x_meters, y_meters = add_error_to_positions(x_meters,y_meters,sigma=position_errors)
 
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
 
