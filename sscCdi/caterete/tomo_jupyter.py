@@ -138,7 +138,7 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["wiggle_ctr_mass_filepath"]          = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_ctr_mass.npy')
     return global_dict
 
-def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat',gpus=1,cpus=32):
     # Create slurm file
     string = f"""#!/bin/bash
 
@@ -172,7 +172,7 @@ def call_cmd_terminal(filename,mafalda,remove=False):
         
     return given_jobID
 
-def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat-proc',gpus=1,cpus=32):
+def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat',gpus=1,cpus=32):
     slurm_file = write_slurm_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
@@ -1141,7 +1141,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     checkboxes      = [widgets.Checkbox(value=False, description=label,layout=checkbox_layout, style=style) for label in ["Select and Sort", "Cropping", "Phase Unwrap", "Frame Equalizer", "Wiggle", "Tomography", "Equalize Tomo"]]
     widgets.interactive_output(update_processing_steps,{'dictionary':fixed(global_dict),'sort_checkbox':checkboxes[0],'crop_checkbox':checkboxes[1],'unwrap_checkbox':checkboxes[2],'wiggle_checkbox':checkboxes[4],'tomo_checkbox':checkboxes[5],'equalize_frames_checkbox':checkboxes[3],'equalize_recon_checkbox':checkboxes[6]})
 
-    queue_field     = Input({"dummy_str":'cat-proc'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='180px',border=standard_border))
+    queue_field     = Input({"dummy_str":'cat'},"dummy_str",description = "Machine Queue",layout=widgets.Layout( width='180px',border=standard_border))
     jobname_field   = Input({"dummy_str":f"{username}_tomo"},"dummy_str",description = "Slurm Job Name",layout=widgets.Layout( width='300px',border=standard_border))
     
     save_dict_button  = Button(description="Save inputs",layout=buttons_layout_fixed,icon='fa-floppy-o')
