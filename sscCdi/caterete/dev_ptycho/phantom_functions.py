@@ -11,7 +11,11 @@ from scipy.ndimage import rotate
 from PIL import Image
 import sscPhantom
 
+<<<<<<< HEAD
 from sscCdi.caterete.ptycho_processing import convert_probe_positions
+=======
+from sscCdi.caterete.ptycho_processing import convert_probe_positions, set_object_shape
+>>>>>>> f0215138e9efb8f4e92e6fca54d95ed49a675dac
 from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):
@@ -194,8 +198,13 @@ def get_projection(angle,magnitude,phase,wavevector):
     wavevector = 1
     # print(np.max(wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)),np.max(wavevector*np.sum(rotation_Rz(phase,angle),axis=0)))
     # return np.exp(-wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)) * np.exp(-1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+<<<<<<< HEAD
     # return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
     return wavevector*np.sum(magnitude,axis=0)*np.exp(1j*wavevector*np.sum(phase,axis=0))
+=======
+    return wavevector*np.sum(rotation_Rz(magnitude,angle),axis=0)*np.exp(1j*wavevector*np.sum(rotation_Rz(phase,angle),axis=0))
+    # return wavevector*np.sum(magnitude,axis=0)*np.exp(1j*wavevector*np.sum(phase,axis=0))
+>>>>>>> f0215138e9efb8f4e92e6fca54d95ed49a675dac
 
 def save_hdf_masks(path,shape):
     path = os.path.join(path,'images')
@@ -238,6 +247,12 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,posit
     y_pxls = np.arange(0,frame.shape[0]-probe.shape[0]+1,dy)
     x_pxls = np.arange(0,frame.shape[1]-probe.shape[1]+1,dx)
 
+<<<<<<< HEAD
+=======
+    if 1: # apply random shifts to avoid ptycho periodic features
+        x_pxls,y_pxls = apply_random_shifts_to_positions(x_pxls,y_pxls)
+    
+>>>>>>> f0215138e9efb8f4e92e6fca54d95ed49a675dac
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
 
@@ -413,12 +428,23 @@ def get_phantom(inputs,sample,load):
             donut = phantom1 + phantom2
             donut = np.swapaxes(donut,1,0)
 
+<<<<<<< HEAD
             delta = refractive_index_from_atomic_scattering_factor(np.mean(donut),inputs["wavelength"])
             beta  = refractive_index_from_atomic_scattering_factor(1.1*np.mean(donut),inputs["wavelength"])
             print(f"delta = {delta} \t beta = {beta}")
 
             magnitude = beta*donut/np.mean(donut)
             phase = delta*donut/np.mean(donut)
+=======
+            delta = refractive_index_from_atomic_scattering_factor(np.mean(phase),inputs["wavelength"])
+            beta  = refractive_index_from_atomic_scattering_factor(np.mean(magnitude),inputs["wavelength"])
+            print(f"delta = {delta} \t beta = {beta}")
+
+            magnitude = beta*phase/np.mean(phase)
+            phase = delta*phase/np.mean(phase)
+            # magnitude = phase
+            # phase = 6*np.pi*phase/np.max(phase) 
+>>>>>>> f0215138e9efb8f4e92e6fca54d95ed49a675dac
 
             # print(phase.dtype,magnitude.dtype)
             np.save(os.path.join(inputs["path"],'model','magnitude.npy'),magnitude)
@@ -549,7 +575,11 @@ def load_data(data_folder,dataname,offset):
     n_pixels = diffraction_patterns.shape[1]
     obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
 
+<<<<<<< HEAD
     _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
+=======
+    _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset)
+>>>>>>> f0215138e9efb8f4e92e6fca54d95ed49a675dac
    
     model_obj = np.load(os.path.join(data_folder,dataname,'model','model_obj.npy'))
     model_probe = np.load(os.path.join(data_folder,dataname,'model','processed_probe.npy'))
