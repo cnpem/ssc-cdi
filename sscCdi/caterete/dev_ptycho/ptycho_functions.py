@@ -44,7 +44,7 @@ def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess,positions):
     cmap = plt.get_cmap('jet',positions.shape[0])
     mycm = cmap(np.arange(0,positions.shape[0]+1,1))
     for i, (x,y) in enumerate(positions):
-        rect = Rectangle((x,y),probe_guess.shape[1],probe_guess.shape[0],linestyle='-',linewidth=1,edgecolor=mycm[i],facecolor='none',alpha=1)
+        rect = Rectangle((y,x),probe_guess.shape[1],probe_guess.shape[0],linestyle='-',linewidth=1,edgecolor=mycm[i],facecolor='none',alpha=1)
         ax[0,4].add_patch(rect)
     ax[1,4].axis('off')
     ax[0,4].set_title("Scan region")
@@ -90,28 +90,27 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
     figure.tight_layout()
     
 
-def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,iteration,use_rPIE_update_function=True,i_to_start_p_update=50):
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,iteration,use_rPIE_update_function=True,i_to_start_p_update=50,beta=100,centralize_probe = False):
     alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
-    objbx = obj[py:py+offset[0],px:px+offset[1]]
+    obj_box = obj[py:py+offset[0],px:px+offset[1]]
 
     if iteration > 10:    
         centralize_probe = False
-
     if centralize_probe:
         centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
 
     if use_rPIE_update_function: # rPIE update function
-        objbx = objbx + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
-        
+        obj_box = obj_box + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
+
         if iteration > i_to_start_p_update:
             if centralize_probe:
-                probe = probe + gamma_prb*(difference*objbx.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() + centralization_weight)
+                probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max() + centralization_weight)
             else:
-                probe = probe + gamma_prb*(difference*objbx.conj())/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max())
+                probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max())
     
-    obj[py:py+offset[0],px:px+offset[1]] = objbx
+    obj[py:py+offset[0],px:px+offset[1]] = obj_box
     
-    return obj, probe, objbx
+    return obj, probe, obj_box
 
 def set_object_pixel_size(jason,half_size):
     c = 299792458             # Speed of Light [m/s]
@@ -122,14 +121,18 @@ def set_object_pixel_size(jason,half_size):
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * half_size * 2)
     return dx, jason
     
-def apply_random_shifts_to_positions(positionsX,positionsY):
-        mu, sigma = 0, 3 # mean and standard deviation
-        deltaX = np.random.normal(mu, sigma, positionsX.shape)
-        deltaY = np.random.normal(mu, sigma, positionsY.shape)
-        X, Y = np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
-        X -= np.min(X)
-        Y -= np.min(Y)
-        return X, Y
+def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='gaussian'):
+        if type == 'gaussian':
+            deltaX = np.random.normal(mu, sigma, positionsX.shape)
+            deltaY = np.random.normal(mu, sigma, positionsY.shape)
+            # X, Y = np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
+            # X -= np.min(X)
+            # Y -= np.min(Y)
+            # return X, Y
+        elif type=='random':
+            deltaX = np.round(sigma*np.random.rand(*positionsX.shape))
+            deltaY = np.round(sigma*np.random.rand(*positionsY.shape))
+        return positionsX+deltaX, positionsY+deltaY
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
 
@@ -221,6 +224,23 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
     return output
 
 def calculate_recon_error(model,obj):
+    
+    if model.shape[0] != obj.shape[0]:
+        extra_y = max(model.shape[0],obj.shape[0])-min(model.shape[0],obj.shape[0])
+
+        if model.shape[0] > obj.shape[0]: # conditional to reduce size of bigger object to the same size of the smallest one
+            model = model[extra_y//2:-extra_y//2,:]
+        else:
+            obj = obj[extra_y//2:-extra_y//2,:]
+    
+    if model.shape[1] != obj.shape[1]:
+        extra_x = max(model.shape[1],obj.shape[1])-min(model.shape[1],obj.shape[1])
+
+        if model.shape[1] > obj.shape[1]:
+            model = model[:,extra_x//2:-extra_x//2]
+        else:
+            obj = obj[:,extra_x//2:-extra_x//2]
+
     error = np.sum(np.abs(model - obj))/model.size
     return error 
 
@@ -400,61 +420,47 @@ def probe_power_correction(probe,shape,pre_computed_numerator):
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.registration import phase_cross_correlation
-from scipy.signal import correlate
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-from functools import partial
+from scipy.stats import pearsonr
 
 def update_beta(positions1,positions2, beta):
         
-    k = correlate(positions1,positions2)
-    
-    threshold1 = +0.3
-    threshold2 = -0.3
-    
-    if k > threshold1:
-        beta = beta*1.1 # increase by 10%
-    elif k < threshold2:
-        beta = beta*0.9 #reduce by 10%
+    k = np.corrcoef(positions1,positions2)
+
+    if np.isnan(k).any():
+        print(skip)
     else:
-        pass # keep same value
-    
+        print(k)
+        threshold1 = +0.3
+        threshold2 = -0.3
+        
+        if k > threshold1:
+            beta = beta*1.1 # increase by 10%
+        elif k < threshold2:
+            beta = beta*0.9 #reduce by 10%
+        else:
+            pass # keep same value
+        
     return beta
 
 def get_illuminated_mask(probe,probe_threshold):
     mask = np.where(probe > np.max(probe)*probe_threshold, 1, 0)
     return mask
 
-def correct_position(probe, probe_threshold, upsampling, beta, data):
+def position_correction(obj,previous_obj,probe,position_x,position_y, beta_x,beta_y, probe_threshold=0.5, upsampling=100):
     
-    obj,previous_obj, position, posiiton, index = data # unpack inputs that vary
-    
-    illumination_mask = get_binary_mask(probe,probe_threshold)
-    
+    illumination_mask = get_illuminated_mask(probe,probe_threshold)
+
     obj = obj*illumination_mask
     previous_obj = previous_obj*illumination_mask
-                         
+
     relative_shift, error, diffphase = phase_cross_correlation(obj, previous_obj, upsample_factor=upsampling)
     
-    new_position = position + beta*relative_shift
+    new_position = np.array([position_x + beta_x*relative_shift[0], position_y + beta_y*relative_shift[1]])
     
-    return new_position, index
+    return new_position, relative_shift
 
-def position_correction(obj,probe,previous_obj,positions, beta, probe_threshold=0.1, upsampling=100):
 
-    indexes = np.linspace(0,obj.shape[0]-1,obj.shape[0])
-    list_of_inputs = list(zip(obj,previous_obj,positions,indexes))
-    
-    correct_position_partial = partial(correct_position,probe, probe_threshold, upsampling, beta)
-    
-    new_positions = np.zeros_like(positions)
-    with ProcessPoolExecutor() as executor:
-        results = list(tqdm(executor.map(correct_position_partial,list_of_inputs),total=positions.shape[0]))
-        for result in results:
-            position, index = result
-            new_positions[index] = position
-            
-    return new_positions
-    
+
 
 """ PTYCHO """
 
@@ -799,12 +805,11 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
     return obj_matrix[0], probe_modes, error, dt
 
 
-def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj,centralize_probe):
+def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj,centralize_probe,beta=100):
     t0 = time.perf_counter()
     print("Starting PIE...")
     
     mPIE = True
-    use_rPIE_update_function = True
     
     _,_,_,_,eta_obj,eta_probe,T_lim = mPIE_params
     
@@ -818,6 +823,10 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
 
     pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
 
+    shifts_array = np.zeros_like(positions)
+    new_shifts_array = np.zeros_like(positions)
+    beta_x, beta_y = beta, beta
+
     error_list = []
     for j in range(iterations):
 
@@ -825,7 +834,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
         _, O_aux, P_aux = 0, obj+0, probe+0
 
         for i in np.random.permutation(len(diffraction_patterns)):  # loop in random order improves results!
-            py, px = positions[:,1][i],  positions[:,0][i]
+            py, px = positions[i,1],  positions[i,0]
 
             measurement = diffraction_patterns[i]
             
@@ -841,23 +850,30 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
                 """ Power correction not working properly! See: Further improvements to the ptychographical iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
-            new_obj, new_probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,j)
+            new_obj, new_probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe.copy(),obj.copy(),px,py,offset,j,beta=beta)
             
-            if j > 3:
-                beta = 100
-                positions = position_correction(new_obj,probe,obj,positions, beta)
+            if True:
+                if j > 5:
+                    position, relative_shift = position_correction(new_obj[py:py+offset[0],px:px+offset[1]],obj[py:py+offset[0],px:px+offset[1]],probe,px,py,beta_x,beta_y, probe_threshold=0.3, upsampling=100)
+                    # if j % 50 == 0: print(relative_shift, position, positions[i,0],  positions[i,1])
+                    positions[i,0],  positions[i,1] = position
+                    new_shifts_array[i,0], new_shifts_array[i,1] = relative_shift
             
             probe = new_probe
+            obj = new_obj
 
             if mPIE == True: # momentum addition
                 T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
-            
+        
+        beta_x, beta_y = update_beta(shifts_array,new_shifts_array, beta_x,beta_y)
+        print("New betas: ",beta_x, beta_y)
+        shifts_array = new_shifts_array
         error_list.append(calculate_recon_error(model_obj,obj)) #absolute error
 
     # probe = probe.get() # get from cupy to numpy
     # obj = obj.get()
 
-    return obj, probe, error_list, time.perf_counter() - t0
+    return obj, probe, positions, error_list, time.perf_counter() - t0
           
     
 def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):

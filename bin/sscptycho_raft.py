@@ -96,7 +96,7 @@ originals_filepath  = [True ,os.path.join(sinogram_folder, '00_frames_original')
 ordered_filepath    = [True,os.path.join(sinogram_folder, '01_frames_ordered')]
 cropped_filepath    = [True ,os.path.join(sinogram_folder, '02_frames_cropped')]
 unwrapped_filepath  = [True ,os.path.join(sinogram_folder, '03_frames_unwrapped')]
-equalized_filepath  = [True ,os.path.join(sinogram_folder, '04_frames_convexHull')]
+equalized_filepath  = [True ,os.path.join(sinogram_folder, '04_frames_equalized')]
 cHull_filepath      = [True ,os.path.join(sinogram_folder, '05_frames_convexHull')]
 create_directory_if_doesnt_exist(originals_filepath[1],ordered_filepath[1],cropped_filepath[1],unwrapped_filepath[1],cHull_filepath[1],equalized_filepath[1])
 
@@ -210,27 +210,27 @@ if processing_steps["Equalize Frames"]:
     equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,equalize_invert,equalize_gradient,equalize_outliers,equalize_global_offset, ast.literal_eval(equalize_local_offset))
     np.save(input_dictionary["equalized_sinogram_filepath"] ,equalized_sinogram)
 
-if processing_steps["ConvexHull"]:
-    """ ######################## CONVEX HULL: MANUAL ################################ """
+# if processing_steps["ConvexHull"]:
+#     """ ######################## CONVEX HULL: MANUAL ################################ """
 
-    object = np.load(input_dictionary["unwrapped_sinogram_filepath"]) 
+#     object = np.load(input_dictionary["unwrapped_sinogram_filepath"]) 
 
-    for k in bad_frames_before_cHull:
-        object[k,:,:] = 0
+#     for k in bad_frames_before_cHull:
+#         object[k,:,:] = 0
 
-    output_list = apply_chull_parallel(object,invert=chull_invert,tolerance=chull_threshold,opening_param=chull_opening,erosion_param=chull_erosion,chull_param=convex_hull)
-    object = output_list[-1]
+#     output_list = apply_chull_parallel(object,invert=chull_invert,tolerance=chull_threshold,opening_param=chull_opening,erosion_param=chull_erosion,chull_param=convex_hull)
+#     object = output_list[-1]
 
-    np.save(input_dictionary["chull_sinogram_filepath"], object)
+#     np.save(input_dictionary["chull_sinogram_filepath"], object)
 
-    if cHull_filepath[0]: # Save pngs of sorted frames
-        for i in range(object.shape[0]):
-            plt.figure()
-            plt.imshow(object[i,:,:],cmap='gray')
-            plt.colorbar()
-            plt.savefig(  os.path.join(cHull_filepath[1], 'cHull_frame' + str(i) + '.png'), format='png', dpi=300)
-            plt.clf()
-            plt.close()
+#     if cHull_filepath[0]: # Save pngs of sorted frames
+#         for i in range(object.shape[0]):
+#             plt.figure()
+#             plt.imshow(object[i,:,:],cmap='gray')
+#             plt.colorbar()
+#             plt.savefig(  os.path.join(cHull_filepath[1], 'cHull_frame' + str(i) + '.png'), format='png', dpi=300)
+#             plt.clf()
+#             plt.close()
 
 if processing_steps["Wiggle"]:
     """ ######################## ZEROING EXTRA FRAMES: MANUAL ################################ """
