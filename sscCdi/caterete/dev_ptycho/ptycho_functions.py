@@ -90,7 +90,7 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
     figure.tight_layout()
     
 
-def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,iteration,use_rPIE_update_function=True,i_to_start_p_update=50,beta=100,centralize_probe = False):
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,iteration,use_rPIE_update_function=True,i_to_start_p_update=10,beta=100,centralize_probe = False):
     alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
     obj_box = obj[py:py+offset[0],px:px+offset[1]]
 
@@ -101,8 +101,9 @@ def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,itera
 
     if use_rPIE_update_function: # rPIE update function
         obj_box = obj_box + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
-
+        
         if iteration > i_to_start_p_update:
+            print('Updating probe')
             if centralize_probe:
                 probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max() + centralization_weight)
             else:
@@ -423,13 +424,12 @@ from skimage.registration import phase_cross_correlation
 from scipy.stats import pearsonr
 
 def update_beta(positions1,positions2, beta):
-        
-    k = np.corrcoef(positions1,positions2)
+    
+    k = np.corrcoef(positions1,positions2)[0,1]
 
     if np.isnan(k).any():
-        print(skip)
+        print('Skipping')
     else:
-        print(k)
         threshold1 = +0.3
         threshold2 = -0.3
         
@@ -443,6 +443,7 @@ def update_beta(positions1,positions2, beta):
     return beta
 
 def get_illuminated_mask(probe,probe_threshold):
+    probe = np.abs(probe)
     mask = np.where(probe > np.max(probe)*probe_threshold, 1, 0)
     return mask
 
@@ -455,9 +456,9 @@ def position_correction(obj,previous_obj,probe,position_x,position_y, beta_x,bet
 
     relative_shift, error, diffphase = phase_cross_correlation(obj, previous_obj, upsample_factor=upsampling)
     
-    new_position = np.array([position_x + beta_x*relative_shift[0], position_y + beta_y*relative_shift[1]])
-    
-    return new_position, relative_shift
+    new_position = np.array([position_x + beta_x*relative_shift[1], position_y + beta_y*relative_shift[0]])
+
+    return new_position, relative_shift, illumination_mask
 
 
 
@@ -480,8 +481,6 @@ from sscPimega import misc
 
 import random
 random.seed(0)
-
-from ptycho_functions import *
 
 def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ,axis=False):
     colormap = 'viridis'
@@ -823,18 +822,25 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
 
     pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
 
-    shifts_array = np.zeros_like(positions)
-    new_shifts_array = np.zeros_like(positions)
+    shifts_array = np.ones((iterations,positions.shape[0],positions.shape[1]))
+    # new_shifts_array = np.random.rand(*positions.shape)
     beta_x, beta_y = beta, beta
 
     error_list = []
     for j in range(iterations):
 
-        if j%50 ==0 : print(f'\tIteration {j}/{iterations}')
+        if j%25 ==0 : print(f'\tIteration {j}/{iterations}')
         _, O_aux, P_aux = 0, obj+0, probe+0
+
+        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]))
+        
+        # for i in range(len(diffraction_patterns)): # save current obj portions
+        #     py, px = positions[i,1],  positions[i,0]
+        #     obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
 
         for i in np.random.permutation(len(diffraction_patterns)):  # loop in random order improves results!
             py, px = positions[i,1],  positions[i,0]
+            obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
 
             measurement = diffraction_patterns[i]
             
@@ -847,33 +853,32 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
             difference = exitWaveNew - exitWave
 
             if 0: #TODO
-                """ Power correction not working properly! See: Further improvements to the ptychographical iterative engine: supplementary material """
+                """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
-            new_obj, new_probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe.copy(),obj.copy(),px,py,offset,j,beta=beta)
+            obj, probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe.copy(),obj.copy(),px,py,offset,j,beta=beta,i_to_start_p_update=30)
             
-            if True:
-                if j > 5:
-                    position, relative_shift = position_correction(new_obj[py:py+offset[0],px:px+offset[1]],obj[py:py+offset[0],px:px+offset[1]],probe,px,py,beta_x,beta_y, probe_threshold=0.3, upsampling=100)
-                    # if j % 50 == 0: print(relative_shift, position, positions[i,0],  positions[i,1])
-                    positions[i,0],  positions[i,1] = position
-                    new_shifts_array[i,0], new_shifts_array[i,1] = relative_shift
-            
-            probe = new_probe
-            obj = new_obj
+            if j > 3:
+                new_positions, relative_shift,illumination_mask = position_correction(obj[py:py+offset[0],px:px+offset[1]],obj_box_matrix[i],probe,px,py,beta_x,beta_y, probe_threshold=0.5, upsampling=100)
+                if j == 4 and i == 0: 
+                    plt.figure()
+                    plt.imshow(illumination_mask)
+                positions[i,0] ,positions[i,1] = new_positions
+                # new_shifts_array[i,0], new_shifts_array[i,1] = relative_shift
 
             if mPIE == True: # momentum addition
                 T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
         
-        beta_x, beta_y = update_beta(shifts_array,new_shifts_array, beta_x,beta_y)
-        print("New betas: ",beta_x, beta_y)
-        shifts_array = new_shifts_array
+            shifts_array[j] = positions
+        # beta_x, beta_y = update_beta(shifts_array[:,0],new_shifts_array[:,0], beta_x), update_beta(shifts_array[:,1],new_shifts_array[:,1], bet--a_y)
+        # print("New betas: ",beta_x, beta_y)
+        # shifts_array = new_shifts_array
         error_list.append(calculate_recon_error(model_obj,obj)) #absolute error
 
     # probe = probe.get() # get from cupy to numpy
     # obj = obj.get()
 
-    return obj, probe, positions, error_list, time.perf_counter() - t0
+    return obj, probe, positions, error_list, time.perf_counter() - t0, shifts_array
           
     
 def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
