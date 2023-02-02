@@ -238,15 +238,16 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,posit
     y_pxls = np.arange(0,frame.shape[0]-probe.shape[0]+1,dy)
     x_pxls = np.arange(0,frame.shape[1]-probe.shape[1]+1,dx)
 
-    x_pxls,y_pxls = apply_random_shifts_to_positions(x_pxls,y_pxls) # apply random shifts to avoid ptycho periodic features
-
     """ Convert to metric units """
     x_meters, y_meters = x_pxls*obj_pxl , y_pxls*obj_pxl
+
     artificial_shift = x_meters[0] # artificial shift to have value close to the typical ones given by the beamline files (i.e. not starting at zero)
     x_meters, y_meters = x_meters - artificial_shift, y_meters - artificial_shift
     y_meters,x_meters = np.meshgrid(y_meters*1e6,x_meters*1e6) # save in microns
 
-    x_meters_original, y_meters_original = x_meters, y_meters # save original correct values
+    x_meters,y_meters = apply_random_shifts_to_positions(x_meters,y_meters,sigma=1,type='random') # apply random shifts to avoid ptycho periodic features
+
+    x_meters_original, y_meters_original = x_meters.copy(), y_meters.copy() # save original correct values
 
     """ Add position errors"""
     if position_errors != 0:
@@ -310,8 +311,9 @@ def get_xy_positions(probe_positions):
 
 def convert_positions_to_pixels(pixel_size,probe_positions,offset):
     positions_pxls, _ = convert_probe_positions(pixel_size, probe_positions.copy(), offset) # copy so it isn't altered as a pointer inside the function
-    uniqueX, uniqueY = get_xy_positions(positions_pxls)
-    Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
+    X_pxls, Y_pxls = positions_pxls[:,0], positions_pxls[:,1]
+    # uniqueX, uniqueY = get_xy_positions(positions_pxls)
+    # Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
     if 0: # Plot positions map
         figure, ax = plt.subplots(dpi=100)
         ax.plot(X_pxls,Y_pxls,'x',label='Original')
@@ -338,8 +340,11 @@ def read_probe_positions_new(filepath):
 
     return probe_positions
 
-def read_probe_positions_in_pxls(path,filename,obj_pxl,offset):
-    probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
+def read_probe_positions_in_pxls(path,filename,obj_pxl,offset,position_errors):
+    if position_errors == 0:
+        probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_001.txt"))
+    else:
+        probe_positions = read_probe_positions_new(os.path.join(path,'positions',f"{filename}_without_error_001.txt"))
     Y_pxls, X_pxls = convert_positions_to_pixels(obj_pxl,probe_positions,offset)
     positions = np.hstack((np.array([X_pxls.flatten()]).T ,np.array([Y_pxls.flatten()]).T)) # adjust positions format for proper input
     return Y_pxls, X_pxls, positions
@@ -347,8 +352,7 @@ def read_probe_positions_in_pxls(path,filename,obj_pxl,offset):
 def get_ptycho_diffraction_data(frame,probe,obj_pxl,wavelength,distance,filename,path,probe_steps_xy,offset,position_errors):
 
     create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,position_errors)
-
-    Y_pxls, X_pxls, _ = read_probe_positions_in_pxls(path,filename,obj_pxl,offset)
+    Y_pxls, X_pxls, _ = read_probe_positions_in_pxls(path,filename,obj_pxl,offset,position_errors)
     obj = set_object_frame(Y_pxls, X_pxls,frame,probe,offset,path)
 
     """ Loop through positions """ 
@@ -504,7 +508,7 @@ def get_detector_data(inputs,sinogram, probe,offset,position_errors):
     
     return difpads
     
-def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",offset=5,position_errors=False,load=False,preview=True):
+def create_ptycho_phantom(inputs,sample="donut",probe_type="circle",offset=5,position_errors=0,load=False,preview=True):
     
     create_metadata_with_beamline_standard(inputs)
     
@@ -545,7 +549,7 @@ def load_data(data_folder,dataname,offset):
     n_pixels = diffraction_patterns.shape[1]
     obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
 
-    _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset)
+    _,_,positions = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
    
     model_obj = np.load(os.path.join(data_folder,dataname,'model','model_obj.npy'))
     model_probe = np.load(os.path.join(data_folder,dataname,'model','processed_probe.npy'))
