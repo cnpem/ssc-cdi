@@ -856,7 +856,18 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
                 """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
+<<<<<<< HEAD
             obj, probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe.copy(),obj.copy(),px,py,offset,j,beta=beta,i_to_start_p_update=30)
+=======
+            new_obj, new_probe, _ = PIE_update_obj_and_probe(mPIE_params,difference,probe.copy(),obj.copy(),px,py,offset,j,beta=beta)
+            
+            if True:
+                if j > 5:
+                    position, relative_shift = position_correction(new_obj[py:py+offset[0],px:px+offset[1]],obj[py:py+offset[0],px:px+offset[1]],probe,px,py,beta_x,beta_y, probe_threshold=0.3, upsampling=100)
+                    # if j % 50 == 0: print(relative_shift, position, positions[i,0],  positions[i,1])
+                    positions[i,0],  positions[i,1] = position
+                    new_shifts_array[i,0], new_shifts_array[i,1] = relative_shift
+>>>>>>> d09301de91e79810a53d6ac8c9bb9e4cefe84e38
             
             if j > 3:
                 new_positions, relative_shift,illumination_mask = position_correction(obj[py:py+offset[0],px:px+offset[1]],obj_box_matrix[i],probe,px,py,beta_x,beta_y, probe_threshold=0.5, upsampling=100)
