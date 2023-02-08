@@ -221,7 +221,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,fill_blanks,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -248,6 +248,7 @@ def inputs_tab():
 
         global_dict["DetectorROI"] = detector_ROI
         global_dict["ChipBorderRemoval"] = ChipBorderRemoval
+        global_dict["FillBlanks"] =  fill_blanks
 
         if save_or_load_difpads == "Save Diffraction Pattern":
             global_dict["SaveDifpads"] = 1
@@ -304,6 +305,7 @@ def inputs_tab():
 
     detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
+    fill_blanks         = Input({'dummy-key':global_dict["FillBlanks"][0]},'dummy-key',description="Interpolate blanks",layout=items_layout2)
     binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
@@ -353,6 +355,7 @@ def inputs_tab():
                                                     'center_x':center_x.widget,
                                                     'detector_ROI':detector_ROI.widget,
                                                     'ChipBorderRemoval':suspect_pixels.widget,
+                                                    'FillBlanks': fill_blanks.widget,
                                                     'save_or_load_difpads':save_or_load_difpads,
                                                     'CentralMask_bool': CentralMask_bool.widget,
                                                     'CentralMask_radius': CentralMask_radius.widget,
@@ -371,7 +374,7 @@ def inputs_tab():
                                                     "DetectorPileup":DetectorPileup.widget
                                                      })
 
-    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,fill_blanks.widget,save_or_load_difpads],layout=box_layout)
     box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
