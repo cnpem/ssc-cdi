@@ -163,8 +163,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/02_difpad_raw_mean.png')
 
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
-    susp = jason["ChipBorderRemoval"]
-    geometry = Geometry(z1,susp)
+    geometry = Geometry(z1,susp=jason["ChipBorderRemoval"],fill = jason["FillBlanks"])
 
     os.system(f"h5clear -s {jason['EmptyFrame']}")
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
