@@ -17,7 +17,7 @@ from .ptycho_restoration import restoration_processing_binning, Geometry, Restau
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data'):
     
-    n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx] = inputs
+    n_of_threads, distance, apply_binning, [apply_crop,crop_size, centery, centerx], fill, suspect_pixels = inputs
 
     if 0: # not yet automatic for all techniques; use manual input for now
         metadata = json.load(open(os.path.join(data_path.rsplit('/',2)[0],'mdata.json')))
@@ -31,7 +31,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
         distance = distance*1000 # convert from m to mm
 
     """ Get detector geometry from distance """
-    geometry = Geometry(distance)
+    geometry = Geometry(distance,susp=suspect_pixels,fill=fill)
 
     os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
 
