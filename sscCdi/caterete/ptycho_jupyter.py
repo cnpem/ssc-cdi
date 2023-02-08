@@ -44,7 +44,7 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                 }
 
 
-global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"], global_paths_dict["template_json"]))) # load from template
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
 
 json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
 if os.path.exists(json_filepath):  
@@ -52,7 +52,6 @@ if os.path.exists(json_filepath):
         global_dict = json.load(json_file)
 
 global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
-
 
 ############################################ Global Layout ###########################################################################
 
@@ -221,7 +220,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,fill_blanks,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,FillBlanks,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -248,7 +247,7 @@ def inputs_tab():
 
         global_dict["DetectorROI"] = detector_ROI
         global_dict["ChipBorderRemoval"] = ChipBorderRemoval
-        global_dict["FillBlanks"] =  fill_blanks
+        global_dict["FillBlanks"] =  FillBlanks
 
         if save_or_load_difpads == "Save Diffraction Pattern":
             global_dict["SaveDifpads"] = 1
