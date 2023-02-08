@@ -44,7 +44,7 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                 }
 
 
-global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"], global_paths_dict["template_json"]))) # load from template
 
 json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
 if os.path.exists(json_filepath):  
@@ -305,7 +305,7 @@ def inputs_tab():
 
     detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
-    fill_blanks         = Input({'dummy-key':global_dict["FillBlanks"][0]},'dummy-key',description="Interpolate blanks",layout=items_layout2)
+    fill_blanks         = Input({'dummy-key':global_dict["FillBlanks"]},'dummy-key',description="Interpolate blanks",layout=items_layout2)
     binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
