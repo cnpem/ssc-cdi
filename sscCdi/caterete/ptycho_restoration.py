@@ -24,7 +24,7 @@ from sscPimega import opt540D
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
-def Geometry(L):
+def Geometry(L,susp=3,scale=0.98,fill=False):
     """ Detector geometry parameters for sscPimega restoration
 
     Args:
@@ -33,7 +33,7 @@ def Geometry(L):
         geo : geometry 
     """    
 
-    project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual'} ) 
+    project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
     geo = pi540D.geometry540D( project )
     return geo
 
@@ -163,7 +163,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/02_difpad_raw_mean.png')
 
     z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
-    geometry = Geometry(z1)
+    geometry = Geometry(z1,susp=jason["ChipBorderRemoval"],fill = jason["FillBlanks"])
 
     os.system(f"h5clear -s {jason['EmptyFrame']}")
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
