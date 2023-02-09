@@ -24,10 +24,11 @@ if __name__ == '__main__':
 
     sscCdi.caterete.ptycho_processing.create_output_directories(jason) # create all output directories of interest
     
-    """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
     t1 = time()
+    """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
 
     filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
+    
     if len(filenames) > 1 and jason['SerialRestauration'] == False: # 3D batch restauration form (computationally faster, but not memory safe)
         difpads,_ , jason = sscCdi.caterete.ptycho_restoration.restauration_cat_3d(jason) # difpads is a list of size = len(Aquisition_folders)
         t2 = time()
@@ -49,11 +50,10 @@ if __name__ == '__main__':
 
     print('Finished Ptycho reconstruction!')
 
-    """ ===================== Post-processing ===================== """
     t4 = time()
+    """ ===================== Post-processing ===================== """
 
     cropped_sinogram = sscCdi.caterete.ptycho_processing.crop_sinogram(object,jason)
-
     
     if jason['Phaseunwrap'][0]: # Apply phase unwrap to data 
         print('Unwrapping sinogram...')
@@ -69,7 +69,6 @@ if __name__ == '__main__':
     jason = sscCdi.caterete.ptycho_processing.calculate_FRC(cropped_sinogram, jason)
 
     t5 = time()
-
     """ ===================== Save and preview data ===================== """
 
     if jason["LogfilePath"] != "":  sscCdi.caterete.misc.save_json_logfile(jason["LogfilePath"], jason) # overwrite logfile with new information
