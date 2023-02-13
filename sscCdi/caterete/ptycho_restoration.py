@@ -14,7 +14,7 @@ from sscIO import io
 import sscCdi
 from sscPimega import pi540D
 from sscPimega import opt540D
-from sscPimega import misc
+from sscPimega import misc as miscPimega
 
 ############################ OLD restoration BY GIOVANNI #####################################################
 
@@ -34,7 +34,7 @@ def Geometry(L,susp=3,scale=0.98,fill=False):
         geo : geometry 
     """    
 
-    project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
+    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
     geo = pi540D.geometry540D( project )
     return geo
 
@@ -87,7 +87,6 @@ def pi540_restoration_cat(args, savepath = '', preview = False, save = False, fi
     measurement_file    = args[2]
     acquisitions_folder = args[3]
     scans_string        = args[4]
-    measurement_filepath= args[5]
     geometry            = args[6]
 
     t0 = time()
@@ -152,6 +151,7 @@ def get_restaurated_difpads_old_format(jason, geometry, path, name,first_iterati
         3D array: restaured difpads
     """    
 
+    print('aaaaaaaaaaaa')
     fullpath = os.path.join(path, name)
     os.system(f"h5clear -s {fullpath}")
     raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
@@ -193,7 +193,7 @@ def get_restaurated_difpads_old_format(jason, geometry, path, name,first_iterati
         sscCdi.caterete.misc.plotshow_cmap2(mask,  title=f'Mask',  savepath=jason['PreviewFolder'] + '/01_mask.png')
 
     if jason['DifpadCenter'] == []:
-        proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
+        proj  = pi540D.dictionary540D(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
         centerx, centery = _get_center(raw_difpads[0,:,:], proj)
         jason['DifpadCenter'] = (centerx, centery)
         cx, cy = get_difpad_center(raw_difpads[0,:,:]) #TODO: under test! 
@@ -245,11 +245,14 @@ def get_restaurated_difpads_old_format(jason, geometry, path, name,first_iterati
         sscCdi.caterete.misc.plotshow_cmap2(DP, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
 
     t0 = time()
-    use_GPU = True
+    use_GPU = False
+    print("use GPU",use_GPU)
+    print(geometry)
+
     if use_GPU == True: 
         output = restoration_processing_binning_GPU(raw_difpads, jason, r_params)
     else:  
-        output, _ = misc.batch(raw_difpads, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params)
+        output, _ = miscPimega.batch(raw_difpads, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params)
     
     t1 = time()
 
@@ -275,8 +278,8 @@ def restoration_processing_binning_GPU(raw_difpads, jason, args):
     geometry["gpu"] = jason["GPUs"][0] # fix to use multiple
 
     blockSize = 10
-    nblocks = raw_difpads.shape[0] // blockSize
-    for k in range( nblocks ):
+    nblocks = raw_difpads.shape[0] // (blockSize-1)
+    for k in range( blockSize ):
         
         DP_block = raw_difpads[k * nblocks: min( (k+1)*nblocks, raw_difpads.shape[0] ), :, :]
 
@@ -288,6 +291,7 @@ def restoration_processing_binning_GPU(raw_difpads, jason, args):
     return DP_block
 
 def Restaurate_GPU(DP,geom):
+    print(geom["gpu"])
     return pi540D.backward540D(DP, geom)
 
 def corrections_and_restoration_block(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
@@ -297,7 +301,7 @@ def corrections_and_restoration_block(DP,empty,flat,subtraction_mask,mask,geomet
 
     DP = DP.astype(np.float32) # convert to float
     
-    DP[np.abs(mask) ==1] = -1 # Apply Mask
+    DP[:,np.abs(mask) ==1] = -1 # Apply Mask
     
     DP = Restaurate_GPU(DP, geometry) # restaurate
 
@@ -447,8 +451,8 @@ def restoration_cat_3d(args):
 
 
 def restoration_cat_2d(args,first_run=True):
-
-    jason, acquisition_folder, filename, filepath, geometry = args[0] , args[1], args[2], args[3], args[4]
+    print("aaaaaaa")
+    jason, acquisition_folder, filename, filepath, geometry = args[0] , args[1], args[2], args[3], args[5]
     ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
     preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
 
@@ -459,6 +463,7 @@ def restoration_cat_2d(args,first_run=True):
     if read:
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
     else:   
+        print('a')
         difpads, time_difpads, jason = pi540_restoration_cat(params,jason['SaveDifpadPath'],preview,save,first_iteration=first_run)
 
     difpads = np.expand_dims(difpads,axis=0)
@@ -571,7 +576,7 @@ def cat_preproc_ptycho_projections( dic ):
     #------------------------------------
     # computing ssc-pimega 540D geometry:
     xdet     = pi540D.get_project_values_geometry()
-    project  = pi540D.get_detector_dictionary( xdet, dic['distance'] )
+    project  = pi540D.dictionary540D( xdet, dic['distance'] )
     project['s'] = [dic['susp'],dic['susp']]
     geometry = pi540D.geometry540D( project )
     #-------------------------------------------------------------------------------

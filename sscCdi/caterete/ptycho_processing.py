@@ -79,7 +79,7 @@ def cat_ptycho_serial(jason):
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             print('File: ',measurement_file)
-            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
+            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
             t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
             time_elasped_restoration += time() - t_start
@@ -96,7 +96,8 @@ def cat_ptycho_serial(jason):
             args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy,geometry)
 
             t_start2 = time()
-            object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            # object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            object2d, probe2d, background2d = object_dummy,probe_dummy,background_dummy
             time_elasped_ptycho += time() - t_start2
 
             if first_of_folder:
