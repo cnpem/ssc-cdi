@@ -451,7 +451,6 @@ def restoration_cat_3d(args):
 
 
 def restoration_cat_2d(args,first_run=True):
-    print("aaaaaaa")
     jason, acquisition_folder, filename, filepath, geometry = args[0] , args[1], args[2], args[3], args[5]
     ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
     preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
