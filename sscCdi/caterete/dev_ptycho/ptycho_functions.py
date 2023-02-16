@@ -937,32 +937,10 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
                 """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
-            start = 20
-
-            updated_obj = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
-            if j < start:
-                obj[py:py+offset[0],px:px+offset[1]] = updated_obj
-                probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
-            else:
-                obj[py:py+offset[0],px:px+offset[1]] = updated_obj
-                new_positions, _,_ = position_correction(i,updated_obj,obj_box_matrix[i],probe,px,py,betas, probe_threshold=0.5, upsampling=100)
-                positions[i,0] ,positions[i,1] = new_positions
-
-                # new_px, new_py = positions[i,0] ,positions[i,1]
-                # obj[new_py:new_py+offset[0],new_px:new_px+offset[1]] = updated_obj
-
-                if j > 50: # probe update
-                    probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
-
-
-            if j%2==0 and i == 0: # debug plots
-                fig, ax = plt.subplots(1,4,dpi=150)
-                ax[0].imshow(np.abs(obj))
-                ax[1].imshow(np.abs(obj[py:py+offset[0],px:px+offset[1]]))
-                ax[2].imshow(np.abs(obj_box_matrix[i]))        
-                ax[3].imshow(np.abs(probe))
-                plt.show()
-                plt.close()
+            obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
+            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
+            new_positions = position_correction2(i,updated_obj,obj_box_matrix[i],probe,px,py,betas, probe_threshold=0.2, upsampling=500)
+            positions[i,1],  positions[i,0] = new_positions
 
         if mPIE == True: # momentum addition
             T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
@@ -979,3 +957,6 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
     return obj, probe, positions, error_list, time.perf_counter() - t0, positions_history
           
 
+def position_correction2():
+
+    return new_positions 
