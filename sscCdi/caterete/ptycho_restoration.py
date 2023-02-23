@@ -321,6 +321,7 @@ def corrections_and_restoration_block(DP,empty,flat,subtraction_mask,mask,geomet
 def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
     DP[empty > 1] = -1 # Apply empty 
     DP = DP * np.squeeze(flat) # Apply flatfield
+    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered.
     DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     DP = DP.astype(np.float32) # convert to float
@@ -328,8 +329,6 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jas
     DP[np.abs(mask) ==1] = -1 # Apply Mask
     
     DP = Restaurate(DP, geometry) # restaurate
-
-    DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
     if keep_original_negatives == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
