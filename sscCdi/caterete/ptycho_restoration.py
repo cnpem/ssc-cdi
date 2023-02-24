@@ -14,6 +14,7 @@ from sscIO import io
 import sscCdi
 from sscPimega import pi540D
 from sscPimega import opt540D
+from sscPimega import misc as miscPimega
 
 ############################ OLD restoration BY GIOVANNI #####################################################
 
@@ -33,7 +34,7 @@ def Geometry(L,susp=3,scale=0.98,fill=False):
         geo : geometry 
     """    
 
-    project = pi540D.get_detector_dictionary( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
+    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
     geo = pi540D.geometry540D( project )
     return geo
 
@@ -86,14 +87,15 @@ def pi540_restoration_cat(args, savepath = '', preview = False, save = False, fi
     measurement_file    = args[2]
     acquisitions_folder = args[3]
     scans_string        = args[4]
-    measurement_filepath= args[5]
+    geometry            = args[6]
 
     t0 = time()
     print('Begin restoration')
             
     if jason['OldRestauration'] == True: # OldRestauration is Giovanni's
         print('\nMeasurement file in pi540_restoration_cat: ', measurement_file)
-        difpads, geometry, _, jason = get_restaurated_difpads_old_format(jason, os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,first_iteration=first_iteration,preview=preview)
+
+        difpads, geometry, _, jason = get_restaurated_difpads_old_format(jason, geometry,os.path.join(ibira_datafolder, acquisitions_folder,scans_string), measurement_file,first_iteration=first_iteration,preview=preview)
 
         if 1:  # OPTIONAL: exclude first difpad to match with probe_positions_file list
             difpads = difpads[1:]  # TODO: why does this difference of 1 position happens? Fix it!
@@ -136,7 +138,7 @@ def pi540_restoration_cat(args, savepath = '', preview = False, save = False, fi
     return difpads, elapsedtime, jason
 
 
-def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview):
+def get_restaurated_difpads_old_format(jason, geometry, path, name,first_iteration,preview):
     """Extracts the data from json and manipulate it according G restoration input format
         Then, call G restoration
 
@@ -161,9 +163,6 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
     if preview and first_iteration:
         sscCdi.caterete.misc.plotshow_cmap2(raw_difpads[difpad_number, :, :], title=f'Raw Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/02_difpad_raw.png')
         sscCdi.caterete.misc.plotshow_cmap2(mean_raw_difpads, title=f'Raw Diffraction Patterns mean', savepath=jason['PreviewFolder'] + '/02_difpad_raw_mean.png')
-
-    z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
-    geometry = Geometry(z1,susp=jason["ChipBorderRemoval"],fill = jason["FillBlanks"])
 
     os.system(f"h5clear -s {jason['EmptyFrame']}")
     empty = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32)
@@ -193,7 +192,7 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         sscCdi.caterete.misc.plotshow_cmap2(mask,  title=f'Mask',  savepath=jason['PreviewFolder'] + '/01_mask.png')
 
     if jason['DifpadCenter'] == []:
-        proj  = pi540D.get_detector_dictionary(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
+        proj  = pi540D.dictionary540D(jason['DetDistance'], {'geo':'nonplanar','opt':True,'mode':'virtual'})
         centerx, centery = _get_center(raw_difpads[0,:,:], proj)
         jason['DifpadCenter'] = (centerx, centery)
         cx, cy = get_difpad_center(raw_difpads[0,:,:]) #TODO: under test! 
@@ -245,7 +244,13 @@ def get_restaurated_difpads_old_format(jason, path, name,first_iteration,preview
         sscCdi.caterete.misc.plotshow_cmap2(DP, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
 
     t0 = time()
-    output, _ = pi540D.backward540D_nonplanar_batch(raw_difpads, z1, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params, 'only')
+    use_GPU = False
+
+    if use_GPU == True: 
+        output = restoration_processing_binning_GPU(raw_difpads, jason, r_params)
+    else:  
+        output, _ = miscPimega.batch(raw_difpads, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params)
+    
     t1 = time()
 
     elapsedtime = t1-t0
@@ -262,18 +267,61 @@ def restoration_processing_binning(DP, args):
     
     return img
 
-def inpaint_lonely_neighbors(DP):
-    valids_mask = np.where(DP > 0 , 1 , -1)
-    sum_of_mask_neighbors = np.roll(valids_mask,1,0) + np.roll(valids_mask,-1,0) + np.roll(valids_mask,1,1) + np.roll(valids_mask,-1,1) + np.roll(np.roll(valids_mask,1,0),1,1) + np.roll(np.roll(valids_mask,1,0),-1,1) + np.roll(np.roll(valids_mask,-1,0),1,1) + np.roll(np.roll(valids_mask,-1,0),-1,1)
-    sum_of_neighbors = np.roll(DP,1,0) + np.roll(DP,-1,0) + np.roll(DP,1,1) + np.roll(DP,-1,1) + np.roll(np.roll(DP,1,0),1,1) + np.roll(np.roll(DP,1,0),-1,1) + np.roll(np.roll(DP,-1,0),1,1) + np.roll(np.roll(DP,-1,0),-1,1)
-    pixels_to_paint = np.where(sum_of_mask_neighbors == 8,True,False)
-    DP_corrected = DP.copy()
-    DP_corrected[pixels_to_paint] = sum_of_neighbors[pixels_to_paint] / 8
-    return DP_corrected
+
+def restoration_processing_binning_GPU(raw_difpads, jason, args):
+
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
+
+    geometry["gpu"] = jason["GPUs"][0] # fix to use multiple
+
+    blockSize = 10
+    nblocks = raw_difpads.shape[0] // (blockSize-1)
+    for k in range( blockSize ):
+        
+        DP_block = raw_difpads[k * nblocks: min( (k+1)*nblocks, raw_difpads.shape[0] ), :, :]
+
+        DP_block = corrections_and_restoration_block(DP_block,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives) # fix inputs
+
+        for i, DP in enumerate(DP_block): # to be optimized!
+            DP_block[i] = G_binning(DP,apply_binning,Binning,mask) # binning strategy by G. Baraldi
+
+    return DP_block
+
+def Restaurate_GPU(DP,geom):
+    print(geom["gpu"])
+    return pi540D.backward540D(DP, geom)
+
+def corrections_and_restoration_block(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
+    DP[:,empty > 1] = -1 # Apply empty 
+    DP = DP * np.squeeze(flat) # Apply flatfield
+    DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
+
+    DP = DP.astype(np.float32) # convert to float
+    
+    DP[:,np.abs(mask) ==1] = -1 # Apply Mask
+    
+    DP = Restaurate_GPU(DP, geometry) # restaurate
+
+    DP[DP < 0] = -1 # all invalid values must be -1 by convention
+
+    if keep_original_negatives == False:
+        DP[DP < 0] = -1 # all invalid values must be -1 by convention
+
+    if hsize == 0:
+        hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
+        if hsize % 2 != 0: 
+            hsize = hsize -  1 # make it even
+
+    if apply_crop:
+        DP = DP[:,cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+
+
+    return DP 
 
 def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
     DP[empty > 1] = -1 # Apply empty 
     DP = DP * np.squeeze(flat) # Apply flatfield
+    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered.
     DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     DP = DP.astype(np.float32) # convert to float
@@ -281,8 +329,6 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jas
     DP[np.abs(mask) ==1] = -1 # Apply Mask
     
     DP = Restaurate(DP, geometry) # restaurate
-
-    DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
     if keep_original_negatives == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
@@ -297,6 +343,8 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jas
 
 
     return DP 
+
+
 
 def G_binning(DP,apply_binning,binning,mask):
 
@@ -399,14 +447,13 @@ def restoration_cat_3d(args):
 
 
 def restoration_cat_2d(args,first_run=True):
-
-    jason, acquisition_folder, filename, filepath = args[0] , args[1], args[2], args[3]
+    jason, acquisition_folder, filename, filepath, geometry = args[0] , args[1], args[2], args[3], args[5]
     ibira_datafolder, scans_string  = jason['ProposalPath'],jason['scans_string']
     preview,save, read = jason['PreviewGCC'][0],jason['SaveDifpads'],jason['ReadRestauredDifpads']
 
     time_difpads = 0
 
-    params = (jason, ibira_datafolder, filename, acquisition_folder, scans_string, filepath)
+    params = (jason, ibira_datafolder, filename, acquisition_folder, scans_string, filepath, geometry)
     
     if read:
         difpads = np.load( os.path.join(jason['SaveDifpadPath'],filename + '.npy'))
@@ -417,6 +464,14 @@ def restoration_cat_2d(args,first_run=True):
 
     return difpads, time_difpads, jason
 
+def inpaint_lonely_neighbors(DP):
+    valids_mask = np.where(DP > 0 , 1 , -1)
+    sum_of_mask_neighbors = np.roll(valids_mask,1,0) + np.roll(valids_mask,-1,0) + np.roll(valids_mask,1,1) + np.roll(valids_mask,-1,1) + np.roll(np.roll(valids_mask,1,0),1,1) + np.roll(np.roll(valids_mask,1,0),-1,1) + np.roll(np.roll(valids_mask,-1,0),1,1) + np.roll(np.roll(valids_mask,-1,0),-1,1)
+    sum_of_neighbors = np.roll(DP,1,0) + np.roll(DP,-1,0) + np.roll(DP,1,1) + np.roll(DP,-1,1) + np.roll(np.roll(DP,1,0),1,1) + np.roll(np.roll(DP,1,0),-1,1) + np.roll(np.roll(DP,-1,0),1,1) + np.roll(np.roll(DP,-1,0),-1,1)
+    pixels_to_paint = np.where(sum_of_mask_neighbors == 8,True,False)
+    DP_corrected = DP.copy()
+    DP_corrected[pixels_to_paint] = sum_of_neighbors[pixels_to_paint] / 8
+    return DP_corrected
 
 ################# MIQUELES restoration ###################################
 
@@ -515,7 +570,7 @@ def cat_preproc_ptycho_projections( dic ):
     #------------------------------------
     # computing ssc-pimega 540D geometry:
     xdet     = pi540D.get_project_values_geometry()
-    project  = pi540D.get_detector_dictionary( xdet, dic['distance'] )
+    project  = pi540D.dictionary540D( xdet, dic['distance'] )
     project['s'] = [dic['susp'],dic['susp']]
     geometry = pi540D.geometry540D( project )
     #-------------------------------------------------------------------------------
