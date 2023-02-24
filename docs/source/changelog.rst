@@ -12,17 +12,6 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
-Unreleased
-----------
-
-Added
-~~~~~
-- Added angle output file from ptychography containing the angles of the frames used. This will make the subsequent tomography be completely independent from the raw data.
-
-Changed
-~~~~~
-- Improvement of the Input class for more types of widgets
-- Unification of functions that null bad frames at each step of the tomography interface
 
 [0.3.5] - 2022-12-15
 --------------------
