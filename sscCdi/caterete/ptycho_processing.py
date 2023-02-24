@@ -25,6 +25,8 @@ from numpy.fft import fftshift as shift
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
+
+
 from .misc import create_directory_if_doesnt_exist
 
 def cat_ptycho_3d(difpads,jason):
@@ -68,13 +70,16 @@ def cat_ptycho_serial(jason):
     time_elasped_restoration = 0
     time_elasped_ptycho = 0
 
+    z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
+    geometry = sscCdi.caterete.Geometry(z1,susp=jason["ChipBorderRemoval"],fill = jason["FillBlanks"]) 
+
     for acquisitions_folder in jason['Acquisition_Folders']:  
         print('Acquisiton folder: ',acquisitions_folder)
         filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             print('File: ',measurement_file)
-            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
+            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
             t_start = time()
             difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
             time_elasped_restoration += time() - t_start
@@ -88,10 +93,11 @@ def cat_ptycho_serial(jason):
             probe_dummy      = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
             background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]), dtype=np.float32)
             
-            args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
+            args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy,geometry)
 
             t_start2 = time()
             object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            # object2d, probe2d, background2d = object_dummy,probe_dummy,background_dummy
             time_elasped_ptycho += time() - t_start2
 
             if first_of_folder:
@@ -1003,6 +1009,7 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
     sinogram            = args[7]
     probe3d             = args[8]
     backg3d             = args[9]
+    geometry            = args[10]
 
     ibira_datafolder  = jason['ProposalPath']
     positions_string  = jason['positions_string']

@@ -30,7 +30,7 @@ if __name__ == '__main__':
     filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason)
     
     if len(filenames) > 1 and jason['SerialRestauration'] == False: # 3D batch restauration form (computationally faster, but not memory safe)
-        difpads,_ , jason = sscCdi.caterete.ptycho_restoration.restauration_cat_3d(jason) # difpads is a list of size = len(Aquisition_folders)
+        difpads,_ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_3d(jason) # difpads is a list of size = len(Aquisition_folders)
         t2 = time()
         time_elapsed_restauration = t2 - t1
         object,probe,background, jason = sscCdi.caterete.ptycho_processing.cat_ptycho_3d(difpads,jason) 
