@@ -41,6 +41,7 @@ build_dgx_shell:
     stage: build
     script:
         - python3 setup.py bdist_wheel --cuda
+        - python3 -m pip install -U sysv-ipc
     tags:
         - x86_64
         - cuda11
