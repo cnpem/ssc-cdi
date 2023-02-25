@@ -267,26 +267,6 @@ def restoration_processing_binning(DP, args):
     
     return img
 
-
-def restoration_processing_binning_GPU(raw_difpads, jason, args):
-
-    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
-
-    geometry["gpu"] = jason["GPUs"][0] # fix to use multiple
-
-    blockSize = 10
-    nblocks = raw_difpads.shape[0] // (blockSize-1)
-    for k in range( blockSize ):
-        
-        DP_block = raw_difpads[k * nblocks: min( (k+1)*nblocks, raw_difpads.shape[0] ), :, :]
-
-        DP_block = corrections_and_restoration_block(DP_block,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives) # fix inputs
-
-        for i, DP in enumerate(DP_block): # to be optimized!
-            DP_block[i] = G_binning(DP,apply_binning,Binning,mask) # binning strategy by G. Baraldi
-
-    return DP_block
-
 def Restaurate_GPU(DP,geom):
     print(geom["gpu"])
     return pi540D.backward540D(DP, geom)
@@ -319,14 +299,17 @@ def corrections_and_restoration_block(DP,empty,flat,subtraction_mask,mask,geomet
     return DP 
 
 def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
-    DP[empty > 1] = -1 # Apply empty 
-    DP = DP * np.squeeze(flat) # Apply flatfield
-    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered.
+    
+    DP[empty > 1] = -1 # apply empty 
+    
+    DP = DP * np.squeeze(flat) # apply flatfield
+    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    
     DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     DP = DP.astype(np.float32) # convert to float
     
-    DP[np.abs(mask) ==1] = -1 # Apply Mask
+    DP[np.abs(mask) ==1] = -1 # apply Mask
     
     DP = Restaurate(DP, geometry) # restaurate
 

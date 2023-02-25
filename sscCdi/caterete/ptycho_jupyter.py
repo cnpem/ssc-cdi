@@ -107,7 +107,7 @@ def update_gpu_limits(machine_selection):
 
     if machine_selection == 'Cluster':
         gpus.widget.value = 0
-        gpus.widget.max = 4
+        gpus.widget.max = 5
     elif machine_selection == 'Local':
         gpus.widget.value = 0
         gpus.widget.max = 1
@@ -126,6 +126,8 @@ def update_cpus_gpus(cpus,gpus):
             global_dict["GPUs"] = [0,1,2]
         elif gpus == 4:
             global_dict["GPUs"] = [0,1,2,3]
+        elif gpus == 5:
+            global_dict["GPUs"] = [0,1,2,3,4]
     elif machine_selection.value == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
@@ -299,8 +301,6 @@ def inputs_tab():
     center_x    = Input({'dummy-key':global_dict["DifpadCenter"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
     center_y    = Input({'dummy-key':global_dict["DifpadCenter"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)   ",layout=slider_layout)
     center_box = widgets.Box([center_y.widget,center_x.widget],layout=slider_layout3)
-
-
 
     detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
     suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
