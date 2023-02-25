@@ -236,7 +236,7 @@ def update_gpu_limits(machine_selection):
 
     if machine_selection == 'Cluster':
         gpus_slider.widget.value = 0
-        gpus_slider.widget.max = 4
+        gpus_slider.widget.max = 5
     elif machine_selection == 'Local':
         gpus_slider.widget.value = 0
         gpus_slider.widget.max = 1
@@ -255,6 +255,8 @@ def update_cpus_gpus(cpus,gpus,machine_selection):
             global_dict["GPUs"] = [0,1,2]
         elif gpus == 4:
             global_dict["GPUs"] = [0,1,2,3]
+        elif gpus == 5:
+            global_dict["GPUs"] = [0,1,2,3,4]
     elif machine_selection == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
@@ -856,8 +858,8 @@ def wiggle_tab():
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice", bounded=(1,10,1),slider=True,layout=slider_layout)
 
     global cpus_slider, gpus_slider, machine_selection
-    gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,4,1),  slider=True,description="# of GPUs:")
-    cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,128,1),slider=True,description="# of CPUs:")
+    gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,5,1),  slider=True,description="# of GPUs:")
+    cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="# of CPUs:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
 
     args2 = (sinogram_selection,sinogram_slider1,cpus_slider,selection_slider)
