@@ -110,7 +110,7 @@ def update_gpu_limits(machine_selection):
         gpus.widget.max = 5
     elif machine_selection == 'Local':
         gpus.widget.value = 0
-        gpus.widget.max = 1
+        gpus.widget.max = 6
 
 def update_cpus_gpus(cpus,gpus):
     global_dict["Threads"] = cpus
@@ -132,9 +132,17 @@ def update_cpus_gpus(cpus,gpus):
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
-            global_dict["GPUs"] = [5] 
-    else:
-        print('You can only use 1 GPU to run in the local machine!')
+            global_dict["GPUs"] = [0] 
+        elif gpus == 2:
+            global_dict["GPUs"] = [0,1]
+        elif gpus == 3:
+            global_dict["GPUs"] = [0,1,2]
+        elif gpus == 4:
+            global_dict["GPUs"] = [0,1,2,3]
+        elif gpus == 5:
+            global_dict["GPUs"] = [0,1,2,3,4]
+        elif gpus == 6:
+            global_dict["GPUs"] = [0,1,2,3,4,5]
 
 def delete_files(dummy):
     sinogram_path = global_dict["sinogram_path"].rsplit('/',1)[0]
@@ -740,8 +748,8 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':slurmequeue},'dummy_key',description="Insert machine queue name:")
     global cpus, gpus
-    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(0,5,1),  slider=True,description="Insert # of GPUs to use:")
-    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="Insert # of CPUs to use:")
+    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(1,5,1),  slider=True,description="Insert # of GPUs to use:")
+    cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,32,1),slider=True,description="Insert # of CPUs to use:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
 
     boxSlurm = widgets.HBox([machine_selection,gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
