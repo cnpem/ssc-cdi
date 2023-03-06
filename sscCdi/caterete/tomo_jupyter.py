@@ -237,9 +237,17 @@ def update_gpu_limits(machine_selection):
     if machine_selection == 'Cluster':
         gpus_slider.widget.value = 0
         gpus_slider.widget.max = 5
+        cpus_slider.widget.value = 32
+        cpus_slider.widget.max  = 160
     elif machine_selection == 'Local':
         gpus_slider.widget.value = 0
         gpus_slider.widget.max = 6
+
+
+
+        cpus_slider.widget.value = 32
+        cpus_slider.widget.max  = 144
+        
 
 def update_cpus_gpus(cpus,gpus,machine_selection):
     global_dict["CPUs"] = cpus
