@@ -125,14 +125,14 @@ if CUDA:
     #LEGACY CODE
     #Load ssc-ptycho from Giovanni Baraldi (Until Aug/2021)
 
-    import subprocess
+    # import subprocess
 
-    if compile_sudo:
-        cmd = "sudo pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl"
-    else:
-        cmd = "pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl --user"
+    # if compile_sudo:
+    #     cmd = "sudo pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl"
+    # else:
+    #     cmd = "pip3 install cuda/sscPtycho/sscPtycho-1.0.2-py39-none-any.whl --user"
         
-    subprocess.call(cmd, shell=True)
+    # subprocess.call(cmd, shell=True)
     #-----------------------------------------------------
 
 else:
