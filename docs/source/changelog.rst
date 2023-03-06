@@ -12,11 +12,11 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+ 
 
-[0.4.13] - 2023-02-25
+[0.4.15] - 2023-03-06
 --------------------
 
 Changed
 ~~~~~
-- Changed number of possible GPUs for CAT interfaces from 4 to 5 after resrtructuring of TEPUI cluster
-
+- Changed number of possible GPUs for CAT interfaces for 5 at Cluster and 6 at Local since restructuring of the machines
