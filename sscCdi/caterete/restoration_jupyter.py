@@ -137,12 +137,13 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
 
+
     if save_path != '':
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         print("Saving data at: ",save_path)
         h5f = h5py.File(os.path.join(save_path,data_path.rsplit('/',2)[-1]), 'w')
-        h5f.create_dataset(data_path.rsplit('/',2)[-1][:-5], data=output)
+        h5f.create_dataset('entry/data/data', data=output)
         h5f.close()
 
     print("Done!")
