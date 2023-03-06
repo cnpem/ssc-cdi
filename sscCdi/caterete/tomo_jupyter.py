@@ -237,14 +237,18 @@ def update_gpu_limits(machine_selection):
     if machine_selection == 'Cluster':
         gpus_slider.widget.value = 0
         gpus_slider.widget.max = 5
+        cpus_slider.widget.value = 32
+        cpus_slider.widget.max  = 160
     elif machine_selection == 'Local':
         gpus_slider.widget.value = 0
-        gpus_slider.widget.max = 1
-
+        gpus_slider.widget.max = 6
+        cpus_slider.widget.value = 32
+        cpus_slider.widget.max  = 144
+        
 def update_cpus_gpus(cpus,gpus,machine_selection):
     global_dict["CPUs"] = cpus
 
-    if machine_selection == 'Cluster':
+    if machine_selection.value == 'Cluster':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
@@ -257,13 +261,21 @@ def update_cpus_gpus(cpus,gpus,machine_selection):
             global_dict["GPUs"] = [0,1,2,3]
         elif gpus == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
-    elif machine_selection == 'Local':
+    elif machine_selection.value == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
-            global_dict["GPUs"] = [5] 
-    else:
-        print('You can only use 1 GPU to run in the local machine!')
+            global_dict["GPUs"] = [0] 
+        elif gpus == 2:
+            global_dict["GPUs"] = [0,1]
+        elif gpus == 3:
+            global_dict["GPUs"] = [0,1,2]
+        elif gpus == 4:
+            global_dict["GPUs"] = [0,1,2,3]
+        elif gpus == 5:
+            global_dict["GPUs"] = [0,1,2,3,4]
+        elif gpus == 6:
+            global_dict["GPUs"] = [0,1,2,3,4,5]
 
 
 ############################################ INTERFACE / GUI : TABS ###########################################################################
@@ -859,7 +871,7 @@ def wiggle_tab():
 
     global cpus_slider, gpus_slider, machine_selection
     gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(0,5,1),  slider=True,description="# of GPUs:")
-    cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="# of CPUs:")
+    cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,32,1),slider=True,description="# of CPUs:")
     widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
 
     args2 = (sinogram_selection,sinogram_slider1,cpus_slider,selection_slider)
