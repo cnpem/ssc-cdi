@@ -7,7 +7,7 @@ import sscCdi
 from sscPimega import pi540D
 
 from time import time
-import os
+import os, sys
 import json
 import h5py
 import pandas as pd
@@ -27,8 +27,20 @@ from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
 
-from .ptycho_restoration import Geometry
 from .misc import create_directory_if_doesnt_exist
+
+def Geometry(L,susp=3,scale=0.98,fill=False):
+    """ Detector geometry parameters for sscPimega restoration
+
+    Args:
+        L : sample-detector distancef
+    Returns:
+        geo : geometry 
+    """    
+
+    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp } ) 
+    geo = pi540D.geometry540D( project )
+    return geo
 
 def cat_ptycho_3d(difpads,jason):
     sinogram = []
@@ -84,41 +96,57 @@ def cat_ptycho_serial(jason):
 
             # args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
             # difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
-
-            distance = jason["DetDistance"]
+            distance = jason["DetDistance"]*1000
 
             # params   = {'geo': 'nonplanar', 'opt': False, 'mode': 'virtual' ,'susp': 10}
             # project  = pi540D.dictionary540D(distance, params )
             # geometry = pi540D.geometry540D( project )
+
             geometry = Geometry(distance)
             
             dic = {}
-            dic['path']     = "/home/ABTLUS/eduardo.miqueles/test/SS61/scans/0000_SS61_001.hdf5"
-            dic['outpath']  = jason["ReconsPath"] # "/home/ABTLUS/eduardo.miqueles/test/"
+            print(measurement_filepath)
+            dic['path']     = measurement_filepath #"/home/ABTLUS/eduardo.miqueles/test/SS61/scans/0000_SS61_001.hdf5"
+            dic['outpath']  = jason["ReconsPath"]+ '/' # "/home/ABTLUS/eduardo.miqueles/test/"
             dic['order']    = "yx" 
             dic['rank']     = "ztyx" # order of axis
             dic['dataset']  = "entry/data/data"
             dic['ngpus']    = len(jason["GPUs"])
             dic['gpus']     = jason["GPUs"]
             dic['init']     = 0
+            dic['final']    = -1 # -1 to use all DPs
             dic['saving']   = 1 # save or not
             dic['timing']   = 0 # print timers 
             dic['blocksize']= 10
+            print(dic)
             dic['geometry'] = geometry
             dic['roi']      = jason["DetectorROI"]#512
-            dic['center']   = jason["DifpadCenter"] #[1400,1400]
+            dic['center']   = jason["DifpadCenter"] #[1400,140
+
             os.system(f"h5clear -s {jason['FlatField']}")
             dic['flat']     = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :] #numpy.ones([3072, 3072])
             os.system(f"h5clear -s {jason['EmptyFrame']}")
             dic['empty']    = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
 
-            start = time.time()
-            uid = pi540D.ioSet_Backward540D( dic ) # read hdf5 and save temporary restored DPs
-            difpads = pi540D.ioGet_Backward540D( dic, uid ) # read temporary DPs
-            pi540D.ioClean_Backward540D( dic, uid ) # remove temporary files
-            elapsed = time.time() - start
-            print('Elapsed: {}'.format(elapsed))
 
+    
+
+            start = time()
+            print(dic["gpus"],dic['roi'],dic['center'],dic['flat'].shape,dic['empty'].shape,distance)
+            uid, nimgs  = pi540D.ioSet_Backward540D( dic ) # read hdf5 and save temporary restored DPs
+            print(nimgs)
+            difpads = pi540D.ioGet_Backward540D( dic, uid, nimgs ) # read temporary DPs
+            pi540D.ioClean_Backward540D( dic, uid ) # remove temporary files
+            elapsed = time() - start
+            print(difpads.shape)
+            # difpads = np.expand_dims(difpads,axis=0)
+            difpads = difpads.reshape((1,*difpads.shape))
+            difpads = difpads[:,1::,:,:]
+            print('Elapsed: {}'.format(elapsed))
+            print(difpads.shape)
+            
+            np.save('/home/ABTLUS/yuri.tonin/new_DP.npy',difpads[0,0,:,:])
+ 
             time_elasped_restoration += time() - t_start
             
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
