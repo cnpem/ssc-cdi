@@ -4,6 +4,7 @@
 import sscResolution
 import sscPtycho
 import sscCdi
+from sscPimega import pi540D
 
 from time import time
 import os
@@ -26,7 +27,7 @@ from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
 
-
+from .ptycho_restoration import Geometry
 from .misc import create_directory_if_doesnt_exist
 
 def cat_ptycho_3d(difpads,jason):
@@ -79,9 +80,45 @@ def cat_ptycho_serial(jason):
 
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             print('File: ',measurement_file)
-            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
             t_start = time()
-            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+
+            # args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
+            # difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+
+            distance = jason["DetDistance"]
+
+            # params   = {'geo': 'nonplanar', 'opt': False, 'mode': 'virtual' ,'susp': 10}
+            # project  = pi540D.dictionary540D(distance, params )
+            # geometry = pi540D.geometry540D( project )
+            geometry = Geometry(distance)
+            
+            dic = {}
+            dic['path']     = "/home/ABTLUS/eduardo.miqueles/test/SS61/scans/0000_SS61_001.hdf5"
+            dic['outpath']  = jason["ReconsPath"] # "/home/ABTLUS/eduardo.miqueles/test/"
+            dic['order']    = "yx" 
+            dic['rank']     = "ztyx" # order of axis
+            dic['dataset']  = "entry/data/data"
+            dic['ngpus']    = len(jason["GPUs"])
+            dic['gpus']     = jason["GPUs"]
+            dic['init']     = 0
+            dic['saving']   = 1 # save or not
+            dic['timing']   = 0 # print timers 
+            dic['blocksize']= 10
+            dic['geometry'] = geometry
+            dic['roi']      = jason["DetectorROI"]#512
+            dic['center']   = jason["DifpadCenter"] #[1400,1400]
+            os.system(f"h5clear -s {jason['FlatField']}")
+            dic['flat']     = h5py.File(jason["FlatField"], 'r')['entry/data/data'][()][0, 0, :, :] #numpy.ones([3072, 3072])
+            os.system(f"h5clear -s {jason['EmptyFrame']}")
+            dic['empty']    = np.asarray(h5py.File(jason['EmptyFrame'], 'r')['/entry/data/data']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
+
+            start = time.time()
+            uid = pi540D.ioSet_Backward540D( dic ) # read hdf5 and save temporary restored DPs
+            difpads = pi540D.ioGet_Backward540D( dic, uid ) # read temporary DPs
+            pi540D.ioClean_Backward540D( dic, uid ) # remove temporary files
+            elapsed = time.time() - start
+            print('Elapsed: {}'.format(elapsed))
+
             time_elasped_restoration += time() - t_start
             
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
