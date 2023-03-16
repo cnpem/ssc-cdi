@@ -44,7 +44,7 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                 }
 
 
-global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"] ,global_paths_dict["template_json"]))) # load from template
+global_dict = json.load(open(os.path.join(global_paths_dict["jupyter_folder"],'00000000',global_paths_dict["template_json"]))) # load from template
 
 json_filepath = os.path.join(global_paths_dict["jupyter_folder"],'inputs', f'{username}_ptycho_input.json') #INPUT
 if os.path.exists(json_filepath):  
