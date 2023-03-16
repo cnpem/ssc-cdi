@@ -971,7 +971,12 @@ def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
     return probe_positions, offset_bottomright
 
 
-def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offset_topleft = 20):
+def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder):
+
+    if 'ObjectPad' in jason:
+        offset_topleft = jason['ObjectPad']
+    else:
+        offset_topleft = 100
 
     ibira_datafolder    = jason['ProposalPath']
     positions_string    = jason['positions_string']
@@ -991,6 +996,7 @@ def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offse
     probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = offset_topleft)
 
     maxroi        = int(np.max(probe_positions)) + offset_bottomright
+    print("DEBUG",dx,int(np.max(probe_positions)),offset_bottomright,half_size,maxroi)
     object_shape  = 2 * half_size + maxroi
     print('Object shape:',object_shape)
 
