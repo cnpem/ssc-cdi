@@ -13,13 +13,6 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
  
-[0.4.16] - 2023-03-07
---------------------
-
-Fixed
-~~~~~
-- Fixed bug at jupyter tomography interface for correctly saving GPUs to be used
-
 
 [0.4.15] - 2023-03-06
 --------------------

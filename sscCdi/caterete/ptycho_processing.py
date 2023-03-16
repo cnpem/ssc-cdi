@@ -25,8 +25,9 @@ from numpy.fft import fftshift as shift
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
+
+
 from .misc import create_directory_if_doesnt_exist
-from sscCdi.carnauba.cnb_processing import read_cnb_probe_positions, convert_cnb_probe_positions, GetBeamlineParams
 
 def cat_ptycho_3d(difpads,jason):
     sinogram = []
@@ -38,19 +39,14 @@ def cat_ptycho_3d(difpads,jason):
 
         count += 1
 
-        print('Starting restore for acquisition: ', acquisitions_folder)
+        print('Starting restoration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
 
         print('\nFilenames: ', filenames)
 
         if count == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-            if jason['beamline'] == 'CAT':
-                object_shape, half_size, object_pixel_size, jason = set_object_shape(difpads[count],jason,filenames,filepaths,acquisitions_folder)
-            
-            if jason['beamline'] == 'CNB':
-                object_shape, half_size, object_pixel_size, jason = set_cnb_object_shape(difpads[count],jason)
-                
+            object_shape, half_size, object_pixel_size, jason =sscCdi.caterete.ptycho_processing.set_object_shape(difpads[count],jason,filenames,filepaths,acquisitions_folder)
             jason["object_pixel"] = object_pixel_size
 
         args = (jason,filenames,filepaths,acquisitions_folder,half_size,object_shape,len(filenames))
@@ -71,48 +67,37 @@ def cat_ptycho_serial(jason):
     counter = 0
     first_iteration = True
     first_of_folder = True
-    time_elasped_restore = 0
+    time_elasped_restoration = 0
     time_elasped_ptycho = 0
 
-    beamline = jason['beamline']
-
-    if beamline == 'CNB':
-        jason['Acquisition_Folders'] = ['data']
-        print('\n\tPreviewFolder in cat_ptycho_serial: ', jason['PreviewFolder'])
+    z1 = float(jason["DetDistance"]) * 1000  # Here comes the distance Geometry(Z1):
+    geometry = sscCdi.caterete.Geometry(z1,susp=jason["ChipBorderRemoval"],fill = jason["FillBlanks"]) 
 
     for acquisitions_folder in jason['Acquisition_Folders']:  
-        print('Acquisition folder: ', acquisitions_folder)
+        print('Acquisiton folder: ',acquisitions_folder)
         filepaths, filenames = sscCdi.caterete.ptycho_processing.get_files_of_interest(jason,acquisitions_folder)
-        # print(filepaths, filenames)
 
-       
         for measurement_file, measurement_filepath in zip(filenames, filepaths):   
             print('File: ',measurement_file)
-            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames))
+            args1 = (jason,acquisitions_folder,measurement_file,measurement_filepath,len(filenames),geometry)
             t_start = time()
-            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_2d(args1,first_run=first_iteration) # Restauration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            difpads, _ , jason = sscCdi.caterete.ptycho_restoration.restoration_cat_2d(args1,first_run=first_iteration) # restoration of 2D Projection (difpads - real, is a ndarray of size (1,:,:,:))
+            time_elasped_restoration += time() - t_start
             
-            time_elasped_restore += time() - t_start
-        
             if first_iteration: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                if beamline == 'CAT':
-                    object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
-
-                if beamline == 'CNB':
-                    object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_cnb_object_shape(difpads,jason)
+                object_shape, half_size, object_pixel_size, jason = sscCdi.caterete.ptycho_processing.set_object_shape(difpads,jason, [measurement_file], [measurement_filepath], acquisitions_folder)
                 jason["object_pixel"] = object_pixel_size
-                print('Object pixel size and object shape: ', object_pixel_size, object_shape)
                 first_iteration = False
-        
 
             object_dummy     = np.zeros((1,object_shape[1],object_shape[0]),dtype = complex) # build 3D Sinogram
             probe_dummy      = np.zeros((1,1,difpads.shape[-2],difpads.shape[-1]),dtype = complex)
             background_dummy = np.zeros((1,difpads.shape[-2],difpads.shape[-1]), dtype=np.float32)
             
-            args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy)
+            args2 = (jason,[measurement_file], [measurement_filepath], acquisitions_folder,half_size,object_shape,len([measurement_file]),object_dummy,probe_dummy,background_dummy,geometry)
 
             t_start2 = time()
             object2d, probe2d, background2d = sscCdi.caterete.ptycho_processing.ptycho_main(difpads, args2, 0, 1,jason['GPUs'])   # Main ptycho iteration on ALL frames in threads
+            # object2d, probe2d, background2d = object_dummy,probe_dummy,background_dummy
             time_elasped_ptycho += time() - t_start2
 
             if first_of_folder:
@@ -132,32 +117,24 @@ def cat_ptycho_serial(jason):
         probe_list.append(probe)
         background_list.append(background)
 
-    return sinogram_list, probe_list, background_list, time_elasped_restore, time_elasped_ptycho, jason
+    return sinogram_list, probe_list, background_list, time_elasped_restoration, time_elasped_ptycho, jason
 
 def define_paths(jason):
-
-    beamline = jason['beamline']
-    if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of in'''terest only to GCC, not to the beamline user
+    if 'PreviewGCC' not in jason: jason['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
     
     #=========== Set Parameters and Folders =====================
-         
-    if jason["PreviewGCC"][0]: # path convention for GCC users
-        if beamline == 'CAT':
-            jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
-        if beamline == 'CNB':
-            jason['PreviewGCC'][1] = (os.path.join(jason['PreviewGCC'][1], jason['Data_Filename']))[:-5]
-            jason["PreviewFolder"]  = (jason["PreviewGCC"][1])
-            jason["ReconsPath"]     = jason["PreviewFolder"]
-        
+    print('Proposal path: ',jason['ProposalPath'] )
+    print('Acquisition folder: ',jason["Acquisition_Folders"][0])
+ 
+    if jason["PreviewGCC"][0] == True: # path convention for GCC users
         if 'LogfilePath' not in jason: jason['LogfilePath'] = ''
-        
+        jason["PreviewGCC"][1]  = os.path.join(jason["PreviewGCC"][1],jason["Acquisition_Folders"][0])
+        jason["PreviewFolder"]  = os.path.join(jason["PreviewGCC"][1])
+        jason["SaveDifpadPath"] = os.path.join(jason["PreviewGCC"][1])
+        jason["ReconsPath"]     = os.path.join(jason["PreviewGCC"][1])
     else:
-        if beamline == 'CAT':
-            beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
-        if beamline == 'CNB':
-            foldername = str(jason['Data_Filename'].split(".")[0])
-            beamline_outputs_path = os.path.join('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000/proc', foldername)
-
+        beamline_outputs_path = os.path.join(jason['ProposalPath'] .rsplit('/',3)[0], 'proc','recons',jason["Acquisition_Folders"][0]) # standard folder chosen by CAT for their outputs
+        print("Output path:",     beamline_outputs_path)
         jason["LogfilePath"]    = beamline_outputs_path
         jason["PreviewFolder"]  = beamline_outputs_path
         jason["SaveDifpadPath"] = beamline_outputs_path
@@ -168,53 +145,28 @@ def define_paths(jason):
     if jason['InitialObj'] in jason and jason['InitialProbe'] != "": jason['InitialProbe'] = os.path.join(jason['ReconsPath'], jason['InitialProbe'])
     if jason['InitialObj'] in jason and jason['InitialBkg']   != "": jason['InitialBkg']   = os.path.join(jason['ReconsPath'], jason['InitialBkg'])
 
-    if beamline == 'CAT':
-        jason['scans_string'] = 'scans'
-        jason['positions_string']  = 'positions'
+    jason['scans_string'] = 'scans'
+    jason['positions_string']  = 'positions'
 
-        images_folder    = os.path.join(jason["Acquisition_Folders"][0],'images')
-        input_dict = json.load(open(os.path.join(jason['ProposalPath'] ,jason["Acquisition_Folders"][0],'mdata.json')))
-        jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
-        jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
-        jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
-        jason["DetectorExposure"][1] = input_dict['/entry/beamline/detector']['pimega']["exposure time"]
-        jason["EmptyFrame"] = os.path.join(jason['ProposalPath'] ,images_folder,'empty.hdf5')
-        jason["FlatField"]  = os.path.join(jason['ProposalPath'] ,images_folder,'flat.hdf5')
-        jason["Mask"]       = os.path.join(jason['ProposalPath'] ,images_folder,'mask.hdf5')
-    
-    if beamline == 'CNB':
+    images_folder    = os.path.join(jason["Acquisition_Folders"][0],'images')
 
-        name = os.path.join(jason['ProposalPath'], str(jason['Proposal']), 'proc', jason['BeamlineParameters_Filename'])
-        data = h5py.File(name,'r')
-        energy = data['beamline_parameters/4CM Energy'][()]
-        energy = energy/1000
-        print('\n\tEnergy: ', energy) 
-        jason['Energy'] = energy
-
-        distance = data['beamline_parameters/Distance PiMega'][()]
-        distance = distance/1000
-        print('\n\tDetector distance: ', energy) 
-        jason['DetDistance'] = distance
-
-        data.close()
-        
+    input_dict = json.load(open(os.path.join(jason['ProposalPath'] ,jason["Acquisition_Folders"][0],'mdata.json')))
+    jason["Energy"] = input_dict['/entry/beamline/experiment']["energy"]
+    jason["DetDistance"] = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+    jason["RestauredPixelSize"] = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+    jason["DetectorExposure"][1] = input_dict['/entry/beamline/detector']['pimega']["exposure time"]
+    jason["EmptyFrame"] = os.path.join(jason['ProposalPath'] ,images_folder,'empty.hdf5')
+    jason["FlatField"]  = os.path.join(jason['ProposalPath'] ,images_folder,'flat.hdf5')
+    jason["Mask"]       = os.path.join(jason['ProposalPath'] ,images_folder,'mask.hdf5')
     return jason
 
 
 def get_files_of_interest(jason,acquistion_folder=''):
 
-    if jason["beamline"] == "CAT":
-        if acquistion_folder != '': # for cases I dont want to use the acquisition folder of the jason
+    if acquistion_folder != '':
             filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , acquistion_folder,jason['scans_string'] ), look_for_extension=".hdf5")
-        else:
-            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
-    elif jason["beamline"] == "CNB":
-            filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'], str(jason['Proposal']) , 'data'), look_for_extension=".hdf5")
-
-            filepaths = [name for name in filepaths if (jason['Data_Filename'].split("."))[0] in name]
-            filenames = [name for name in filenames if (jason['Data_Filename'].split("."))[0] in name]
-
-            # print(filenames, filepaths)
+    else:
+        filepaths, filenames = sscCdi.caterete.misc.list_files_in_folder(os.path.join(jason['ProposalPath'] , jason["Acquisition_Folders"][0],jason['scans_string'] ), look_for_extension=".hdf5")
 
     if jason['Projections'] != []:
         filepaths, filenames = sscCdi.caterete.misc.select_specific_angles(jason['Projections'], filepaths, filenames)
@@ -480,16 +432,8 @@ def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog
     plt.close()
 
 
+
 def read_probe_positions(probe_positions_filepath, measurement):
-    """Read probe positions from .txt data file
-
-    Args:
-        probe_positions_filepath (string): path to file storing the probe positions
-        measurement (string): path to measurement folder
-
-    Returns:
-        probe_positions: array, each item is an array with [x position, y position, 1, 1]
-    """    
     print('Reading probe positions (probe_positions)...')
     probe_positions = []
     positions_file = open(probe_positions_filepath)
@@ -578,12 +522,6 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
     # Mask of 1 and 0:
     sigmask = set_sigmask(difpads)
 
-    data_filename = jason['Data_Filename']
-    output_folder_name = (data_filename.split("."))[0]
-
-    # np.save('/ibira/lnls/labs/tepui/home/julia.carvalho/'+ output_folder_name +'/sigmask.npy', sigmask)
-    beamline = jason['beamline']
-
     # Background: better not use any for now.
     if 0:
         background = set_background(difpads, jason)
@@ -591,12 +529,7 @@ def set_initial_parameters(jason, difpads, probe_positions, radius, center_x, ce
         background = np.ones(difpads[0].shape) # dummy
 
     # Compute probe support:
-    if beamline == 'CAT':
-        probesupp = probe_support(probe, half_size, radius, center_x, center_y, jason['beamline'])
-    if beamline == 'CNB':
-        probesupp = cnb_probe_support(probe, half_size, radius, center_x, center_y, dx, jason)
-
-    np.save('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000/proc/'+ output_folder_name +'/probe_support.npy', probesupp)
+    probesupp = probe_support(probe, half_size, radius, center_x, center_y)
 
     probe_positionsi = probe_positions + 0  # what's the purpose of declaring probe_positionsi?
 
@@ -611,11 +544,9 @@ def set_object_pixel_size(jason,half_size):
     planck = 4.135667662E-18  # Plank constant [keV*s]
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
-    jason['RestauredPixelSize'] = 55.5E-6
     
     # Convert pixel size:
     dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * half_size * 2)
-    jason['object_pixel'] = dx
 
     return dx, jason
 
@@ -730,9 +661,6 @@ def set_initial_obj(jason, object_shape, probe, difpads):
     else:
         obj = np.load(jason['InitialObj'])[0]
 
-    if jason['beamline'] == 'CNB':
-        obj = 0.5+1j*np.random.rand(object_shape[0],object_shape[1])-0.5j
-
     return obj
 
 
@@ -777,210 +705,7 @@ def set_background(difpads, jason):
     return background
 
 
-def cnb_probe_support(probe, half_size, radius, center_x, center_y, dx, jason):
-    from scipy.ndimage import gaussian_filter
-
-    # print('Setting probe support for CARNAUBA...')
-    # # Compute probe support:
-    # ar = np.arange(-half_size, half_size)
-    # xx, yy = np.meshgrid(ar, ar)
-    # probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < 2  # offset of 30 chosen by hand?
-    # probesupp = np.asarray(probesupp)
-    # center_x = int(probesupp.shape[0]/2)
-    # center_y = int(probesupp.shape[1]/2)
-    # # probesupp = np.asarray(probesupp)
-    # r_y = int((600*1E-9)/dx)     
-    # r_x = int((200*1E-9)/dx)    
-   
-    # probesupp[center_x-r_x:center_x+r_x , :] = True
-    # probesupp[:, center_y-r_y:center_y+r_y] = True
-    # probesupp[0:1,:] = 0
-    # probesupp[:, 0:1] = 0
-    # probesupp[probesupp.shape[0] - 1: probesupp.shape[0], :] = 0
-    # probesupp[:, probesupp.shape[1] - 1: probesupp.shape[1]] = 0
-
-    # probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
-
-    # # No support:
-    # # probesupp = probesupp*0 + 1
-
-    # print('Setting probe support for CARNAUBA...')
-
-    # # Compute probe support:
-    # ar = np.arange(0, 2*half_size)
-    # xx, yy = np.meshgrid(ar, ar)
-
-    # print('dx: ', dx)
-    # r1 = int((350*1E-9)/dx) 
-    # print('r1: ', r1)
-    # r2 = int((200*1E-9)/dx) 
-    # print('r2: ', r2)
-
-    # half_r1 = int(r1/2)
-    # half_probe = int(probe.shape[-1])/2
-
-    # print('half_r1: ', half_r1)
-    # print('half_probe: ', half_probe)
-
-    # l1 = int(half_probe - half_r1)   #smaller size
-    # print('l1: ',l1)
-    # l2 = int(int(probe.shape[0])/2 - int(r2/2))   #bigger size
-    # a = l1 # for hiperbole
-    # b = l2
-
-    # print('a: ', a)
-    # print('b: ', b)
-
-    # # support = np.zeros((probe.shape[0], probe.shape[1]))
-
-    # ## TOP-LEFT CIRCLE ##
-
-    # center_x = 0
-    # center_y = 0
-
-    # # HIPÉRBOLE 
-    # probesupp = ( ((xx - center_x) ** 2)/ (a*a) - ((yy - center_y) ** 2)/ (b*b) ) > 1
-   
-    # # probesupp = (xx - center_x) ** 2 + (yy - center_y) ** 2 < (l1 ** 2.09)  
-    # probesupp = np.asarray(probesupp)
-
-    # ## TOP-RIGHT CIRCLE ##
-
-    # ar = np.arange(0, 2*half_size)
-    # xx, yy = np.meshgrid(ar, ar)
-
-    # center_x = int(probe.shape[-2])
-    # center_y = int(probe.shape[-1])
-    # print('center_x: ', center_x)
-    # print('center_y: ', center_y)
-
-    # # probesupp1 = (xx - center_x) ** 2 + (yy - center_y) ** 2 < (l1 ** 2.09)
-    # probesupp1 = ( ((xx - center_x) ** 2)/a - ((yy - center_y) ** 2)/b ) > 1
-    # probesupp1 = np.asarray(probesupp1)
-
-    # ## BOTTOM-LEFT CIRCLE ##
-
-    # ar = np.arange(0, 2*half_size)
-    # xx, yy = np.meshgrid(ar, ar)
-
-    # center_x = 0
-    # center_y = int(probe.shape[-1])
-    # print('center_x: ', center_x)
-    # print('center_y: ', center_y)
-
-    # # probesupp2 = (xx - center_x) ** 2 + (yy - center_y) ** 2 < (l1 ** 2.09)
-    # probesupp2 = ( ((xx - center_x) ** 2)/a - ((yy - center_y) ** 2)/b ) > 1
-    # probesupp2 = np.asarray(probesupp2)
-
-    # ## BOTTOM-RIGHT CIRCLE ## 
-
-    # ar = np.arange(0, 2*half_size)
-    # xx, yy = np.meshgrid(ar, ar)
-
-    # center_x = int(probe.shape[-2])
-    # center_y = 0
-    # print('center_x: ', center_x)
-    # print('center_y: ', center_y)
-
-    # # probesupp3 = (xx - center_x) ** 2 + (yy - center_y) ** 2 < (l1 ** 2.09)
-    # probesupp3 = ( ((xx - center_x) ** 2)/a - ((yy - center_y) ** 2)/b ) > 1
-    # probesupp3 = np.asarray(probesupp3)
-
-    # np.save('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000/proc/20220831_ANT1_ptycho__PiMega_001/probe_support3.npy', probesupp3)
-
-    # probe_support = (probesupp + probesupp1 + probesupp2 + probesupp3)
-
-    # np.save('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000/proc/20220831_ANT1_ptycho__PiMega_001/probe_support_before_inversion.npy', probe_support)
-    # probe_support = np.where(probe_support == True, False, True)
-    # np.save('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000/proc/20220831_ANT1_ptycho__PiMega_001/probe_support.npy', probe_support)
-
-    data_filename = jason['Data_Filename']
-    output_folder_name = (data_filename.split("."))[0]
-    output_folder = os.path.join('/ibira/lnls/beamlines/carnauba/apps/jupyter/00000000', 'proc', output_folder_name) # changes with control
-
-    N = probe.shape[-1]
-    # Compute probe support:
-    h = int(probe.shape[0]/2)
-    dx = 3.839600707343195e-08
-
-    x = np.linspace(0,N-1,N) - N//2
-    x = x / np.max(np.abs(x))
-    X, Y = np.meshgrid(x,x)
-    X = X - np.max(x)
-    Y = Y - np.max(x)
-    n = jason['n_parameter']
-    R = jason['R_parameter']
-    sigma = jason['sigma']
-    border_px = jason['border_px']
-    f1 = np.where(np.abs(X)**n + np.abs(Y)**n < R**n,0,1)
-
-    np.save(output_folder + '/support1.npy', f1)
-
-    x = np.linspace(0,N-1,N) - N//2
-    x = x / np.max(np.abs(x))
-    X, Y = np.meshgrid(x,x)
-    X = X + np.max(x)
-    Y = Y + np.max(x)
-
-    f2 = np.where(np.abs(X)**n + np.abs(Y)**n < R**n,0,1)
-
-    np.save(output_folder + '/support2.npy', f2)
-
-    x = np.linspace(0,N-1,N) - N//2
-    x = x / np.max(np.abs(x))
-    X, Y = np.meshgrid(x,x)
-    X = X - np.max(x)
-    Y = Y + np.max(x)
-
-    f3 = np.where(np.abs(X)**n + np.abs(Y)**n < R**n,0,1)
-
-    np.save(output_folder + '/support3.npy', f3)
-
-    x = np.linspace(0,N-1,N) - N//2
-    x = x / np.max(np.abs(x))
-    X, Y = np.meshgrid(x,x)
-    X = X + np.max(x)
-    Y = Y - np.max(x)
-
-    f4 = np.where(np.abs(X)**n + np.abs(Y)**n < R**n,0,1)
-
-    np.save(output_folder + '/support4.npy', f4)
-
-    f = (f1 + f2 + f3 + f4)/4
-    # f = np.where(f != 1, 0, 1)
-
-    np.save(output_folder + '/support.npy', f)
-
-    f[0:border_px,:] = 0
-    f[:, 0:border_px] = 0
-    f[f.shape[0] - border_px: f.shape[0], :] = 0
-    f[:, f.shape[1] - border_px: f.shape[1]] = 0
-
-    f = gaussian_filter(f, sigma)
-
-    np.save(output_folder + '/blurred_support.npy', f)
-    probesupp = np.asarray([f for k in range(probe.shape[0])])
-
-    return probesupp
-
-# def probe_modes(jason, probe):
-#     import numpy as np
-
-#     data_filename = jason['Data_Filename']
-#     output_folder_name = (data_filename.split("."))[0]
-
-#     file = '/ibira/lnls/beamlines/carnauba/apps/jupyter/proc/' + output_folder_name + '/probe_' + output_folder_name + '.npy'
-#     p = np.load(file)[0,:,:,:]
-
-#     print(p.shape)
-#     sum = np.sum(p, axis = 0)
-#     perc = []
-
-#     for i in range(p.shape[0]):
-#     perc.append(sum/)
-
-
-def probe_support(probe, half_size, radius, center_x, center_y, beamline):
+def probe_support(probe, half_size, radius, center_x, center_y):
     """Create a support for probe
 
     Args:
@@ -993,19 +718,18 @@ def probe_support(probe, half_size, radius, center_x, center_y, beamline):
     Returns:
         probesupp (array): probe support
     """    
-   
     print('Setting probe support...')
     # Compute probe support:
     ar = np.arange(-half_size, half_size)
     xx, yy = np.meshgrid(ar, ar)
     probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2  # offset of 30 chosen by hand?
-    probesupp = np.asarray(probesupp)
-
     probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
 
+    # No support:
+    # probesupp = probesupp*0 + 1
+
     return probesupp
-    
- 
+
 
 def Prop(img, f1): # Probe propagation
     """ Frunction for free space propagation of the probe in the Fraunhoffer regime
@@ -1019,7 +743,6 @@ def Prop(img, f1): # Probe propagation
     Returns:
         [type]: [description]
     """    
-
     hs = img.shape[-1] // 2
     ar = np.arange(-hs, hs) / float(2 * hs)
     xx, yy = np.meshgrid(ar, ar)
@@ -1207,7 +930,7 @@ def auto_crop_noise_borders(complex_array):
 
 
 def create_output_directories(jason):
-    if jason["PreviewGCC"][0]:
+    if jason["PreviewGCC"][0] == True:
         try:
             create_directory_if_doesnt_exist(jason["PreviewGCC"][1])
         except:
@@ -1224,7 +947,7 @@ def create_output_directories(jason):
         create_directory_if_doesnt_exist(jason["SaveDifpadPath"])
 
 
-def convert_probe_positions(dx, probe_positions, offset_topleft = 5):
+def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
     """Set probe positions considering maxroi and effective pixel size
 
     Args:
@@ -1248,36 +971,11 @@ def convert_probe_positions(dx, probe_positions, offset_topleft = 5):
     return probe_positions, offset_bottomright
 
 
-def set_cnb_object_shape(difpads,jason):
-
-    # Compute half size of diffraction patterns:
-    half_size = int(difpads.shape[-1] // 2)
-    
-    # Compute/convert pixel size:
-    dx, jason = set_object_pixel_size(jason,half_size)
-    obj_magn = jason['object_magnification']
-
-    beam_params = GetBeamlineParams(jason)
-
-    largness_x =  1E-3*(beam_params['posx'].max() - beam_params['posx'].min()) / dx
-    largness_y =  1E-3*(beam_params['posy'].max() - beam_params['posy'].min()) / dx
-    largness = int(max(largness_x, largness_y));
-
-    objsize = largness + obj_magn*difpads.shape[-1]
-    probe_positions = read_cnb_probe_positions(jason, jason["object_pixel"], objsize)
-
-    largness_x = probe_positions[:,0].max() - probe_positions[:,0].min()
-    largness_y = probe_positions[:,1].max() - probe_positions[:,1].min()
-    largness = int(max(largness_x, largness_y))
-    
-    return (objsize, objsize), half_size, dx, jason
-
-
-def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offset_topleft = 5):
+def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offset_topleft = 20):
 
     ibira_datafolder    = jason['ProposalPath']
     positions_string    = jason['positions_string']
-    
+
     # Pego a PRIMEIRA medida de posicao, supondo que ela nao tem erro
     measurement_file = filenames[0]
     measurement_filepath = filepaths[0]
@@ -1288,13 +986,12 @@ def set_object_shape(difpads,jason,filenames,filepaths,acquisitions_folder,offse
     # Compute/convert pixel size:
     dx, jason = set_object_pixel_size(jason,half_size)
 
-    
     probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
     probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
     probe_positions, offset_bottomright = convert_probe_positions(dx, probe_positions, offset_topleft = offset_topleft)
-    maxroi        = int(np.max(probe_positions)) + 2*offset_topleft
-    object_shape  = 2 * half_size + maxroi
 
+    maxroi        = int(np.max(probe_positions)) + offset_bottomright
+    object_shape  = 2 * half_size + maxroi
     print('Object shape:',object_shape)
 
     return (object_shape,object_shape), half_size, dx, jason
@@ -1312,10 +1009,10 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
     sinogram            = args[7]
     probe3d             = args[8]
     backg3d             = args[9]
+    geometry            = args[10]
 
     ibira_datafolder  = jason['ProposalPath']
-    if jason['beamline'] == 'CAT':
-        positions_string  = jason['positions_string']
+    positions_string  = jason['positions_string']
 
     for i in range(_end_ - _start_):
         
@@ -1329,32 +1026,9 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
         
         frame = int(current_frame)
 
-        if jason["beamline"] == "CAT":
-            probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
-            probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
-            probe_positions, _ = convert_probe_positions(jason["object_pixel"], probe_positions)
-
-        elif jason["beamline"] == "CNB":
-
-            beam_params = GetBeamlineParams(jason)
-            rois = np.asarray([beam_params['posx'],beam_params['posy']]).swapaxes(0,-1).swapaxes(0,1)
-            rois = rois.mean(1)[:,None]
-            rois = np.reshape(rois, (rois.shape[0], 2))
-
-            object_shape, half_size, object_pixel_size, jason = set_cnb_object_shape(difpads,jason)
-            objsize = object_shape[1]
-
-            print('Objsize: ', objsize)
-            
-            probe_positions = read_cnb_probe_positions(jason, jason["object_pixel"], objsize)
-            
-            I0 = beam_params['I0']
-            I1 = beam_params['I1']
-            I0 = np.reshape(I0, (rois.shape[0], 1))
-            I1 = np.reshape(I1, (rois.shape[0], 1))
-            print('\nRois, I0 and I1 shape: ', rois.shape, I0.shape, I1.shape)
-            probe_positions = np.concatenate((probe_positions, I0, I1), axis = 1)
-            print('\nProbe positions shape: ', probe_positions.shape)            
+        probe_positions_file = os.path.join(acquisitions_folder, positions_string, measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
+        probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
+        probe_positions, _ = convert_probe_positions(jason["object_pixel"], probe_positions)
 
         run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration. #TODO: output is null when #difpads != #positions. How to solve this?
 
@@ -1368,7 +1042,7 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
                 difpad_number = 0
                 sscCdi.caterete.misc.plotshow_cmap2(difpads[frame,difpad_number, :, :], title=f'Restaured + Processed Diffraction Pattern #{difpad_number}', savepath=jason['PreviewFolder'] + '/05_difpad_processed.png')
                 sscCdi.caterete.misc.plotshow_cmap2(np.mean(difpads[frame], axis=0),    title=f"Mean of all difpads: {measurement_filepath.split('/')[-1]}", savepath=jason[ "PreviewFolder"] + '/05_difpad_processed_mean.png')
-    
+
             probe_support_radius, probe_support_center_x, probe_support_center_y = jason["ProbeSupport"]
 
             print(f'Object shape: {object_shape}. Detector half-size: {half_size}')
@@ -1418,13 +1092,7 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
 
             if i == 0: t4 = time()
 
-            dif = (datapack['probe']).shape[0] - probe3d.shape[1]
-
-            for _ in range(dif):
-                probe3d = np.append(probe3d, np.zeros((1, 1, datapack['probe'].shape[1], datapack['probe'].shape[2])), axis=1)
-            
-
-            sinogram[frame, :, :] = datapack['obj']  # build 3D Sinogram    
+            sinogram[frame, :, :] = datapack['obj']  # build 3D Sinogram
             probe3d[frame, :, :, :]  = datapack['probe']
             backg3d[frame, :, :]  = datapack['bkg']
 
@@ -1541,7 +1209,7 @@ def masks_application(difpad, jason):
         difpad[difpad_rescaled > detector_pileup_count] = -1
     elif jason["CentralMask"][0]:  # circular central mask to block center of the difpad
         radius = jason["CentralMask"][1] # pixels
-        central_mask = create_circular_mask(center_col,center_row, radius, difpad.shape)
+        central_mask = create_circular_mask(center_row,center_col, radius, difpad.shape)
         difpad[central_mask > 0] = -1
 
     return difpad
@@ -1600,7 +1268,7 @@ def get_central_region(difpad, center_estimate, radius):
 
     Args:
         difpad : 2d diffraction pattern data
-        center_estimate : the center of the image to be extracted
+        center_estimate : the center of the image to be extracteddata
         radius : size of the squared region to be extracted
 
     Returns:
@@ -1637,13 +1305,13 @@ def refine_center_estimate(difpad, center_estimate, radius=20):
     except:
         print('Fit failed')
 
-    # if 0:  # plot for debugging
-    #     from matplotlib.colors import LogNorm
-    #     figure, subplot = plt.subplots(1, 2)
-    #     subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
-    #     subplot[0].set_title('Central region preview')
-    #     subplot[1].imshow(lorentzian2d_fit, cmap='jet')
-    #     subplot[1].set_title('Lorentzian fit')
+    if 0:  # plot for debugging
+        from matplotlib.colors import LogNorm
+        figure, subplot = plt.subplots(1, 2)
+        subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
+        subplot[0].set_title('Central region preview')
+        subplot[1].imshow(lorentzian2d_fit, cmap='jet')
+        subplot[1].set_title('Lorentzian fit')
 
     center = (round(center_estimate[0]) - deltaX, round(center_estimate[1]) - deltaY)
 
@@ -1671,12 +1339,12 @@ def refine_center_estimate2(difpad, center_estimate, radius=20):
 
     deltaX, deltaY = (region_around_center.shape[0] // 2 - round(centerx)), ( region_around_center.shape[1] // 2 - round(centery))
 
-    # if 0:  # plot for debugging
-    #     figure, subplot = plt.subplots(1, 2)
-    #     subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
-    #     subplot[0].set_title('Central region preview')
-    #     region_around_center[centerx, centery] = 1e9
-    #     subplot[1].imshow(region_around_center, cmap='jet', norm=LogNorm())
+    if 0:  # plot for debugging
+        figure, subplot = plt.subplots(1, 2)
+        subplot[0].imshow(region_around_center, cmap='jet', norm=LogNorm())
+        subplot[0].set_title('Central region preview')
+        region_around_center[centerx, centery] = 1e9
+        subplot[1].imshow(region_around_center, cmap='jet', norm=LogNorm())
 
     center = (round(center_estimate[0]) - deltaX, round(center_estimate[1]) - deltaY)
 
