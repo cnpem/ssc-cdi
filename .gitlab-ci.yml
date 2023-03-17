@@ -43,6 +43,7 @@ build_dgx_shell:
     script:
         - python3 setup.py bdist_wheel --cuda
         - python3 -m pip install -U sysv-ipc
+        - python3 -m pip install cmake-setup
     tags:
         - x86_64
         - cuda11
