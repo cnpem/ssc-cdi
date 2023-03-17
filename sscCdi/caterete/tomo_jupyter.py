@@ -252,7 +252,7 @@ def update_gpu_limits(machine_selection):
 def update_cpus_gpus(cpus,gpus,machine_selection):
     global_dict["CPUs"] = cpus
 
-    if machine_selection.value == 'Cluster':
+    if machine_selection == 'Cluster':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
@@ -265,7 +265,7 @@ def update_cpus_gpus(cpus,gpus,machine_selection):
             global_dict["GPUs"] = [0,1,2,3]
         elif gpus == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
-    elif machine_selection.value == 'Local':
+    elif machine_selection == 'Local':
         if gpus == 0:
             global_dict["GPUs"] = []
         elif gpus == 1:
