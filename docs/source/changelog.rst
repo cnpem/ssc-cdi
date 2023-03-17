@@ -12,7 +12,11 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
- 
+[0.4.18] - 2023-03-17
+--------------------
+- Added variable to input that can increase ptycho object size by padding
+- Bugfixes
+
 
 [0.4.15] - 2023-03-06
 --------------------
