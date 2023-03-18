@@ -8,7 +8,7 @@ JSON input file
 We explain below all the inputs present in the Json file. 
 
     - LogfilePath: a path to save a json logfile when the sscptycho script is run. The json contains all the inputs from the logfile, plus a few extra ones calculated during runtime, such as object pixel size and object FRC resolution.
-    - proposal_path: path to the folder where data is located
+    - data_folder: path to the folder where data is located
     - Mask: path to a predefined mask to ignore bad pixels
     - FlatField: path to DET flatfield in numpy format
     - EmptyFrame: path to empty frame hdf5 file
@@ -27,8 +27,8 @@ We explain below all the inputs present in the Json file.
     - Seed: [int] Seed for random number generator. Use 10 as standard.
     - incoherent_modes: [int]. Number of probe modes to be reconstructed 
     - Energy: [float]. Beam energy for the experiment
-    - DetDistance: [float] Detector distance for the experiment
-    - RestauredPixelSize: [float] Detector pixel size. Use 55.55e-6
+    - detector_distance: [float] Detector distance for the experiment
+    - restored_pixel_size: [float] Detector pixel size. Use 55.55e-6
     - f1: [float] Fresnel number. Adjusts the detector-sample distance. This is the parameter to be tweaked with for fine probe/pinhole adjustment. IMPORTANT: always use a negative value for f1! ​Reference values: 1e-4 for 10 micron pinhole. 1e-3 for 5 micron pinhole at Cateretê.
     - OldRestauration: if True, uses restauration/binning procedure by Giovanni. If false, uses new procedure by Miqueles
     - ChipBorderRemoval: only used when OldRestauration=False. Removes border pixels of the detector chips, where photon count is problematic due to bigger pixel size at the borders.

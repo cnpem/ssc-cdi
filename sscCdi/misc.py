@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
 
@@ -146,3 +147,168 @@ def debug(func): # decorator function for debugging
         print(f"{func.__name__}(args: {args}) -> {result}") # print function with arguments and result
         return result
     return _debug
+
+def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
+    """ Show plot in a specific format 
+
+    Args:
+        imgs ([type]): [description]
+        file ([type]): [description]
+        subplot_title (list, optional): [description]. Defaults to [].
+        legend (list, optional): [description]. Defaults to [].
+        cmap (str, optional): [description]. Defaults to 'jet'.
+        nlines (int, optional): [description]. Defaults to 1.
+        bLog (bool, optional): [description]. Defaults to False.
+        interpolation (str, optional): [description]. Defaults to 'bilinear'.
+    """    
+    num = len(imgs)
+
+    for j in range(num):
+        if type(cmap) == str:
+            colormap = cmap
+        elif len(cmap) == len(imgs):
+            colormap = cmap[j]
+        else:
+            colormap = cmap[j // (len(imgs) // nlines)]
+
+        sb = plt.subplot(nlines, (num + nlines - 1) // nlines, j + 1)
+        if type(imgs[j][0, 0]) == np.complex64 or type(imgs[j][0, 0]) == np.complex128:
+            sb.imshow(sscPtycho.CMakeRGB(imgs[j]), cmap='hsv', interpolation=interpolation)
+        elif bLog:
+            sb.imshow(np.log(1 + np.maximum(imgs[j], -0.1)) / np.log(10), cmap=colormap, interpolation=interpolation)
+        else:
+            sb.imshow(imgs[j], cmap=colormap, interpolation=interpolation)
+
+        if len(legend) > j:
+            sb.set_title(legend[j])
+
+        sb.set_yticks([])
+        sb.set_xticks([])
+        sb.set_aspect('equal')
+        if subplot_title != []:
+            sb.set_title(subplot_title[j])
+
+    plt.savefig(file + '.png', format='png', dpi=300)
+    plt.show()
+    plt.clf()
+    plt.close()
+
+
+def export_json(params,output_path):
+    """ Exports a dictionary to a json file
+
+    Args:
+        params : dictionary
+        output_path : path to output file
+    """    
+    import json, numpy
+    export = {}
+    for key in params:
+        export[key] = params[key]
+        if isinstance(params[key], numpy.ndarray):
+            export[key] = export[key].tolist()
+    json.dumps(export)
+
+    out_file = open(output_path, "w")
+    json.dump(export,out_file)
+    return 0
+
+def preview_ptycho(jason, phase, absol, probe, frame = 0):
+    if jason['Preview']:  # Preview Reconstruction:
+        ''' Plot scan points
+        plt.figure()
+        plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
+        plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
+        plt.savefig(jason['output_path'] + '/scatter_2d.png', format='png', dpi=300)
+        plt.clf()
+        plt.close()
+        '''
+
+
+    def Prop(img, fresnel_number): # Probe propagation
+        """ Frunction for free space propagation of the probe in the Fraunhoffer regime
+
+        See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_. Are terms missing after convolution?
+        
+        Args:
+            img (array): probe
+            fresnel_number (float): Fresnel number
+
+        Returns:
+            [type]: [description]
+        """    
+        hs = img.shape[-1] // 2
+        ar = np.arange(-hs, hs) / float(2 * hs)
+        xx, yy = np.meshgrid(ar, ar)
+        g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
+        return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
+
+        plotshow([abs(Prop(p, jason['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['output_path'] + '/probe_'  + str(frame), nlines=2)
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=jason['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
+        
+
+
+def save_variable(variable, predefined_name, savename=""):
+    """ Function to save reconstruction object, probe and/or background. 
+    
+    This function presents some redundancy. Should be improved!
+
+    Args:
+        variable : variable to be saved (e.g. sinogram, probe reconstruction and/or background)
+        predefined_name: predefined name for saving the output variable
+        savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
+    """    
+    variable = np.asarray(variable, dtype=object)
+
+    # for i in range(variable.shape[0]):
+    #     print('shapes', variable[i].shape)
+    for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
+        if math.isnan(variable[i][:, :].imag.sum()):
+            variable[i][:, :] = np.zeros(variable[i][:, :].shape)
+
+    variable = np.asarray(variable, dtype=np.complex64)
+
+    if savename != "":
+        np.save(savename, variable)
+    else:
+        np.save(predefined_name, variable)
+
+
+
+def wavelength_from_energy(energy_keV):
+    """ Constants """
+    speed_of_light = 299792458  # Speed of Light [m/s]
+    planck = 4.135667662E-18    # Plank constant [keV*s]
+    return planck * speed_of_light / energy_keV
+
+
+def create_circular_mask(center, radius, mask_shape):
+    """ All values in pixels """
+    center_row, center_col = center
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    return np.where((Xmesh - center_col) ** 2 + (Ymesh - center_row) ** 2 <= radius ** 2, 1, 0)
+
+def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
+    if length_x == 0: length_x = length_y
+    """ All values in pixels """
+    center_row, center_col = center
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    mask = np.zeros(*mask_shape)
+    mask[center_row-length_y//2:center_row+length_y//2,center_col-length_x//2:center_col+length_x//2] = 1
+    return mask 
+
+def create_cross_mask(mask_shape,center, length_y, length_x=0):
+    if length_x == 0: length_x = length_y
+    """ All values in pixels """
+    center_row, center_col = center
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    mask = np.zeros(*mask_shape)
+    mask[center_row-length_y//2:center_row+length_y//2,:] = 1
+    mask[:,center_col-length_x//2:center_col+length_x//2] = 1
+    return mask 

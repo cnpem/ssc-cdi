@@ -230,7 +230,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(data_folder_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -239,11 +239,11 @@ def inputs_tab():
             projections = ast.literal_eval(projections)
 
         global global_dict
-        global_dict["proposal_path"]        = proposal_path_str
+        global_dict["data_folder"]        = data_folder_str
         global_dict["acquisition_folders"] = acquisition_folders
         global_dict["projections"]         = projections
 
-        output_folder = os.path.join( global_dict["proposal_path"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
+        output_folder = os.path.join( global_dict["data_folder"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
 
         global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'{acquisition_folders[0]}_object.npy') # path to load npy with first reconstruction preview
         global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'{acquisition_folders[0]}_object_cropped.npy')
@@ -300,7 +300,7 @@ def inputs_tab():
     saveJsonButton.trigger(save_on_click_partial)
 
     label1 = create_label_widget("Data Selection")
-    proposal_path_str     = Input(global_dict,"proposal_path",description="Proposal Path",layout=items_layout2)
+    data_folder_str     = Input(global_dict,"data_folder",description="Proposal Path",layout=items_layout2)
     acquisition_folders   = Input(global_dict,"acquisition_folders",description="Data Folders",layout=items_layout2)
     projections           = Input(global_dict,"projections",description="projections",layout=items_layout2)
     
@@ -354,7 +354,7 @@ def inputs_tab():
 
     FRC = Input(global_dict,"FRC",description="FRC: Fourier Ring Correlation",layout=items_layout2)
 
-    widgets.interactive_output(update_global_dict,{'proposal_path_str':proposal_path_str.widget,
+    widgets.interactive_output(update_global_dict,{'data_folder_str':data_folder_str.widget,
                                                     'acquisition_folders': acquisition_folders.widget,
                                                     'projections': projections.widget,
                                                     'binning':binning.widget,                                                    
@@ -381,7 +381,7 @@ def inputs_tab():
                                                     "DetectorPileup":DetectorPileup.widget
                                                      })
 
-    box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,fill_blanks.widget,save_or_load_difpads],layout=box_layout)
+    box = widgets.Box([label1,data_folder_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,fill_blanks.widget,save_or_load_difpads],layout=box_layout)
     box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,incoherent_modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
@@ -424,7 +424,7 @@ def mask_tab():
         print("Loading difpad from: ",global_paths_dict["difpad_raw_mean_filepath"] )
         difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
         masked_difpad = difpad.copy()
-        mask = h5py.File(os.path.join(global_dict["proposal_path"],global_dict["acquisition_folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
+        mask = h5py.File(os.path.join(global_dict["data_folder"],global_dict["acquisition_folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
         masked_difpad[np.abs(mask) == 1] = -1 # Apply Mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
         subplot2.imshow(mask,cmap='gray')
@@ -477,7 +477,7 @@ def center_tab():
 
     def load_difpad(dummy):
 
-        mdata_filepath = os.path.join(global_dict["proposal_path"],global_dict['acquisition_folders'][0],'mdata.json')
+        mdata_filepath = os.path.join(global_dict["data_folder"],global_dict['acquisition_folders'][0],'mdata.json')
         input_dict = json.load(open(mdata_filepath))
 
         image = np.load(global_paths_dict['flipped_difpad_filepath'])

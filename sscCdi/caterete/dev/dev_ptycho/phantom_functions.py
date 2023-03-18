@@ -11,7 +11,7 @@ from scipy.ndimage import rotate
 from PIL import Image
 import sscPhantom
 
-from sscCdi.caterete.ptycho_processing import convert_probe_positions
+from sscCdi.caterete.ptycho_processing import convert_probe_positions_meters_to_pixels
 from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):
@@ -275,7 +275,7 @@ def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
         print(f"\tData saved at: ",model_path)
     return obj
 
-def convert_probe_positions(dx, probe_positions, offset_topleft = 20):
+def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = 20):
 
     """Set probe positions considering maxroi and effective pixel size
 
@@ -314,7 +314,7 @@ def get_xy_positions(probe_positions):
     return np.asarray(uniques_list), np.sort(np.asarray(uniques_list2))
 
 def convert_positions_to_pixels(pixel_size,probe_positions,offset):
-    positions_pxls, _ = convert_probe_positions(pixel_size, probe_positions.copy(), offset) # copy so it isn't altered as a pointer inside the function
+    positions_pxls, _ = convert_probe_positions_meters_to_pixels(pixel_size, probe_positions.copy(), offset) # copy so it isn't altered as a pointer inside the function
     X_pxls, Y_pxls = positions_pxls[:,0], positions_pxls[:,1]
     # uniqueX, uniqueY = get_xy_positions(positions_pxls)
     # Y_pxls, X_pxls = np.meshgrid(uniqueY, uniqueX)
