@@ -26,11 +26,11 @@ if __name__ == '__main__':
     t1 = time.time()
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
 
-    dic, restored_data_info = sscCdi.caterete.cat_restoration.restoration_cuda_parallel(jason) # difpads is a list of size = len(Aquisition_folders)
+    restoration_dict, restored_data_info = sscCdi.caterete.cat_restoration.restoration_cuda_parallel(jason) # difpads is a list of size = len(Aquisition_folders)
     t2 = time.time()
 
     #TODO: call ptycho
-    object,probe, jason = sscCdi.ptycho.ptycho_processing.cat_ptycho_3d(difpads,jason) 
+    object,probe, jason = sscCdi.ptycho.ptycho_processing.cat_ptychography(jason,restoration_dict,restored_data_info)
     t3 = time.time()
 
     if len(object) > 1: # Concatenate if object is a list of multiple elements. Each element is a ndarray of recons performed together

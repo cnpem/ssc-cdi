@@ -27,6 +27,14 @@ from sscPimega import pi540D
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, read_hdf5
 
+""" FUNCTIONS """
+
+def cat_ptychography(jason,restoration_dict,restored_data_info):
+
+
+
+    return object, probe, jason
+
 def Geometry(L,susp=3,scale=0.98,fill=False):
     project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp } ) 
     geo = pi540D.geometry540D( project )
@@ -1095,7 +1103,6 @@ def ptycho_main(difpads, args, _start_, _end_,gpu):
                                                     probefresnel_number=jason['fresnel_number'], data=datapack,params={'device':gpu})
 
                     loop_counter += 1
-                    RF = datapack['error']
 
             print('Original object shape:', datapack['obj'].shape)
 

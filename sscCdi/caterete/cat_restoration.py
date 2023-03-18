@@ -21,6 +21,8 @@ def restoration_cuda_parallel(jason):
     
     ibira_datafolder, scans_string  = jason['proposal_path'],jason['scans_string']
 
+    #TODO: estimate size of output DP after restoration; abort if using bertha and total size > 100GBs
+
     count = -1
     for acquisitions_folder in jason['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
