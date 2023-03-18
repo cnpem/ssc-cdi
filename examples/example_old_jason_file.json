@@ -2,29 +2,29 @@
 
 {
     "LogfilePath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/outputs/2022_json_logfiles/",
-    "ProposalPath": "/ibira/lnls/beamlines/caterete/proposals/20210127/data/ptycho2d/SS11/",
+    "proposal_path": "/ibira/lnls/beamlines/caterete/proposals/20210127/data/ptycho2d/SS11/",
     
-    "3D_Acquisition_Folders": [""],
+    "3D_acquisition_folders": [""],
     "Frames": [],
     
     "SingleMeasurement": "0000_SS11_001.hdf5",
 
-    "AutoCrop": true,
-    "Phaseunwrap": [false,5,[300,300],[300,300]],
+    "autocrop": true,
+    "phase_unwrap": [false,5,[300,300],[300,300]],
     "FRC": false,
-    "DetectorExposure": [false,0.15],
-    "AutomaticCentralMask": [],
-    "ProbeSupport": [300,0,0],
+    "detector_exposure": [false,0.15],
+    "Automaticcentral_mask": [],
+    "probe_support": [300,0,0],
     "GPUs": [0],
-    "Threads": 32,
-    "Binning": 4,
+    "CPUs": 32,
+    "binning": 4,
     "Seed": 10,
-    "Modes": 0,
+    "incoherent_modes": 0,
 
     "f1": -1.3E-4,
 
-    "DifpadCenter": [1365,1379],
-    "DetectorROI": 1280,
+    "DP_center": [1365,1379],
+    "detector_ROI_radius": 1280,
 
     "OldRestauration": true,
     "ChipBorderRemoval": 5,
@@ -35,12 +35,12 @@
     "SaveDifpadPath": "",
 
     "SaveObj": true,
-    "InitialObj": "",
+    "initial_obj_path": "",
     "ObjPath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/outputs/reconstruction/",
     "SaveObjname": "sinogram.npy",
 
     "SaveProbe": true,
-    "InitialProbe": "",
+    "initial_probe_path": "",
     "ProbePath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/outputs/reconstruction/",
     "SaveProbename": "probe.npy",
 

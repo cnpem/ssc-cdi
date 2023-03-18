@@ -138,13 +138,13 @@ def update_paths(global_dict,dummy1,dummy2):
     global_dict["wiggle_ctr_mass_filepath"]          = os.path.join(global_dict["output_folder"],global_dict["contrast_type"] + '_wiggle_ctr_mass.npy')
     return global_dict
 
-def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat',gpus=1,cpus=32):
+def write_slurm_file(tomo_script_path,jsonFile_path,output_path="",slurmFile = 'tomoJob.sh',jobName='jobName',queue='cat',GPUs=1,cpus=32):
     # Create slurm file
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
-#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
+#SBATCH --gres=gpu:{GPUs}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
 #SBATCH -o {output_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
 
@@ -172,8 +172,8 @@ def call_cmd_terminal(filename,mafalda,remove=False):
         
     return given_jobID
 
-def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat',gpus=1,cpus=32):
-    slurm_file = write_slurm_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,gpus,cpus)
+def run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path="",slurmFile = 'ptychoJob2.srm',jobName='jobName',queue='cat',GPUs=1,cpus=32):
+    slurm_file = write_slurm_file(tomo_script_path,jsonFile_path,output_path,slurmFile,jobName,queue,GPUs,cpus)
     given_jobID = call_cmd_terminal(slurm_file,mafalda,remove=False)
     monitor_job_execution(given_jobID,mafalda)
 
@@ -235,46 +235,46 @@ def slide_and_play(slider_layout=slider_layout,label="",description="",frame_tim
 def update_gpu_limits(machine_selection):
 
     if machine_selection == 'Cluster':
-        gpus_slider.widget.value = 0
-        gpus_slider.widget.max = 5
+        GPUs_slider.widget.value = 0
+        GPUs_slider.widget.max = 5
         cpus_slider.widget.value = 32
         cpus_slider.widget.max = 160
     elif machine_selection == 'Local':
-        gpus_slider.widget.value = 0
-        gpus_slider.widget.max = 6
+        GPUs_slider.widget.value = 0
+        GPUs_slider.widget.max = 6
         cpus_slider.widget.value = 32
         cpus_slider.widget.max = 144
 
-def update_cpus_gpus(cpus,gpus,machine_selection):
+def update_cpus_GPUs(cpus,GPUs,machine_selection):
     global_dict["CPUs"] = cpus
 
     if machine_selection == 'Cluster':
-        if gpus == 0:
+        if GPUs == 0:
             global_dict["GPUs"] = []
-        elif gpus == 1:
+        elif GPUs == 1:
             global_dict["GPUs"] = [0] 
-        elif gpus == 2:
+        elif GPUs == 2:
             global_dict["GPUs"] = [0,1]
-        elif gpus == 3:
+        elif GPUs == 3:
             global_dict["GPUs"] = [0,1,2]
-        elif gpus == 4:
+        elif GPUs == 4:
             global_dict["GPUs"] = [0,1,2,3]
-        elif gpus == 5:
+        elif GPUs == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
     elif machine_selection == 'Local':
-        if gpus == 0:
+        if GPUs == 0:
             global_dict["GPUs"] = []
-        elif gpus == 1:
+        elif GPUs == 1:
             global_dict["GPUs"] = [0] 
-        elif gpus == 2:
+        elif GPUs == 2:
             global_dict["GPUs"] = [0,1]
-        elif gpus == 3:
+        elif GPUs == 3:
             global_dict["GPUs"] = [0,1,2]
-        elif gpus == 4:
+        elif GPUs == 4:
             global_dict["GPUs"] = [0,1,2,3]
-        elif gpus == 5:
+        elif GPUs == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
-        elif gpus == 6:
+        elif GPUs == 6:
             global_dict["GPUs"] = [0,1,2,3,4,5]
     else:
         print('You can only use 1 GPU to run in the local machine!')
@@ -871,10 +871,10 @@ def wiggle_tab():
     sinogram_selection = widgets.RadioButtons(options=['cropped','unwrapped','equalized'], value='unwrapped', style=style,layout=items_layout,description='Sinogram to import:',disabled=False)
     sinogram_slider1   = Input({"dummy_key":1},"dummy_key", description="Sinogram Slice", bounded=(1,10,1),slider=True,layout=slider_layout)
 
-    global cpus_slider, gpus_slider, machine_selection
-    gpus_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(1,5,1),  slider=True,description="# of GPUs:")
+    global cpus_slider, GPUs_slider, machine_selection
+    GPUs_slider = Input({'dummy_key':1}, 'dummy_key',bounded=(1,5,1),  slider=True,description="# of GPUs:")
     cpus_slider = Input({'dummy_key':32},'dummy_key',bounded=(1,160,1),slider=True,description="# of CPUs:")
-    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
+    widgets.interactive_output(update_cpus_GPUs,{"cpus":cpus_slider.widget,"GPUs":GPUs_slider.widget,"machine_selection":machine_selection})
 
     args2 = (sinogram_selection,sinogram_slider1,cpus_slider,selection_slider)
     wiggle_button.trigger(partial(start_wiggle,args=args2))
@@ -1002,7 +1002,7 @@ def tomo_tab():
     reg_checkbox    = Input(global_dict,"tomo_regularization",description = "Apply Regularization")
     reg_param       = Input(global_dict,"tomo_regularization_param",description = "Regularization Parameter",layout=items_layout)
     iter_slider     = Input(global_dict,"tomo_iterations",description = "Iterations", bounded=(1,200,2),slider=True,layout=slider_layout)
-    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus_slider.widget,"gpus":gpus_slider.widget,"machine_selection":machine_selection})
+    widgets.interactive_output(update_cpus_GPUs,{"cpus":cpus_slider.widget,"GPUs":GPUs_slider.widget,"machine_selection":machine_selection})
 
     filename_field  = Input({"dummy_str":'reconstruction3Dphase'},"dummy_str",description = "Output Filename",layout=items_layout)
     tomo_threshold  = Input(global_dict,"tomo_threshold",description = "Value threshold",layout=items_layout)
@@ -1047,7 +1047,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     
 
     def run_tomo(dummy,args=()):
-        gpus_slider, cpus_slider,jobname_field,queue_field, checkboxes = args
+        GPUs_slider, cpus_slider,jobname_field,queue_field, checkboxes = args
 
         global_dict["processing_steps"] = { "Sort":checkboxes[0].value , "Crop":checkboxes[1].value , "Unwrap":checkboxes[2].value, "Equalize Frames":checkboxes[3].value, "Wiggle":checkboxes[4].value, "Tomo":checkboxes[5].value, "Equalize Recon":checkboxes[6].value } # select steps when performing full recon
         
@@ -1070,7 +1070,7 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
             print('\t Saved!')
 
         elif machine_selection.value == "Cluster": 
-            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=global_dict["jupyter_folder"] ,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,gpus=gpus_slider.widget.value,cpus=cpus_slider.widget.value)
+            run_job_from_jupyter(mafalda,tomo_script_path,jsonFile_path,output_path=global_dict["jupyter_folder"] ,slurmFile = slurm_filepath,  jobName=jobname_field.widget.value,queue=queue_field.widget.value,GPUs=GPUs_slider.widget.value,cpus=cpus_slider.widget.value)
 
     def update_processing_steps(dictionary,sort_checkbox,crop_checkbox,unwrap_checkbox,wiggle_checkbox,tomo_checkbox,equalize_frames_checkbox,equalize_recon_checkbox):
         # "processing_steps": { "Sort":1 , "Crop":1 , "Unwrap":1, "Wiggle":1, "Tomo":1 } # select steps when performing full recon
@@ -1166,11 +1166,11 @@ def deploy_tabs(mafalda_session,tab1=folders_tab(),tab2=crop_tab(),tab3=unwrap_t
     # load_dict_button  = Button(description="Load inputs",layout=buttons_layout_fixed,icon='folder-open-o')
     # load_dict_button.trigger(load_on_click)  
 
-    args = gpus_slider,cpus_slider,jobname_field,queue_field, checkboxes
+    args = GPUs_slider,cpus_slider,jobname_field,queue_field, checkboxes
     start_tomo = Button(description="Start",layout=buttons_layout_fixed,icon='play')
     start_tomo.trigger(partial(run_tomo,args=args))
 
-    slurm_box = widgets.HBox([data_selection,machine_selection,cpus_slider.widget,gpus_slider.widget,queue_field.widget,jobname_field.widget])
+    slurm_box = widgets.HBox([data_selection,machine_selection,cpus_slider.widget,GPUs_slider.widget,queue_field.widget,jobname_field.widget])
     checkboxes_box  = widgets.HBox([widgets.HTML(f'<b><font size=2.0px>Steps to perform on cluster: \t \t  </b>' ),widgets.HBox([*checkboxes])])
     buttons_box = widgets.HBox([save_dict_button.widget,start_tomo.widget,delete_temporary_files_button.widget])
     box = widgets.VBox([hbar,slurm_box,checkboxes_box,buttons_box])
