@@ -118,7 +118,7 @@ def save_json_logfile(path,jason):
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
     
-    name = jason["Acquisition_Folders"][0]
+    name = jason["acquisition_folders"][0]
 
     name = dt_string + "_" + name.split('.')[0]+".json"
 

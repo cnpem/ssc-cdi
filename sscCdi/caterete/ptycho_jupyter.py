@@ -78,14 +78,14 @@ def get_box_layout(width,flex_flow='column',align_items='flex-start',border=stan
 
 ############################################ INTERFACE / GUI : FUNCTIONS ###########################################################################
 
-def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat',gpus=1,cpus=32):
+def write_slurm_file(python_script_path,json_filepath_path,output_path="",slurm_filepath = 'slurmJob.sh',jobName='jobName',queue='cat',GPUs=1,cpus=32):
     # Create slurm file
     logfiles_path = slurm_filepath.rsplit('/',2)[0]
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
 #SBATCH -p {queue}            # Fila (partition) a ser utilizada
-#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
+#SBATCH --gres=gpu:{GPUs}     # Number of GPUs to use
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
 #SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
 
@@ -106,42 +106,42 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,
 def update_gpu_limits(machine_selection):
 
     if machine_selection == 'Cluster':
-        gpus.widget.value = 0
-        gpus.widget.max = 5
+        GPUs.widget.value = 0
+        GPUs.widget.max = 5
     elif machine_selection == 'Local':
-        gpus.widget.value = 0
-        gpus.widget.max = 6
+        GPUs.widget.value = 0
+        GPUs.widget.max = 6
 
-def update_cpus_gpus(cpus,gpus):
-    global_dict["Threads"] = cpus
+def update_cpus_GPUs(cpus,GPUs):
+    global_dict["CPUs"] = cpus
 
     if machine_selection.value == 'Cluster':
-        if gpus == 0:
+        if GPUs == 0:
             global_dict["GPUs"] = []
-        elif gpus == 1:
+        elif GPUs == 1:
             global_dict["GPUs"] = [0] 
-        elif gpus == 2:
+        elif GPUs == 2:
             global_dict["GPUs"] = [0,1]
-        elif gpus == 3:
+        elif GPUs == 3:
             global_dict["GPUs"] = [0,1,2]
-        elif gpus == 4:
+        elif GPUs == 4:
             global_dict["GPUs"] = [0,1,2,3]
-        elif gpus == 5:
+        elif GPUs == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
     elif machine_selection.value == 'Local':
-        if gpus == 0:
+        if GPUs == 0:
             global_dict["GPUs"] = []
-        elif gpus == 1:
+        elif GPUs == 1:
             global_dict["GPUs"] = [0] 
-        elif gpus == 2:
+        elif GPUs == 2:
             global_dict["GPUs"] = [0,1]
-        elif gpus == 3:
+        elif GPUs == 3:
             global_dict["GPUs"] = [0,1,2]
-        elif gpus == 4:
+        elif GPUs == 4:
             global_dict["GPUs"] = [0,1,2,3]
-        elif gpus == 5:
+        elif GPUs == 5:
             global_dict["GPUs"] = [0,1,2,3,4]
-        elif gpus == 6:
+        elif GPUs == 6:
             global_dict["GPUs"] = [0,1,2,3,4,5]
 
 def delete_files(dummy):
@@ -171,8 +171,8 @@ def delete_files(dummy):
         else:
             print(f'Directory {folderpath} does not exists. Skipping deletion...\n')
 
-def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat',gpus=1,cpus=32):
-    slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,gpus,cpus)
+def run_ptycho_from_jupyter(mafalda,python_script_path,json_filepath_path,output_path="",slurm_filepath = 'ptychoJob2.srm',jobName='jobName',queue='cat',GPUs=1,cpus=32):
+    slurm_file = write_slurm_file(python_script_path,json_filepath_path,output_path,slurm_filepath,jobName,queue,GPUs,cpus)
     call_cmd_terminal(slurm_file,mafalda,remove=False)
     
 def run_ptycho(dummy):
@@ -187,7 +187,7 @@ def run_ptycho(dummy):
     from pprint import pprint
     pprint(global_dict)
 
-    print(f'\nWARNING: IS CENTER {global_dict["DifpadCenter"]} CORRECT?\n')
+    print(f'\nWARNING: IS CENTER {global_dict["DP_center"]} CORRECT?\n')
 
     if machine_selection.value == 'Local':
         cmd = f'python3 {pythonScript} {json_filepath}'
@@ -196,13 +196,13 @@ def run_ptycho(dummy):
         output = call_and_read_terminal(cmd,mafalda,use_mafalda=False)
         print(output.decode("utf-8"))
     elif machine_selection.value == "Cluster": 
-        global jobNameField, jobQueueField, cpus, gpus
+        global jobNameField, jobQueueField, cpus, GPUs
         jobName_value = jobNameField.widget.value
         queue_value   = jobQueueField.widget.value
         cpus_value    = cpus.widget.value
-        gpus_value    = gpus.widget.value
+        GPUs_value    = GPUs.widget.value
         create_directory_if_doesnt_exist(global_paths_dict["output_folder"])
-        run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,gpus=gpus_value,cpus=cpus_value)
+        run_ptycho_from_jupyter(mafalda,pythonScript,json_filepath,output_path=global_paths_dict["output_folder"],slurm_filepath = slurm_filepath,jobName=jobName_value,queue=queue_value,GPUs=GPUs_value,cpus=cpus_value)
 
 # def load_json(dummy):
 #     global global_dict
@@ -230,7 +230,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,ChipBorderRemoval,FillBlanks,save_or_load_difpads,CentralMask_bool,CentralMask_radius,ProbeSupport_radius,ProbeSupport_centerX,ProbeSupport_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(proposal_path_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -239,11 +239,11 @@ def inputs_tab():
             projections = ast.literal_eval(projections)
 
         global global_dict
-        global_dict["ProposalPath"]        = proposal_path_str
-        global_dict["Acquisition_Folders"] = acquisition_folders
-        global_dict["Projections"]         = projections
+        global_dict["proposal_path"]        = proposal_path_str
+        global_dict["acquisition_folders"] = acquisition_folders
+        global_dict["projections"]         = projections
 
-        output_folder = os.path.join( global_dict["ProposalPath"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
+        output_folder = os.path.join( global_dict["proposal_path"].rsplit('/',3)[0] , 'proc','recons',acquisition_folders[0]) # changes with control
 
         global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'{acquisition_folders[0]}_object.npy') # path to load npy with first reconstruction preview
         global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'{acquisition_folders[0]}_object_cropped.npy')
@@ -252,12 +252,12 @@ def inputs_tab():
         global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
 
-        global_dict["Binning"] = binning
-        global_dict["DifpadCenter"] = [center_y,center_x]
+        global_dict["binning"] = binning
+        global_dict["DP_center"] = [center_y,center_x]
 
-        global_dict["DetectorROI"] = detector_ROI
-        global_dict["ChipBorderRemoval"] = ChipBorderRemoval
-        global_dict["FillBlanks"] =  FillBlanks
+        global_dict["detector_ROI_radius"] = detector_ROI
+        global_dict["suspect_border_pixels"] = suspect_border_pixels
+        global_dict["fill_blanks"] =  fill_blanks
 
         if save_or_load_difpads == "Save Diffraction Pattern":
             global_dict["SaveDifpads"] = 1
@@ -266,32 +266,32 @@ def inputs_tab():
             global_dict["SaveDifpads"] = 0
             global_dict["ReadRestauredDifpads"] = 1
 
-        global_dict["CentralMask"] = [CentralMask_bool,CentralMask_radius]
-        global_dict["DetectorExposure"][0] = DetectorPileup 
+        global_dict["central_mask"] = [central_mask_bool,central_mask_radius]
+        global_dict["detector_exposure"][0] = DetectorPileup 
 
-        global_dict["f1"] = fresnel_number
-        global_dict["ProbeSupport"] = [ProbeSupport_radius, ProbeSupport_centerX, ProbeSupport_centerY]
+        global_dict["fresnel_number"] = fresnel_number
+        global_dict["probe_support"] = [probe_support_radius, probe_support_centerX, probe_support_centerY]
 
-        global_dict["Phaseunwrap"][0] = PhaseUnwrap
-        global_dict["Phaseunwrap"][1] = PhaseUnwrap_iter
+        global_dict["phase_unwrap"][0] = PhaseUnwrap
+        global_dict["phase_unwrap"][1] = PhaseUnwrap_iter
 
         if [top_crop,bottom_crop] == [0,1]:
-            global_dict["Phaseunwrap"][2] =  []
+            global_dict["phase_unwrap"][2] =  []
         else:
-            global_dict["Phaseunwrap"][2] = [top_crop,bottom_crop]
+            global_dict["phase_unwrap"][2] = [top_crop,bottom_crop]
         if [left_crop,right_crop] == [0,1]:
-            global_dict["Phaseunwrap"][3] =  []
+            global_dict["phase_unwrap"][3] =  []
         else:
-            global_dict["Phaseunwrap"][3] = [left_crop,right_crop]
+            global_dict["phase_unwrap"][3] = [left_crop,right_crop]
 
         if use_obj_guess:
-            global_dict["InitialObj"] = global_paths_dict["sinogram_filepath"]
+            global_dict["initial_obj_path"] = global_paths_dict["sinogram_filepath"]
         else: 
-            global_dict["InitialObj"] = ''
+            global_dict["initial_obj_path"] = ''
         if use_probe_guess:
-            global_dict["InitialProbe"] = global_paths_dict["probe_filepath"]
+            global_dict["initial_probe_path"] = global_paths_dict["probe_filepath"]
         else: 
-            global_dict["InitialProbe"] = ''
+            global_dict["initial_probe_path"] = ''
 
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
 
@@ -300,39 +300,39 @@ def inputs_tab():
     saveJsonButton.trigger(save_on_click_partial)
 
     label1 = create_label_widget("Data Selection")
-    proposal_path_str     = Input(global_dict,"ProposalPath",description="Proposal Path",layout=items_layout2)
-    acquisition_folders   = Input(global_dict,"Acquisition_Folders",description="Data Folders",layout=items_layout2)
-    projections           = Input(global_dict,"Projections",description="Projections",layout=items_layout2)
+    proposal_path_str     = Input(global_dict,"proposal_path",description="Proposal Path",layout=items_layout2)
+    acquisition_folders   = Input(global_dict,"acquisition_folders",description="Data Folders",layout=items_layout2)
+    projections           = Input(global_dict,"projections",description="projections",layout=items_layout2)
     
     label2 = create_label_widget("Restoration")
     global center_y, center_x
-    center_x    = Input({'dummy-key':global_dict["DifpadCenter"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
-    center_y    = Input({'dummy-key':global_dict["DifpadCenter"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)   ",layout=slider_layout)
+    center_x    = Input({'dummy-key':global_dict["DP_center"][1]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center column (x)",layout=slider_layout)
+    center_y    = Input({'dummy-key':global_dict["DP_center"][0]},'dummy-key',bounded=(0,3072,1),slider=True,description="Center row (y)   ",layout=slider_layout)
     center_box = widgets.Box([center_y.widget,center_x.widget],layout=slider_layout3)
 
-    detector_ROI          = Input({'dummy-key':global_dict["DetectorROI"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
-    suspect_pixels        = Input({'dummy-key':global_dict["ChipBorderRemoval"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
-    fill_blanks         = Input({'dummy-key':global_dict["FillBlanks"]},'dummy-key',description="Interpolate blanks",layout=items_layout2)
-    binning             = Input(global_dict,"Binning",bounded=(1,4,1),slider=True,description="Binning factor",layout=slider_layout2)
+    detector_ROI          = Input({'dummy-key':global_dict["detector_ROI_radius"]},'dummy-key',bounded=(0,1536,1),slider=True,description="Diamenter (pixels)",layout=slider_layout2)
+    suspect_pixels        = Input({'dummy-key':global_dict["suspect_border_pixels"]},'dummy-key',bounded=(0,20,1),slider=True,description="Suppress pixels from chip border",layout=slider_layout2)
+    fill_blanks         = Input({'dummy-key':global_dict["fill_blanks"]},'dummy-key',description="Interpolate blanks",layout=items_layout2)
+    binning             = Input(global_dict,"binning",bounded=(1,4,1),slider=True,description="binning factor",layout=slider_layout2)
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
     label3 = create_label_widget("Diffraction Pattern Processing")
-    autocrop           = Input(global_dict,"AutoCrop",description="Auto Crop borders",layout=items_layout2)
-    global CentralMask_radius, CentralMask_bool, DetectorPileup
-    CentralMask_bool   = Input({'dummy-key':global_dict["CentralMask"][0]},'dummy-key',description="Use Central Mask",layout=items_layout2)
-    CentralMask_radius = Input({'dummy-key':global_dict["CentralMask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
-    central_mask_box   = widgets.Box([CentralMask_bool.widget,CentralMask_radius.widget],layout=slider_layout3)
-    DetectorPileup   = Input({'dummy-key':global_dict["DetectorExposure"][0]},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
+    autocrop           = Input(global_dict,"autocrop",description="Auto Crop borders",layout=items_layout2)
+    global central_mask_radius, central_mask_bool, DetectorPileup
+    central_mask_bool   = Input({'dummy-key':global_dict["central_mask"][0]},'dummy-key',description="Use Central Mask",layout=items_layout2)
+    central_mask_radius = Input({'dummy-key':global_dict["central_mask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
+    central_mask_box   = widgets.Box([central_mask_bool.widget,central_mask_radius.widget],layout=slider_layout3)
+    DetectorPileup   = Input({'dummy-key':global_dict["detector_exposure"][0]},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
 
     label4 = create_label_widget("Probe Adjustment")
-    ProbeSupport_radius   = Input({'dummy-key':global_dict["ProbeSupport"][0]},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
-    ProbeSupport_centerX  = Input({'dummy-key':global_dict["ProbeSupport"][1]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
-    ProbeSupport_centerY  = Input({'dummy-key':global_dict["ProbeSupport"][2]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
-    probe_box = widgets.Box([ProbeSupport_radius.widget,ProbeSupport_centerX.widget,ProbeSupport_centerY.widget],layout=slider_layout3)
+    probe_support_radius   = Input({'dummy-key':global_dict["probe_support"][0]},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
+    probe_support_centerX  = Input({'dummy-key':global_dict["probe_support"][1]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center X",layout=slider_layout2)
+    probe_support_centerY  = Input({'dummy-key':global_dict["probe_support"][2]},'dummy-key',bounded=(-100,100,10),slider=True,description="Probe Center Y",layout=slider_layout2)
+    probe_box = widgets.Box([probe_support_radius.widget,probe_support_centerX.widget,probe_support_centerY.widget],layout=slider_layout3)
 
     global fresnel_number
-    fresnel_number = Input(global_dict,"f1",description="Fresnel Number",layout=items_layout2)
-    Modes = Input(global_dict,"Modes",bounded=(0,30,1),slider=True,description="Probe Modes",layout=slider_layout2)
+    fresnel_number = Input(global_dict,"fresnel_number",description="Fresnel Number",layout=items_layout2)
+    incoherent_modes = Input(global_dict,"incoherent_modes",bounded=(0,30,1),slider=True,description="Probe incoherent_modes",layout=slider_layout2)
 
     label5 = create_label_widget("Ptychography")
     global use_obj_guess, use_probe_guess
@@ -343,9 +343,9 @@ def inputs_tab():
     Algorithm3 = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
 
     label6 = create_label_widget("Post-processing")
-    Phaseunwrap      = Input({'dummy-key':global_dict["Phaseunwrap"][0]},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
-    Phaseunwrap_iter = Input({'dummy-key':global_dict["Phaseunwrap"][1]},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
-    phase_unwrap_box = widgets.Box([Phaseunwrap.widget],layout=items_layout2)
+    phase_unwrap      = Input({'dummy-key':global_dict["phase_unwrap"][0]},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
+    phase_unwrap_iter = Input({'dummy-key':global_dict["phase_unwrap"][1]},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
+    phase_unwrap_box = widgets.Box([phase_unwrap.widget],layout=items_layout2)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1), description="Top", slider=True,layout=slider_layout)
     bottom_crop   = Input({'dummy_key':1},'dummy_key',bounded=(1,10,1), description="Bottom", slider=True,layout=slider_layout)
@@ -361,16 +361,16 @@ def inputs_tab():
                                                     'center_y':center_y.widget,
                                                     'center_x':center_x.widget,
                                                     'detector_ROI':detector_ROI.widget,
-                                                    'ChipBorderRemoval':suspect_pixels.widget,
-                                                    'FillBlanks': fill_blanks.widget,
+                                                    'suspect_border_pixels':suspect_pixels.widget,
+                                                    'fill_blanks': fill_blanks.widget,
                                                     'save_or_load_difpads':save_or_load_difpads,
-                                                    'CentralMask_bool': CentralMask_bool.widget,
-                                                    'CentralMask_radius': CentralMask_radius.widget,
-                                                    'ProbeSupport_radius': ProbeSupport_radius.widget,
-                                                    'ProbeSupport_centerX': ProbeSupport_centerX.widget,
-                                                    'ProbeSupport_centerY': ProbeSupport_centerY.widget,
-                                                    'PhaseUnwrap': Phaseunwrap.widget,
-                                                    'PhaseUnwrap_iter': Phaseunwrap_iter.widget, # Remove this in the future
+                                                    'central_mask_bool': central_mask_bool.widget,
+                                                    'central_mask_radius': central_mask_radius.widget,
+                                                    'probe_support_radius': probe_support_radius.widget,
+                                                    'probe_support_centerX': probe_support_centerX.widget,
+                                                    'probe_support_centerY': probe_support_centerY.widget,
+                                                    'PhaseUnwrap': phase_unwrap.widget,
+                                                    'PhaseUnwrap_iter': phase_unwrap_iter.widget, # Remove this in the future
                                                     'top_crop': top_crop.widget,
                                                     'bottom_crop': bottom_crop.widget,
                                                     'left_crop': left_crop.widget,
@@ -382,7 +382,7 @@ def inputs_tab():
                                                      })
 
     box = widgets.Box([label1,proposal_path_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,fill_blanks.widget,save_or_load_difpads],layout=box_layout)
-    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,Modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
+    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,incoherent_modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
 
@@ -424,7 +424,7 @@ def mask_tab():
         print("Loading difpad from: ",global_paths_dict["difpad_raw_mean_filepath"] )
         difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
         masked_difpad = difpad.copy()
-        mask = h5py.File(os.path.join(global_dict["ProposalPath"],global_dict["Acquisition_Folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
+        mask = h5py.File(os.path.join(global_dict["proposal_path"],global_dict["acquisition_folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
         masked_difpad[np.abs(mask) == 1] = -1 # Apply Mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
         subplot2.imshow(mask,cmap='gray')
@@ -477,25 +477,25 @@ def center_tab():
 
     def load_difpad(dummy):
 
-        mdata_filepath = os.path.join(global_dict["ProposalPath"],global_dict['Acquisition_Folders'][0],'mdata.json')
+        mdata_filepath = os.path.join(global_dict["proposal_path"],global_dict['acquisition_folders'][0],'mdata.json')
         input_dict = json.load(open(mdata_filepath))
 
         image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(global_dict),'image':fixed(image),
-                                                'key1':fixed('DifpadCenter'),'key2':fixed('CentralMask'),'key3':fixed('DetectorExposure'),
+                                                'key1':fixed('DP_center'),'key2':fixed('central_mask'),'key3':fixed('detector_exposure'),
                                                 'cy':center_y.widget,'cx':center_x.widget,
-                                                'button':CentralMask_bool.widget,
+                                                'button':central_mask_bool.widget,
                                                 'exposure':DetectorPileup.widget,
                                                 'exposure_time':fixed(input_dict['/entry/beamline/detector']['pimega']["exposure time"]),
-                                                'radius':CentralMask_radius.widget})
+                                                'radius':central_mask_radius.widget})
 
     load_difpad_button  = Button(description="Load Diffraction Pattern",layout=buttons_layout,icon='folder-open-o')
     load_difpad_button.trigger(load_difpad)
 
     """ Difpad center boxes """
-    sliders_box = widgets.HBox([center_y.widget,center_x.widget,CentralMask_radius.widget],layout=box_layout)
-    controls = widgets.Box([load_difpad_button.widget,sliders_box,CentralMask_bool.widget,DetectorPileup.widget],layout=get_box_layout('500px'))
+    sliders_box = widgets.HBox([center_y.widget,center_x.widget,central_mask_radius.widget],layout=box_layout)
+    controls = widgets.Box([load_difpad_button.widget,sliders_box,central_mask_bool.widget,DetectorPileup.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([controls,vbar,output])
     return box
 
@@ -747,12 +747,12 @@ def deploy_tabs(mafalda_session,tab2=inputs_tab(),tab3=center_tab(),tab4=fresnel
     global jobNameField, jobQueueField
     jobNameField  = Input({'dummy_key':f'{username}_ptycho'},'dummy_key',description="Insert slurm job name:")
     jobQueueField = Input({'dummy_key':slurmequeue},'dummy_key',description="Insert machine queue name:")
-    global cpus, gpus
-    gpus = Input({'dummy_key':1}, 'dummy_key',bounded=(1,5,1),  slider=True,description="Insert # of GPUs to use:")
+    global cpus, GPUs
+    GPUs = Input({'dummy_key':1}, 'dummy_key',bounded=(1,5,1),  slider=True,description="Insert # of GPUs to use:")
     cpus = Input({'dummy_key':32},'dummy_key',bounded=(1,32,1),slider=True,description="Insert # of CPUs to use:")
-    widgets.interactive_output(update_cpus_gpus,{"cpus":cpus.widget,"gpus":gpus.widget})
+    widgets.interactive_output(update_cpus_GPUs,{"cpus":cpus.widget,"GPUs":GPUs.widget})
 
-    boxSlurm = widgets.HBox([machine_selection,gpus.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
+    boxSlurm = widgets.HBox([machine_selection,GPUs.widget,cpus.widget,jobQueueField.widget,jobNameField.widget])
     box = widgets.VBox([boxSlurm,ptycho_box])
 
     tab = widgets.Tab()

@@ -2,29 +2,29 @@
 
 {
     "LogfilePath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/outputs/2022_json_logfiles/",
-    "ProposalPath": "/ibira/lnls/beamlines/caterete/proposals/20210127/data/ptycho2d/",
+    "proposal_path": "/ibira/lnls/beamlines/caterete/proposals/20210127/data/ptycho2d/",
     "Mask": "/ibira/lnls/labs/tepui/proposals/20210062/julia/mask_pimega540D_100322.npy",
 
-    "Acquisition_Folders": ["sc_mem3_dry01"],
+    "acquisition_folders": ["sc_mem3_dry01"],
     "Frames": [],
 
-    "AutoCrop": false,
-    "Phaseunwrap": [true,5,[250,650],[250,350]],
+    "autocrop": false,
+    "phase_unwrap": [true,5,[250,650],[250,350]],
     "FRC": false,
-    "DetectorExposure": [false,0.15],
-    "AutomaticCentralMask": [true,7,0,0,0],
-    "ProbeSupport": [300,0,0],
+    "detector_exposure": [false,0.15],
+    "Automaticcentral_mask": [true,7,0,0,0],
+    "probe_support": [300,0,0],
     "GPUs": [0],
-    "Threads": 32,
-    "PtychoThreads":32,
-    "Binning": 4,
+    "CPUs": 32,
+    "PtychoCPUs":32,
+    "binning": 4,
     "Seed": 10,
-    "Modes": 0,
+    "incoherent_modes": 0,
 
     "f1": -2.01E-3,
 
-    "DifpadCenter": [],
-    "DetectorROI": 1280,
+    "DP_center": [],
+    "detector_ROI_radius": 1280,
 
     "OldRestauration": true,
     "ChipBorderRemoval": 5,
@@ -37,13 +37,13 @@
     "ReadRestauredDifpads": true,
 
     "SaveObj": true,
-    "InitialObj": "",
+    "initial_obj_path": "",
     "ObjPath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/2D_data/",
     "SaveObjname": "",
     "SaveComplexObject": false,
 
     "SaveProbe": true,
-    "InitialProbe": "",
+    "initial_probe_path": "",
     "ProbePath": "/ibira/lnls/labs/tepui/proposals/20210062/paola/caterete/yuriCAT/2D_data/",
     "SaveProbename": "",
 

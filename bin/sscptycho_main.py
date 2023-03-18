@@ -55,11 +55,11 @@ if __name__ == '__main__':
 
     cropped_sinogram = sscCdi.caterete.ptycho_processing.crop_sinogram(object,jason)
     
-    if jason['Phaseunwrap'][0]: # Apply phase unwrap to data 
+    if jason['phase_unwrap'][0]: # Apply phase unwrap to data 
         print('Unwrapping sinogram...')
         phase,absol = sscCdi.caterete.ptycho_processing.apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
         cropped_sinogram = absol*np.exp(-1j*phase)
-        sscCdi.caterete.ptycho_processing.save_variable(cropped_sinogram, os.path.join(jason['ReconsPath'],'unwrapped_object_' + jason["Acquisition_Folders"][0]))
+        sscCdi.caterete.ptycho_processing.save_variable(cropped_sinogram, os.path.join(jason['ReconsPath'],'unwrapped_object_' + jason["acquisition_folders"][0]))
     else:
         print("Extracting phase and magnitude...")
         phase = np.angle(cropped_sinogram)
@@ -75,11 +75,11 @@ if __name__ == '__main__':
             
     if jason['SaveObj']:
         print('Saving Object!')
-        sscCdi.caterete.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(jason['ReconsPath'],jason["Acquisition_Folders"][0]) + '_object')
+        sscCdi.caterete.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(jason['ReconsPath'],jason["acquisition_folders"][0]) + '_object')
 
     if jason['SaveProbe']:
         print('Saving Probe!')
-        sscCdi.caterete.ptycho_processing.save_variable(probe, os.path.join(jason['ReconsPath'], jason["Acquisition_Folders"][0]) + '_probe' )
+        sscCdi.caterete.ptycho_processing.save_variable(probe, os.path.join(jason['ReconsPath'], jason["acquisition_folders"][0]) + '_probe' )
 
     for i in range(phase.shape[0]):
         sscCdi.caterete.ptycho_processing.preview_ptycho(jason, phase, absol, probe, frame=i)

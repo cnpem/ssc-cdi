@@ -128,7 +128,7 @@ def set_object_pixel_size(jason,half_size):
     wavelength = planck * c / jason['Energy'] # meters
     jason["wavelength"] = wavelength
     # Convert pixel size:
-    dx = wavelength * jason['DetDistance'] / ( jason['Binning'] * jason['RestauredPixelSize'] * half_size * 2)
+    dx = wavelength * jason['DetDistance'] / ( jason['binning'] * jason['RestauredPixelSize'] * half_size * 2)
     return dx, jason
     
 def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='gaussian'):
