@@ -1,19 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 19 16:55:18 2022
-
-@author: yurirt
-"""
-from sys import path_importer_cache
-from turtle import st
 import matplotlib.pyplot as plt
 import numpy as np
- 
-# importing movie py libraries
 from moviepy.editor import VideoClip, ImageSequenceClip
 from moviepy.video.io.bindings import mplfig_to_npimage
- 
+
+""" Relative imports """
+from ..misc import wavelength_from_energy
+
 def plotshow(imgs, fresnel_number,file, legending_f_value=[],cmap='jet',nlines=1, bLog = False, interpolation='bilinear'): # legending_f_value = plot titles
         num = len(imgs)
 
@@ -55,6 +47,15 @@ def Prop(img,fresnel_number):
     g = np.exp(-1j*np.pi/fresnel_number * (xx**2+yy**2))
     return np.fft.ifft2(np.fft.fft2(img)*np.fft.fftshift(g))#[64:-64,64:-64]#[160:-160,160:-160]
 
+
+def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
+    
+    wavelength = wavelength_from_energy(energy) # meters
+
+    if magnification != 1:
+        magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
+
+    return (pixel_size**2) / (wavelength * sample_detector_distance * magnification)
 
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
