@@ -1,19 +1,13 @@
-import json
-import matplotlib.pyplot as plt
 import numpy as np
-import os,sys
-from time import time
+import matplotlib.pyplot as plt
+import os,sys, json, time
 from skimage.io import imsave
 
-from ssc_remote_vis import remote_visualization as rv
+""" Sirius Scientific Computing Imports """
 from sscRadon import radon
-
-from sscPtycho import RemovePhaseGrad
-
-import sscCdi
-from sscCdi.caterete.tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, equalize_frames_parallel, equalize_tomogram
-from sscCdi.caterete.misc import create_directory_if_doesnt_exist
-from sscCdi.caterete.unwrap import unwrap_in_parallel
+from sscCdi.tomo.tomo_processing import angle_mesh_organize, tomography, equalize_frames_parallel, equalize_tomogram, reorder_slices_low_to_high_angle, sort_frames_by_angle
+from sscCdi.misc import create_directory_if_doesnt_exist
+from sscCdi.processing.unwrap import unwrap_in_parallel
 
 input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
@@ -116,12 +110,12 @@ if processing_steps["Sort"]:
             plt.clf()
             plt.close()
 
-    rois =  sscCdi.tomo_processing.sort_frames_by_angle(ibira_path,foldernames)
+    rois =  sort_frames_by_angle(ibira_path,foldernames)
 
     np.save(angles_filepath,rois)
     print('\tSorting done')
 
-    object = sscCdi.tomo_processing.reorder_slices_low_to_high_angle(object, rois)
+    object = reorder_slices_low_to_high_angle(object, rois)
     np.save(object_filepath, object) 
 
 if processing_steps["Crop"]: 
@@ -259,7 +253,7 @@ if processing_steps["Wiggle"]:
 
     """ ######################## Wiggle ################################ """
     print('\tStarting Wiggle')
-    start = time()
+    start = time.time()
 
     temp_tomogram, shiftv = radon.get_wiggle( object, "vertical", input_dictionary["CPUs"], input_dictionary["wiggle_reference_frame"] )
     temp_tomogram, shiftv = radon.get_wiggle( temp_tomogram, "vertical", input_dictionary["CPUs"], input_dictionary["wiggle_reference_frame"] )
@@ -272,7 +266,7 @@ if processing_steps["Wiggle"]:
 
     np.save(object_tomogram_filepath,tomoP)
 
-    elapsed = time() - start
+    elapsed = time.time() - start
     print('Elapsed time for Wiggle (sec):', elapsed )
 
     print('\tWiggle Complete')
@@ -296,11 +290,11 @@ if processing_steps["Wiggle"]:
         plt.close()
 
 if processing_steps["Tomo"]:
-    start = time()
+    start = time.time()
 
     print(f'Starting tomography...')
     reconstruction3D = tomography(input_dictionary,use_regularly_spaced_angles=True)
-    elapsed = time() - start
+    elapsed = time.time() - start
     print(f'Reconstruction done!')
     print('Elapsed time for reconstruction (sec):', elapsed )
 

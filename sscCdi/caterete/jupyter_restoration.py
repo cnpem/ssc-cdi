@@ -13,8 +13,8 @@ from sscIO import io
 from sscPimega import pi540D, opt540D
 from sscPimega import misc as miscPimega
 
-from .jupyter import slide_and_play
-from .ptycho_restoration import restoration_processing_binning, Geometry, Restaurate
+from ..jupyter import slide_and_play
+from .cat_restoration import restoration_processing_binning, Geometry, Restaurate
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data',use_direct_beam=True):
     
@@ -103,12 +103,12 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
         ax[3].imshow(img),   ax[3].set_title('all')        
         plt.show()    
         
-    Binning = 4 # standard is 4 for now
+    binning = 4 # standard is 4 for now
 
     jason = {} # dummy dictionary with dummy values to be used within restoration function 
-    jason["DetectorExposure"] = [False,0.15]
-    jason["CentralMask"] = [False,5]
-    jason["DifpadCenter"] = [centery, centerx]
+    jason["detector_exposure"] = [False,0.15]
+    jason["central_mask"] = [False,5]
+    jason["DP_center"] = [centery, centerx]
 
     half_square_side = 1536
 
@@ -127,12 +127,12 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
         half_square_side = DP_shape // 2
 
     if apply_binning:
-        DP_shape = DP_shape // Binning
+        DP_shape = DP_shape // binning
         
 
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
-    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives)
+    r_params = (binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives)
     output, _ = miscPimega.batch(raw_difpads, n_of_threads, [ DP_shape , DP_shape ], restoration_processing_binning,  r_params)
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
