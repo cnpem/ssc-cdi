@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import os
+import os, h5py
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -13,7 +13,6 @@ def miqueles_colormap(img):
         bounds:
         norm:
     """    
-
 
     import matplotlib as mpl
     import numpy
@@ -118,7 +117,7 @@ def save_json_logfile(path,jason):
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
     
-    name = jason["Acquisition_Folders"][0]
+    name = jason["acquisition_folders"][0]
 
     name = dt_string + "_" + name.split('.')[0]+".json"
 
@@ -135,3 +134,15 @@ def create_directory_if_doesnt_exist(*args):
             os.makedirs(arg)
         else:
             print('Tried to created directory, but it already exists: ',arg)
+
+
+def read_hdf5(path,inner_path = 'entry/data/data'):
+    os.system(f"h5clear -s {path}")
+    return h5py.File(path, 'r')[inner_path]
+    
+def debug(func): # decorator function for debugging
+    def _debug(*args):
+        result = func(*args) # call function
+        print(f"{func.__name__}(args: {args}) -> {result}") # print function with arguments and result
+        return result
+    return _debug

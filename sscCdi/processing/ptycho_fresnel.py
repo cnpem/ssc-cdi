@@ -14,7 +14,7 @@ import numpy as np
 from moviepy.editor import VideoClip, ImageSequenceClip
 from moviepy.video.io.bindings import mplfig_to_npimage
  
-def plotshow(imgs, f1,file, legending_f_value=[],cmap='jet',nlines=1, bLog = False, interpolation='bilinear'): # legending_f_value = plot titles
+def plotshow(imgs, fresnel_number,file, legending_f_value=[],cmap='jet',nlines=1, bLog = False, interpolation='bilinear'): # legending_f_value = plot titles
         num = len(imgs)
 
         for j in range(num):
@@ -36,7 +36,7 @@ def plotshow(imgs, f1,file, legending_f_value=[],cmap='jet',nlines=1, bLog = Fal
 
                 sb.set_xticks([])
                 sb.set_yticks([])
-                sb.set_title(f'{f1[j]:.2e}',fontsize=10)
+                sb.set_title(f'{fresnel_number[j]:.2e}',fontsize=10)
 
                 if len(legending_f_value)>j:
                         sb.set_title(legending_f_value[j])
@@ -48,11 +48,11 @@ def plotshow(imgs, f1,file, legending_f_value=[],cmap='jet',nlines=1, bLog = Fal
         plt.close()
 
 
-def Prop(img,f1):
+def Prop(img,fresnel_number):
     hs = img.shape[-1]//2
     ar = np.arange(-hs,hs) / float(2*hs)
     xx,yy = np.meshgrid(ar,ar)
-    g = np.exp(-1j*np.pi/f1 * (xx**2+yy**2))
+    g = np.exp(-1j*np.pi/fresnel_number * (xx**2+yy**2))
     return np.fft.ifft2(np.fft.fft2(img)*np.fft.fftshift(g))#[64:-64,64:-64]#[160:-160,160:-160]
 
 
@@ -68,14 +68,14 @@ def create_propagation_video(path_to_probefile,
     probe = np.load(path_to_probefile)[0] # load probe
     
     # delta = -1e-4
-    # f1 = [starting_f_value + delta*i for i in range(0,number_of_frames)]
+    # fresnel_number = [starting_f_value + delta*i for i in range(0,number_of_frames)]
     
-    f1 = np.linspace(starting_f_value,ending_f_value,number_of_frames)
+    fresnel_number = np.linspace(starting_f_value,ending_f_value,number_of_frames)
     
     # Create list of propagated probes
-    b =  [np.sqrt(np.sum([abs(Prop(a,f1[0]))**2 for a in probe],0))]
+    b =  [np.sqrt(np.sum([abs(Prop(a,fresnel_number[0]))**2 for a in probe],0))]
     for i in range(1,number_of_frames):
-            b += [np.sqrt(np.sum([abs(Prop(a,f1[i]))**2 for a in probe],0))]
+            b += [np.sqrt(np.sum([abs(Prop(a,fresnel_number[i]))**2 for a in probe],0))]
     
 
     image_list = []
@@ -85,7 +85,7 @@ def create_propagation_video(path_to_probefile,
                 img = subplot.imshow(probe,cmap='jet')#,animated=True)
                 subplot.set_xticks([])
                 subplot.set_yticks([])
-                subplot.set_title(f'f#={f1[j]:.3e}')
+                subplot.set_title(f'f#={fresnel_number[j]:.3e}')
             if jupyter == False:
                 image_list.append(mplfig_to_npimage(animation_fig))
             else:    
@@ -99,7 +99,7 @@ def create_propagation_video(path_to_probefile,
         if gif:
             clip.write_gif('propagation.gif', fps=frame_rate)
 
-    return image_list, f1
+    return image_list, fresnel_number
 
 
 if __name__ == '__main__':
