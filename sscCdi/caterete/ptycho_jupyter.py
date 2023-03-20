@@ -93,7 +93,7 @@ source /etc/profile.d/modules.sh # need this to load the correct python version 
 
 module load python3/3.9.2
 module load cuda/11.2
-module load hdf5/1.12.0_parallel
+module load hdf5/1.12.2_parallel
 
 python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_error.log')}
 """
