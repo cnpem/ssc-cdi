@@ -980,7 +980,7 @@ def tomo_tab():
             axis_direction = 2
 
         global equalized_tomogram 
-        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value,axis_direction=axis_direction)#,mask_slice=mask_final_tomo.widget.value)
+        equalized_tomogram = equalize_tomogram(reconstruction,statistics_raw[2],statistics_raw[3],remove_outliers=remove_outliers_slider.widget.value,threshold=float(tomo_threshold.widget.value),bkg_window=remove_local_offset_field.widget.value,axis_direction=axis_direction,mask_slice=[])#
 
         statistics_equalized = (np.max(equalized_tomogram),np.min(equalized_tomogram),np.mean(equalized_tomogram),np.std(equalized_tomogram))
         print('Thresholded data statistics: ',f'\n\tMax = {statistics_equalized[0]:.2e}\n\t Min = {statistics_equalized[1]:.2e}\n\t Mean = {statistics_equalized[2]:.2e}\n\t StdDev = {statistics_equalized[3]:.2e}')

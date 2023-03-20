@@ -331,8 +331,10 @@ def regularization(sino, L):
 
 def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[],axis_direction=1,mask_slice=[]):
     
+    print(bkg_window,type(bkg_window),mask_slice,type(mask_slice))
     if type(bkg_window) == type("a_string"):
         bkg_window = ast.literal_eval(bkg_window) # read string as list
+    if type(mask_slice) == type("a_string"):
         mask_slice = ast.literal_eval(mask_slice) # read string as list
     
     equalized_tomogram = recon
