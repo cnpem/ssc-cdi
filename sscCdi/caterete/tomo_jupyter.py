@@ -152,7 +152,7 @@ source /etc/profile.d/modules.sh # need this to load the correct python version 
 
 module load python3/3.9.2
 module load cuda/11.2
-module load hdf5/1.12.0_parallel
+module load hdf5/1.12.2_parallel
 
 python3 {tomo_script_path} {jsonFile_path} > {os.path.join(output_path,'logfiles',f'{username}_tomo_output.log')} 2> {os.path.join(output_path,'logfiles',f'{username}_tomo_error.log')}
 """
