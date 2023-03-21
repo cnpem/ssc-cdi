@@ -122,14 +122,14 @@ def PIE_update_probe(iteration,probe,mPIE_params,difference, obj,positions, offs
 
     return probe
 
-def set_object_pixel_size(jason,half_size):
+def set_object_pixel_size(input_dict,half_size):
     c = 299792458             # Speed of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
-    wavelength = planck * c / jason['Energy'] # meters
-    jason["wavelength"] = wavelength
+    wavelength = planck * c / input_dict['Energy'] # meters
+    input_dict["wavelength"] = wavelength
     # Convert pixel size:
-    dx = wavelength * jason['detector_distance'] / ( jason['binning'] * jason['restored_pixel_size'] * half_size * 2)
-    return dx, jason
+    dx = wavelength * input_dict['detector_distance'] / ( input_dict['binning'] * input_dict['restored_pixel_size'] * half_size * 2)
+    return dx, input_dict
     
 def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='gaussian'):
         if type == 'gaussian':

@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
+from .processing.propagation import Propagate
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -105,12 +106,12 @@ def select_specific_angles(frames,filepaths,filenames):
 
     return filepaths, filenames
 
-def save_json_logfile(path,jason):
+def save_json_logfile(path,input_dict):
     """Save a copy of the json input file with datetime at the filename
 
     Args:
         path (string): output folder path 
-        jason (dic): jason dictionary
+        input_dict (dic): input_dict dictionary
     """    
     import json, os
     from datetime import datetime
@@ -118,13 +119,13 @@ def save_json_logfile(path,jason):
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
     
-    name = jason["acquisition_folders"][0]
+    name = input_dict["acquisition_folders"][0]
 
     name = dt_string + "_" + name.split('.')[0]+".json"
 
     filepath = os.path.join(path,name)
     file = open(filepath,"w")
-    file.write(json.dumps(jason,indent=3,sort_keys=True))
+    file.write(json.dumps(input_dict,indent=3,sort_keys=True))
     file.close()
 
 
@@ -213,39 +214,21 @@ def export_json(params,output_path):
     json.dump(export,out_file)
     return 0
 
-def preview_ptycho(jason, phase, absol, probe, frame = 0):
-    if jason['Preview']:  # Preview Reconstruction:
+def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
+    if input_dict['Preview']:  # Preview Reconstruction:
         ''' Plot scan points
         plt.figure()
         plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
         plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
-        plt.savefig(jason['output_path'] + '/scatter_2d.png', format='png', dpi=300)
+        plt.savefig(input_dict['output_path'] + '/scatter_2d.png', format='png', dpi=300)
         plt.clf()
         plt.close()
         '''
 
-
-    def Prop(img, fresnel_number): # Probe propagation
-        """ Frunction for free space propagation of the probe in the Fraunhoffer regime
-
-        See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_. Are terms missing after convolution?
+        plotshow([abs(Propagate(p, input_dict['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=input_dict['output_path'] + '/probe_'  + str(frame), nlines=2)
+        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
         
-        Args:
-            img (array): probe
-            fresnel_number (float): Fresnel number
 
-        Returns:
-            [type]: [description]
-        """    
-        hs = img.shape[-1] // 2
-        ar = np.arange(-hs, hs) / float(2 * hs)
-        xx, yy = np.meshgrid(ar, ar)
-        g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
-        return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
-
-        plotshow([abs(Prop(p, jason['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=jason['output_path'] + '/probe_'  + str(frame), nlines=2)
-        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=jason['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
-        
 
 
 def save_variable(variable, predefined_name, savename=""):

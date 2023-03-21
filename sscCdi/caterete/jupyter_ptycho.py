@@ -9,7 +9,7 @@ from ipywidgets import fixed
 
 import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
 
-from ..processing.ptycho_fresnel import create_propagation_video
+from ..processing.propagation import create_propagation_video
 from .ptycho_processing import masks_application
 from ..misc import miqueles_colormap
 from ..jupyter import call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
@@ -285,13 +285,13 @@ def inputs_tab():
             global_dict["phase_unwrap"][3] = [left_crop,right_crop]
 
         if use_obj_guess:
-            global_dict["initial_obj_path"] = global_paths_dict["sinogram_filepath"]
+            global_dict["initial_obj"] = global_paths_dict["sinogram_filepath"]
         else: 
-            global_dict["initial_obj_path"] = ''
+            global_dict["initial_obj"] = ''
         if use_probe_guess:
-            global_dict["initial_probe_path"] = global_paths_dict["probe_filepath"]
+            global_dict["initial_probe"] = global_paths_dict["probe_filepath"]
         else: 
-            global_dict["initial_probe_path"] = ''
+            global_dict["initial_probe"] = ''
 
     save_on_click_partial = partial(save_on_click,json_filepath=global_paths_dict["json_filepath"],dictionary=global_dict)
 

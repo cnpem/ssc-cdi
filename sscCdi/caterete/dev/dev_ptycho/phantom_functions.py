@@ -281,7 +281,7 @@ def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft
 
     Args:
         difpads (3D array): measured diffraction patterns
-        jason (json file): file with the setted parameters and directories for reconstruction
+        input_dict (json file): file with the setted parameters and directories for reconstruction
         probe_positions (array): each element is an 2-array with x and y probe positions
         offset_topleft (int, optional): [description]. Defaults to 20.
 

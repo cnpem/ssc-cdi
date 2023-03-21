@@ -289,12 +289,12 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
 
 ####################### TOMOGRAPHY ###########################################3
 
-def save_json_logfile(jason,output_folder):
+def save_json_logfile(input_dict,output_folder):
     """Save a copy of the json input file with datetime at the filename
 
     Args:
         path (string): output folder path 
-        jason (dic): jason dictionary
+        input_dict (dic): input_dict dictionary
     """    
     import json, os
     from datetime import datetime
@@ -302,13 +302,13 @@ def save_json_logfile(jason,output_folder):
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
     
-    name = jason["folders_list"][0]
+    name = input_dict["folders_list"][0]
 
     name = dt_string + "_" + name+".json"
 
     filepath = os.path.join(output_folder,name)
     file = open(filepath,"w")
-    file.write(json.dumps(jason,indent=3,sort_keys=True))
+    file.write(json.dumps(input_dict,indent=3,sort_keys=True))
     file.close()
 
 def regularization(sino, L):
