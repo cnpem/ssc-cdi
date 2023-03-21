@@ -28,7 +28,6 @@ def apply_empty_acquisition(difpads, input_dict):
     
     return difpads
 
-
 #-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 def cnb_preprocessing_linear_correction(raw_difpads, input_dict):
@@ -53,7 +52,7 @@ def cnb_preprocessing_linear_correction(raw_difpads, input_dict):
     
     if input_dict["Linearity_Function"]:
         print("\nApplying Linearity_Function")
-        difpads = sscCdi.carnauba.linearity_correction.linearity_batch(input_dict, raw_difpads, acq_time)
+        difpads = sscCdi.carnauba.cnb_processing.linearity_batch(input_dict, raw_difpads, acq_time)
     else:
         difpads = raw_difpads
 
