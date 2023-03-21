@@ -259,18 +259,16 @@ def set_initial_probe(jason,DP_shape):
     return probe
 
 
-def set_initial_object(jason, DP):
+def set_initial_object(jason):
 
         print('Creating initial object...')
 
         if isinstance(jason['initial_obj_path'],list):
             type = jason['initial_obj_path'][0]
-            if type == 'autocorrelation':
-                obj = fftshift(ifft2(fftshift(np.sqrt(DP))))
-            elif type == 'constant':
-                pass
+            if type == 'constant':
+                obj = np.ones(jason["object_shape"])
             elif type == 'random':
-                pass
+                obj = np.random.rand(*jason["object_shape"])
             elif type == 'initialize':
                 pass #TODO: implement method from https://doi.org/10.1364/OE.465397
         elif isinstance(jason['initial_obj_path'],str): 
