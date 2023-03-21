@@ -13,7 +13,6 @@ import sscPimega, sscResolution
 
 from .ptycho_fresnel import propagate_beam, fit_2Dgaussian, fit_2Dsinc
 from ..caterete.ptycho_fresnel import  create_propagation_video_f1
-# from .ptycho_processing import masks_application
 from ..caterete.misc import miqueles_colormap
 from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
 

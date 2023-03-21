@@ -1,19 +1,10 @@
 import numpy as np
-import h5py
-from scipy import ndimage, signal
-from time import time
-from PIL.Image import open as tifOpen
-import os
+import h5py, os
 
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
-from scipy import ndimage
 
-from sscIO import io
-import sscCdi
-from sscPimega import pi135D
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
+from .cnb_processing import linearity_batch
 
 def apply_empty_acquisition(difpads, input_dict):
 
@@ -52,7 +43,7 @@ def cnb_preprocessing_linear_correction(raw_difpads, input_dict):
     
     if input_dict["Linearity_Function"]:
         print("\nApplying Linearity_Function")
-        difpads = sscCdi.carnauba.cnb_processing.linearity_batch(input_dict, raw_difpads, acq_time)
+        difpads = linearity_batch(input_dict, raw_difpads, acq_time)
     else:
         difpads = raw_difpads
 

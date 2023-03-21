@@ -19,21 +19,24 @@ if __name__ == '__main__':
 
     input_dict = json.load(open(argv[1]))  # open input_dict file containing desired inputs
 
+    print("Creating folders...")
     input_dict = sscCdi.ptycho.ptycho_processing.define_paths(input_dict)
 
+    print("Reading files of interest...")
     filepaths, filenames = sscCdi.ptycho.ptycho_processing.get_files_of_interest(input_dict)
 
-    t1 = time.time()
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
 
+    t1 = time.time()
+    print('Starting restoration...')
     restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_cuda_parallel(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
-    #TODO: call ptycho
+    print('Starting ptychography...')
     object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
-    print('Finished Ptycho reconstruction!')
+    print('\tFinished reconstruction!')
 
     t4 = time.time()
     """ ===================== Post-processing ===================== """
@@ -42,7 +45,7 @@ if __name__ == '__main__':
     
     if input_dict['phase_unwrap'][0]: # Apply phase unwrap to data 
         print('Unwrapping sinogram...')
-        phase,absol = sscCdi.ptycho.ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
+        phase, absol = sscCdi.ptycho.ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
         cropped_sinogram = absol*np.exp(-1j*phase)
         sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram, os.path.join(input_dict['ReconsPath'],'unwrapped_object_' + input_dict["acquisition_folders"][0]))
     else:
@@ -50,7 +53,7 @@ if __name__ == '__main__':
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
-
+    print('Calculating Fourier Ring Correlation...')
     input_dict = sscCdi.ptycho.ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
 
     t5 = time.time()
@@ -58,10 +61,10 @@ if __name__ == '__main__':
 
     if input_dict["LogfilePath"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["LogfilePath"], input_dict) # overwrite logfile with new information
             
-    print('Saving Object!')
+    print('Saving Object...')
     sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(input_dict['ReconsPath'],input_dict["acquisition_folders"][0]) + '_object')
 
-    print('Saving Probe!')
+    print('Saving Probe...')
     sscCdi.ptycho.ptycho_processing.save_variable(probe, os.path.join(input_dict['ReconsPath'], input_dict["acquisition_folders"][0]) + '_probe' )
 
     for i in range(phase.shape[0]):
