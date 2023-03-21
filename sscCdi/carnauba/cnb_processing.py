@@ -1,17 +1,12 @@
 import numpy as np
-import h5py
-from PIL.Image import open as tifOpen
-import os
+import h5py, os
+import uuid
 import SharedArray as sa
 import multiprocessing
-import uuid
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
-
-from sscIO import io
 from sscPimega import pi135D
-
 
 #============================================    LINEARITY CORRECTION =============================================================================#
 

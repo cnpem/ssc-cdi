@@ -29,12 +29,9 @@ def restoration_cuda_parallel(input_dict):
 
     #TODO: estimate size of output DP after restoration; abort if using bertha and total size > 100GBs
 
-    count = -1
     dic_list = []
     restored_data_info_list = []
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
-
-        count += 1
 
         print('Starting restoration for acquisition: ', acquisitions_folder)
 
@@ -42,20 +39,19 @@ def restoration_cuda_parallel(input_dict):
         
         if input_dict['projections'] != []:
             filepaths, filenames = sscCdi.misc.misc.select_specific_angles(input_dict['projections'], filepaths,  filenames)
-            print('\nMeasurement file in restoration_cat_3d: ', filenames)
-        
+            print(f"\tSelected a total of {len(filenames)} projections")
+
         params = (input_dict, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
-        # Restorate
         distance = input_dict["detector_distance"]*1000 # distance in milimeters
         geometry = Geometry(distance)
         params   = {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual' ,'susp': input_dict["suspect_border_pixels"]}
         project  = pi540D.dictionary540D(distance, params )
         geometry = pi540D.geometry540D( project )
-        datapath = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho3d/glass21/'
+
         dic = {}
-        dic['path']     = sorted(glob.glob( datapath + '/scans/*.hdf5') )
-        dic['outpath']  = "/home/ABTLUS/eduardo.miqueles/test/"
+        dic['path']     = filepaths
+        dic['outpath']  = input_dict["temporary_output"]
         dic['order']    = "yx" 
         dic['rank']     = "ztyx" # order of axis
         dic['dataset']  = "entry/data/data"
@@ -63,12 +59,12 @@ def restoration_cuda_parallel(input_dict):
         dic['GPUs']     = input_dict["GPUs"]
         dic['init']     = 0
         dic['final']    = -1 # -1 to use all DPs
-        dic['saving']   = 1 # save or not
-        dic['timing']   = 0 # print timers 
+        dic['saving']   = 1  # save or not
+        dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
         dic['geometry'] = geometry
-        dic['roi']      = input_dict["detector_ROI_radius"] #512
-        dic['center']   = input_dict["DP_center"] #[1400,1400]
+        dic['roi']      = input_dict["detector_ROI_radius"] # 512
+        dic['center']   = input_dict["DP_center"] # [1400,1400]
         dic['flat']     = read_hdf5(input_dict["FlatField"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
         dic['empty']    = read_hdf5(input_dict['EmptyFrame']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
         
