@@ -30,10 +30,8 @@ if __name__ == '__main__':
     t2 = time.time()
 
     #TODO: call ptycho
-    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cat_ptychography(input_dict,restoration_dict,restored_data_info)
+    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
-
-
 
     print('Finished Ptycho reconstruction!')
 
