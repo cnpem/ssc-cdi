@@ -35,9 +35,9 @@ We explain below all the inputs present in the Json file.
     - detector_ROI_radius: use 1280 for binning = 4
     - PreviewFolder: path to the folder where preview image of the object and probe will be saved, together with preview of diffraction pattern, empty and flatfield, among others.
     - SaveObj: if true, will save the reconstruction object with name "SaveObjName" at folder "ObjPath"
-    - initial_obj_path: path to file with an initial guess for the object
-    - SaveProbe and initial_probe_path: analog to SaveObj and initial_obj_path, but for the Probe
-    - SaveBkg and InitialBkg: analog to SaveObj and initial_obj_path, but for the background.
+    - initial_obj: path to file with an initial guess for the object
+    - SaveProbe and initial_probe: analog to SaveObj and initial_obj, but for the Probe
+    - SaveBkg and InitialBkg: analog to SaveObj and initial_obj, but for the background.
     - AlgorithmX: X -> integer value. Dictionary with all algorithms to be used for reconstruction (in order). Examples for RAAR an GL (Alternate projections Griffin-Lim):
          - "Algorithm1": {"Name": "RAAR", "Iterations": 100, "TV": 0, "Epsilon": 1E-2, "Beta": 0.995, "ProbeCycles": 4, "Batch": 64 }
          - "Algorithm2": {"Name": "GL", "Iterations": 150,  "TV": 1E-4, "Epsilon": 1E-2, "ObjBeta": 0.97, "ProbeBeta": 0.95, "Batch": 64 }

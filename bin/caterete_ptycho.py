@@ -17,20 +17,20 @@ if __name__ == '__main__':
 
     t0 = time.time()
 
-    jason = json.load(open(argv[1]))  # open jason file containing desired inputs
+    input_dict = json.load(open(argv[1]))  # open input_dict file containing desired inputs
 
-    jason = sscCdi.ptycho.ptycho_processing.define_paths(jason)
+    input_dict = sscCdi.ptycho.ptycho_processing.define_paths(input_dict)
 
-    filepaths, filenames = sscCdi.ptycho.ptycho_processing.get_files_of_interest(jason)
+    filepaths, filenames = sscCdi.ptycho.ptycho_processing.get_files_of_interest(input_dict)
 
     t1 = time.time()
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
 
-    restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_cuda_parallel(jason) # restoration of all frames; restored DPs saved at output temporary folder
+    restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_cuda_parallel(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
     #TODO: call ptycho
-    object,probe, jason = sscCdi.ptycho.ptycho_processing.cat_ptychography(jason,restoration_dict,restored_data_info)
+    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cat_ptychography(input_dict,restoration_dict,restored_data_info)
     t3 = time.time()
 
 
@@ -40,34 +40,34 @@ if __name__ == '__main__':
     t4 = time.time()
     """ ===================== Post-processing ===================== """
 
-    cropped_sinogram = sscCdi.ptycho.ptycho_processing.crop_sinogram(object,jason)
+    cropped_sinogram = sscCdi.ptycho.ptycho_processing.crop_sinogram(object,input_dict)
     
-    if jason['phase_unwrap'][0]: # Apply phase unwrap to data 
+    if input_dict['phase_unwrap'][0]: # Apply phase unwrap to data 
         print('Unwrapping sinogram...')
-        phase,absol = sscCdi.ptycho.ptycho_processing.apply_phase_unwrap(cropped_sinogram, jason) # phase = np.angle(object), absol = np.abs(object)
+        phase,absol = sscCdi.ptycho.ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
         cropped_sinogram = absol*np.exp(-1j*phase)
-        sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram, os.path.join(jason['ReconsPath'],'unwrapped_object_' + jason["acquisition_folders"][0]))
+        sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram, os.path.join(input_dict['ReconsPath'],'unwrapped_object_' + input_dict["acquisition_folders"][0]))
     else:
         print("Extracting phase and magnitude...")
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
 
-    jason = sscCdi.ptycho.ptycho_processing.calculate_FRC(cropped_sinogram, jason)
+    input_dict = sscCdi.ptycho.ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
 
-    if jason["LogfilePath"] != "":  sscCdi.misc.misc.save_json_logfile(jason["LogfilePath"], jason) # overwrite logfile with new information
+    if input_dict["LogfilePath"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["LogfilePath"], input_dict) # overwrite logfile with new information
             
     print('Saving Object!')
-    sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(jason['ReconsPath'],jason["acquisition_folders"][0]) + '_object')
+    sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(input_dict['ReconsPath'],input_dict["acquisition_folders"][0]) + '_object')
 
     print('Saving Probe!')
-    sscCdi.ptycho.ptycho_processing.save_variable(probe, os.path.join(jason['ReconsPath'], jason["acquisition_folders"][0]) + '_probe' )
+    sscCdi.ptycho.ptycho_processing.save_variable(probe, os.path.join(input_dict['ReconsPath'], input_dict["acquisition_folders"][0]) + '_probe' )
 
     for i in range(phase.shape[0]):
-        sscCdi.ptycho.ptycho_processing.preview_ptycho(jason, phase, absol, probe, frame=i)
+        sscCdi.ptycho.ptycho_processing.preview_ptycho(input_dict, phase, absol, probe, frame=i)
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1

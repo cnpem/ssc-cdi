@@ -4,49 +4,7 @@ from moviepy.editor import VideoClip, ImageSequenceClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 
 """ Relative imports """
-from ..misc import wavelength_from_energy
-
-def plotshow(imgs, fresnel_number,file, legending_f_value=[],cmap='jet',nlines=1, bLog = False, interpolation='bilinear'): # legending_f_value = plot titles
-        num = len(imgs)
-
-        for j in range(num):
-                if type(cmap) == str:
-                        colormap = cmap
-                elif len(cmap) == len(imgs):
-                        colormap = cmap[j]
-                else:
-                        colormap = cmap[j//(len(imgs)//nlines)]
-
-                sb = plt.subplot((num+nlines-1)//nlines,nlines,j+1)
-
-                if type(imgs[j][0,0]) == np.complex64 or type(imgs[j][0,0]) == np.complex128:
-                        sb.imshow(CMakeRGB(imgs[j]),cmap='hsv',interpolation=interpolation)
-                elif bLog:
-                        sb.imshow(np.log(1+np.maximum(imgs[j],-0.1))/np.log(10),cmap=colormap,interpolation=interpolation)
-                else:
-                        sb.imshow(imgs[j],cmap=colormap,interpolation=interpolation)
-
-                sb.set_xticks([])
-                sb.set_yticks([])
-                sb.set_title(f'{fresnel_number[j]:.2e}',fontsize=10)
-
-                if len(legending_f_value)>j:
-                        sb.set_title(legending_f_value[j])
-
-        plt.tight_layout()
-        # plt.subplots_adjust(left=0.4, bottom=0, right=0.6, top=1, wspace=0, hspace=0.2)
-        plt.savefig(file + '.png', format='png', dpi=300)
-        plt.clf()
-        plt.close()
-
-
-def Prop(img,fresnel_number):
-    hs = img.shape[-1]//2
-    ar = np.arange(-hs,hs) / float(2*hs)
-    xx,yy = np.meshgrid(ar,ar)
-    g = np.exp(-1j*np.pi/fresnel_number * (xx**2+yy**2))
-    return np.fft.ifft2(np.fft.fft2(img)*np.fft.fftshift(g))#[64:-64,64:-64]#[160:-160,160:-160]
-
+from ..misc import wavelength_from_energy, Prop
 
 def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
     
@@ -56,6 +14,26 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
         magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
 
     return (pixel_size**2) / (wavelength * sample_detector_distance * magnification)
+
+def Propagate(img, fresnel_number): # Probe propagation
+        """ Frunction for free space propagation of the probe in the Fraunhoffer regime
+
+        See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_. Are terms missing after convolution?
+
+        Args:
+                img (array): probe
+                fresnel_number (float): Fresnel number
+
+        Returns:
+                [type]: [description]
+        """    
+        hs = img.shape[-1] // 2
+        ar = np.arange(-hs, hs) / float(2 * hs)
+        xx, yy = np.meshgrid(ar, ar)
+        g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
+
+        return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
+
 
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
@@ -101,7 +79,6 @@ def create_propagation_video(path_to_probefile,
             clip.write_gif('propagation.gif', fps=frame_rate)
 
     return image_list, fresnel_number
-
 
 if __name__ == '__main__':
     
