@@ -11,7 +11,7 @@ from scipy.ndimage import rotate
 from PIL import Image
 import sscPhantom
 
-from sscCdi.caterete.ptycho_processing import convert_probe_positions_meters_to_pixels
+from sscCdi.caterete.cat_ptycho_processing import convert_probe_positions_meters_to_pixels
 from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,):

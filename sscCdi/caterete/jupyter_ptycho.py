@@ -10,7 +10,7 @@ from ipywidgets import fixed
 import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
 
 from ..processing.propagation import create_propagation_video
-from .ptycho_processing import masks_application
+from .cat_ptycho_processing import masks_application
 from ..misc import miqueles_colormap
 from ..jupyter import call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
 from ..processing.unwrap import phase_unwrap

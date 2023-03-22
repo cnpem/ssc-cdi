@@ -7,9 +7,10 @@ from numpy.fft import ifft2 as ifft2
 """ Sirius Scientific Computing Imports """
 from sscIO import io
 from sscPimega import pi540D, pi135D
+from sscPimega import misc as miscPimega
 
 """ sscCdi relative imports"""
-from ..misc import read_hdf5, plotshow_cmap2
+from ..misc import read_hdf5
 
 def restore_pimega(diffraction_pattern,geometry,detector):
     if detector == '135D':
@@ -17,10 +18,10 @@ def restore_pimega(diffraction_pattern,geometry,detector):
     elif detector == '540D':
         return pi540D.backward540D(diffraction_pattern, geometry)
 
-def restore_CUDA():
+def restore_CUDA(input_dict,geometry,hdf5_filepaths):
 
     dic = {}
-    dic['path']     = filepaths
+    dic['path']     = hdf5_filepaths
     dic['outpath']  = input_dict["temporary_output"]
     dic['order']    = "yx" 
     dic['rank']     = "ztyx" # order of axis
@@ -39,95 +40,59 @@ def restore_CUDA():
     dic['empty']    = read_hdf5(input_dict['EmptyFrame']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
     
     restored_data_info = pi540D.ioSetM_Backward540D( dic )
-
     output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
-    
-    pi540D.ioCleanM_Backward540D( dic, restored_data_info )
-
+    pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
+def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
 
-def restore_IO_SharedArray(jason, geometry, path, name,first_iteration,preview):
+    if input_dict["detector"] == '540D':
+        DP_shape = 3072
+    elif input_dict["detector"] == '135D':
+        DP_shape = 1536
+    else:
+        sys.error('Please selector correct detector type: 135D or 540D')
 
-    fullpath = os.path.join(path, name)
-    os.system(f"h5clear -s {fullpath}")
-    raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
+    os.system(f"h5clear -s {hdf5_path}")
+    raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
 
-    flat = np.array(flat)
+    binning = int(input_dict['binning'])
+
+    if input_dict["detector_ROI_radius"] > 0:
+        half_square_side = input_dict["detector_ROI_radius"]
+        if half_square_side % 2 != 0: half_square_side = half_square_side -  1 # make it even
+        DP_shape = 2*half_square_side
+
+    if binning > 1: # if applying binning
+        DP_shape = DP_shape // binning
+
+    restoration_params = (input_dict,geometry, np.zeros_like(raw_DPs[0])) 
+    diffraction_patterns, _ = miscPimega.batch(raw_DPs, input_dict['CPUs'], [ DP_shape,DP_shape ], restoration_with_processing_and_binning,  restoration_params)
+    
+    return diffraction_patterns
+
+def restoration_with_processing_and_binning(DP, args):
+    input_dict, geometry, subtraction_mask = args
+    empty, flat, mask = read_masks(input_dict)
+    DP = corrections_and_restoration(input_dict,DP,geometry,empty, flat, mask, subtraction_mask)
+    if input_dict["binning"] > 1:
+        DP = binning_G(DP,input_dict["binning"]) # binning strategy by G. Baraldi
+    return DP
+
+def read_masks(input_dict):
+    empty = read_hdf5(input_dict["empty_path"])
+    flatfield = read_hdf5(input_dict["flat_path"])
+    mask = read_hdf5(input_dict["mask_path"])
+    return empty, flatfield, mask
+
+def corrections_and_restoration(input_dict, DP,geometry,empty, flat, mask, subtraction_mask):
+    
+    cy, cx = input_dict['DP_center']
+
+    DP[empty > 1] = -1 # apply empty 
+
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
-
-    mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
-        
-    centery, centerx = jason['DifpadCenter']
-
-    Binning = int(jason['Binning'])
-
-    apply_crop = True
-    
-    if Binning != 1:
-        apply_binning = True
-    else:
-        apply_binning = False
-
-    half_square_side = 1536
-
-    if apply_crop:
-        L = 3072 # PIMEGA540D size
-        if jason["DetectorROI"] == 0:
-            half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
-        else:
-            half_square_side = jason["DetectorROI"]
-        
-        if half_square_side % 2 != 0: 
-            half_square_side = half_square_side -  1 # make it even
-        DP_shape = 2*half_square_side
-    else:
-        DP_shape = 3072
-        half_square_side = DP_shape // 2
-
-    if apply_binning:
-        DP_shape = DP_shape // Binning
-
-    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, np.zeros_like(raw_difpads[0]),False)
-
-    if first_iteration: # difpad used in jupyter to find center position!
-    
-        print('Restaurating single difpad to save preview difpad of 3072^2 shape')
-        difpad_number = 0
-        DP0 = restore_CNB(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
-        DP = corrections_and_restoration(raw_difpads[difpad_number,:,:],empty,flat,np.zeros_like(flat),mask,geometry,jason,apply_crop,centerx,centery,DP_shape,False)
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',DP0)
-        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped_masked.npy',DP)
-        plotshow_cmap2(DP, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
-
-    t0 = time()
-    use_GPU = False
-
-    output, _ = miscPimega.batch(raw_difpads, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params)
-    
-    t1 = time()
-
-    elapsedtime = t1-t0
-
-    return output, geometry, elapsedtime, jason
-
-
-def restoration_processing_binning(DP, args):
-
-    binning, empty, flat, cx, cy, hsize, geometry, mask,input_dict, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
-
-    img = corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,input_dict,apply_crop,cx,cy,hsize,keep_original_negatives)
-
-    img = G_binning(img,apply_binning,binning,mask) # binning strategy by G. Baraldi
-    
-    return img
-
-
-def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,input_dict,apply_crop,cx,cy,hsize,keep_original_negatives):
-    
-    DP[empty > 1] = -1 # apply empty 
-    
     DP = DP * np.squeeze(flat) # apply flatfield
     DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
     
@@ -137,9 +102,9 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,inp
     
     DP[np.abs(mask) ==1] = -1 # apply Mask
     
-    DP = restore_CAT(DP, geometry) # restaurate
+    DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
 
-    if keep_original_negatives == False:
+    if input_dict["keep_original_negative_values"] > 0 == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
     if hsize == 0:
@@ -147,19 +112,17 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,inp
         if hsize % 2 != 0: 
             hsize = hsize -  1 # make it even
 
-    if apply_crop:
+    if input_dict["detector_ROI_radius"] > 0:
         DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
     return DP 
 
 
-def G_binning(DP,apply_binning,binning,mask):
+def binning_G(DP,binning):
 
-    if apply_binning == False: 
-        pass
+    if binning % 2 != 0: # no binning
+        sys.error(f'Please select an EVEN integer value for the binning parameters. Selected value: {binning}')
     else:
-        if binning % 2 != 0:
-            sys.exit(f"binning = {binning}. Please select an EVEN value for the binning parameters.")
         while binning % 2 == 0 and binning > 0:
             avg = DP + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(np.roll(DP, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
 

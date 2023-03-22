@@ -6,11 +6,13 @@
     "GPUs": [0],
     "CPUs": 32,
 
+    "detector": "540D",
     "DP_center": [1400,1400],
     "detector_ROI_radius": 1280,
     "binning": 1,
     "suspect_border_pixels": 5,
     "fill_blanks": false,
+    "keep_original_negative_values": false,
 
     "autocrop": false,
 
