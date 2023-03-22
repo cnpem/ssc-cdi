@@ -6,7 +6,55 @@ import multiprocessing
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
-from sscPimega import pi135D
+""" Sirius Scientific Computing Imports """
+import sscCdi
+from sscPimega import pi540D
+
+""" sscCdi relative imports"""
+from ..ptycho.ptychography import  call_G_ptychography
+from .cnb_restoration import restoration_CNB
+
+def cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
+
+    total_n_of_frames = 0
+    for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
+        _, filenames = sscCdi.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        total_n_of_frames += len(filenames)
+
+    if strategy == "serial":
+
+        for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
+    
+            filepaths, filenames = sscCdi.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+
+            for file_number, (filepath,filename) in enumerate(zip(filepaths,filename)):
+
+                frame = file_number + folder_number*len(filenames) # attribute singular value to each angle
+
+                """ Read Diffraction Patterns for one angle """
+                DPs = restoration_CNB(input_dict,filepath)
+                
+                if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+                    object_shape, input_dict = sscCdi.caterete.ptycho.ptycho_processing.set_object_shape(DPs,input_dict, [filename], [filepath], acquisitions_folder)
+                    sinogram = np.zeros((total_n_of_frames,object_shape[0],object_shape[1])) 
+                    probes   = np.zeros((total_n_of_frames,1,DPs.shape[-2],DPs.shape[-1]))
+
+                """ Read positions """
+                probe_positions = read_cnb_probe_positions(input_dict, filename , DPs.shape[0])
+                
+                run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
+
+                """ Call Ptycho """
+                if not run_ptycho:
+                    print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction pattern!')
+                    input_dict['ignored_scans'].append((folder_number,file_number))
+                    sinogram[frame, :, :]  = np.zeros((object_shape[0],object_shape[1])) # build 3D Sinogram
+                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
+                else:
+                    sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+
+
+    return sinogram, probes, input_dict
 
 #============================================    LINEARITY CORRECTION =============================================================================#
 
@@ -336,8 +384,3 @@ def cnb_probe_support(probe, input_dict):
     return probesupp
 
 
-def GeometryCNB(susp):
-    project = pi135D.get_detector_dictionary( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
-    project['s'] = [susp,susp] 
-    geo = pi135D.geometry135D( project )
-    return geo

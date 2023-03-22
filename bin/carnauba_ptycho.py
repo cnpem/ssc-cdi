@@ -29,11 +29,11 @@ if __name__ == '__main__':
 
     t1 = time.time()
     print('Starting restoration...')
-    DPs, input_dict = sscCdi.caterete.cnb_restoration.restoration_CNB(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
+    DPs = sscCdi.caterete.cnb_restoration.restoration_CNB(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
     print('Starting ptychography...')
-    # object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    # object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
     print('\tFinished reconstruction!')
