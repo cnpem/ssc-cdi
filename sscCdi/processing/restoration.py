@@ -5,71 +5,112 @@ from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
 """ Sirius Scientific Computing Imports """
-import sscCdi
 from sscIO import io
-from sscPimega import pi540D
+from sscPimega import pi540D, pi135D
 
 """ sscCdi relative imports"""
-from ..misc import read_hdf5
+from ..misc import read_hdf5, plotshow_cmap2
 
-def Geometry(L,susp=3,scale=0.98,fill=False):
-    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp } ) 
-    geo = pi540D.geometry540D( project )
-    return geo
+def restore_pimega(diffraction_pattern,geometry,detector):
+    if detector == '135D':
+        return pi135D.backward135D(diffraction_pattern , geometry)
+    elif detector == '540D':
+        return pi540D.backward540D(diffraction_pattern, geometry)
 
+def restore_CUDA():
 
-
-def restoration_CAT(input_dict):
+    dic = {}
+    dic['path']     = filepaths
+    dic['outpath']  = input_dict["temporary_output"]
+    dic['order']    = "yx" 
+    dic['rank']     = "ztyx" # order of axis
+    dic['dataset']  = "entry/data/data"
+    dic['nGPUs']    = len(input_dict["GPUs"])
+    dic['GPUs']     = input_dict["GPUs"]
+    dic['init']     = 0
+    dic['final']    = -1 # -1 to use all DPs
+    dic['saving']   = 1  # save or not
+    dic['timing']   = 0  # print timers 
+    dic['blocksize']= 10
+    dic['geometry'] = geometry
+    dic['roi']      = input_dict["detector_ROI_radius"] # 512
+    dic['center']   = input_dict["DP_center"] # [1400,1400]
+    dic['flat']     = read_hdf5(input_dict["FlatField"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+    dic['empty']    = read_hdf5(input_dict['EmptyFrame']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
     
-    ibira_datafolder, scans_string  = input_dict['data_folder'],input_dict['scans_string']
+    restored_data_info = pi540D.ioSetM_Backward540D( dic )
 
-    #TODO: estimate size of output DP after restoration; abort if using bertha and total size > 100GBs
+    output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
+    
+    pi540D.ioCleanM_Backward540D( dic, restored_data_info )
 
-    dic_list = []
-    restored_data_info_list = []
-    for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
+    return output
 
-        print('Starting restoration for acquisition: ', acquisitions_folder)
 
-        filepaths, filenames = sscCdi.misc.misc.list_files_in_folder(os.path.join(ibira_datafolder, acquisitions_folder,scans_string), look_for_extension=".hdf5")
+def restore_IO_SharedArray(jason, geometry, path, name,first_iteration,preview):
+
+    fullpath = os.path.join(path, name)
+    os.system(f"h5clear -s {fullpath}")
+    raw_difpads,_ = io.read_volume(fullpath, 'numpy', use_MPI=True, nprocs=jason["Threads"])
+
+    flat = np.array(flat)
+    flat[np.isnan(flat)] = -1
+    flat[flat == 0] = -1 # null points at flatfield are indication of bad points
+
+    mask = h5py.File(jason["Mask"], 'r')['entry/data/data'][()][0, 0, :, :]
         
-        if input_dict['projections'] != []:
-            filepaths, filenames = sscCdi.misc.misc.select_specific_angles(input_dict['projections'], filepaths,  filenames)
-            print(f"\tSelected a total of {len(filenames)} projections")
+    centery, centerx = jason['DifpadCenter']
 
-        params = (input_dict, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
+    Binning = int(jason['Binning'])
 
-        distance = input_dict["detector_distance"]*1000 # distance in milimeters
-        geometry = Geometry(distance)
-        params   = {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual' ,'susp': input_dict["suspect_border_pixels"]}
-        project  = pi540D.dictionary540D(distance, params )
-        geometry = pi540D.geometry540D( project )
+    apply_crop = True
+    
+    if Binning != 1:
+        apply_binning = True
+    else:
+        apply_binning = False
 
-        dic = {}
-        dic['path']     = filepaths
-        dic['outpath']  = input_dict["temporary_output"]
-        dic['order']    = "yx" 
-        dic['rank']     = "ztyx" # order of axis
-        dic['dataset']  = "entry/data/data"
-        dic['nGPUs']    = len(input_dict["GPUs"])
-        dic['GPUs']     = input_dict["GPUs"]
-        dic['init']     = 0
-        dic['final']    = -1 # -1 to use all DPs
-        dic['saving']   = 1  # save or not
-        dic['timing']   = 0  # print timers 
-        dic['blocksize']= 10
-        dic['geometry'] = geometry
-        dic['roi']      = input_dict["detector_ROI_radius"] # 512
-        dic['center']   = input_dict["DP_center"] # [1400,1400]
-        dic['flat']     = read_hdf5(input_dict["FlatField"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
-        dic['empty']    = read_hdf5(input_dict['EmptyFrame']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
+    half_square_side = 1536
+
+    if apply_crop:
+        L = 3072 # PIMEGA540D size
+        if jason["DetectorROI"] == 0:
+            half_square_side = min(min(centerx,L-centerx),min(centery,L-centery)) # get the biggest size possible such that the restored difpad is still squared
+        else:
+            half_square_side = jason["DetectorROI"]
         
-        restored_data_info = pi540D.ioSetM_Backward540D( dic )
+        if half_square_side % 2 != 0: 
+            half_square_side = half_square_side -  1 # make it even
+        DP_shape = 2*half_square_side
+    else:
+        DP_shape = 3072
+        half_square_side = DP_shape // 2
 
-        dic_list.append(dic)
-        restored_data_info_list.append(restored_data_info)
+    if apply_binning:
+        DP_shape = DP_shape // Binning
 
-    return dic_list, restored_data_info_list
+    r_params = (Binning, empty, flat, centerx, centery, half_square_side, geometry, mask, jason, apply_crop, apply_binning, np.zeros_like(raw_difpads[0]),False)
+
+    if first_iteration: # difpad used in jupyter to find center position!
+    
+        print('Restaurating single difpad to save preview difpad of 3072^2 shape')
+        difpad_number = 0
+        DP0 = restore_CNB(raw_difpads[difpad_number,:,:].astype(np.float32), geometry) # restaurate
+        DP = corrections_and_restoration(raw_difpads[difpad_number,:,:],empty,flat,np.zeros_like(flat),mask,geometry,jason,apply_crop,centerx,centery,DP_shape,False)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped.npy',DP0)
+        np.save(jason[ 'PreviewFolder'] + '/03_difpad_restaured_flipped_masked.npy',DP)
+        plotshow_cmap2(DP, title=f'Restaured Diffraction Pattern #{difpad_number}, pre-binning', savepath=jason['PreviewFolder'] + '/03_difpad_restaured_flipped.png')
+
+    t0 = time()
+    use_GPU = False
+
+    output, _ = miscPimega.batch(raw_difpads, jason['Threads'], [ DP_shape,DP_shape ], restoration_processing_binning,  r_params)
+    
+    t1 = time()
+
+    elapsedtime = t1-t0
+
+    return output, geometry, elapsedtime, jason
 
 
 def restoration_processing_binning(DP, args):
