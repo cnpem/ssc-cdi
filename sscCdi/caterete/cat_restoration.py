@@ -8,7 +8,6 @@ from numpy.fft import ifft2 as ifft2
 import sscCdi
 from sscIO import io
 from sscPimega import pi540D
-from sscPimega import misc as miscPimega
 
 """ sscCdi relative imports"""
 from ..misc import read_hdf5
@@ -19,11 +18,8 @@ def Geometry(L,susp=3,scale=0.98,fill=False):
     return geo
 
 
-def Restorate(DP, geom):
-    return pi540D.backward540D(DP, geom)
 
-
-def restoration_cuda_parallel(input_dict):
+def restoration_CAT(input_dict):
     
     ibira_datafolder, scans_string  = input_dict['data_folder'],input_dict['scans_string']
 
@@ -100,7 +96,7 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,inp
     
     DP[np.abs(mask) ==1] = -1 # apply Mask
     
-    DP = Restorate(DP, geometry) # restaurate
+    DP = restore_CAT(DP, geometry) # restaurate
 
     if keep_original_negatives == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
@@ -112,7 +108,6 @@ def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,inp
 
     if apply_crop:
         DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
-
 
     return DP 
 

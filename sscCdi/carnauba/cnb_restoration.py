@@ -1,10 +1,38 @@
 import numpy as np
-import h5py, os
+import h5py, os, time
 
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
 
+from sscIO import io
+from sscPimega import pi135D
+from sscPimega import misc as miscPimega
+
 from .cnb_processing import linearity_batch
+from ..misc import plotshow_cmap2
+
+
+def restore_CNB(img,geom,detector):
+    if detector = '145'
+    return pi135D.backward135D(img , geom)
+
+    return pi540D.backward540D(DP, geom)
+
+def restore_CAT(DP, geom):
+
+def restoration_CNB(args, savepath = '', preview = False, save = False, first_iteration = True):
+    
+    jason               = args[0]
+    ibira_datafolder    = args[1]
+    measurement_file    = args[2]
+    acquisitions_folder = args[3]
+    scans_string        = args[4]
+    measurement_filepath= args[5]
+
+    difpads, geometry, _, jason = get_restored_DPs(jason, os.path.join(ibira_datafolder, str(jason['Proposal']), 'data', jason['Data_Filename']), measurement_file,first_iteration=first_iteration,preview=preview,beamline=beamline)
+
+    return difpads, jason
+#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 def apply_empty_acquisition(difpads, input_dict):
 
@@ -18,8 +46,6 @@ def apply_empty_acquisition(difpads, input_dict):
     difpads = np.where(empty == 0, difpads, -1)
     
     return difpads
-
-#-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 def cnb_preprocessing_linear_correction(raw_difpads, input_dict):
 

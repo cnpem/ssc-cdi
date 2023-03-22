@@ -15,7 +15,6 @@ from sscPimega import pi540D
 
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, export_json, wavelength_from_energy, create_circular_mask, create_rectangular_mask, create_cross_mask
-from .cat_restoration import Geometry
 from ..ptycho.ptychography import  call_G_ptychography
 
 
