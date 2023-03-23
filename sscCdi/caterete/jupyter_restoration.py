@@ -14,7 +14,8 @@ from sscPimega import pi540D, opt540D
 from sscPimega import misc as miscPimega
 
 from ..jupyter import slide_and_play
-from .cat_restoration import restoration_processing_binning, Geometry, Restorate
+from ..processing import restoration_with_processing_and_binning, restore_IO_SharedArray
+from ..caterete import Geometry
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data',use_direct_beam=True):
     
@@ -44,14 +45,14 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     print("\tRaw data shape: ", raw_difpads.shape)
     
     """ SIMPLE RESTORATION PRIOR TO CENTER SELECTION. USED TO FIND CENTER """
-    restored_full_DP = Restorate(raw_difpads[0,:,:].astype(np.float32), geometry) # restaurate
+    restored_full_DP = restore_IO_SharedArray(raw_difpads[0,:,:].astype(np.float32), geometry) # restaurate
     restored_full_DP = restored_full_DP.astype(np.int32)
 
     """ How the corrections are made prior to restoration:
     
         img[empty > 1] = -1 # Apply empty 
         img = img * np.squeeze(flat) # Apply flatfield
-        img[np.abs(mask) ==1] = -1   # Apply Mask
+        img[np.abs(mask) ==1] = -1   # Apply mask
         img = img[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # Center data
 
     """
@@ -94,7 +95,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
 
         img[empty > 1] = -1 # Apply empty 
         img = img * np.squeeze(flat) # Apply flatfield
-        img[np.abs(mask) ==1] = -1   # Apply Mask
+        img[np.abs(mask) ==1] = -1   # Apply mask
 
         fig, ax = plt.subplots(1,4,figsize=(15,5))
         ax[0].imshow(plot1), ax[0].set_title('empty')
@@ -133,7 +134,7 @@ def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_p
     """ Call corrections and restoration """
     print("Correcting and restoring diffraction patterns... ")
     r_params = (binning, empty, flat, centerx, centery, half_square_side, geometry, mask, input_dict, apply_crop, apply_binning, subtraction_mask, keep_original_negatives)
-    output, _ = miscPimega.batch(raw_difpads, n_of_threads, [ DP_shape , DP_shape ], restoration_processing_binning,  r_params)
+    output, _ = miscPimega.batch(raw_difpads, n_of_threads, [ DP_shape , DP_shape ], restoration_with_processing_and_binning,  r_params)
     output = output.astype(np.int32)
     print("\tRestored data shape: ", output.shape)
 

@@ -26,8 +26,8 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     dic['order']    = "yx" 
     dic['rank']     = "ztyx" # order of axis
     dic['dataset']  = "entry/data/data"
-    dic['nGPUs']    = len(input_dict["GPUs"])
-    dic['GPUs']     = input_dict["GPUs"]
+    dic['ngpus']    = len(input_dict["GPUs"])
+    dic['gpus']     = input_dict["GPUs"]
     dic['init']     = 0
     dic['final']    = -1 # -1 to use all DPs
     dic['saving']   = 1  # save or not
@@ -36,15 +36,15 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     dic['geometry'] = geometry
     dic['roi']      = input_dict["detector_ROI_radius"] # 512
     dic['center']   = input_dict["DP_center"] # [1400,1400]
-    dic['flat']     = read_hdf5(input_dict["FlatField"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
-    dic['empty']    = read_hdf5(input_dict['EmptyFrame']).squeeze().astype(np.float32) # numpy.zeros([3072,3072]) 
+    dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+    dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
     
     restored_data_info = pi540D.ioSetM_Backward540D( dic )
     output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
-def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
+def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
 
     if input_dict["detector"] == '540D':
         DP_shape = 3072
@@ -53,8 +53,11 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
     else:
         sys.error('Please selector correct detector type: 135D or 540D')
 
-    os.system(f"h5clear -s {hdf5_path}")
-    raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
+    if method == "IO":
+        os.system(f"h5clear -s {hdf5_path}")
+        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
+    elif method == "h5py":
+        raw_DPs = read_hdf5(hdf5_path)
 
     binning = int(input_dict['binning'])
 
@@ -73,23 +76,20 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
 
 def restoration_with_processing_and_binning(DP, args):
     input_dict, geometry, subtraction_mask = args
-    empty, flat, mask = read_masks(input_dict)
-    DP = corrections_and_restoration(input_dict,DP,geometry,empty, flat, mask, subtraction_mask)
-    if input_dict["binning"] > 1:
+    flat, mask = read_masks(input_dict)
+    DP = corrections_and_restoration(input_dict,DP,geometry, flat, mask, subtraction_mask)
+    if input_dict["binning"] > 1: 
         DP = binning_G(DP,input_dict["binning"]) # binning strategy by G. Baraldi
     return DP
 
 def read_masks(input_dict):
-    empty = read_hdf5(input_dict["empty_path"])
     flatfield = read_hdf5(input_dict["flat_path"])
     mask = read_hdf5(input_dict["mask_path"])
-    return empty, flatfield, mask
+    return flatfield, mask
 
-def corrections_and_restoration(input_dict, DP,geometry,empty, flat, mask, subtraction_mask):
+def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
     
     cy, cx = input_dict['DP_center']
-
-    DP[empty > 1] = -1 # apply empty 
 
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
@@ -100,7 +100,7 @@ def corrections_and_restoration(input_dict, DP,geometry,empty, flat, mask, subtr
 
     DP = DP.astype(np.float32) # convert to float
     
-    DP[np.abs(mask) ==1] = -1 # apply Mask
+    DP[np.abs(mask) ==1] = -1 # apply mask
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
 

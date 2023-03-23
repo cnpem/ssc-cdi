@@ -450,7 +450,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         for i in range(slices):
             sinogram = data[:,i,:]
             if algorithm == "ART":
-                reconstruction3D[:,i,:]= MaskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
+                reconstruction3D[:,i,:]= maskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
             elif algorithm == "FBP": 
                 reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
             elif algorithm == "RegBackprojection":
@@ -650,8 +650,6 @@ def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, p
     ax[1].imshow(data[n_frame])
     plt.show()
         
-    # from sscCdi.caterete.tomo_processing import gradient_filter_and_pad
-
     # loadpath = 'data.npy'
     # savepath = 'data2.npy' # if "", data won't be saved
     # background_region = (500,650,850,1100) # Rectangular region of the background. Use () to skip gradient removal for the background

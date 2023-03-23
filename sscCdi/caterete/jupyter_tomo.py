@@ -27,10 +27,7 @@ import getpass
 username = getpass.getuser()
 
 """ Standard folders definitions"""
-if 1: # paths for beamline use
-    tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/ssc-cdi/bin/sscptycho_raft.py' # path with python script to run
-else: # paths for GCC tests       
-    tomo_script_path = '~/ssc-cdi/bin/sscptycho_raft.py' 
+tomo_script_path    = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/ssc-cdi/bin/sscptycho_raft.py' # path with python script to run
 
 """ Standard dictionary definition """
 global global_dict
@@ -604,7 +601,7 @@ def chull_tab():
         subplots[0,2].set_title('Opening')
         subplots[1,0].set_title('Erosion')
         subplots[1,1].set_title('Convex Hull')
-        subplots[1,2].set_title('Masked Image')
+        subplots[1,2].set_title('masked Image')
 
         for subplot in subplots.reshape(-1):
             subplot.set_xticks([])
@@ -1020,7 +1017,7 @@ def tomo_tab():
 
     remove_outliers_slider    = Input(global_dict,"tomo_remove_outliers",  description="Remove Outliers", bounded=(0,10,1), slider=True,layout=slider_layout)
     remove_local_offset_field = Input(global_dict,"tomo_local_offset",  description='Bkg Offset [yu,yd,xl,xr]',layout=items_layout)
-    # mask_final_tomo = Input(global_dict,"tomo_mask",  description='Mask [yu,yd,xl,xr]',layout=items_layout)
+    # mask_final_tomo = Input(global_dict,"tomo_mask",  description='mask [yu,yd,xl,xr]',layout=items_layout)
     hist_max = Input({"dummy_key":0},"dummy_key",  description='Histogram Maximum',layout=items_layout)
 
     load_box = widgets.HBox([load_recon_button.widget,load_selection])

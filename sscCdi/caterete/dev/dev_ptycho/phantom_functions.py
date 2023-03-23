@@ -377,7 +377,7 @@ def calculate_wavelength(energy):
     speed_of_light, planck = 299792458, 4.135667662E-18  # Plank constant [keV*s]; Speed of Light [m/s]
     wavelength = planck * speed_of_light / energy # meters
     wavevector = 2*np.pi/wavelength
-    print(f"Energy = {energy} keV \t Wavelength = {wavelength*1e9} nm \t Wavevector = {wavevector*1e-9} nm^-1")
+    print(f"energy = {energy} keV \t Wavelength = {wavelength*1e9} nm \t Wavevector = {wavevector*1e-9} nm^-1")
     return wavelength, wavevector
 
 def create_metadata_with_beamline_standard(inputs,beamlime='CAT'):

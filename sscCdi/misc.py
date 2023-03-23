@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
-from .processing.propagation import Propagate
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -215,6 +214,7 @@ def export_json(params,output_path):
     return 0
 
 def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
+    from .processing.propagation import Propagate
     if input_dict['Preview']:  # Preview Reconstruction:
         ''' Plot scan points
         plt.figure()

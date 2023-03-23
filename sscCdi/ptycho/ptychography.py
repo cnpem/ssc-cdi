@@ -83,7 +83,7 @@ def set_initial_parameters_for_G_algos(input_dict, difpads, probe_positions, rad
             sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels
             0 for negative values, intensity measured elsewhere
         """    
-        # Mask of 1 and 0:
+        # mask of 1 and 0:
         sigmask = np.ones(difpads[0].shape)
         sigmask[difpads[0] < 0] = 0
 
@@ -127,7 +127,7 @@ def set_initial_parameters_for_G_algos(input_dict, difpads, probe_positions, rad
     half_size = difpads.shape[-1] // 2
 
     if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
-        input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['Energy'], z=input_dict['detector_distance'])
+        input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
         input_dict['fresnel_number'] = -input_dict['fresnel_number']
     print('\tF1 value:', input_dict['fresnel_number'])
 
@@ -137,7 +137,7 @@ def set_initial_parameters_for_G_algos(input_dict, difpads, probe_positions, rad
     # Object initial guess:
     obj = set_initial_object(input_dict, object_size, probe, difpads)
 
-    # Mask of 1 and 0:
+    # mask of 1 and 0:
     sigmask = set_sigmask(difpads)
 
     background = np.ones(difpads[0].shape) # dummy
