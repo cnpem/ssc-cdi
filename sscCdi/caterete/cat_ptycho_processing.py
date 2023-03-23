@@ -22,11 +22,6 @@ from ..processing.unwrap import phase_unwrap
 
 def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
 
-    total_n_of_frames = 0
-    for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
-        _, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
-        total_n_of_frames += len(filenames)
-
     if strategy == "serial":
 
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
@@ -51,8 +46,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                     object_shape, input_dict = set_object_shape(DPs,input_dict, probe_positions)
-                    sinogram = np.zeros((total_n_of_frames,object_shape[0],object_shape[1])) 
-                    probes   = np.zeros((total_n_of_frames,1,DPs.shape[-2],DPs.shape[-1]))
+                    sinogram = np.zeros((len(input_dict["projections"]),object_shape[0],object_shape[1])) 
+                    probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]))
                 
                 run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
 

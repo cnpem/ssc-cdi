@@ -35,6 +35,8 @@ def restoration_CAT(input_dict):
             filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
             print(f"\tSelected a total of {len(filenames)} projections")
 
+        print(filenames)
+
         params = (input_dict, filenames, filepaths, ibira_datafolder, acquisitions_folder, scans_string)
 
         distance = input_dict["detector_distance"]*1000 # distance in milimeters
@@ -58,8 +60,8 @@ def restoration_CAT(input_dict):
         dic['daxpy']    = [0,np.zeros((3072,3072))] 
         dic['roi']      = input_dict["detector_ROI_radius"] # 512
         dic['center']   = input_dict["DP_center"] # [1400,1400]
-        dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
-        dic['mask']     = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+        dic['flat']     = np.ones([3072, 3072]) # read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+        dic['mask']     = np.zeros([3072, 3072]) # read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
         dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
         dic['geometry'] = geometry
 
