@@ -14,10 +14,9 @@ import sscResolution
 from sscPimega import pi540D
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, export_json, wavelength_from_energy, create_circular_mask
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask
 from ..ptycho.ptychography import  call_G_ptychography
-
-
+from ..processing.unwrap import phase_unwrap
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -25,16 +24,16 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
     total_n_of_frames = 0
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
-        _, filenames = sscCdi.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        _, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
         total_n_of_frames += len(filenames)
 
     if strategy == "serial":
 
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
-            filepaths, filenames = sscCdi.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
 
-            for file_number, (filepath,filename) in enumerate(zip(filepaths,filename)):
+            for file_number, (filepath,filename) in enumerate(zip(filepaths,filenames)):
 
                 frame = file_number + folder_number*len(filenames) # attribute singular value to each angle
 
@@ -43,14 +42,17 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 """ Read Diffraction Patterns for one angle """
                 DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
-                
-                if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                    object_shape, input_dict = sscCdi.caterete.ptycho.ptycho_processing.set_object_shape(DPs,input_dict, [filename], [filepath], acquisitions_folder)
-                    sinogram = np.zeros((total_n_of_frames,object_shape[0],object_shape[1])) 
-                    probes   = np.zeros((total_n_of_frames,1,DPs.shape[-2],DPs.shape[-1]))
+                print(f"Finished reading diffraction data. DP shape: {DPs.shape}")
 
                 """ Read positions """
-                probe_positions = read_probe_positions(input_dict, filename , DPs.shape[0])
+                probe_positions = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape[0])
+                print(f"Finished reading probe positions. Shape: {probe_positions.shape}")
+
+
+                if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
+                    object_shape, input_dict = set_object_shape(DPs,input_dict, probe_positions)
+                    sinogram = np.zeros((total_n_of_frames,object_shape[0],object_shape[1])) 
+                    probes   = np.zeros((total_n_of_frames,1,DPs.shape[-2],DPs.shape[-1]))
                 
                 run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
 
@@ -67,7 +69,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
     return sinogram, probes, input_dict
-
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
@@ -96,15 +97,15 @@ def define_paths(input_dict):
     input_dict['ignored_scans'] = [('folder_number','file_number')]
 
     images_folder    = os.path.join(input_dict["acquisition_folders"][0],'images')
-
-    input_dict = json.load(open(os.path.join(input_dict['data_folder'] ,input_dict["acquisition_folders"][0],'mdata.json')))
-    input_dict["Energy"]               = input_dict['/entry/beamline/experiment']["energy"]
-    input_dict["detector_distance"]    = input_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
-    input_dict["restored_pixel_size"]  = input_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
-    input_dict["detector_exposure"][1] = input_dict['/entry/beamline/detector']['pimega']["exposure time"]
-    input_dict["EmptyFrame"]           = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
-    input_dict["FlatField"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
-    input_dict["Mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
+    
+    mdata_dict = json.load(open(os.path.join(input_dict['data_folder'] ,input_dict["acquisition_folders"][0],'mdata.json')))
+    input_dict["energy"]               = mdata_dict['/entry/beamline/experiment']["energy"]
+    input_dict["detector_distance"]    = mdata_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
+    input_dict["restored_pixel_size"]  = mdata_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+    input_dict["detector_exposure"] = [None,None]
+    input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
+    input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
+    input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
     return input_dict
 
 
@@ -117,12 +118,12 @@ def create_output_directories(input_dict):
 def get_files_of_interest(input_dict,acquistion_folder=''):
 
     if acquistion_folder != '':
-            filepaths, filenames = sscCdi.caterete.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'] , acquistion_folder,input_dict['scans_string'] ), look_for_extension=".hdf5")
+            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] , acquistion_folder,input_dict['scans_string'] ), look_for_extension=".hdf5")
     else:
-        filepaths, filenames = sscCdi.caterete.misc.misc.list_files_in_folder(os.path.join(input_dict['data_folder'] , input_dict["acquisition_folders"][0],input_dict['scans_string'] ), look_for_extension=".hdf5")
+        filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] , input_dict["acquisition_folders"][0],input_dict['scans_string'] ), look_for_extension=".hdf5")
 
     if input_dict['projections'] != []:
-        filepaths, filenames = sscCdi.caterete.misc.misc.select_specific_angles(input_dict['projections'], filepaths, filenames)
+        filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths, filenames)
 
     return filepaths, filenames
 
@@ -143,7 +144,7 @@ def set_object_shape(DP_size,input_dict,probe_positions,offset_topleft = 20):
 
 def set_object_pixel_size(input_dict,DP_size):
 
-    wavelength = wavelength_from_energy(input_dict["Energy"])
+    wavelength = wavelength_from_energy(input_dict["energy"])
     input_dict["wavelength"] = wavelength
     
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
@@ -168,7 +169,7 @@ def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft
     return probe_positions, offset_topleft
 
 
-def read_probe_positions(input_dict, measurement_file, n_of_DPs):
+def read_probe_positions(input_dict, acquisitions_folder,measurement_file, n_of_DPs):
 
     def rotate_coordinate_system(angle_rad,pxl,pyl):
         px = pxl * np.cos(angle_rad) - np.sin(angle_rad) * pyl
@@ -177,7 +178,7 @@ def read_probe_positions(input_dict, measurement_file, n_of_DPs):
     
     print('Reading probe positions (probe_positions)...')
     probe_positions = []
-    positions_file = open( os.path.join(input_dict["data_folder"], input_dict["positions_string"], measurement_file[:-5] + '.txt'))
+    positions_file = open( os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
 
     for line_counter, line in enumerate(positions_file):
         line = str(line)
@@ -196,12 +197,12 @@ def read_probe_positions(input_dict, measurement_file, n_of_DPs):
 
     n_of_positions = probe_positions.shape[0] + 1
 
-    if n_of_positions[0] == n_of_DPs[0]:  # check if number of recorded beam positions in txt matches the number of diff. patterns saved in the hdf5
+    if n_of_positions == n_of_DPs:  # check if number of recorded beam positions in txt matches the number of diff. patterns saved in the hdf5
         pass
     else:
         print("\t\tProblem when reading positions. Number of positions {0} is different from number of diffraction patterns {1}".format(n_of_positions, n_of_DPs))
         print('\t\tSetting object as null array with correct shape... New probe positions shape:', probe_positions.shape)
-        probe_positions = np.zeros((n_of_DPs[0]-1, 4))
+        probe_positions = np.zeros((n_of_DPs-1, 4))
 
     probe_positions, _ = convert_probe_positions_meters_to_pixels(input_dict["object_pixel"], probe_positions)
 
@@ -265,17 +266,15 @@ def crop_sinogram(sinogram, input_dict):
         
         if 1: # Miqueles approach using scan positions
             frame = 0
-            ibira_datafolder = input_dict["data_folder"]
             for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
                 
-                filepaths, filenames = sscCdi.caterete.ptycho.ptycho_processing.get_files_of_interest(input_dict,acquisitions_folder)
+                filepaths, filenames = get_files_of_interest(input_dict,acquisitions_folder)
 
                 for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
                     if sinogram.shape[0] == len(filenames): print("SHAPES MATCH!")
 
-                    probe_positions_file = os.path.join(acquisitions_folder, input_dict['positions_string'], measurement_file[:-5] + '.txt')  # change .hdf5 to .txt extension
-                    probe_positions = read_probe_positions(os.path.join(ibira_datafolder,probe_positions_file), measurement_filepath)
+                    probe_positions = read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram.shape[0])
 
                     cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
                     if frame == 0: 
@@ -383,8 +382,7 @@ def apply_phase_unwrap(sinogram, input_dict):
     for frame in range(sinogram.shape[0]):
         original_object = sinogram[frame,:,:]  # create copy of object
         absol[frame,:,:] = np.abs(sinogram[frame,:,:])
-        # phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sscPtycho.RemovePhaseGrad(sinogram[frame,:,:])))#, n_iterations, non_negativity=0, remove_gradient=0)
-        phase[frame,:,:] = sscCdi.unwrap.phase_unwrap(-np.angle(sinogram[frame,:,:]))
+        phase[frame,:,:] = phase_unwrap(-np.angle(sinogram[frame,:,:]))
 
         if 1:  # plot original and cropped object phase and save!
             figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))

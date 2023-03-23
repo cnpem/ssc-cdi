@@ -256,7 +256,7 @@ def inputs_tab():
     proposal_str          = Input(global_dict,"Proposal",description="Proposal",layout=items_layout2)
     data_filename         = Input(global_dict,"Data_Filename",description="Data Filename",layout=items_layout2)
     position_folder       = Input(global_dict,"BeamlineParameters_Filename",description="Beamline Parameters Filename",layout=items_layout2)
-    mask_filename         = Input(global_dict,"Mask_Filename",description="Mask Filename",layout=items_layout2)
+    mask_filename         = Input(global_dict,"mask_Filename",description="mask Filename",layout=items_layout2)
     
     
     label2 = create_label_widget("Restauration")
@@ -410,10 +410,10 @@ def mask_tab():
         from matplotlib.colors import LogNorm
         print("Loading difpad from: ",global_paths_dict["difpad_raw_mean_filepath"] )
         difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
-        flat = tifOpen(global_dict['FlatField'])
+        flat = tifOpen(global_dict['flatfield'])
         flat = np.array(flat)
-        print('Loading flatfield from ', global_dict['FlatField'])
-        flatted_difpad = flat * difpad# Apply Mask
+        print('Loading flatfield from ', global_dict['flatfield'])
+        flatted_difpad = flat * difpad# Apply mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
         subplot2.imshow(flat,cmap='jet')
         subplot3.imshow(flatted_difpad,cmap='jet',norm=LogNorm())
@@ -658,7 +658,7 @@ def caustic_tab():
         # Calculating object pixel size dx =========================================================================================
         c = 299792458             # Speed of Light [m/s]
         planck = 4.135667662E-18  # Plank constant [keV*s]
-        wavelength = planck * c / global_dict['Energy'] # meters
+        wavelength = planck * c / global_dict['energy'] # meters
         global_dict["wavelength"] = wavelength
         global_dict['RestauredPixelSize'] = 55.5E-6
         

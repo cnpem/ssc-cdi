@@ -125,7 +125,7 @@ def PIE_update_probe(iteration,probe,mPIE_params,difference, obj,positions, offs
 def set_object_pixel_size(input_dict,half_size):
     c = 299792458             # Speed of Light [m/s]
     planck = 4.135667662E-18  # Plank constant [keV*s]
-    wavelength = planck * c / input_dict['Energy'] # meters
+    wavelength = planck * c / input_dict['energy'] # meters
     input_dict["wavelength"] = wavelength
     # Convert pixel size:
     dx = wavelength * input_dict['detector_distance'] / ( input_dict['binning'] * input_dict['restored_pixel_size'] * half_size * 2)
@@ -409,7 +409,7 @@ def create_correction_masks(N,M,path,bad_points_percentage=0.05,detector='540D',
         ax1.imshow(empty), ax1.set_title("Empty")
         ax2.imshow(flatfield), ax2.set_title("Flatfield")
         ax3.imshow(invalid_grid), ax3.set_title("Grid")
-        ax4.imshow(invalid_points), ax4.set_title("Mask")
+        ax4.imshow(invalid_points), ax4.set_title("mask")
         ax5.imshow(total), ax5.set_title("all")
     
     return empty, flatfield, invalid_grid, invalid_points

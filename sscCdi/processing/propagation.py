@@ -4,7 +4,7 @@ from moviepy.editor import VideoClip, ImageSequenceClip
 from moviepy.video.io.bindings import mplfig_to_npimage
 
 """ Relative imports """
-from ..misc import wavelength_from_energy, Prop
+from ..misc import wavelength_from_energy
 
 def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
     
@@ -52,9 +52,9 @@ def create_propagation_video(path_to_probefile,
     fresnel_number = np.linspace(starting_f_value,ending_f_value,number_of_frames)
     
     # Create list of propagated probes
-    b =  [np.sqrt(np.sum([abs(Prop(a,fresnel_number[0]))**2 for a in probe],0))]
+    b =  [np.sqrt(np.sum([abs(Propagate(a,fresnel_number[0]))**2 for a in probe],0))]
     for i in range(1,number_of_frames):
-            b += [np.sqrt(np.sum([abs(Prop(a,fresnel_number[i]))**2 for a in probe],0))]
+            b += [np.sqrt(np.sum([abs(Propagate(a,fresnel_number[i]))**2 for a in probe],0))]
     
 
     image_list = []

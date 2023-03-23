@@ -9,9 +9,9 @@ We explain below all the inputs present in the Json file.
 
     - LogfilePath: a path to save a json logfile when the sscptycho script is run. The json contains all the inputs from the logfile, plus a few extra ones calculated during runtime, such as object pixel size and object FRC resolution.
     - data_folder: path to the folder where data is located
-    - Mask: path to a predefined mask to ignore bad pixels
-    - FlatField: path to DET flatfield in numpy format
-    - EmptyFrame: path to empty frame hdf5 file
+    - mask: path to a predefined mask to ignore bad pixels
+    - flatfield: path to DET flatfield in numpy format
+    - empty_frame: path to empty frame hdf5 file
     - 3D_Acquistion_Folders: name of the folder containg all hdf5 frames for a 3D reconstruction
     - Frames: list of integers containing all frames to be used for the 3D reconstruction. If empty, uses all frames. 
     - SingleMeasurement: if not a 3D reconstruction, select the measurement hdf5 to reconstruct. If this is to be used, 3D_Acquistion_Folders should be empty.
@@ -26,7 +26,7 @@ We explain below all the inputs present in the Json file.
     - binning: [int]. binning of the diffraction pattern
     - Seed: [int] Seed for random number generator. Use 10 as standard.
     - incoherent_modes: [int]. Number of probe modes to be reconstructed 
-    - Energy: [float]. Beam energy for the experiment
+    - energy: [float]. Beam energy for the experiment
     - detector_distance: [float] Detector distance for the experiment
     - restored_pixel_size: [float] Detector pixel size. Use 55.55e-6
     - f1: [float] Fresnel number. Adjusts the detector-sample distance. This is the parameter to be tweaked with for fine probe/pinhole adjustment. IMPORTANT: always use a negative value for f1! ​Reference values: 1e-4 for 10 micron pinhole. 1e-3 for 5 micron pinhole at Cateretê.

@@ -152,7 +152,7 @@ def FFTLowPassFilter(img,mask_vertical_size,show_filtered_plot=True,show_mask_pl
 
         plt.figure(figsize=(12,5))
         plt.imshow(magnitude_spectrum)
-        plt.title("Masked Fourier Space")
+        plt.title("masked Fourier Space")
         plt.show()  
 
 

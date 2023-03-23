@@ -17,10 +17,7 @@ from ..processing.unwrap import phase_unwrap
 
 from ..misc import create_directory_if_doesnt_exist
 
-if 1: # paths for beamline use
-    pythonScript    = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/ssc-cdi/bin/sscptycho_main.py' # path with python script to run
-else: # paths for GCC tests       
-    pythonScript    = '~/ssc-cdi/bin/sscptycho_main.py' 
+pythonScript    = '/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py' # path with python script to run
 
 import getpass
 username = getpass.getuser()
@@ -32,7 +29,7 @@ output_folder = os.path.join('/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00
 
 global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/",
                     "ptycho_script_path"       : pythonScript,
-                    "template_json"            : "000000_template.json",
+                    "template_json"            : os.path.join("inputs","000000_template_1.0.json"),
                     "slurm_filepath"           : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_job.srm'), # path to create slurm_file
                     "json_filepath"            : os.path.join(jupyter_folder,'inputs',f'{username}_ptycho_input.json'), # path with input json to run
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
@@ -53,23 +50,23 @@ if os.path.exists(json_filepath):
 
 global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
 
-############################################ Global Layout ###########################################################################
+############################################  Global Layouts ###########################################################################
 
 """ Standard styling definitions """
-standard_border='1px none black'
-vbar = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
+standard_border = '1px none black'
+vbar  = widgets.HTML(value="""<div style="border-left:2px solid #000;height:500px"></div>""")
 vbar2 = widgets.HTML(value="""<div style="border-left:2px solid #000;height:1000px"></div>""")
-hbar = widgets.HTML(value="""<hr class="solid" 2px #000>""")
+hbar  = widgets.HTML(value="""<hr class="solid" 2px #000>""")
 hbar2 = widgets.HTML(value="""<hr class="solid" 2px #000>""")
-slider_layout = widgets.Layout(width='90%',border=standard_border)
-slider_layout2 = widgets.Layout(width='30%',flex='flex-grow',border=standard_border)
-slider_layout3 = widgets.Layout(display='flex', flex_flow='row',  align_items='flex-start', width='70%',border=standard_border)
-items_layout = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
-items_layout2 = widgets.Layout( width='50%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
-checkbox_layout = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
-buttons_layout = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
-center_all_layout = widgets.Layout(align_items='center',width='100%',border=standard_border) #align_content='center',justify_content='center'
-box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
+slider_layout      = widgets.Layout(width='90%',border=standard_border)
+slider_layout2     = widgets.Layout(width='30%',flex='flex-grow',border=standard_border)
+slider_layout3     = widgets.Layout(display='flex', flex_flow='row',  align_items='flex-start', width='70%',border=standard_border)
+items_layout       = widgets.Layout( width='90%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+items_layout2      = widgets.Layout( width='50%',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+checkbox_layout    = widgets.Layout( width='150px',border=standard_border)     # override the default width of the button to 'auto' to let the button grow
+buttons_layout     = widgets.Layout( width='90%',height="40px")     # override the default width of the button to 'auto' to let the button grow
+center_all_layout  = widgets.Layout(align_items='center',width='100%',border=standard_border) #align_content='center',justify_content='center'
+box_layout         = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 sliders_box_layout = widgets.Layout(flex_flow='column',align_items='flex-start',border=standard_border,width='100%')
 style = {'description_width': 'initial'}
 
@@ -319,8 +316,8 @@ def inputs_tab():
     label3 = create_label_widget("Diffraction Pattern Processing")
     autocrop           = Input(global_dict,"autocrop",description="Auto Crop borders",layout=items_layout2)
     global central_mask_radius, central_mask_bool, DetectorPileup
-    central_mask_bool   = Input({'dummy-key':global_dict["central_mask"][0]},'dummy-key',description="Use Central Mask",layout=items_layout2)
-    central_mask_radius = Input({'dummy-key':global_dict["central_mask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central Mask Radius",layout=slider_layout)
+    central_mask_bool   = Input({'dummy-key':global_dict["central_mask"][0]},'dummy-key',description="Use Central mask",layout=items_layout2)
+    central_mask_radius = Input({'dummy-key':global_dict["central_mask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central mask Radius",layout=slider_layout)
     central_mask_box   = widgets.Box([central_mask_bool.widget,central_mask_radius.widget],layout=slider_layout3)
     DetectorPileup   = Input({'dummy-key':global_dict["detector_exposure"][0]},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
 
@@ -403,7 +400,7 @@ def mask_tab():
     with output2:
         figure2, subplot2 = plt.subplots(figsize=(4,4))
         subplot2.imshow(initial_image,cmap='gray')
-        subplot2.set_title('Mask')
+        subplot2.set_title('mask')
         figure2.canvas.header_visible = False 
         plt.show()
 
@@ -412,7 +409,7 @@ def mask_tab():
     with output3:
         figure3, subplot3 = plt.subplots(figsize=(4,4))
         subplot3.imshow(initial_image,cmap='gray')
-        subplot3.set_title('Masked')
+        subplot3.set_title('masked')
         figure3.canvas.header_visible = False 
         plt.show()
 
@@ -425,7 +422,7 @@ def mask_tab():
         difpad = np.load(global_paths_dict["difpad_raw_mean_filepath"] ) 
         masked_difpad = difpad.copy()
         mask = h5py.File(os.path.join(global_dict["data_folder"],global_dict["acquisition_folders"][0],'images','mask.hdf5'), 'r')['entry/data/data'][()][0, 0, :, :]
-        masked_difpad[np.abs(mask) == 1] = -1 # Apply Mask
+        masked_difpad[np.abs(mask) == 1] = -1 # Apply mask
         subplot.imshow(difpad,cmap='jet',norm=LogNorm())
         subplot2.imshow(mask,cmap='gray')
         subplot3.imshow(masked_difpad,cmap='jet',norm=LogNorm())
