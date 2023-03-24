@@ -36,49 +36,29 @@ def restoration_CAT(input_dict):
         geometry = pi540D.geometry540D( project )
 
         dic = {}
-        # dic['path']     = ["/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho2d/SS61/scans/0000_SS61_001.hdf5"] #filepaths
-        # dic['outpath']  = "/ibira/lnls/labs/tepui/home/yuri.tonin/test/"
-        # dic['order']    = "yx" 
-        # dic['rank']     = "ztyx" # order of axis
-        # dic['dataset']  = "entry/data/data"
-        # dic['gpus']     = [5] # input_dict["GPUs"]
-        # dic['init']     = 0
-        # dic['final']    = -1 # -1 to use all DPs
-        # dic['saving']   = 1  # save or not
-        # dic['timing']   = 0  # print timers 
-        # dic['blocksize']= 10
-        # dic['roi']      = 256 # input_dict["detector_ROI_radius"] # 512
-        # dic['center']   = [1400,1400] #input_dict["DP_center"] # [1400,1400]
-        # print(dic)
-        # dic['daxpy']    = [0,np.zeros([3072,3072])] 
-        # dic['flat']     = np.ones([3072, 3072]) # read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
-        # dic['mask']     = np.zeros([3072, 3072]) # read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
-        # dic['empty']    = np.zeros([3072, 3072]) #np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
-        # dic['geometry'] = geometry
-
-        dic['path'] = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho2d/SS61/scans/0000_SS61_001.hdf5"
-        dic['outpath'] = "/home/ABTLUS/yuri.tonin/temp/"
-        dic['order'] = "yx"
-        dic['rank'] = "ztyx"
-        dic['dataset'] = "entry/data/data"
-        dic['gpus'] = [0] 
-        dic['init'] = 0
-        dic['final'] = -1
-        dic['saving'] = 1
-        dic['timing'] = 0
+        dic['path']     = filepaths
+        dic['outpath']  = input_dict["temporary_output"]
+        dic['order']    = "yx" 
+        dic['rank']     = "ztyx" # order of axis
+        dic['dataset']  = "entry/data/data"
+        dic['gpus']     = input_dict["GPUs"]
+        dic['init']     = 0
+        dic['final']    = -1 # -1 to use all DPs
+        dic['saving']   = 1  # save or not
+        dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
-        dic['center'] = [1000, 1000]
-        dic['roi'] = 256
+        dic['roi']      = input_dict["detector_ROI_radius"] # 512
+        dic['center']   = input_dict["DP_center"] # [1400,1400]
         print(dic)
+        dic['daxpy']    = [0,np.zeros([3072,3072])] 
+        dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+        dic['mask']     = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
+        dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
         dic['geometry'] = geometry
-        dic['daxpy'] = [0, np.zeros([3072,3072])] 
-        dic['flat'] = np.ones([3072,3072])
-        dic['empty'] = np.zeros([3072,3072])
-        dic['mask'] = np.zeros([3072,3072])
 
         if len(filepaths) == 1:
             print("Restoration of single file")
-            # dic['path'] = dic['path'][0]
+            dic['path'] = dic['path'][0]
             print(dic['path'])
             restored_data_info = pi540D.ioSet_Backward540D( dic )
         else:
