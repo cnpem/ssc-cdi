@@ -61,7 +61,7 @@ def restoration_CAT(input_dict):
         dic['order'] = "yx"
         dic['rank'] = "ztyx"
         dic['dataset'] = "entry/data/data"
-        dic['gpus'] = [5] 
+        dic['gpus'] = [0] 
         dic['init'] = 0
         dic['final'] = -1
         dic['saving'] = 1
@@ -70,7 +70,7 @@ def restoration_CAT(input_dict):
         dic['center'] = [1000, 1000]
         dic['roi'] = 256
         print(dic)
-        dic['daxpy'] = [0, np.zeros([3072,3072])] 
+        dic['geometry'] = geometry
         dic['daxpy'] = [0, np.zeros([3072,3072])] 
         dic['flat'] = np.ones([3072,3072])
         dic['empty'] = np.zeros([3072,3072])
