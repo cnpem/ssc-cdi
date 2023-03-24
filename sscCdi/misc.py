@@ -134,7 +134,8 @@ def create_directory_if_doesnt_exist(*args):
             print("Creating directory: ",arg)
             os.makedirs(arg)
         else:
-            print('Tried to created directory, but it already exists: ',arg)
+            pass
+            # print('Tried to created directory, but it already exists: ',arg)
 
 
 def read_hdf5(path,inner_path = 'entry/data/data'):
