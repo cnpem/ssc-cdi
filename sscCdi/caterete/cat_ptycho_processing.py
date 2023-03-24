@@ -36,7 +36,12 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 restored_data_info = restored_data_info_list[folder_number]
 
                 """ Read Diffraction Patterns for one angle """
-                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
+                if len(filepaths) > 1:
+                    DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
+                else:
+                    DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+
+
                 print(f"Finished reading diffraction data. DP shape: {DPs.shape}")
 
                 """ Read positions """
@@ -61,7 +66,10 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
                 """ Clean DPs temporary data """
-                pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
+                if len(filepaths) > 1:
+                    pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
+                else:
+                    pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
 
     return sinogram, probes, input_dict
 
@@ -78,7 +86,7 @@ def define_paths(input_dict):
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("Output path:", beamline_outputs_path)
     input_dict["output_path"]  = beamline_outputs_path
-    input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
+    input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp/')
 
     create_output_directories(input_dict) # create all output directories of interest
 
