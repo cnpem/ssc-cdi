@@ -17,6 +17,8 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
 
+    print(datapack["rois"].shape, datapack["difpads"].shape)
+
     run_algorithms = True
     loop_counter = 1
     while run_algorithms:  # run Ptycho:
@@ -36,7 +38,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
                                         sigmask   = sigmask,
                                         data      = datapack,
                                         params    = {'device':input_dict["GPUs"]},
-                                        probefresnel_number=input_dict['fresnel_number'])
+                                        probef1=input_dict['fresnel_number'])
 
             elif algorithm['Name'] == 'positioncorrection':
                 datapack['bkg'] = None
@@ -49,7 +51,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
                                                     sigmask   = sigmask,
                                                     data      = datapack,
                                                     params    = {'device':input_dict["GPUs"]},
-                                                    probefresnel_number=input_dict['fresnel_number'])
+                                                    probef1=input_dict['fresnel_number'])
 
             elif algorithm['Name'] == 'RAAR':
                 datapack = sscPtycho.RAAR(iter         = algorithm['Iterations'],
@@ -61,7 +63,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
                                            sigmask     = sigmask,
                                            data        = datapack,
                                            params      = {'device':input_dict["GPUs"]}, 
-                                           probefresnel_number=input_dict['fresnel_number']) 
+                                           probef1=input_dict['fresnel_number']) 
 
             loop_counter += 1
             
@@ -71,24 +73,23 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
 
 
-def set_initial_parameters_for_G_algos(input_dict, difpads, probe_positions, radius, center_x, center_y, object_size, dx):
+def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius, center_x, center_y, object_size, dx):
 
-    def set_sigmask(difpads):
+    def set_sigmask(DPs):
         """Create a mask for invalid pixels
 
         Args:
-            difpads (array): measured diffraction patterns
+            DPs (array): measured diffraction patterns
 
         Returns:
             sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels
             0 for negative values, intensity measured elsewhere
         """    
         # mask of 1 and 0:
-        sigmask = np.ones(difpads[0].shape)
-        sigmask[difpads[0] < 0] = 0
+        sigmask = np.ones(DPs[0].shape)
+        sigmask[DPs[0] < 0] = 0
 
         return sigmask
-
 
     def probe_support(probe, half_size, radius, center_x, center_y):
         print('Setting probe support...')
@@ -98,59 +99,50 @@ def set_initial_parameters_for_G_algos(input_dict, difpads, probe_positions, rad
         probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
         return probesupp
 
-    def set_datapack(obj, probe, probe_positions, difpads, background, probesupp):
+    def set_datapack(obj, probe, probe_positions, DPs, background, probesupp):
         """Create a dictionary to store the data needed for reconstruction
 
         Args:
             obj (array): guess for ibject
             probe (array): guess for probe
             probe_positions (array): position in x and y directions
-            difpads (array): intensities (diffraction patterns) measured
+            DPs (array): intensities (diffraction patterns) measured
             background (array): background
             probesupp (array): probe support
 
         Returns:
             datapack (dictionary)
         """    
-        print('Creating datapack...')
-        # Set data for Ptycho algorithms:
+        print('Creating datapack...') # Set data for Ptycho algorithms
         datapack = {}
         datapack['obj'] = obj
         datapack['probe'] = probe
         datapack['rois'] = probe_positions
-        datapack['difpads'] = difpads
+        datapack['difpads'] = DPs
         datapack['bkg'] = background
         datapack['probesupp'] = probesupp
 
         return datapack
 
-    half_size = difpads.shape[-1] // 2
+    half_size = DPs.shape[-1] // 2
 
     if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
         input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
-        input_dict['fresnel_number'] = -input_dict['fresnel_number']
     print('\tF1 value:', input_dict['fresnel_number'])
 
-    # Compute probe: initial guess:
-    probe = set_initial_probe(difpads, input_dict)
+    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]) ) # Compute probe: initial guess:
+    
+    obj = set_initial_object(input_dict) # Object initial guess:
 
-    # Object initial guess:
-    obj = set_initial_object(input_dict, object_size, probe, difpads)
+    sigmask = set_sigmask(DPs)  # mask of 1 and 0:
 
-    # mask of 1 and 0:
-    sigmask = set_sigmask(difpads)
+    background = np.ones(DPs[0].shape) # dummy
 
-    background = np.ones(difpads[0].shape) # dummy
+    probesupp = probe_support(probe, half_size, radius, center_x, center_y)     # Compute probe support:
+    print(probesupp.shape,probe.shape)
+    datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
-    # Compute probe support:
-    probesupp = probe_support(probe, half_size, radius, center_x, center_y)
-
-    probe_positionsi = probe_positions + 0  # what's the purpose of declaring probe_positionsi?
-
-    # Set data for Ptycho algorithms:
-    datapack = set_datapack(obj, probe, probe_positions, difpads, background, probesupp)
-
-    return datapack, probe_positionsi, sigmask
+    return datapack, probe_positions, sigmask
 
 
 def set_initial_probe(input_dict,DP_shape):
