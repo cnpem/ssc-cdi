@@ -13,7 +13,7 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
     if magnification != 1:
         magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
 
-    return (pixel_size**2) / (wavelength * sample_detector_distance * magnification)
+    return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)
 
 def Propagate(img, fresnel_number): # Probe propagation
         """ Frunction for free space propagation of the probe in the Fraunhoffer regime

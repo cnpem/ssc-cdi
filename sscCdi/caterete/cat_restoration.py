@@ -49,7 +49,6 @@ def restoration_CAT(input_dict):
         dic['blocksize']= 10
         dic['roi']      = input_dict["detector_ROI_radius"] # 512
         dic['center']   = input_dict["DP_center"] # [1400,1400]
-        print(dic)
         dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
         dic['mask']     = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
@@ -59,12 +58,10 @@ def restoration_CAT(input_dict):
         if len(filepaths) == 1:
             print("Restoration of single file")
             dic['path'] = dic['path'][0]
-            print(dic['path'])
             restored_data_info = pi540D.ioSet_Backward540D( dic )
         else:
             restored_data_info = pi540D.ioSetM_Backward540D( dic )
-        print(restored_data_info)
-        sys.exit("Saindo")
+
 
         dic_list.append(dic)
         restored_data_info_list.append(restored_data_info)

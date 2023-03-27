@@ -41,17 +41,16 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
 
-
                 print(f"Finished reading diffraction data. DP shape: {DPs.shape}")
 
                 """ Read positions """
-                probe_positions = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape[0])
+                probe_positions = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
                 print(f"Finished reading probe positions. Shape: {probe_positions.shape}")
 
 
                 if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                    object_shape, input_dict = set_object_shape(DPs,input_dict, probe_positions)
-                    sinogram = np.zeros((len(input_dict["projections"]),object_shape[0],object_shape[1])) 
+                    input_dict = set_object_shape(DPs.shape,input_dict, probe_positions, input_dict["object_padding"])
+                    sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1])) 
                     probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]))
                 
                 run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
@@ -60,7 +59,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if not run_ptycho:
                     print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction pattern!')
                     input_dict['ignored_scans'].append((folder_number,file_number))
-                    sinogram[frame, :, :]  = np.zeros((object_shape[0],object_shape[1])) # build 3D Sinogram
+                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1])) # build 3D Sinogram
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
                 else:
                     sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
@@ -90,10 +89,6 @@ def define_paths(input_dict):
 
     create_output_directories(input_dict) # create all output directories of interest
 
-    if input_dict['initial_obj'] in input_dict and input_dict['initial_obj']   != "": input_dict['initial_obj']   = os.path.join(input_dict['ReconsPath'], input_dict['initial_obj']) # append initialObj filename to path
-    if input_dict['initial_obj'] in input_dict and input_dict['initial_probe'] != "": input_dict['initial_probe'] = os.path.join(input_dict['ReconsPath'], input_dict['initial_probe'])
-    if input_dict['initial_obj'] in input_dict and input_dict['InitialBkg']   != "": input_dict['InitialBkg']   = os.path.join(input_dict['ReconsPath'], input_dict['InitialBkg'])
-
     input_dict['scans_string'] = 'scans'
     input_dict['positions_string']  = 'positions'
 
@@ -105,7 +100,7 @@ def define_paths(input_dict):
     input_dict["energy"]               = mdata_dict['/entry/beamline/experiment']["energy"]
     input_dict["detector_distance"]    = mdata_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
     input_dict["restored_pixel_size"]  = mdata_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
-    input_dict["detector_exposure"] = [None,None]
+    input_dict["detector_exposure"]    = [None,None]
     input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
     input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
@@ -131,18 +126,26 @@ def get_files_of_interest(input_dict,acquistion_folder=''):
     return filepaths, filenames
 
 
-def set_object_shape(DP_size,input_dict,probe_positions,offset_topleft = 20):
+def set_object_shape(DP_shape,input_dict,probe_positions,offset_topleft = 20):
 
-    dx, input_dict = set_object_pixel_size(input_dict,DP_size) 
+    DP_size_y = DP_shape[1]
+    DP_size_x = DP_shape[2]
+
+    dx = input_dict["object_pixel"] 
 
     probe_positions, offset_bottomright = convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = offset_topleft)
 
-    maximum_probe_coordinate = int(np.max(probe_positions)) 
-    object_shape  = DP_size + maximum_probe_coordinate + offset_bottomright
+    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
+    object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
 
-    input_dict["object_shape"] = object_shape
+    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
+    print(maximum_probe_coordinate_y,maximum_probe_coordinate_x)
+    print(DP_size_x,DP_size_y)
+    object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    return (object_shape,object_shape), input_dict
+    input_dict["object_shape"] = (object_shape_y, object_shape_x)
+
+    return input_dict
 
 
 def set_object_pixel_size(input_dict,DP_size):
@@ -153,10 +156,10 @@ def set_object_pixel_size(input_dict,DP_size):
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
     input_dict["object_pixel"] = object_pixel_size # in meters
 
-    return object_pixel_size, input_dict
+    return input_dict
 
 
-def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = 20):\
+def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = 20):
     
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
@@ -167,29 +170,30 @@ def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft
     probe_positions[:, 0] += offset_topleft # shift probe positions to account for the padding
     probe_positions[:, 1] += offset_topleft 
 
-    print("Check positions here. are values rounded or not?", probe_positions)
-
     return probe_positions, offset_topleft
 
 
-def read_probe_positions(input_dict, acquisitions_folder,measurement_file, n_of_DPs):
+def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram_shape):
 
     def rotate_coordinate_system(angle_rad,pxl,pyl):
         px = pxl * np.cos(angle_rad) - np.sin(angle_rad) * pyl
         py = pxl * np.sin(angle_rad) + np.cos(angle_rad) * pyl
         return px, py
     
-    print('Reading probe positions (probe_positions)...')
+    print('Reading probe positions...')
     probe_positions = []
     positions_file = open( os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
 
+    n_of_DPs = sinogram_shape[0]
+    DP_size  = sinogram_shape[1]
+
     for line_counter, line in enumerate(positions_file):
         line = str(line)
-        if line_counter >= 1:  # skip first line, which is the header
+        if line_counter >= 1:  # skip first line, which is the header; skip second because one more positions is being recorded
             
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
-            
+            # print(positions_y,positions_x)
             #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
 
             #TODO: rolate relative angle between scan x and y positions
@@ -198,7 +202,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, n_of_
 
     probe_positions = np.asarray(probe_positions) # convert list of lists to numpy array
 
-    n_of_positions = probe_positions.shape[0] + 1
+    n_of_positions = probe_positions.shape[0]
 
     if n_of_positions == n_of_DPs:  # check if number of recorded beam positions in txt matches the number of diff. patterns saved in the hdf5
         pass
@@ -207,6 +211,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, n_of_
         print('\t\tSetting object as null array with correct shape... New probe positions shape:', probe_positions.shape)
         probe_positions = np.zeros((n_of_DPs-1, 4))
 
+    input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions, _ = convert_probe_positions_meters_to_pixels(input_dict["object_pixel"], probe_positions)
 
     return probe_positions
@@ -277,7 +282,7 @@ def crop_sinogram(sinogram, input_dict):
 
                     if sinogram.shape[0] == len(filenames): print("SHAPES MATCH!")
 
-                    probe_positions = read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram.shape[0])
+                    probe_positions = read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram.shape)
 
                     cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
                     if frame == 0: 
