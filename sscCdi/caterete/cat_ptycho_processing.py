@@ -24,6 +24,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
     if strategy == "serial":
 
+        angles_file = []
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
             filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
@@ -44,7 +45,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
 
                 """ Read positions """
-                probe_positions = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
+                probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
                 print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
 
@@ -61,14 +62,18 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     input_dict['ignored_scans'].append((folder_number,file_number))
                     sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1])) # build 3D Sinogram
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
+                    angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
                     sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                    angles_file.append([frame,False,angle,angle*180/np.pi])
 
                 """ Clean DPs temporary data """
                 if len(filepaths) > 1:
                     pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
                 else:
                     pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
+
+        np.savetxt(os.path.join(input_dict["output_path"],"angles.txt",delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees"))
 
     return sinogram, probes, input_dict
 
@@ -190,12 +195,14 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
     for line_counter, line in enumerate(positions_file):
         line = str(line)
-        if line_counter >= 1:  # skip first line, which is the header; skip second because one more positions is being recorded
+        if line_counter < 1:
+            angle = line.split(':')[1].split('\t')[0] # get rotation angle for that frame 
+        else:  # skip first line, which is the header; skip second because one more positions is being recorded
             
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
 
-            #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
+            positions_x, positions_y = rotate_coordinate_system(1e-3,positions_x, positions_y) #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
 
             #TODO: rolate relative angle between scan x and y positions
 
@@ -215,7 +222,9 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions, _ = convert_probe_positions_meters_to_pixels(input_dict["object_pixel"], probe_positions)
 
-    return probe_positions
+    np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
+
+    return probe_positions, angle
 
 
 
