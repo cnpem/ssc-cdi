@@ -58,6 +58,14 @@ def plotshow_cmap2(image,title=None,figsize=(20,20),savepath=None,show=False):
     if show:
         plt.show()
 
+def delete_files_if_not_empty_directory(directory):
+    for root, dirs, files in os.walk(directory):
+        if files != []:
+            print("Clearing directory:", directory)
+            for file in files: # For each file in the directory
+                file_path = os.path.join(root, file) # Construct the full path to the file
+                os.remove(file_path)  # Delete the file
+
 def list_files_in_folder(data_directory,look_for_extension=""):
     """ Function to list all files contained in folder with a certain extension
     
@@ -228,7 +236,6 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
 
         plotshow([abs(Propagate(p, input_dict['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=input_dict['output_path'] + '/probe_'  + str(frame), nlines=2)
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
-
 
 
 def save_variable(variable, predefined_name, savename=""):

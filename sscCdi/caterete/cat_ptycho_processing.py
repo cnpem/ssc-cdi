@@ -14,7 +14,7 @@ import sscResolution
 from sscPimega import pi540D
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory
 from ..ptycho.ptychography import  call_G_ptychography
 from ..processing.unwrap import phase_unwrap
 
@@ -88,6 +88,8 @@ def define_paths(input_dict):
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp/')
 
     create_output_directories(input_dict) # create all output directories of interest
+    delete_files_if_not_empty_directory(input_dict["temporary_output"])
+
 
     input_dict['scans_string'] = 'scans'
     input_dict['positions_string']  = 'positions'
