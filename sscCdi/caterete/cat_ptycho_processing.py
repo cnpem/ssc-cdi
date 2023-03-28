@@ -279,7 +279,7 @@ def crop_sinogram(sinogram, input_dict):
 
                 for measurement_file, measurement_filepath in zip(filenames, filepaths):
 
-                    if sinogram.shape[0] == len(filenames): print("SHAPES MATCH!")
+                    if sinogram.shape[0] == len(filenames): print("\t\tSHAPES MATCH!")
 
                     probe_positions = read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram.shape)
 
@@ -289,7 +289,7 @@ def crop_sinogram(sinogram, input_dict):
                         cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
                     
                     cropped_frame = match_cropped_frame_dimension(cropped_sinogram,cropped_frame)
-                    print("SHAPES:",len(filenames),sinogram.shape, cropped_frame.shape)
+                    print("\t\t New shapes:",len(filenames),sinogram.shape, cropped_frame.shape)
                     cropped_sinogram[frame,:,:] = cropped_frame
                     frame += 1
        
@@ -377,9 +377,9 @@ def apply_phase_unwrap(sinogram, input_dict):
         input_dict['phase_unwrap'][3] = [left_crop,right_crop] """
         sinogram = sinogram[:,input_dict['phase_unwrap'][2][0]: -input_dict['phase_unwrap'][2][1], input_dict['phase_unwrap'][3][0]: -input_dict['phase_unwrap'][3][1]]
     
-    print('Cropped object shape:', sinogram.shape)
+    print('\t\tCropped object shape:', sinogram.shape)
 
-    print('Phase unwrapping the cropped image')
+    print('\t\tPhase unwrapping the cropped image')
     n_iterations = input_dict['phase_unwrap'][1]  # number of iterations to remove gradient from unwrapped image.
     
     phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
@@ -426,7 +426,7 @@ def calculate_FRC(sinogram, input_dict):
             resolution: FRC output dictionary
         """    
         
-        print('Calculating resolution by Fourier Ring Correlation...')
+        print('\t\tCalculating resolution by Fourier Ring Correlation...')
 
         sizex = data.shape[-1]
         sizey = data.shape[-2]
@@ -538,7 +538,7 @@ def masks_application(difpad, input_dict):
     center_row, center_col = input_dict["DP_center"]
 
     if input_dict["detector_exposure"][0]: 
-        print("Removing pixels above detector pile-up threshold")
+        print("\t\tRemoving pixels above detector pile-up threshold")
         mask = np.zeros_like(difpad)
         difpad_region = np.zeros_like(difpad)
         half_size = 128 # 128 pixels halfsize mean the region has 256^2, i.e. the size of a single chip

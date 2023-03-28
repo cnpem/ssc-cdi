@@ -22,11 +22,11 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
     while run_algorithms:  # run Ptycho:
         try:
             algorithm = input_dict['Algorithm' + str(loop_counter)]
+            algo_name = algorithm["Name"]
+            n_of_iterations = algorithm['Iterations']
+            print(f"\nCalling {n_of_iterations} of {algo_name} algorithm...")
         except:
             run_algorithms = False
-    
-        algo_name = algorithm["Name"]
-        print(f"\nCalling {algo_name} algorithm...")
 
         if run_algorithms:
             if algorithm['Name'] == 'GL':
@@ -148,7 +148,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
-    print(f"\n Diffraction Patterns: {DPs.shape}\n Initial Object : {obj.shape}\n Initial Probe: {probe.shape}\n Probe Support: {probesupp.shape}\n Probe Positions: {probe_positions.shape}\n")
+    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object : {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
 
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
