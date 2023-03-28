@@ -1,7 +1,7 @@
 
 
 import numpy as np
-import sys
+import sys, os
 import sscPtycho
 from ..processing.propagation import calculate_fresnel_number
 from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask
@@ -68,7 +68,8 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
             loop_counter += 1
             
-            RF = datapack['error']
+        np.save(os.path.join(input_dict["output_path"],f"error{loop_counter}"),datapack["error"])
+
     return datapack['obj'], datapack['probe']
 
 

@@ -183,8 +183,6 @@ def run_ptycho(dummy):
     from pprint import pprint
     pprint(global_dict)
 
-    print(f'\nWARNING: IS CENTER {global_dict["DP_center"]} CORRECT?\n')
-
     if machine_selection.value == 'Local':
         cmd = f'python3 {pythonScript} {json_filepath}'
         # cmd = f'python3 ~/ssc-cdi/bin/sscptycho_main_test.py {json_filepath}'
