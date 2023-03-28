@@ -22,7 +22,7 @@ def restoration_CAT(input_dict):
     restored_data_info_list = []
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
-        print('Starting restoration for acquisition: ', acquisitions_folder)
+        print('\tStarting restoration for acquisition: ', acquisitions_folder)
 
         filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
         
@@ -61,12 +61,10 @@ def restoration_CAT(input_dict):
         dic['geometry'] = geometry
 
         if len(filepaths) == 1:
-            print("Restoration of single file")
             dic['path'] = dic['path'][0]
             restored_data_info = pi540D.ioSet_Backward540D( dic )
         else:
             restored_data_info = pi540D.ioSetM_Backward540D( dic )
-
 
         dic_list.append(dic)
         restored_data_info_list.append(restored_data_info)

@@ -41,11 +41,11 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
 
-                print(f"Finished reading diffraction data. DP shape: {DPs.shape}")
+                print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
 
                 """ Read positions """
                 probe_positions = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
-                print(f"Finished reading probe positions. Shape: {probe_positions.shape}")
+                print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
 
                 if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
@@ -139,8 +139,7 @@ def set_object_shape(DP_shape,input_dict,probe_positions,offset_topleft = 20):
     object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
 
     maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
-    print(maximum_probe_coordinate_y,maximum_probe_coordinate_x)
-    print(DP_size_x,DP_size_y)
+
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
     input_dict["object_shape"] = (object_shape_y, object_shape_x)
@@ -270,7 +269,7 @@ def crop_sinogram(sinogram, input_dict):
 
     cropped_sinogram = sinogram
     if input_dict['autocrop'] == True: # automatically crop borders with noise
-        print('Auto cropping frames...')
+        print('\tAuto cropping frames...')
         
         if 1: # Miqueles approach using scan positions
             frame = 0
@@ -310,7 +309,6 @@ def crop_sinogram(sinogram, input_dict):
             cropped_sinogram = cropped_sinogram[:,0:-1, :]
         if cropped_sinogram.shape[2] % 2 != 0:
             cropped_sinogram = cropped_sinogram[:,:, 0:-1]
-        print('\t Done!')
         
     return cropped_sinogram
 
