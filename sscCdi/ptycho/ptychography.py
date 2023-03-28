@@ -122,11 +122,19 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
         return datapack
 
+    def append_zeros(probe_positions):
+        zeros = np.zeros((probe_positions.shape[0],1))
+        probe_positions = np.concatenate((probe_positions,zeros),axis=1)
+        probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
+        return probe_positions
+    
     half_size = DPs.shape[-1] // 2
 
     if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
         input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
     print('\tF1 value:', input_dict['fresnel_number'])
+
+    probe_positions = append_zeros(probe_positions)
 
     probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]) ) # Compute probe: initial guess:
     

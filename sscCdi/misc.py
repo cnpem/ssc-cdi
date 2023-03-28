@@ -247,7 +247,7 @@ def save_variable(variable, predefined_name, savename=""):
     # for i in range(variable.shape[0]):
     #     print('shapes', variable[i].shape)
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
-        if math.isnan(variable[i][:, :].imag.sum()):
+        if np.isnan(variable[i][:, :].imag.sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
 
     variable = np.asarray(variable, dtype=np.complex64)

@@ -59,7 +59,7 @@ if __name__ == '__main__':
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
 
-    if input_dict["LogfilePath"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["LogfilePath"], input_dict) # overwrite logfile with new information
+    if input_dict["output_path"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
             
     print('Saving Object...')
     sscCdi.caterete.cat_ptycho_processing.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
