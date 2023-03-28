@@ -63,15 +63,16 @@ if __name__ == '__main__':
 
     if input_dict["output_path"] != "":  sscCdi.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
             
-    print('Saving Object...')
+    print('\nSaving Object...')
     sscCdi.misc.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
 
-    print('Saving Probe...')
+    print('\nSaving Probe...')
     sscCdi.misc.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
+    print('\n')
     print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes')
     print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes')
     print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
