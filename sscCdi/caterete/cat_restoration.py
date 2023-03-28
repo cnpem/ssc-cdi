@@ -16,6 +16,8 @@ def restoration_CAT(input_dict):
     
     #TODO: estimate size of output DP after restoration; abort if using bertha and total size > 100GBs
 
+    if input_dict["detector"] == "540D": detector_size = 3072
+
     dic_list = []
     restored_data_info_list = []
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
@@ -47,8 +49,11 @@ def restoration_CAT(input_dict):
         dic['saving']   = 1  # save or not
         dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
-        dic['roi']      = input_dict["detector_ROI_radius"] # 512
         dic['center']   = input_dict["DP_center"] # [1400,1400]
+        if input_dict["detector_ROI_radius"] < 0:
+            dic['roi'] = min(min(input_dict["DP_center"][1],detector_size-input_dict["DP_center"][1]),min(input_dict["DP_center"][0],detector_size-input_dict["DP_center"][0])) # get the biggest size possible such that the restored difpad is still squared
+        else:
+            dic['roi'] = input_dict["detector_ROI_radius"] # integer
         dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
         dic['mask']     = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
