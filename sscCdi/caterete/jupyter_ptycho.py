@@ -255,13 +255,6 @@ def inputs_tab():
         global_dict["suspect_border_pixels"] = suspect_border_pixels
         global_dict["fill_blanks"] =  fill_blanks
 
-        if save_or_load_difpads == "Save Diffraction Pattern":
-            global_dict["SaveDifpads"] = 1
-            global_dict["ReadRestauredDifpads"] = 0
-        elif save_or_load_difpads == "Load Diffraction Pattern":
-            global_dict["SaveDifpads"] = 0
-            global_dict["ReadRestauredDifpads"] = 1
-
         global_dict["central_mask"] = [central_mask_bool,central_mask_radius]
         global_dict["detector_exposure"][0] = DetectorPileup 
 
