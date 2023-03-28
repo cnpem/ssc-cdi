@@ -228,7 +228,6 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
 
         plotshow([abs(Propagate(p, input_dict['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=input_dict['output_path'] + '/probe_'  + str(frame), nlines=2)
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
-        
 
 
 
@@ -256,7 +255,6 @@ def save_variable(variable, predefined_name, savename=""):
         np.save(savename, variable)
     else:
         np.save(predefined_name, variable)
-
 
 
 def wavelength_from_energy(energy_keV):
