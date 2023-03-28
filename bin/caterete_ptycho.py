@@ -54,8 +54,9 @@ if __name__ == '__main__':
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
-    print('Calculating Fourier Ring Correlation...')
-    input_dict = sscCdi.caterete.cat_ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
+    if input_dict["FRC"]:
+        print('\tCalculating Fourier Ring Correlation...')
+        input_dict = sscCdi.caterete.cat_ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
@@ -71,7 +72,6 @@ if __name__ == '__main__':
     t6 = time.time()
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
-    print('\n')
     print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes')
     print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes')
     print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
