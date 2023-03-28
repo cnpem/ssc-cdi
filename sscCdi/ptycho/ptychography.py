@@ -17,8 +17,6 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
 
-    print(datapack["rois"].shape, datapack["difpads"].shape)
-
     run_algorithms = True
     loop_counter = 1
     while run_algorithms:  # run Ptycho:
@@ -95,7 +93,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         print('Setting probe support...')
         ar = np.arange(-half_size, half_size)
         xx, yy = np.meshgrid(ar, ar)
-        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2  # offset of 30 chosen by hand?
+        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
         probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
         return probesupp
 
@@ -138,8 +136,10 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     background = np.ones(DPs[0].shape) # dummy
 
-    probesupp = probe_support(probe, half_size, radius, center_x, center_y)     # Compute probe support:
-    print(probesupp.shape,probe.shape)
+    probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
+
+    print(f"\n Diffraction Patterns: {DPs.shape}\n Initial Object : {obj.shape}\n Initial Probe: {probe.shape}\n Probe Support: {probesupp.shape}\n Probe Positions: {probe_positions.shape}\n")
+
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
     return datapack, probe_positions, sigmask
@@ -191,11 +191,10 @@ def set_initial_probe(input_dict,DP_shape):
     else:
         sys.error("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
+    probe = np.expand_dims(probe,axis=0)
     print("\tProbe shape:", probe.shape)
-
-    if input_dict['incoherent_modes'] > 1:
-        print(f"\tSetting initial incoherent modes: {input_dict['incoherent_modes']} modes")
-        probe = set_modes(probe, input_dict) # add incoherent modes 
+    print(f"\tSetting initial incoherent modes: {input_dict['incoherent_modes']} modes")
+    probe = set_modes(probe, input_dict) # add incoherent modes 
 
     return probe
 
