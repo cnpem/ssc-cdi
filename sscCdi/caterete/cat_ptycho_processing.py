@@ -193,12 +193,12 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
             
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
-            # print(positions_y,positions_x)
+
             #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
 
             #TODO: rolate relative angle between scan x and y positions
 
-            probe_positions.append([positions_x, positions_y, 1, 1])
+            probe_positions.append([positions_x, positions_y])
 
     probe_positions = np.asarray(probe_positions) # convert list of lists to numpy array
 
@@ -209,7 +209,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     else:
         print("\t\tProblem when reading positions. Number of positions {0} is different from number of diffraction patterns {1}".format(n_of_positions, n_of_DPs))
         print('\t\tSetting object as null array with correct shape... New probe positions shape:', probe_positions.shape)
-        probe_positions = np.zeros((n_of_DPs-1, 4))
+        probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions, _ = convert_probe_positions_meters_to_pixels(input_dict["object_pixel"], probe_positions)
