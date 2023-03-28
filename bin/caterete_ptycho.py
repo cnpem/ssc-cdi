@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     input_dict = json.load(open(argv[1]))  # open input_dict file containing desired inputs
 
-    print("Creating folders...")
+    print("\nCreating folders...")
     input_dict = sscCdi.caterete.cat_ptycho_processing.define_paths(input_dict)
 
     print("Reading files of interest...")
