@@ -36,20 +36,21 @@ if __name__ == '__main__':
     object,probe, input_dict = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
-    print('\tFinished reconstruction!')
+    print('Finished reconstruction!\n')
 
     t4 = time.time()
     """ ===================== Post-processing ===================== """
 
+    print("Post-processing data...")
     cropped_sinogram = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict)
     
     if input_dict['phase_unwrap'][0]: # Apply phase unwrap to data 
-        print('Unwrapping sinogram...')
+        print('\tUnwrapping sinogram...')
         phase, absol = sscCdi.caterete.cat_ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
         cropped_sinogram = absol*np.exp(-1j*phase)
         sscCdi.caterete.cat_ptycho_processing.save_variable(cropped_sinogram, os.path.join(input_dict['output_path'],'unwrapped_object_' + input_dict["acquisition_folders"][0]))
     else:
-        print("Extracting phase and magnitude...")
+        print("\tExtracting phase and magnitude...")
         phase = np.angle(cropped_sinogram)
         absol = np.abs(cropped_sinogram)
 
@@ -59,16 +60,13 @@ if __name__ == '__main__':
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
 
-    if input_dict["output_path"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
+    if input_dict["output_path"] != "":  sscCdi.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
             
     print('Saving Object...')
-    sscCdi.caterete.cat_ptycho_processing.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
+    sscCdi.misc.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
 
     print('Saving Probe...')
-    sscCdi.caterete.cat_ptycho_processing.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
-
-    for i in range(phase.shape[0]):
-        sscCdi.caterete.cat_ptycho_processing.preview_ptycho(input_dict, phase, absol, probe, frame=i)
+    sscCdi.misc.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1

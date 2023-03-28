@@ -24,6 +24,9 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             algorithm = input_dict['Algorithm' + str(loop_counter)]
         except:
             run_algorithms = False
+    
+        algo_name = algorithm["Name"]
+        print(f"\nCalling {algo_name} algorithm...")
 
         if run_algorithms:
             if algorithm['Name'] == 'GL':
@@ -66,7 +69,6 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             loop_counter += 1
             
             RF = datapack['error']
-
     return datapack['obj'], datapack['probe']
 
 
@@ -90,7 +92,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         return sigmask
 
     def probe_support(probe, half_size, radius, center_x, center_y):
-        print('Setting probe support...')
+        print('\tSetting probe support...')
         ar = np.arange(-half_size, half_size)
         xx, yy = np.meshgrid(ar, ar)
         probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
@@ -158,8 +160,7 @@ def set_initial_probe(input_dict,DP_shape):
     def set_modes(probe, input_dict):
 
         mode = probe.shape[0]
-        print('\tNumber of modes:', mode)
-        # Adicionar modulos incoerentes
+
         if input_dict['incoherent_modes'] > mode:
             add = input_dict['incoherent_modes'] - mode
             probe = np.pad(probe, [[0, int(add)], [0, 0], [0, 0]])
@@ -200,8 +201,7 @@ def set_initial_probe(input_dict,DP_shape):
         sys.error("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
     probe = np.expand_dims(probe,axis=0)
-    print("\tProbe shape:", probe.shape)
-    print(f"\tSetting initial incoherent modes: {input_dict['incoherent_modes']} modes")
+
     probe = set_modes(probe, input_dict) # add incoherent modes 
 
     return probe
@@ -209,7 +209,7 @@ def set_initial_probe(input_dict,DP_shape):
 
 def set_initial_object(input_dict):
 
-        print('Creating initial object...')
+        print('\tCreating initial object...')
 
         if isinstance(input_dict['initial_obj'],list):
             type = input_dict['initial_obj'][0]
