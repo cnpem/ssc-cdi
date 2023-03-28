@@ -79,12 +79,12 @@ def define_paths(input_dict):
     if 'PreviewGCC' not in input_dict: input_dict['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
     
     #=========== Set Parameters and Folders =====================
-    print('Proposal path: ',input_dict['data_folder'] )
-    print('Acquisition folder: ',input_dict["acquisition_folders"][0])
+    print('\tProposal path: ',input_dict['data_folder'] )
+    print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
-    print("Output path:", beamline_outputs_path)
-    input_dict["output_path"]  = beamline_outputs_path
+    print("\tOutput path:", beamline_outputs_path)
+    input_dict["output_path"]  = os.path.join(beamline_outputs_path,input_dict["custom_output_folder"])
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp/')
 
     create_output_directories(input_dict) # create all output directories of interest
