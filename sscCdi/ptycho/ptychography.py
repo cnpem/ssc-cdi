@@ -4,7 +4,7 @@ import numpy as np
 import sys, os
 import sscPtycho
 from ..processing.propagation import calculate_fresnel_number
-from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask
+from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage
 
 def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
 
@@ -152,6 +152,8 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
 
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
+
+    print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]} GBs")
 
     return datapack, probe_positions, sigmask
 

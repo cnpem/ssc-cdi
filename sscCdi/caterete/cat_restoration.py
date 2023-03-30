@@ -22,13 +22,13 @@ def restoration_CAT(input_dict):
     restored_data_info_list = []
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
-        print('\tStarting restoration for acquisition: ', acquisitions_folder)
+        print('\tStarting restoration of acquisition: ', acquisitions_folder)
 
         filepaths0, filenames0 = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
         
         if input_dict['projections'] != []:
             filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths0,  filenames0)
-            print(f"\tUsing {len(filenames)} of {len(filenames0)} angles")
+            print(f"\tUsing {len(filenames)} of {len(filenames0)} angle(s)")
 
         params = (input_dict, filenames, filepaths, input_dict['data_folder'], acquisitions_folder, input_dict['scans_string'])
 
