@@ -301,3 +301,28 @@ def create_cross_mask(mask_shape,center, length_y, length_x=0):
     mask[center_row-length_y//2:center_row+length_y//2,:] = 1
     mask[:,center_col-length_x//2:center_col+length_x//2] = 1
     return mask 
+
+def get_array_size_bytes(array):
+    bytes = array.itemsize*array.size
+    kbytes = bytes/1e3
+    Mbytes = bytes/1e6
+    Gbytes = bytes/1e9
+    kibytes = bytes/1024
+    Mibytes = bytes/1024/1024
+    Gibytes = bytes/1024/1024/1024
+    return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
+
+def estimate_memory_usage(*args):
+    
+    bytes = 0
+    for arg in args:
+        bytes += get_array_size_bytes(arg)[0]
+    
+    kbytes = bytes/1e3
+    Mbytes = bytes/1e6
+    Gbytes = bytes/1e9
+    kibytes = bytes/1024
+    Mibytes = bytes/1024/1024
+    Gibytes = bytes/1024/1024/1024
+    return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
+
