@@ -14,7 +14,7 @@ import sscResolution
 from sscPimega import pi540D
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
 from ..ptycho.ptychography import  call_G_ptychography
 from ..processing.unwrap import phase_unwrap
 
@@ -42,8 +42,16 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
 
-                DPs = DPs[1::]
+                DPs = DPs[1::] # DEBUG
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
+                
+                if frame == 0: 
+                   size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+                   estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
+                   print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs} GBs")
+                   
+                   print(f"\tSaving mean of restored DP...")
+                   np.save(input_dict['output_path'] + '/03_difpad_restored_flipped.npy',np.mean(DPs,axis=0))
 
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
@@ -158,8 +166,9 @@ def set_object_pixel_size(input_dict,DP_size):
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
     input_dict["object_pixel"] = object_pixel_size # in meters
 
+    print(f"\tObject pixel size = {object_pixel_size*1e9} nm")
     PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
-    print(f"Limit thickness for resolution of 1 pixel: {PA_thickness*1e6} microns")
+    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6} microns")
     return input_dict
 
 
@@ -185,7 +194,6 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         return px, py
     
     print('Reading probe positions...')
-    print(os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
     probe_positions = []
     positions_file = open( os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
 
@@ -203,7 +211,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
 
-            # positions_x, positions_y = rotate_coordinate_system(1e-3,positions_x, positions_y) #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
+            positions_x, positions_y = rotate_coordinate_system(input_dict["position_rotation"],positions_x, positions_y) # rotate whole coordinate system (correct misalignment of scan and detector axes)
 
             #TODO: rolate relative angle between scan x and y positions
 

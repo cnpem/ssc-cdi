@@ -137,7 +137,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
         input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
-    print('\tF1 value:', input_dict['fresnel_number'])
+    print('\tFresnel number:', input_dict['fresnel_number'])
 
     probe_positions = append_zeros(probe_positions)
 
