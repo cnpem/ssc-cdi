@@ -32,7 +32,6 @@ if __name__ == '__main__':
     restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_CAT(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
-    print('Starting ptychography...')
     object,probe, input_dict = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
@@ -63,9 +62,9 @@ if __name__ == '__main__':
 
     if input_dict["output_path"] != "":  sscCdi.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
             
-    print('\nSaving Object...')
+    print('\nSaving Object of shape: ',cropped_sinogram.shape)
     sscCdi.misc.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
-    print('\nSaving Probe...')
+    print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
 
     t6 = time.time()

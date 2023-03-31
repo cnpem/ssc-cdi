@@ -41,6 +41,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+                DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
 
                 DPs = DPs[1::] # DEBUG
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
@@ -51,7 +52,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                    print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs} GBs")
                    
                    print(f"\tSaving mean of restored DP...")
-                   np.save(input_dict['output_path'] + '/03_difpad_restored_flipped.npy',np.mean(DPs,axis=0))
+                   np.save(input_dict['output_path'] + '/03_difpad_restaured_flipped.npy',np.mean(DPs,axis=0))
 
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)

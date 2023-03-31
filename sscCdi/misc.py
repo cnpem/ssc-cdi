@@ -61,7 +61,7 @@ def plotshow_cmap2(image,title=None,figsize=(20,20),savepath=None,show=False):
 def delete_files_if_not_empty_directory(directory):
     for root, dirs, files in os.walk(directory):
         if files != []:
-            print("Clearing directory:", directory)
+            # print("\t\tCleaning directory:", directory)
             for file in files: # For each file in the directory
                 file_path = os.path.join(root, file) # Construct the full path to the file
                 os.remove(file_path)  # Delete the file
@@ -340,7 +340,6 @@ def get_RGB_wheel():
 def save_plots(complex_array,title='',path=''):
 
     from sscMisc import convert_complex_to_RGB
-    print(complex_array.shape)
     complex_array = np.squeeze(complex_array)
 
     data_rgb = convert_complex_to_RGB(complex_array)

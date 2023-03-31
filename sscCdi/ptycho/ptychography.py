@@ -19,6 +19,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
     np.save(os.path.join(input_dict["output_path"],"positionsdebug.npy"),datapack["rois"])
 
+    print('\nStarting ptychography...')
     run_algorithms = True
     loop_counter = 1
     while run_algorithms:  # run Ptycho:
@@ -26,7 +27,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             algorithm = input_dict['Algorithm' + str(loop_counter)]
             algo_name = algorithm["Name"]
             n_of_iterations = algorithm['Iterations']
-            print(f"\nCalling {n_of_iterations} iterations of {algo_name} algorithm...")
+            print(f"Calling {n_of_iterations} iterations of {algo_name} algorithm...")
         except:
             run_algorithms = False
 
@@ -125,6 +126,11 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         datapack['bkg'] = background
         datapack['probesupp'] = probesupp
 
+        np.save(os.path.join(input_dict["output_path"],"datapackobj"),obj)
+        np.save(os.path.join(input_dict["output_path"],"datapackprobe"),probe)
+        np.save(os.path.join(input_dict["output_path"],"datapackpos"),probe_positions)
+        np.save(os.path.join(input_dict["output_path"],"datapacksupp"),probesupp)
+
         return datapack
 
     def append_zeros(probe_positions):
@@ -151,7 +157,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
-    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
+    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}")
 
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
@@ -191,11 +197,11 @@ def set_initial_probe(input_dict,DP_shape):
         elif type == 'cross':
             probe = create_cross_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1],input_dict['initial_probe'][2])
         elif type == 'constant':
-            probe = np.ones(*DP_shape)
+            probe = np.ones(DP_shape)
         elif type == 'random':
             probe = np.random.rand(*DP_shape)
         else:
-            sys.error("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
+            sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
     elif isinstance(input_dict['initial_probe'],str):
         probe = np.load(input_dict['initial_probe'])[0][0] # load guess from file
@@ -203,7 +209,7 @@ def set_initial_probe(input_dict,DP_shape):
     elif isinstance(input_dict['initial_probe'],np.ndarray):
         pass
     else:
-        sys.error("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
+        sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
     probe = np.expand_dims(probe,axis=0)
 
@@ -229,7 +235,7 @@ def set_initial_object(input_dict):
         elif isinstance(input_dict['initial_obj'],np.ndarray):
             pass
         else:
-            sys.error("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
+            sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 
         return obj
 
