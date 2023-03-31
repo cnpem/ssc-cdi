@@ -130,6 +130,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         np.save(os.path.join(input_dict["output_path"],"datapackprobe"),probe)
         np.save(os.path.join(input_dict["output_path"],"datapackpos"),probe_positions)
         np.save(os.path.join(input_dict["output_path"],"datapacksupp"),probesupp)
+        np.save(os.path.join(input_dict["output_path"],"difpads"),DPs)
 
         return datapack
 
