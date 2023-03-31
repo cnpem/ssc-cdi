@@ -230,7 +230,9 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
+    np.save(os.path.join(input_dict["output_path"],"positions0"),probe_positions)
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
+    np.save(os.path.join(input_dict["output_path"],"positions1"),probe_positions)
 
     np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
 
