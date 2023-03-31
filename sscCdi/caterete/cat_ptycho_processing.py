@@ -48,7 +48,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
                 print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-
                 if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                     input_dict = set_object_shape(DPs.shape,input_dict, probe_positions, input_dict["object_padding"])
                     sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1])) 
@@ -73,7 +72,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
 
-        np.savetxt(os.path.join(input_dict["output_path"],"angles.txt",delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees"))
+        np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
 
     return sinogram, probes, input_dict
 
@@ -133,14 +132,10 @@ def get_files_of_interest(input_dict,acquistion_folder=''):
     return filepaths, filenames
 
 
-def set_object_shape(DP_shape,input_dict,probe_positions,offset_topleft = 20):
+def set_object_shape(DP_shape,input_dict,probe_positions,offset_bottomright):
 
     DP_size_y = DP_shape[1]
     DP_size_x = DP_shape[2]
-
-    dx = input_dict["object_pixel"] 
-
-    probe_positions, offset_bottomright = convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = offset_topleft)
 
     maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
     object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
@@ -165,18 +160,18 @@ def set_object_pixel_size(input_dict,DP_size):
     return input_dict
 
 
-def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft = 20):
-    
+def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
+
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
 
     probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx  # convert from microns to pixels
     probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx 
-
+    
     probe_positions[:, 0] += offset_topleft # shift probe positions to account for the padding
     probe_positions[:, 1] += offset_topleft 
 
-    return probe_positions, offset_topleft
+    return probe_positions
 
 
 def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram_shape):
@@ -187,6 +182,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         return px, py
     
     print('Reading probe positions...')
+    print(os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
     probe_positions = []
     positions_file = open( os.path.join(input_dict["data_folder"],acquisitions_folder, input_dict["positions_string"], measurement_file[:-5] + '.txt'))
 
@@ -196,13 +192,13 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     for line_counter, line in enumerate(positions_file):
         line = str(line)
         if line_counter < 1:
-            angle = line.split(':')[1].split('\t')[0] # get rotation angle for that frame 
+            angle = float(line.split(':')[1].split('\t')[0]) # get rotation angle for that frame
         else:  # skip first line, which is the header; skip second because one more positions is being recorded
             
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
 
-            positions_x, positions_y = rotate_coordinate_system(1e-3,positions_x, positions_y) #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
+            # positions_x, positions_y = rotate_coordinate_system(1e-3,positions_x, positions_y) #TODO: rotate whole coordinate system (correct misalignment of scan and detector coordiante systems)
 
             #TODO: rolate relative angle between scan x and y positions
 
@@ -220,7 +216,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
-    probe_positions, _ = convert_probe_positions_meters_to_pixels(input_dict["object_pixel"], probe_positions)
+    probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 
     np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
 
@@ -288,7 +284,7 @@ def crop_sinogram(sinogram, input_dict):
                 
                 filepaths, filenames = get_files_of_interest(input_dict,acquisitions_folder)
 
-                for measurement_file, measurement_filepath in zip(filenames, filepaths):
+                for measurement_file in filenames:
 
                     if sinogram.shape[0] == len(filenames): print("\t\tSHAPES MATCH!")
 

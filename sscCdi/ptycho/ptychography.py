@@ -17,6 +17,8 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
 
+    np.save(os.path.join(input_dict["output_path"],"positionsdebug.npy"),datapack["rois"])
+
     run_algorithms = True
     loop_counter = 1
     while run_algorithms:  # run Ptycho:
