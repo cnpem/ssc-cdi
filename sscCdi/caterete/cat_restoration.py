@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 
 """ Sirius Scientific Computing Imports """
-from sscPimega import pi540D
+from sscPimega import pi540D, opt540D
 
 """ sscCdi relative imports"""
 from ..misc import read_hdf5, list_files_in_folder, select_specific_angles
@@ -35,6 +35,12 @@ def restoration_CAT(input_dict):
         geometry = Geometry(input_dict["detector_distance"]*1000) # distance in milimeters
         params   = {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual' ,'susp': input_dict["suspect_border_pixels"]}
         project  = pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )
+
+        if input_dict["using_direct_beam"] == True:
+            print("\t Using direct beam to find center: ",input_dict["DP_center"])
+            input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], input_dict["detector_distance"]*1000, params)
+            print("\t\t New center: ",input_dict["DP_center"])
+                  
         geometry = pi540D.geometry540D( project )
 
         dic = {}

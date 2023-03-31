@@ -65,7 +65,6 @@ if __name__ == '__main__':
             
     print('\nSaving Object...')
     sscCdi.misc.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
-
     print('\nSaving Probe...')
     sscCdi.misc.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
 

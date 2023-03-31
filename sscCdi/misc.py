@@ -260,8 +260,10 @@ def save_variable(variable, predefined_name, savename=""):
 
     if savename != "":
         np.save(savename, variable)
+        save_plots(variable,path=savename)
     else:
         np.save(predefined_name, variable)
+        save_plots(variable,path=predefined_name)
 
 
 def wavelength_from_energy(energy_keV):
@@ -326,3 +328,32 @@ def estimate_memory_usage(*args):
     Gibytes = bytes/1024/1024/1024
     return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
 
+
+def get_RGB_wheel():
+    import matplotlib
+    V, H = np.mgrid[0:1:100j, 0:1:300j]
+    S = np.ones_like(V)
+    HSV = np.dstack((H,S,V))
+    RGB = matplotlib.colors.hsv_to_rgb(HSV)
+    return RGB, H, S, V
+    
+def save_plots(complex_array,title='',path=''):
+
+    from sscMisc import convert_complex_to_RGB
+    print(complex_array.shape)
+    complex_array = np.squeeze(complex_array)
+
+    data_rgb = convert_complex_to_RGB(complex_array)
+    magnitude = np.abs(complex_array)
+    phase = np.angle(complex_array)
+    
+    figure = plt.figure(dpi=300)
+    ax1 = figure.add_subplot(1, 3, 1)
+    ax2 = figure.add_subplot(1, 3, 2)
+    ax3 = figure.add_subplot(1, 3, 3)
+    ax1.imshow(data_rgb), ax1.set_title(title)
+    ax2.imshow(magnitude), ax2.set_title("Magnitude")
+    ax3.imshow(phase,cmap='hsv'), ax3.set_title("Phase")
+    figure.tight_layout()
+    if path != '':
+        plt.savefig(path)

@@ -42,6 +42,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
 
+                DPs = DPs[1::]
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
 
                 """ Read positions """
@@ -157,6 +158,8 @@ def set_object_pixel_size(input_dict,DP_size):
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
     input_dict["object_pixel"] = object_pixel_size # in meters
 
+    PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
+    print(f"Limit thickness for resolution of 1 pixel: {PA_thickness*1e6} microns")
     return input_dict
 
 
@@ -193,8 +196,10 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         line = str(line)
         if line_counter < 1:
             angle = float(line.split(':')[1].split('\t')[0]) # get rotation angle for that frame
-        else:  # skip first line, which is the header; skip second because one more positions is being recorded
-            
+        elif line_counter == 1:
+            pass
+        else:  # skip first line, which is the header;
+
             positions_x = float(line.split()[1])
             positions_y = float(line.split()[0])
 
@@ -513,29 +518,6 @@ def auto_crop_noise_borders(complex_array):
         mean_list.append(mean)
 
     best_crop = crop_sizes[np.where(mean_list == min(mean_list))[0][0]]
-
-    # cropped_array = complex_array[best_crop:-best_crop, best_crop:-best_crop]  # crop original complex image
-
-    # if 0:  # debug / see results
-    #     figure, subplot = plt.subplots(1, 3, figsize=(10, 10), dpi=200)
-    #     subplot[0].imshow(img)
-    #     subplot[1].imshow(local_entropy_map)
-    #     subplot[2].imshow(np.angle(cropped_array))
-    #     subplot[0].set_title('Original')
-    #     subplot[1].set_title('Local entropy')
-
-    #     subplot[2].set_title('Cropped')
-
-    #     figure, subplot = plt.subplots()
-    #     subplot.plot(crop_sizes, mean_list)
-    #     subplot.set_xlabel('Crop size')
-    #     subplot.set_ylabel('Mean')
-    #     subplot.grid()
-
-    # if cropped_array.shape[0] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-    #     cropped_array = cropped_array[0:-1, :]
-    # if cropped_array.shape[1] % 2 != 0:
-    #     cropped_array = cropped_array[:, 0:-1]
 
     return best_crop
 
