@@ -238,7 +238,7 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
 
 
-def save_variable(variable, predefined_name, savename=""):
+def save_variable(variable, input_dict, flag = 'FLAG'):
     """ Function to save reconstruction object, probe and/or background. 
     
     This function presents some redundancy. Should be improved!
@@ -250,20 +250,22 @@ def save_variable(variable, predefined_name, savename=""):
     """    
     variable = np.asarray(variable, dtype=object)
 
-    # for i in range(variable.shape[0]):
-    #     print('shapes', variable[i].shape)
+    savename = input_dict["output_filename"]
+
+    if savename == "":
+        savename = os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]+ '_' + flag)
+    else:
+        savename = os.path.join(input_dict['output_path'],savename + '_' + flag)
+
+
     for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
         if np.isnan(variable[i][:, :].imag.sum()):
             variable[i][:, :] = np.zeros(variable[i][:, :].shape)
 
     variable = np.asarray(variable, dtype=np.complex64)
 
-    if savename != "":
-        np.save(savename, variable)
-        save_plots(variable,path=savename)
-    else:
-        np.save(predefined_name, variable)
-        save_plots(variable,path=predefined_name)
+    np.save(savename, variable)
+    save_plots(variable,path=savename)
 
 
 def wavelength_from_energy(energy_keV):
