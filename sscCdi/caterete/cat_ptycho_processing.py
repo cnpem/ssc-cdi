@@ -9,8 +9,7 @@ from scipy.ndimage import gaussian_filter
 from numpy.fft import fftshift, fft2, ifft2
 
 """ Sirius Scientific Computing Imports """
-import sscCdi
-import sscResolution
+import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
 from sscPimega import pi540D
 
 """ sscCdi relative imports"""
@@ -41,6 +40,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+                
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
 
                 DPs = DPs[1::] # DEBUG
@@ -96,6 +96,8 @@ def define_paths(input_dict):
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
+    input_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
+
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
     input_dict["output_path"]  = os.path.join(beamline_outputs_path,input_dict["custom_output_folder"])
@@ -151,10 +153,10 @@ def set_object_shape(DP_shape,input_dict,probe_positions,offset_bottomright):
     object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
 
     maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
-
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    input_dict["object_shape"] = (object_shape_y, object_shape_x)
+    # input_dict["object_shape"] = (object_shape_y, object_shape_x)
+    input_dict["object_shape"] = (object_shape_x,object_shape_x)
 
     return input_dict
 
@@ -189,10 +191,10 @@ def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions
 
 def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram_shape):
 
-    def rotate_coordinate_system(angle_rad,pxl,pyl):
-        px = pxl * np.cos(angle_rad) - np.sin(angle_rad) * pyl
-        py = pxl * np.sin(angle_rad) + np.cos(angle_rad) * pyl
-        return px, py
+    def rotate_coordinate_system(angle_rad,px,py):
+        px_rotated = np.cos(angle_rad) * px - np.sin(angle_rad) * py
+        py_rotated = np.sin(angle_rad) * px + np.cos(angle_rad) * py
+        return px_rotated, py_rotated
     
     print('Reading probe positions...')
     probe_positions = []
@@ -200,7 +202,6 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
     n_of_DPs = sinogram_shape[0]
     DP_size  = sinogram_shape[1]
-
     for line_counter, line in enumerate(positions_file):
         line = str(line)
         if line_counter < 1:
@@ -216,7 +217,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
             #TODO: rolate relative angle between scan x and y positions
 
-            probe_positions.append([positions_x, positions_y])
+            probe_positions.append([positions_y, positions_x])
 
     probe_positions = np.asarray(probe_positions) # convert list of lists to numpy array
 
@@ -231,7 +232,9 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     np.save(os.path.join(input_dict["output_path"],"positions0"),probe_positions)
+    print(probe_positions)
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
+    print(probe_positions)
     np.save(os.path.join(input_dict["output_path"],"positions1"),probe_positions)
 
     np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
@@ -304,8 +307,6 @@ def crop_sinogram(sinogram, input_dict):
 
                     if sinogram.shape[0] == len(filenames): print("\t\tSHAPES MATCH!")
 
-                    probe_positions = read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram.shape)
-
                     cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
                     if frame == 0: 
                         cropped_frame =  make_1st_frame_squared(cropped_frame)
@@ -341,14 +342,14 @@ def autocrop_using_scan_positions(image,input_dict,probe_positions):
     probe_positions = 1e-6 * probe_positions / input_dict['object_pixel']     #scanning positions @ image domain
 
     n         = image.shape[0]
-    x         = (n//2 - probe_positions [:,0]).astype(int)
-    y         = (n//2 - probe_positions [:,1]).astype(int)
+    x         = (n//2 - probe_positions [:,1]).astype(int)
+    y         = (n//2 - probe_positions [:,0]).astype(int)
     pinholesize = 0 #tirado do bolso! 
     xmin      = x.min() - pinholesize//2
     xmax      = x.max() + pinholesize//2
     ymin      = y.min() - pinholesize//2
     ymax      = y.max() + pinholesize//2
-    new = image[xmin:xmax, ymin:ymax] 
+    new = image[ ymin:ymax, xmin:xmax] 
     new = new + abs(new.min())
 
     return new

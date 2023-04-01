@@ -17,11 +17,10 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
 
-    np.save(os.path.join(input_dict["output_path"],"positionsdebug.npy"),datapack["rois"])
-
     print('\nStarting ptychography...')
     run_algorithms = True
     loop_counter = 1
+    error = np.empty((0,))
     while run_algorithms:  # run Ptycho:
         try:
             algorithm = input_dict['Algorithm' + str(loop_counter)]
@@ -70,8 +69,10 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
                                            probef1=input_dict['fresnel_number']) 
 
             loop_counter += 1
-            
-        np.save(os.path.join(input_dict["output_path"],f"error{loop_counter}"),datapack["error"])
+            # error = np.concatenate((error,datapack["error"]),axis=1)
+            # print(datapack["error"].shape)
+
+    # np.save(os.path.join(input_dict["output_path"],f"_error"),error)
 
     return datapack['obj'], datapack['probe']
 
@@ -138,7 +139,10 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         zeros = np.zeros((probe_positions.shape[0],1))
         probe_positions = np.concatenate((probe_positions,zeros),axis=1)
         probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
-        return probe_positions
+        probe_positions2 = np.zeros_like(probe_positions)
+        probe_positions2[:,0] = probe_positions[:,1] # change x and y column order
+        probe_positions2[:,1] = probe_positions[:,0]
+        return probe_positions2
     
     half_size = DPs.shape[-1] // 2
 
@@ -159,6 +163,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
     print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}")
+    print(np.max(DPs),np.mean(DPs),np.min(DPs))
 
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
@@ -205,10 +210,10 @@ def set_initial_probe(input_dict,DP_shape):
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
     elif isinstance(input_dict['initial_probe'],str):
-        probe = np.load(input_dict['initial_probe'])[0][0] # load guess from file
-        probe = probe.reshape((1,1,*probe.shape))
-    elif isinstance(input_dict['initial_probe'],np.ndarray):
-        pass
+        probe = np.load(input_dict['initial_probe'])[0] # load guess from file
+        probe = probe.reshape((1,*probe.shape))
+    elif isinstance(input_dict['initial_probe'],int):
+        probe = np.load(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"]+"_probe.npy"))
     else:
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
@@ -232,9 +237,9 @@ def set_initial_object(input_dict):
             elif type == 'initialize':
                 pass #TODO: implement method from https://doi.org/10.1364/OE.465397
         elif isinstance(input_dict['initial_obj'],str): 
-            obj = np.load(input_dict['initial_obj'])[0]
-        elif isinstance(input_dict['initial_obj'],np.ndarray):
-            pass
+            obj = np.load(input_dict['initial_obj'])
+        elif isinstance(input_dict['initial_obj'],int):
+            obj = np.load(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"]+"_object.npy"))
         else:
             sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 

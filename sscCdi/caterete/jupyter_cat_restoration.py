@@ -15,7 +15,7 @@ from sscPimega import misc as miscPimega
 
 from ..jupyter import slide_and_play
 from ..processing import restoration_with_processing_and_binning, restore_IO_SharedArray
-from ..caterete import Geometry
+from . import Geometry
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data',use_direct_beam=True):
     

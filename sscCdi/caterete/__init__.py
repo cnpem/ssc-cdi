@@ -4,7 +4,7 @@ from ..misc import *
 from ..processing.propagation import *
 from .cat_ptycho_processing import *
 from ..tomo.tomo_processing import *
-from .jupyter_ptycho import *
-from .jupyter_tomo import *
+from .jupyter_cat_ptycho import *
+from .jupyter_cat_tomo import *
 from ..jupyter import *
-from .jupyter_restoration import *
+from .jupyter_cat_restoration import *
