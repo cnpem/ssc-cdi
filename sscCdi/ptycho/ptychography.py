@@ -162,7 +162,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
-    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}")
+    print(f"\nDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
     print(np.max(DPs),np.mean(DPs),np.min(DPs))
 
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:

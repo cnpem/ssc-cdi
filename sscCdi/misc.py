@@ -238,7 +238,7 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
 
 
-def save_variable(variable, input_dict, flag = 'FLAG'):
+def save_variable(input_dict,variable, flag = 'FLAG'):
     """ Function to save reconstruction object, probe and/or background. 
     
     This function presents some redundancy. Should be improved!
@@ -353,7 +353,7 @@ def save_plots(complex_array,title='',path=''):
     ax2 = figure.add_subplot(1, 3, 2)
     ax3 = figure.add_subplot(1, 3, 3)
     ax1.imshow(data_rgb), ax1.set_title(title)
-    ax2.imshow(magnitude), ax2.set_title("Magnitude")
+    ax2.imshow(magnitude,cmap='gray'), ax2.set_title("Magnitude")
     ax3.imshow(phase,cmap='hsv'), ax3.set_title("Phase")
     figure.tight_layout()
     if path != '':
