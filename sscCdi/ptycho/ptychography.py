@@ -213,7 +213,7 @@ def set_initial_probe(input_dict,DP_shape):
         probe = np.load(input_dict['initial_probe'])[0] # load guess from file
         probe = probe.reshape((1,*probe.shape))
     elif isinstance(input_dict['initial_probe'],int):
-        probe = np.load(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"]+"_probe.npy"))
+        probe = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_probe.npy"))
     else:
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
@@ -239,7 +239,7 @@ def set_initial_object(input_dict):
         elif isinstance(input_dict['initial_obj'],str): 
             obj = np.load(input_dict['initial_obj'])
         elif isinstance(input_dict['initial_obj'],int):
-            obj = np.load(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"]+"_object.npy"))
+            obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
         else:
             sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 

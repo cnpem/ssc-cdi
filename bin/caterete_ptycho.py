@@ -63,9 +63,9 @@ if __name__ == '__main__':
     if input_dict["output_path"] != "":  sscCdi.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
             
     print('\nSaving Object of shape: ',cropped_sinogram.shape)
-    sscCdi.misc.save_variable(cropped_sinogram  , os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]) + '_object')
+    sscCdi.misc.save_variable(input_dict, cropped_sinogram,flag='object')
     print('\nSaving Probe of shape: ',probe.shape)
-    sscCdi.misc.save_variable(probe, os.path.join(input_dict['output_path'], input_dict["acquisition_folders"][0]) + '_probe' )
+    sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1
