@@ -9,13 +9,15 @@ from scipy.ndimage import gaussian_filter
 from numpy.fft import fftshift, fft2, ifft2
 
 """ Sirius Scientific Computing Imports """
-import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
+import sscCdi, sscPimega, sscRaft, sscRadon
 from sscPimega import pi540D
+from sscResolution import frc
+
 
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
 from ..ptycho.ptychography import  call_G_ptychography
-from ..processing.unwrap import phase_unwrap
+from ..processing.unwrap import unwrap_in_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -39,7 +41,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if len(filepaths) > 1:
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
                 else:
-                    DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+                    DPs, DP_avg, DP_raw_avg = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
 
@@ -49,10 +51,11 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if frame == 0: 
                    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
                    estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                   print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs} GBs")
+                   print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
                    
-                   print(f"\tSaving mean of restored DP...")
-                   np.save(input_dict['output_path'] + '/03_difpad_restaured_flipped.npy',np.mean(DPs,axis=0))
+                   print(f"\tSaving mean of DPs...")
+                   np.save(input_dict['output_path'] + '/DPs_raw_mean.npy',DP_raw_avg)
+                   np.save(input_dict['output_path'] + '/DPs_mean.npy',DP_avg)
 
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
@@ -84,7 +87,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
         np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
 
-    return sinogram, probes, input_dict
+    return sinogram, np.squeeze(probes), input_dict, probe_positions
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
@@ -169,7 +172,7 @@ def set_object_pixel_size(input_dict,DP_size):
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
     input_dict["object_pixel"] = object_pixel_size # in meters
 
-    print(f"\tObject pixel size = {object_pixel_size*1e9} nm")
+    print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
     PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6} microns")
     return input_dict
@@ -231,11 +234,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
-    np.save(os.path.join(input_dict["output_path"],"positions0"),probe_positions)
-    # print(probe_positions)
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
-    # print(probe_positions)
-    np.save(os.path.join(input_dict["output_path"],"positions1"),probe_positions)
 
     np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
 
@@ -291,43 +290,36 @@ def make_1st_frame_squared(frame):
     return frame
 
 
-def crop_sinogram(sinogram, input_dict): 
+def crop_sinogram(sinogram, input_dict,probe_positions): 
 
     cropped_sinogram = sinogram
-    if input_dict['autocrop'] == True: # automatically crop borders with noise
-        print('\tAuto cropping frames...')
-        
-        if 1: # Miqueles approach using scan positions
-            frame = 0
-            for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
+    if input_dict['crop'] != []: 
+        if isinstance(input_dict['crop'],list):        
+            cropped_sinogram = sinogram[input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
+        elif isinstance(input_dict['crop'],str):        
+            print('\tAuto cropping frames...')
+            if input_dict['crop'] == "positions": # Miqueles approach using scan positions
+                frame = 0
+                cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
+                if frame == 0: 
+                    cropped_frame =  make_1st_frame_squared(cropped_frame)
+                    cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
                 
-                filepaths, filenames = get_files_of_interest(input_dict,acquisitions_folder)
-
-                for measurement_file in filenames:
-
-                    if sinogram.shape[0] == len(filenames): print("\t\tSHAPES MATCH!")
-
-                    cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
-                    if frame == 0: 
-                        cropped_frame =  make_1st_frame_squared(cropped_frame)
-                        cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
-                    
-                    cropped_frame = match_cropped_frame_dimension(cropped_sinogram,cropped_frame)
-                    print("\t\t New shapes:",len(filenames),sinogram.shape, cropped_frame.shape)
-                    cropped_sinogram[frame,:,:] = cropped_frame
-                    frame += 1
-       
-        if 0: # Miqueles approach using T operator
-            for frame in range(sinogram.shape[0]):
-                cropped_sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
-            
-        if 0: # Yuri approach using local entropy
-            for frame in range(sinogram.shape[0]):
-                min_crop_value = []
-                best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
-                min_crop_value.append(best_crop)
-            min_crop = min(min_crop_value)
-            cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
+                cropped_frame = match_cropped_frame_dimension(cropped_sinogram,cropped_frame)
+                cropped_sinogram[frame,:,:] = cropped_frame
+                frame += 1
+        
+            if input_dict['crop'] == "operator_T": # Miqueles approach using T operator
+                for frame in range(sinogram.shape[0]):
+                    cropped_sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
+                
+            if input_dict['crop'] == "local_entropy": # Yuri approach using local entropy
+                for frame in range(sinogram.shape[0]):
+                    min_crop_value = []
+                    best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
+                    min_crop_value.append(best_crop)
+                min_crop = min(min_crop_value)
+                cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
         if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
             cropped_sinogram = cropped_sinogram[:,0:-1, :]
@@ -392,108 +384,16 @@ def autocrop_miqueles_operatorT(image):
     return image
 
 
-def apply_phase_unwrap(sinogram, input_dict):
+def calculate_FRC(image, input_dict):
 
-    if input_dict['phase_unwrap'][2] != [] and input_dict['phase_unwrap'][3] != []:
-        print('Manual cropping of the data')
-        """ Fine manual crop of the reconstruction for a proper phase unwrap
-        input_dict['phase_unwrap'][2] = [upper_crop,lower_crop]
-        input_dict['phase_unwrap'][3] = [left_crop,right_crop] """
-        sinogram = sinogram[:,input_dict['phase_unwrap'][2][0]: -input_dict['phase_unwrap'][2][1], input_dict['phase_unwrap'][3][0]: -input_dict['phase_unwrap'][3][1]]
-    
-    print('\t\tCropped object shape:', sinogram.shape)
+    frame     = input_dict["FRC"][0]
+    padding   = input_dict["FRC"][1]
+    sharpness = input_dict["FRC"][2]
+    radius    = input_dict["FRC"][3]
 
-    print('\t\tPhase unwrapping the cropped image')
-    n_iterations = input_dict['phase_unwrap'][1]  # number of iterations to remove gradient from unwrapped image.
-    
-    phase = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
-    absol = np.zeros((sinogram.shape[0],sinogram.shape[-2],sinogram.shape[-1]))
-
-    for frame in range(sinogram.shape[0]):
-        original_object = sinogram[frame,:,:]  # create copy of object
-        absol[frame,:,:] = np.abs(sinogram[frame,:,:])
-        phase[frame,:,:] = phase_unwrap(-np.angle(sinogram[frame,:,:]))
-
-        if 1:  # plot original and cropped object phase and save!
-            figure, subplot = plt.subplots(1, 2,dpi=300,figsize=(5,5))
-            subplot[0].imshow(-np.angle(original_object),cmap='gray')
-            subplot[1].imshow(phase[frame,:,:],cmap='gray')
-            subplot[0].set_title('Original')
-            subplot[1].set_title('Cropped and Unwrapped')
-
-    return phase,absol
-
-
-def calculate_FRC(sinogram, input_dict):
-
-    def resolution_frc(data, pixel, plot=False,plot_output_folder="./outputs/preview",savepath='./outputs/reconstruction'):
-        """     
-        Fourier Ring Correlation for 2D images:
-        The routine inputs are besides the two images for correlation
-        Resolution threshold curves desired: "half" for halfbit, "sigma" for 3sigma, "both" for them both
-        Pixelsize of the object
-
-        # Output is a dictionary with the resolution values in the object pixelsize unit, and the FRC, frequency and threshold arrays
-        # resolution['halfbit'] :  resolution values in the object pixelsize unit
-        # resolution['curve']   :  FRC array
-        # resolution['freq']    :  frequency array
-        # resolution['sthresh'] :  threshold array
-        # resolution['hthresh'] :  threshold array
-
-        Args:
-            data : image to calculate resolution
-            pixel : effective pixel size of the object
-            plot_output_folder (str, optional): _description_. Defaults to "./outputs/preview".
-            savepath : folder to save FRC dictionary with outputs. Defaults to './outputs/reconstruction'.
-
-        Returns:
-            resolution: FRC output dictionary
-        """    
-        
-        print('\t\tCalculating resolution by Fourier Ring Correlation...')
-
-        sizex = data.shape[-1]
-        sizey = data.shape[-2]
-
-        data = data.reshape((1,sizey,sizex)) # reshape so that fourier_ring_correlation interprets data correctly
-
-        # For this case we will use the odd/odd even/even divisions of one image in a dataset
-        data1 = data[:,0:sizey:2, 0:sizex:2]  # even
-        data2 = data[:,1:sizey:2, 1:sizex:2]  # odd
-        
-        resolution = sscResolution.fourier_ring_correlation(data1,data2,pixel)
-        if plot:
-            sscResolution.get_fourier_correlation_fancy_plot(resolution, plot_output_folder, plot=True)
-
-        if savepath != '':
-            export_json(resolution,savepath+'/frc_outputs.txt')
-
-        return resolution
-
-    if sinogram.shape[1]%2!=0:
-        sinogram = sinogram[:,0:-1,:]
-    if sinogram.shape[2]%2!=0:
-        sinogram = sinogram[:,:,0:-1]
-
-    object_pixel_size = input_dict["object_pixel"] 
-
-    frame = 0 # selects first frame of the sinogram to calculate resolution
-
-    if input_dict['FRC'] == True:
-        print('Estimating resolution via Fourier Ring Correlation')
-        resolution = resolution_frc(sinogram[frame,:,:], object_pixel_size, plot=True,plot_output_folder=os.path.join(input_dict["output_path"]+'/'),savepath=input_dict["output_path"])
-        try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['halfbit_resolution'])
-            input_dict["halfbit_resolution"] = resolution['halfbit_resolution']
-        except:
-            print('Could not calculate halfbit FRC resolution')
-        try:
-            print('\tResolution for frame ' + str(frame) + ':', resolution['sigma_resolution'])
-            input_dict["3sigma_resolution"] = resolution['sigma_resolution']
-        except:
-            print('Could not calculate 3sigma FRC resolution')
-
-    return input_dict
+    wimg = frc.window( image, padding, [sharpness, radius] )
+    dic  = frc.computep( wimg , input_dict["CPUs"] ) 
+    frc.plot(dic, {'label': "Resolution", 'unit': "nm", 'pxlsize': input_dict["object_pixel"]},savepath=os.path.join(input_dict["output_path"],'frc.png') )
 
 
 def auto_crop_noise_borders(complex_array):

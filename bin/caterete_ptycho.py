@@ -32,7 +32,7 @@ if __name__ == '__main__':
     restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_CAT(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
-    object,probe, input_dict = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    object,probe, input_dict, probe_positions = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
     print('Finished reconstruction!\n')
@@ -41,21 +41,20 @@ if __name__ == '__main__':
     """ ===================== Post-processing ===================== """
 
     print("Post-processing data...")
-    cropped_sinogram = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict)
+    cropped_sinogram = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict,probe_positions)
     
-    if input_dict['phase_unwrap'][0]: # Apply phase unwrap to data 
+    if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')
-        phase, absol = sscCdi.caterete.cat_ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
-        cropped_sinogram = absol*np.exp(-1j*phase)
-        sscCdi.caterete.cat_ptycho_processing.save_variable(cropped_sinogram, os.path.join(input_dict['output_path'],'unwrapped_object_' + input_dict["acquisition_folders"][0]))
-    else:
-        print("\tExtracting phase and magnitude...")
-        phase = np.angle(cropped_sinogram)
-        absol = np.abs(cropped_sinogram)
+        phase = sscCdi.caterete.cat_ptycho_processing.unwrap_in_parallel(cropped_sinogram, input_dict["phase_unwrap"]) 
+        np.save(os.path.join(input_dict["output_path"],'unwrapped_object.npy',phase))
 
-    if input_dict["FRC"]:
+    if input_dict["FRC"] != []:
         print('\tCalculating Fourier Ring Correlation...')
-        input_dict = sscCdi.caterete.cat_ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
+        if input_dict['phase_unwrap'] != []: # if unwrapping, FRC is calculated on phase image
+            img = phase[input_dict["FRC"][0]]
+        else: # else, on the absorption image
+            img = np.abs(cropped_sinogram)[input_dict["FRC"][0]] 
+        input_dict = sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
@@ -71,8 +70,8 @@ if __name__ == '__main__':
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
     print('\n')
-    print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes')
-    print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes')
-    print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
-    print(f'Save time:             {t6 - t5:.2f} seconds = {(t6 - t5) / 60:.2f} minutes')
+    print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
+    print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes ({100*(time_elapsed_ptycho)/(t6 - t0):.0f}%)')
+    print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes ({100*(t5 - t4)/(t6 - t0):.0f}%)')
+    print(f'Save time:             {t6 - t5:.2f} seconds = {(t6 - t5) / 60:.2f} minutes ({100*(t6 - t5)/(t6 - t0):.0f}%)')
     print(f'Total time:            {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')

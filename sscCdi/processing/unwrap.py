@@ -1,86 +1,13 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from skimage.restoration import unwrap_phase
 import numpy
+import os 
 
-from IPython.display import display
-from ipywidgets import *
-from skimage.io import imsave
+from skimage.restoration import unwrap_phase
 
 from functools import partial
 
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
-
-
-
-def RemoveZernike(img,mask):
-    """ Giovanni's function for removing zernikes. Not well understood yet.
-
-    Args:
-        img 
-        mask 
-
-    """    
-    hs1 = img.shape[-1]//2
-    hs2 = img.shape[-2]//2
-    #hs = 256
-    xx,yy = np.meshgrid(np.arange(-hs1,hs1) / float(hs1),np.arange(-hs2,hs2) / float(hs2))
-    #img = 3*xx**2 + 2*yy**2 + 4*xx + 7 * yy - 1
-
-    xxm = xx[mask]
-    yym = yy[mask]
-
-    dLdA2 = np.average(xxm**4)
-    dLdB2 = np.average(yym**4)
-    dLdC2 = np.average(xxm**2*yym**2)
-    dLdAB = np.average(xxm**2*yym**2)
-    dLdAC = np.average(xxm**3*yym)
-    dLdBC = np.average(xxm*yym**3)
-
-    dLdD2 = np.average(xxm**2)
-    dLdE2 = np.average(yym**2)
-    dLdDE = np.average(xxm*yym)
-
-    dLdAD = np.average(xxm**3)
-    dLdBE = np.average(yym**3)
-    dLdAE = np.average(xxm**2*yym)
-    dLdBD = np.average(xxm*yym**2)
-
-    dLdAF = np.average(xxm**2)
-    dLdBF = np.average(yym**2)
-    dLdDF = np.average(xxm)
-    dLdEF = np.average(yym)
-    dLdF2 = 1
-
-    dLdCD = np.average(xxm**2*yym)
-    dLdCE = np.average(xxm*yym**2)
-    dLdCF = np.average(xxm*yym)
-
-    mat = np.asarray([
-        [dLdA2,dLdAB,dLdAC,dLdAD,dLdAE,dLdAF],
-        [dLdAB,dLdB2,dLdBC,dLdBD,dLdBE,dLdBF],
-        [dLdAC,dLdBC,dLdC2,dLdCD,dLdCE,dLdCF],
-        [dLdAD,dLdBD,dLdCD,dLdD2,dLdDE,dLdDF],
-        [dLdAE,dLdBE,dLdCE,dLdDE,dLdE2,dLdEF],
-        [dLdAF,dLdBF,dLdCF,dLdDF,dLdEF,dLdF2]
-        ])
-    inv = np.linalg.inv(mat)
-
-    #Res = A*xxm**2 + B*yym**2 + D*xxm + E*yym + F - img[mask]
-    Res = img[mask]
-
-    dLdA = np.average(Res*xxm**2)
-    dLdB = np.average(Res*yym**2)
-    dLdC = np.average(Res*xxm*yym)
-    dLdD = np.average(Res*xxm)
-    dLdE = np.average(Res*yym)
-    dLdF = np.average(Res)
-
-    gradient = -np.matmul(inv,[dLdA,dLdB,dLdC,dLdD,dLdE,dLdF])
-    #print(gradient)
-    return img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx*yy + gradient[3]*xx + gradient[4]*yy + gradient[5]
-    #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
 def RemoveGrad(img,mask):
     """ Giovanni's function for removing a gradient.
@@ -130,52 +57,6 @@ def RemoveGrad(img,mask):
     return img + gradient[0]*xx + gradient[1]*yy + gradient[2]
     #Show([img + gradient[0]*xx**2 + gradient[1]*yy**2 + gradient[2]*xx + gradient[3]*yy + gradient[4]])
 
-def unwrap_in_parallel(sinogram,iterations=0,non_negativity=True,remove_gradient = True):
-
-    n_frames = sinogram.shape[0]
-
-    print('Sinogram shape to unwrap: ', sinogram.shape)
-
-    phase_unwrap_partial = partial(phase_unwrap,iterations=iterations,non_negativity=non_negativity,remove_gradient = remove_gradient)
-
-    processes = min(os.cpu_count(),32)
-    print(f'Using {processes} parallel processes')
-    with ProcessPoolExecutor(max_workers=processes) as executor:
-        unwrapped_sinogram = np.empty_like(sinogram)
-        results = list(tqdm(executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
-        for counter, result in enumerate(results):
-            if counter % 100 == 0: print('Populating results matrix...',counter)
-            unwrapped_sinogram[counter,:,:] = result
-
-    return unwrapped_sinogram
-
-def phase_unwrap(img,iterations=0,non_negativity=False,remove_gradient = False):
-    """ Function for phase unwrapping reconstructed object. 
-
-    Args:
-        img : 2d image data
-        iterations : number of iterations for gradient removal. If 0, no removal happens.
-        non_negativity (bool, optional): boolean to make all negative values zero.
-        remove_gradient (bool, optional): _description_. boolean to select gradient removal of final unwrapped image
-
-    Returns:
-        zernike: phase unwrapped image
-    """
-
-    zernike = unwrap_phase(img)
-    
-    mask = zernike < 0
-    for j in range(iterations):
-        zernike = RemoveGrad(zernike,mask=mask)
-        mask = abs(zernike) < 2**-j
-
-    if non_negativity == True:    
-        zernike[zernike<0] = 0
-
-    if remove_gradient == True:
-        zernike = RemoveGrad(zernike,mask=mask)
-    return zernike
-
 def RemoveGrad_new( img, mask ):
     xy = numpy.argwhere( mask > 0)
     n = len(xy)
@@ -214,7 +95,32 @@ def RemoveGrad_new( img, mask ):
     #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
     return new
 
-def phase_unwrap_new(new):
-    new = unwrap_phase(new)
-    # new = RemoveGrad(new, new > 0 )
-    return new
+def unwrap_in_parallel(sinogram,remove_gradient):
+
+    n_frames = sinogram.shape[0]
+
+    print('Sinogram shape to unwrap: ', sinogram.shape)
+    if remove_gradient == []:
+        mask = None
+    else:
+        mask = np.zeros(sinogram[0].shape)
+        mask[remove_gradient[0]:remove_gradient[1],remove_gradient[2]:remove_gradient[3]] = 1
+    phase_unwrap_partial = partial(phase_unwrap,mask)
+
+    processes = min(os.cpu_count(),32)
+    print(f'Using {processes} parallel processes')
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        unwrapped_sinogram = np.empty_like(sinogram)
+        results = list(tqdm(executor.map(phase_unwrap_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        for counter, result in enumerate(results):
+            if counter % 100 == 0: print('Populating results matrix...',counter)
+            unwrapped_sinogram[counter,:,:] = result
+
+    return unwrapped_sinogram
+
+def phase_unwrap(img,mask=None):
+    if mask != None:
+        img = RemoveGrad(img,mask=mask)
+    return unwrap_phase(img)
+
+

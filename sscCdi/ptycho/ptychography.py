@@ -4,7 +4,7 @@ import numpy as np
 import sys, os
 import sscPtycho
 from ..processing.propagation import calculate_fresnel_number
-from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage
+from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage, plot_error
 
 def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
 
@@ -69,10 +69,10 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
                                            probef1=input_dict['fresnel_number']) 
 
             loop_counter += 1
-            # error = np.concatenate((error,datapack["error"]),axis=1)
-            # print(datapack["error"].shape)
+            error = np.concatenate((error,datapack["error"]),axis=0)
 
-    # np.save(os.path.join(input_dict["output_path"],f"_error"),error)
+    np.save(os.path.join(input_dict["output_path"],f"error.npy"),error)
+    plot_error(error,path=os.path.join(input_dict["output_path"],f"error.png"),log=True)
 
     return datapack['obj'], datapack['probe']
 
@@ -127,12 +127,6 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         datapack['bkg'] = background
         datapack['probesupp'] = probesupp
 
-        np.save(os.path.join(input_dict["output_path"],"datapackobj"),obj)
-        np.save(os.path.join(input_dict["output_path"],"datapackprobe"),probe)
-        np.save(os.path.join(input_dict["output_path"],"datapackpos"),probe_positions)
-        np.save(os.path.join(input_dict["output_path"],"datapacksupp"),probesupp)
-        np.save(os.path.join(input_dict["output_path"],"difpads"),DPs)
-
         return datapack
 
     def append_zeros(probe_positions):
@@ -162,12 +156,11 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
-    print(f"\nDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
-    print(np.max(DPs),np.mean(DPs),np.min(DPs))
-
+    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
+    
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
-    print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]} GBs")
+    print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
     return datapack, probe_positions, sigmask
 
@@ -211,6 +204,7 @@ def set_initial_probe(input_dict,DP_shape):
 
     elif isinstance(input_dict['initial_probe'],str):
         probe = np.load(input_dict['initial_probe'])[0] # load guess from file
+        probe = np.squeeze(probe)
         probe = probe.reshape((1,*probe.shape))
     elif isinstance(input_dict['initial_probe'],int):
         probe = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_probe.npy"))
@@ -238,6 +232,7 @@ def set_initial_object(input_dict):
                 pass #TODO: implement method from https://doi.org/10.1364/OE.465397
         elif isinstance(input_dict['initial_obj'],str): 
             obj = np.load(input_dict['initial_obj'])
+            obj = np.squeeze(obj)
         elif isinstance(input_dict['initial_obj'],int):
             obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
         else:
