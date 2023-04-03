@@ -113,7 +113,7 @@ def select_specific_angles(frames,filepaths,filenames):
 
     return filepaths, filenames
 
-def save_json_logfile(path,input_dict):
+def save_json_logfile(input_dict):
     """Save a copy of the json input file with datetime at the filename
 
     Args:
@@ -122,6 +122,9 @@ def save_json_logfile(path,input_dict):
     """    
     import json, os
     from datetime import datetime
+
+    path = input_dict["output_path"]
+
     now = datetime.now()
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")

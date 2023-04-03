@@ -54,12 +54,12 @@ if __name__ == '__main__':
             img = phase[input_dict["FRC"][0]]
         else: # else, on the absorption image
             img = np.abs(cropped_sinogram)[input_dict["FRC"][0]] 
-        input_dict = sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
+        sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
 
-    sscCdi.save_json_logfile(input_dict) # overwrite logfile with new information
+    sscCdi.misc.save_json_logfile(input_dict) # overwrite logfile with new information
             
     print('\nSaving Object of shape: ',cropped_sinogram.shape)
     sscCdi.misc.save_variable(input_dict, cropped_sinogram,flag='object')

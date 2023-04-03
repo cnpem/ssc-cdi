@@ -82,10 +82,11 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
                 else:
                     pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
+                os.rmdir(input_dict["temporary_output"]) # delete temporary folder
 
         np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
 
-    return sinogram, np.squeeze(probes), input_dict, probe_positions
+    return sinogram, probes, input_dict, probe_positions
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 

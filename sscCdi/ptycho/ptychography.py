@@ -97,7 +97,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         return sigmask
 
     def probe_support(probe, half_size, radius, center_x, center_y):
-        print('\tSetting probe support...')
+        print('Setting probe support...')
         ar = np.arange(-half_size, half_size)
         xx, yy = np.meshgrid(ar, ar)
         probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
@@ -142,7 +142,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
         input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
-    print('\tFresnel number:', input_dict['fresnel_number'])
+    print('Fresnel number:', input_dict['fresnel_number'])
 
     probe_positions = append_zeros(probe_positions)
 
@@ -220,7 +220,7 @@ def set_initial_probe(input_dict,DP_shape):
 
 def set_initial_object(input_dict):
 
-        print('\tCreating initial object...')
+        print('Creating initial object...')
 
         if isinstance(input_dict['initial_obj'],list):
             type = input_dict['initial_obj'][0]
