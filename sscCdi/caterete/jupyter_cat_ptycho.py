@@ -35,8 +35,8 @@ global_paths_dict = { "jupyter_folder"         : "/ibira/lnls/beamlines/caterete
                     "sinogram_filepath"        : os.path.join(output_folder,f'object_{acquisition_folder}.npy'), # path to load npy with first reconstruction preview
                     "cropped_sinogram_filepath": os.path.join(output_folder,f'object_{acquisition_folder}_cropped.npy'),
                     "probe_filepath"           : os.path.join(output_folder,f'probe_{acquisition_folder}.npy'), # path to load probe
-                    "difpad_raw_mean_filepath" : os.path.join(output_folder,'02_difpad_raw_mean.npy'), # path to load diffraction pattern
-                    "flipped_difpad_filepath"  : os.path.join(output_folder,'03_difpad_restaured_flipped.npy'), # path to load diffraction pattern
+                    "difpad_raw_mean_filepath" : os.path.join(output_folder,'DPs_raw_mean.npy'), # path to load diffraction pattern
+                    "flipped_difpad_filepath"  : os.path.join(output_folder,'DPs_mean.npy'), # path to load diffraction pattern
                     "output_folder"            : output_folder
                 }
 
@@ -242,8 +242,8 @@ def inputs_tab():
         global_paths_dict["sinogram_filepath"]         = os.path.join(output_folder,f'{acquisition_folders[0]}_object.npy') # path to load npy with first reconstruction preview
         global_paths_dict["cropped_sinogram_filepath"] = os.path.join(output_folder,f'{acquisition_folders[0]}_object_cropped.npy')
         global_paths_dict["probe_filepath"]            = os.path.join(output_folder,f'{acquisition_folders[0]}_probe.npy') # path to load probe
-        global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'02_difpad_raw_mean.npy') # path to load diffraction pattern
-        global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'03_difpad_restaured_flipped.npy') # path to load diffraction pattern
+        global_paths_dict["difpad_raw_mean_filepath"]  = os.path.join(output_folder,'DPs_raw_mean.npy') # path to load diffraction pattern
+        global_paths_dict["flipped_difpad_filepath"]   = os.path.join(output_folder,'DPs_mean.npy') # path to load diffraction pattern
         global_paths_dict["output_folder"]             = output_folder
 
         global_dict["binning"] = binning

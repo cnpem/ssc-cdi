@@ -358,3 +358,15 @@ def save_plots(complex_array,title='',path=''):
     figure.tight_layout()
     if path != '':
         plt.savefig(path)
+
+
+def plot_error(error,path='',log=False):
+    fig, ax = plt.subplots(dpi=150)
+    ax.plot(error, 'o-')
+    ax.set_xlabel('Iterations') 
+    ax.set_ylabel('Error')
+    ax.grid()
+    if log:
+        ax.set_yscale('log')
+    if path != '':
+        fig.savefig(path)
