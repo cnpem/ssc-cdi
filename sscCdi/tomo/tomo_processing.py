@@ -6,7 +6,7 @@ from skimage.morphology import square, erosion, opening, convex_hull_image, dila
 from functools import partial
 import ast
 
-from ..misc import list_files_in_folder
+from ..misc import list_files_in_folder, save_json_logfile
 from ..processing.unwrap import RemoveGrad
 
 import sscRaft
@@ -289,31 +289,6 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
 
 ####################### TOMOGRAPHY ###########################################3
 
-def save_json_logfile(input_dict):
-    """Save a copy of the json input file with datetime at the filename
-
-    Args:
-        path (string): output folder path 
-        input_dict (dic): input_dict dictionary
-    """    
-    import json, os
-    from datetime import datetime
-
-    output_folder = input_dict["output_path"]
-
-    now = datetime.now()
-
-    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
-    
-    name = input_dict["folders_list"][0]
-
-    name = dt_string + "_" + name+".json"
-
-    filepath = os.path.join(output_folder,name)
-    file = open(filepath,"w")
-    file.write(json.dumps(input_dict,indent=3,sort_keys=True))
-    file.close()
-
 def regularization(sino, L):
     a = 1
     R = sino.shape[1]
@@ -480,7 +455,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     print('\t Tomography done!')
 
     print('Saving tomography logfile...')
-    save_json_logfile(input_dict,output_folder)
+    save_json_logfile(input_dict)
     print('\tSaved!')
 
     return reconstruction3D
