@@ -45,7 +45,7 @@ if __name__ == '__main__':
     
     if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')
-        phase = sscCdi.caterete.cat_ptycho_processing.unwrap_in_parallel(cropped_sinogram, input_dict["phase_unwrap"]) 
+        phase = sscCdi.caterete.unwrap_in_parallel(cropped_sinogram, input_dict["phase_unwrap"]) 
         np.save(os.path.join(input_dict["output_path"],'unwrapped_object.npy',phase))
 
     if input_dict["FRC"] != []:
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
 
-    if input_dict["output_path"] != "":  sscCdi.misc.save_json_logfile(input_dict["output_path"], input_dict) # overwrite logfile with new information
+    sscCdi.save_json_logfile(input_dict) # overwrite logfile with new information
             
     print('\nSaving Object of shape: ',cropped_sinogram.shape)
     sscCdi.misc.save_variable(input_dict, cropped_sinogram,flag='object')

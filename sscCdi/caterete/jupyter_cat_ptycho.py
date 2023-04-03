@@ -48,8 +48,6 @@ if os.path.exists(json_filepath):
     with open(json_filepath) as json_file:
         global_dict = json.load(json_file)
 
-global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
-
 ############################################  Global Layouts ###########################################################################
 
 """ Standard styling definitions """
@@ -224,7 +222,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(data_folder_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,PhaseUnwrap_iter,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(data_folder_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -259,17 +257,7 @@ def inputs_tab():
         global_dict["fresnel_number"] = fresnel_number
         global_dict["probe_support"] = [probe_support_radius, probe_support_centerX, probe_support_centerY]
 
-        global_dict["phase_unwrap"][0] = PhaseUnwrap
-        global_dict["phase_unwrap"][1] = PhaseUnwrap_iter
-
-        if [top_crop,bottom_crop] == [0,1]:
-            global_dict["phase_unwrap"][2] =  []
-        else:
-            global_dict["phase_unwrap"][2] = [top_crop,bottom_crop]
-        if [left_crop,right_crop] == [0,1]:
-            global_dict["phase_unwrap"][3] =  []
-        else:
-            global_dict["phase_unwrap"][3] = [left_crop,right_crop]
+        global_dict["phase_unwrap"] = PhaseUnwrap
 
         if use_obj_guess:
             global_dict["initial_obj"] = global_paths_dict["sinogram_filepath"]
@@ -304,7 +292,7 @@ def inputs_tab():
     save_or_load_difpads  = widgets.RadioButtons(options=['Save Diffraction Pattern', 'Load Diffraction Pattern'], value='Save Diffraction Pattern', layout={'width': '50%'},description='Save or Load')
 
     label3 = create_label_widget("Diffraction Pattern Processing")
-    autocrop           = Input(global_dict,"autocrop",description="Auto Crop borders",layout=items_layout2)
+    autocrop           = Input(global_dict,"crop",description="Auto Crop borders",layout=items_layout2)
     global central_mask_radius, central_mask_bool, DetectorPileup
     central_mask_bool   = Input({'dummy-key':global_dict["central_mask"][0]},'dummy-key',description="Use Central mask",layout=items_layout2)
     central_mask_radius = Input({'dummy-key':global_dict["central_mask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central mask Radius",layout=slider_layout)
@@ -330,8 +318,7 @@ def inputs_tab():
     Algorithm3 = Input(global_dict,"Algorithm3",description="Recon Algorithm 3",layout=items_layout2)
 
     label6 = create_label_widget("Post-processing")
-    phase_unwrap      = Input({'dummy-key':global_dict["phase_unwrap"][0]},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
-    phase_unwrap_iter = Input({'dummy-key':global_dict["phase_unwrap"][1]},'dummy-key',bounded=(0,20,1),slider=True,description="Gradient Removal Iterations",layout=slider_layout2)
+    phase_unwrap      = Input({'dummy-key':global_dict["phase_unwrap"]},'dummy-key',description="Phase Unwrap",layout=checkbox_layout)
     phase_unwrap_box = widgets.Box([phase_unwrap.widget],layout=items_layout2)
     global top_crop, bottom_crop,left_crop,right_crop # variables are reused in crop tab
     top_crop      = Input({'dummy_key':0},'dummy_key',bounded=(0,10,1), description="Top", slider=True,layout=slider_layout)
@@ -357,7 +344,6 @@ def inputs_tab():
                                                     'probe_support_centerX': probe_support_centerX.widget,
                                                     'probe_support_centerY': probe_support_centerY.widget,
                                                     'PhaseUnwrap': phase_unwrap.widget,
-                                                    'PhaseUnwrap_iter': phase_unwrap_iter.widget, # Remove this in the future
                                                     'top_crop': top_crop.widget,
                                                     'bottom_crop': bottom_crop.widget,
                                                     'left_crop': left_crop.widget,

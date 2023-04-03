@@ -9,15 +9,13 @@ from scipy.ndimage import gaussian_filter
 from numpy.fft import fftshift, fft2, ifft2
 
 """ Sirius Scientific Computing Imports """
-import sscCdi, sscPimega, sscRaft, sscRadon
+import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
 from sscPimega import pi540D
-from sscResolution import frc
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, export_json, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
 from ..ptycho.ptychography import  call_G_ptychography
-from ..processing.unwrap import unwrap_in_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -391,9 +389,9 @@ def calculate_FRC(image, input_dict):
     sharpness = input_dict["FRC"][2]
     radius    = input_dict["FRC"][3]
 
-    wimg = frc.window( image, padding, [sharpness, radius] )
-    dic  = frc.computep( wimg , input_dict["CPUs"] ) 
-    frc.plot(dic, {'label': "Resolution", 'unit': "nm", 'pxlsize': input_dict["object_pixel"]},savepath=os.path.join(input_dict["output_path"],'frc.png') )
+    wimg = sscResolution.frc.window( image, padding, [sharpness, radius] )
+    dic  = sscResolution.frc.computep( wimg , input_dict["CPUs"] ) 
+    sscResolution.frc.plot(dic, {'label': "Resolution", 'unit': "nm", 'pxlsize': input_dict["object_pixel"]},savepath=os.path.join(input_dict["output_path"],'frc.png') )
 
 
 def auto_crop_noise_borders(complex_array):
