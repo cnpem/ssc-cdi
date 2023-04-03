@@ -289,7 +289,7 @@ def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,er
 
 ####################### TOMOGRAPHY ###########################################3
 
-def save_json_logfile(input_dict,output_folder):
+def save_json_logfile(input_dict):
     """Save a copy of the json input file with datetime at the filename
 
     Args:
@@ -298,6 +298,9 @@ def save_json_logfile(input_dict,output_folder):
     """    
     import json, os
     from datetime import datetime
+
+    output_folder = input_dict["output_path"]
+
     now = datetime.now()
 
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
