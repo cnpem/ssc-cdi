@@ -142,7 +142,7 @@ def save_json_logfile(input_dict):
 def create_directory_if_doesnt_exist(*args):
     for arg in args:
         if os.path.isdir(arg) == False:
-            print("Creating directory: ",arg)
+            print("\tCreating directory: ",arg)
             os.makedirs(arg)
         else:
             pass
@@ -349,6 +349,7 @@ def plot_error(error,path='',log=False):
     ax.plot(error, 'o-')
     ax.set_xlabel('Iterations') 
     ax.set_ylabel('Error')
+    ax.set_title(f'Final error = {error[-1]:.2e}')
     ax.grid()
     if log:
         ax.set_yscale('log')
