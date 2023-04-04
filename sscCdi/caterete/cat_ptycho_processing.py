@@ -16,7 +16,7 @@ from sscPimega import pi540D
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
 from ..ptycho.ptychography import  call_G_ptychography
-from .caterete.cat_restoration import Geometry
+from .cat_restoration import Geometry
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -59,8 +59,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
                     input_dict = set_object_shape(DPs.shape,input_dict, probe_positions, input_dict["object_padding"])
-                    sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1])) 
-                    probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]))
+                    sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
+                    probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                 
                 run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
 
@@ -291,10 +291,10 @@ def crop_sinogram(sinogram, input_dict,probe_positions):
 
     cropped_sinogram = sinogram
     if input_dict['crop'] != []: 
+        print('\tCropping frames...')
         if isinstance(input_dict['crop'],list):        
-            cropped_sinogram = sinogram[input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
+            cropped_sinogram = sinogram[:,input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
         elif isinstance(input_dict['crop'],str):        
-            print('\tAuto cropping frames...')
             if input_dict['crop'] == "positions": # Miqueles approach using scan positions
                 frame = 0
                 cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
@@ -456,10 +456,12 @@ def masks_application(difpad, input_dict):
 
 def save_mean_DPs(input_dict,DP_avg, DP_raw_avg):
     print("\tSaving mean of diffraction patterns...")
-    geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
-    gaps = pi540D.gaps540D ( geometry )              
-    DP_raw_avg[gaps==1] = -1
-    DP_avg[gaps==1] = -1
+    # geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
+    # gaps = pi540D.gaps540D ( geometry )              
+    # DP_raw_avg[gaps==1] = -1
+    # DP_avg[gaps==1] = -1
+    DP_raw_avg[DP_raw_avg<0] = -1
+    DP_avg[DP_avg<0] = -1
     print(f"\tSaving mean of DPs...")
     np.save(input_dict['output_path'] + '/DPs_raw_mean.npy',DP_raw_avg)
     np.save(input_dict['output_path'] + '/DPs_mean.npy',DP_avg)
