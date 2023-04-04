@@ -253,7 +253,10 @@ def save_variable(input_dict,variable, flag = 'FLAG'):
     """    
     variable = np.asarray(variable, dtype=object)
 
-    savename = input_dict["output_filename"]
+    if input_dict["output_filename"] != "":
+        savename = input_dict["output_filename"]
+    else:
+        savename = input_dict["acquisition_folders"][0]
 
     if savename == "":
         savename = os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]+ '_' + flag)

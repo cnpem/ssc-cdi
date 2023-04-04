@@ -32,11 +32,11 @@ def restoration_CAT(input_dict):
 
         params = (input_dict, filenames, filepaths, input_dict['data_folder'], acquisitions_folder, input_dict['scans_string'])
 
-        geometry = Geometry(input_dict["detector_distance"]*1000) # distance in milimeters
+        geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
         params   = {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual' ,'susp': input_dict["suspect_border_pixels"]}
         project  = pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )
 
-        if input_dict["using_direct_beam"] == True:
+        if input_dict["direct_beam_path"] != "":
             print("\t Using direct beam to find center: ",input_dict["DP_center"])
             input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], input_dict["detector_distance"]*1000, params)
             print("\t\t New center: ",input_dict["DP_center"])

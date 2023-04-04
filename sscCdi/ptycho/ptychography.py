@@ -156,7 +156,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
 
-    print(f"\n\tDiffraction Patterns: {DPs.shape}\n\tInitial Object: {obj.shape}\n\tInitial Probe: {probe.shape}\n\tProbe Support: {probesupp.shape}\n\tProbe Positions: {probe_positions.shape}\n")
+    print(f"\nDiffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}\n")
     
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
@@ -177,7 +177,7 @@ def set_initial_probe(input_dict,DP_shape):
             for i in range(add):
                 probe[i + mode] = probe[i + mode - 1] * np.random.rand(*probe[0].shape)
 
-        print("\tProbe shape ({0},{1}) with {2} incoherent modes".format(probe.shape[-2], probe.shape[-1], probe.shape[0]))
+        print("\tProbe shape ({0},{1}) with {2} incoherent mode(s)".format(probe.shape[-2], probe.shape[-1], probe.shape[0]))
 
         return probe
 

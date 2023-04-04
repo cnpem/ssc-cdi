@@ -16,6 +16,7 @@ from sscPimega import pi540D
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
 from ..ptycho.ptychography import  call_G_ptychography
+from .caterete.cat_restoration import Geometry
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -47,13 +48,10 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
                 if frame == 0: 
-                   size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                   estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                   print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-                   
-                   print(f"\tSaving mean of DPs...")
-                   np.save(input_dict['output_path'] + '/DPs_raw_mean.npy',DP_raw_avg)
-                   np.save(input_dict['output_path'] + '/DPs_mean.npy',DP_avg)
+                    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+                    estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
+                    print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
+                    save_mean_DPs(input_dict,DP_avg, DP_raw_avg)
 
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
@@ -98,7 +96,7 @@ def define_paths(input_dict):
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
-    input_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
+    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
 
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
@@ -454,5 +452,16 @@ def masks_application(difpad, input_dict):
         difpad[central_mask > 0] = -1
 
     return difpad
+
+
+def save_mean_DPs(input_dict,DP_avg, DP_raw_avg):
+    print("\tSaving mean of diffraction patterns...")
+    geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
+    gaps = pi540D.gaps540D ( geometry )              
+    DP_raw_avg[gaps==1] = -1
+    DP_avg[gaps==1] = -1
+    print(f"\tSaving mean of DPs...")
+    np.save(input_dict['output_path'] + '/DPs_raw_mean.npy',DP_raw_avg)
+    np.save(input_dict['output_path'] + '/DPs_mean.npy',DP_avg)
 
 
