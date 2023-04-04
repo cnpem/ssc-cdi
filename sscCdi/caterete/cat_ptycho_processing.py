@@ -171,7 +171,7 @@ def set_object_pixel_size(input_dict,DP_size):
 
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
     PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
-    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6} microns")
+    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return input_dict
 
 
