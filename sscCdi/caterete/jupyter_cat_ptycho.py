@@ -222,7 +222,7 @@ def inputs_tab():
         print('\t Saved!')
 
 
-    def update_global_dict(data_folder_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number,DetectorPileup):
+    def update_global_dict(data_folder_str,acquisition_folders,projections,binning,center_y,center_x,detector_ROI,suspect_border_pixels,fill_blanks,save_or_load_difpads,central_mask_bool,central_mask_radius,probe_support_radius,probe_support_centerX,probe_support_centerY,PhaseUnwrap,top_crop,bottom_crop,left_crop,right_crop,use_obj_guess,use_probe_guess,fresnel_number):
 
         if type(acquisition_folders) == type([1,2]): # if list, correct data type of this input
             pass 
@@ -252,7 +252,6 @@ def inputs_tab():
         global_dict["fill_blanks"] =  fill_blanks
 
         global_dict["central_mask"] = [central_mask_bool,central_mask_radius]
-        global_dict["detector_exposure"][0] = DetectorPileup 
 
         global_dict["fresnel_number"] = fresnel_number
         global_dict["probe_support"] = [probe_support_radius, probe_support_centerX, probe_support_centerY]
@@ -293,11 +292,10 @@ def inputs_tab():
 
     label3 = create_label_widget("Diffraction Pattern Processing")
     autocrop           = Input(global_dict,"crop",description="Auto Crop borders",layout=items_layout2)
-    global central_mask_radius, central_mask_bool, DetectorPileup
+    global central_mask_radius, central_mask_bool
     central_mask_bool   = Input({'dummy-key':global_dict["central_mask"][0]},'dummy-key',description="Use Central mask",layout=items_layout2)
     central_mask_radius = Input({'dummy-key':global_dict["central_mask"][1]},'dummy-key',bounded=(0,100,1),slider=True,description="Central mask Radius",layout=slider_layout)
     central_mask_box   = widgets.Box([central_mask_bool.widget,central_mask_radius.widget],layout=slider_layout3)
-    DetectorPileup   = Input({'dummy-key':global_dict["detector_exposure"][0]},'dummy-key',description="Ignore Detector Pileup",layout=items_layout2)
 
     label4 = create_label_widget("Probe Adjustment")
     probe_support_radius   = Input({'dummy-key':global_dict["probe_support"][0]},'dummy-key',bounded=(0,1000,10),slider=True,description="Probe Support Radius",layout=slider_layout2)
@@ -351,11 +349,10 @@ def inputs_tab():
                                                     "use_obj_guess": use_obj_guess.widget,
                                                     "use_probe_guess":use_probe_guess.widget,
                                                     "fresnel_number":fresnel_number.widget,
-                                                    "DetectorPileup":DetectorPileup.widget
                                                      })
 
     box = widgets.Box([label1,data_folder_str.widget,acquisition_folders.widget,projections.widget,label2,binning.widget,center_box,detector_ROI.widget,suspect_pixels.widget,fill_blanks.widget,save_or_load_difpads],layout=box_layout)
-    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,DetectorPileup.widget,label4,probe_box,fresnel_number.widget,incoherent_modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
+    box = widgets.Box([box,label3,autocrop.widget,central_mask_box,label4,probe_box,fresnel_number.widget,incoherent_modes.widget,label5,Algorithm1.widget,Algorithm2.widget,Algorithm3.widget,label6,phase_unwrap_box,FRC.widget],layout=box_layout)
 
     return box
 
@@ -456,10 +453,9 @@ def center_tab():
         image = np.load(global_paths_dict['flipped_difpad_filepath'])
         widgets.interactive_output(update_mask,{'figure':fixed(figure), 'subplot': fixed(subplot),
                                                 'output_dictionary':fixed(global_dict),'image':fixed(image),
-                                                'key1':fixed('DP_center'),'key2':fixed('central_mask'),'key3':fixed('detector_exposure'),
+                                                'key1':fixed('DP_center'),'key2':fixed('central_mask'),
                                                 'cy':center_y.widget,'cx':center_x.widget,
                                                 'button':central_mask_bool.widget,
-                                                'exposure':DetectorPileup.widget,
                                                 'exposure_time':fixed(input_dict['/entry/beamline/detector']['pimega']["exposure time"]),
                                                 'radius':central_mask_radius.widget})
 
@@ -468,7 +464,7 @@ def center_tab():
 
     """ Difpad center boxes """
     sliders_box = widgets.HBox([center_y.widget,center_x.widget,central_mask_radius.widget],layout=box_layout)
-    controls = widgets.Box([load_difpad_button.widget,sliders_box,central_mask_bool.widget,DetectorPileup.widget],layout=get_box_layout('500px'))
+    controls = widgets.Box([load_difpad_button.widget,sliders_box,central_mask_bool.widget],layout=get_box_layout('500px'))
     box = widgets.HBox([controls,vbar,output])
     return box
 

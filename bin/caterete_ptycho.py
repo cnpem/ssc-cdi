@@ -41,11 +41,11 @@ if __name__ == '__main__':
     """ ===================== Post-processing ===================== """
 
     print("Post-processing data...")
-    cropped_sinogram = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict,probe_positions)
+    object = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict,probe_positions)
     
     if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')
-        phase = sscCdi.caterete.unwrap_in_parallel(cropped_sinogram, input_dict["phase_unwrap"]) 
+        phase = sscCdi.caterete.unwrap_in_parallel(object, input_dict["phase_unwrap"]) 
         np.save(os.path.join(input_dict["output_path"],'unwrapped_object.npy',phase))
 
     if input_dict["FRC"] != []:
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         if input_dict['phase_unwrap'] != []: # if unwrapping, FRC is calculated on phase image
             img = phase[input_dict["FRC"][0]]
         else: # else, on the absorption image
-            img = np.abs(cropped_sinogram)[input_dict["FRC"][0]] 
+            img = np.abs(object)[input_dict["FRC"][0]] 
         sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
 
     t5 = time.time()
@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
     sscCdi.misc.save_json_logfile(input_dict) # overwrite logfile with new information
             
-    print('\nSaving Object of shape: ',cropped_sinogram.shape)
-    sscCdi.misc.save_variable(input_dict, cropped_sinogram,flag='object')
+    print('\nSaving Object of shape: ',object.shape)
+    sscCdi.misc.save_variable(input_dict, object,flag='object')
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 

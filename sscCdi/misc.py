@@ -242,33 +242,11 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
 
 
 def save_variable(input_dict,variable, flag = 'FLAG'):
-    """ Function to save reconstruction object, probe and/or background. 
-    
-    This function presents some redundancy. Should be improved!
 
-    Args:
-        variable : variable to be saved (e.g. sinogram, probe reconstruction and/or background)
-        predefined_name: predefined name for saving the output variable
-        savename (str, optional): Name to be used instead of predefined_name. Defaults to "".
-    """    
-    variable = np.asarray(variable, dtype=object)
-
-    if input_dict["output_filename"] != "":
-        savename = input_dict["output_filename"]
-    else:
-        savename = input_dict["acquisition_folders"][0]
-
-    if savename == "":
+    if input_dict["output_filename"] == "":
         savename = os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]+ '_' + flag)
     else:
-        savename = os.path.join(input_dict['output_path'],savename + '_' + flag)
-
-
-    for i in range(variable.shape[0]):  # loop to circumvent problem with nan values
-        if np.isnan(variable[i][:, :].imag.sum()):
-            variable[i][:, :] = np.zeros(variable[i][:, :].shape)
-
-    variable = np.asarray(variable, dtype=np.complex64)
+        savename = os.path.join(input_dict['output_path'],input_dict["output_filename"] + '_' + flag)
 
     np.save(savename, variable)
     save_plots(variable,path=savename)
@@ -327,7 +305,7 @@ def estimate_memory_usage(*args):
     bytes = 0
     for arg in args:
         bytes += get_array_size_bytes(arg)[0]
-    
+        
     kbytes = bytes/1e3
     Mbytes = bytes/1e6
     Gbytes = bytes/1e9

@@ -7,10 +7,11 @@ from sscPimega import pi540D, opt540D
 """ sscCdi relative imports"""
 from ..misc import read_hdf5, list_files_in_folder, select_specific_angles
 
-def Geometry(L,susp=3,scale=0.98,fill=False):
-    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp } ) 
+def Geometry(distance,susp=3,fill=False,scale=0.98):
+    params = {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp }
+    project = pi540D.dictionary540D( distance, params ) 
     geo = pi540D.geometry540D( project )
-    return geo
+    return geo, params
 
 def restoration_CAT(input_dict):
     
@@ -30,18 +31,12 @@ def restoration_CAT(input_dict):
             filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths0,  filenames0)
             print(f"\tUsing {len(filenames)} of {len(filenames0)} angle(s)")
 
-        params = (input_dict, filenames, filepaths, input_dict['data_folder'], acquisitions_folder, input_dict['scans_string'])
-
-        geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
-        params   = {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual' ,'susp': input_dict["suspect_border_pixels"]}
-        project  = pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )
+        geometry, params = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
 
         if input_dict["direct_beam_path"] != "":
             print("\t Using direct beam to find center: ",input_dict["DP_center"])
             input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], input_dict["detector_distance"]*1000, params)
             print("\t\t New center: ",input_dict["DP_center"])
-                  
-        geometry = pi540D.geometry540D( project )
 
         dic = {}
         dic['path']     = filepaths

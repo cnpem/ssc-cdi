@@ -1,62 +1,66 @@
 {
-    "proposal_path": "/ibira/lnls/beamlines/caterete/apps/jupyter/00000000/data/ptycho2d/",
-    "acquisition_folders": ["SS61"],
-    "projections": [0],
     "beamline": "CAT",
-    "GPUs": [0],
-    "CPUs": 32,
-
     "detector": "540D",
-    "DP_center": [1400,1400],
-    "detector_ROI_radius": 1280,
+   
+    "data_folder": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho2d/",
+    "acquisition_folders": [ "SS03112022_02" ],
+    "projections": [ 0 ],
+   
+    "custom_output_folder": "",
+    "output_filename": "",
+ 
+    "CPUs": 96,
+    "GPUs": [0,1,2],
+ 
     "binning": 1,
-    "suspect_border_pixels": 5,
+    "direct_beam_path": "",
+    "DP_center": [1382,1418],
+    "central_mask": [false, 5],
     "fill_blanks": false,
     "keep_original_negative_values": false,
-
-    "autocrop": false,
-
-    "detector_exposure": [false,0.15],
-    "central_mask": [false,5],
+    "suspect_border_pixels": 3,
+    "detector_ROI_radius": 1280,
     
-    "probe_support": [300,0,0],
-    "fresnel_number": -1.0E-3,
+    "position_rotation": -3e-3,
+ 
+    "object_padding": 20,
+ 
     "incoherent_modes": 0,
-
-    "phase_unwrap": [false,5,[],[]],
-
-    "FRC": false,
-    
-    "initial_obj_path": "",
-    "initial_probe_path": "",
-
-    "ObjectPad": 20,
-
+    "probe_support": [ 500, 0, 0 ],
+    "fresnel_number": -0.001,
+ 
+    "initial_obj": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/initial_obj.npy",
+    "initial_probe": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/initial_probe.npy",
+ 
     "Algorithm1": {
-        "Name": "RAAR",
-        "Iterations": 100,
-        "TV": 0,
-        "Epsilon": 1E-2,
-        "Beta": 0.995,
-        "ProbeCycles": 4,
-        "Batch": 64
-    },
+       "Batch": 64,
+       "Beta": 0.995,
+       "Epsilon": 0.01,
+       "Iterations": 70,
+       "Name": "RAAR",
+       "ProbeCycles": 4,
+       "TV": 0   },
     "Algorithm2": {
-        "Name": "GL",
-        "Iterations": 150,
-        "TV": 1E-4,
-        "Epsilon": 1E-2,
-        "ObjBeta": 0.97,
-        "ProbeBeta": 0.95,
-        "Batch": 64
-    },
+       "Batch": 64,
+       "Epsilon": 0.01,
+       "Iterations": 100,
+       "Name": "GL",
+       "ObjBeta": 0.97,
+       "ProbeBeta": 0.95,
+       "TV": 0.0001  },
     "Algorithm3": {
-        "Name": "GL",
-        "Iterations": 10,
-        "TV": 1E-3,
-        "Epsilon": 1E-1,
-        "ProbeBeta": 0.5,
-        "ObjBeta": 0.5,
-        "Batch": 64
-    }
-}
+       "Batch": 64,
+       "Epsilon": 0.1,
+       "Iterations": 20,
+       "Name": "GL",
+       "ObjBeta": 0.5,
+       "ProbeBeta": 0.5,
+       "TV": 0.01  },
+ 
+    "crop": [],
+    
+    "phase_unwrap": [],
+ 
+    "FRC": []
+ 
+ }
