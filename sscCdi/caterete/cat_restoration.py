@@ -23,7 +23,7 @@ def restoration_CAT(input_dict):
     restored_data_info_list = []
     for acquisitions_folder in input_dict['acquisition_folders']:  # loop when multiple acquisitions were performed for a 3D recon
 
-        print('\tStarting restoration of acquisition: ', acquisitions_folder)
+        print(f'\tRestoration of folder {acquisitions_folder}')
 
         filepaths0, filenames0 = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
         
@@ -50,7 +50,7 @@ def restoration_CAT(input_dict):
         dic['saving']   = 1  # save or not
         dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
-        dic['center']   = input_dict["DP_center"] # [1400,1400]
+        dic['center']   = (input_dict["DP_center"][1],input_dict["DP_center"][0]) # [1400,1400]
         if input_dict["detector_ROI_radius"] < 0:
             dic['roi'] = min(min(input_dict["DP_center"][1],detector_size-input_dict["DP_center"][1]),min(input_dict["DP_center"][0],detector_size-input_dict["DP_center"][0])) # get the biggest size possible such that the restored difpad is still squared
         else:
