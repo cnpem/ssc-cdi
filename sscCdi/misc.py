@@ -121,22 +121,19 @@ def save_json_logfile(input_dict):
         input_dict (dic): input_dict dictionary
     """    
     import json, os
-    from datetime import datetime
 
     path = input_dict["output_path"]
 
-    now = datetime.now()
-
-    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
-    
-    name = input_dict["acquisition_folders"][0]
-
-    name = dt_string + "_" + name.split('.')[0]+".json"
+    datetime = input_dict["datetime"]
+    name = datetime+".json"
 
     filepath = os.path.join(path,name)
     file = open(filepath,"w")
     file.write(json.dumps(input_dict,indent=3,sort_keys=True))
     file.close()
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
+
 
 
 def create_directory_if_doesnt_exist(*args):
@@ -244,12 +241,12 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
 def save_variable(input_dict,variable, flag = 'FLAG'):
 
     if input_dict["output_filename"] == "":
-        savename = os.path.join(input_dict['output_path'],input_dict["acquisition_folders"][0]+ '_' + flag)
+        savename = input_dict["acquisition_folders"][0]+ '_' + flag
     else:
-        savename = os.path.join(input_dict['output_path'],input_dict["output_filename"] + '_' + flag)
+        savename = input_dict["output_filename"] + '_' + flag
 
-    np.save(savename, variable)
-    save_plots(variable,path=savename)
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon',savename,variable)
+
 
 
 def wavelength_from_energy(energy_keV):
@@ -355,3 +352,37 @@ def plot_error(error,path='',log=False):
         ax.set_yscale('log')
     if path != '':
         fig.savefig(path)
+
+    
+
+def add_to_hdf5_group(path,group,name,data,mode="a"):
+    hdf5_output = h5py.File(path, mode)
+    hdf5_output[group].create_dataset(name,data=data)
+    hdf5_output.close()
+
+
+
+def combine_volume(*args):
+    shape = np.load(args[0]).shape
+    volume = np.empty((0,shape[0],shape[1]))
+    for arg in args:
+        data = np.load(arg)
+        volume = np.concatenate((volume,data),axis=0)
+    return volume
+
+def save_volume_from_parts(input_dict):
+    
+    print("Combining objects into single file...")
+    objects = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="object.npy")[0]
+    volume = combine_volume(objects)
+    np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_object.npy"), volume)
+
+    print("Combining probes into single file...")
+    probes = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="probe.npy")[0]
+    volume = combine_volume(probes)
+    np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_probe.npy"), volume)
+
+    print("Deleting temporary object and probe files...")
+    delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
+
+    
