@@ -55,11 +55,20 @@ def restoration_CAT(input_dict):
             dic['roi'] = min(min(input_dict["DP_center"][1],detector_size-input_dict["DP_center"][1]),min(input_dict["DP_center"][0],detector_size-input_dict["DP_center"][0])) # get the biggest size possible such that the restored difpad is still squared
         else:
             dic['roi'] = input_dict["detector_ROI_radius"] # integer
-        dic['daxpy']    = [0,np.zeros([3072,3072])] 
-        dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072]) #
-        dic['mask']     = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # np.zeros([3072, 3072])
+        if input_dict["debug"]: 
+            print(dic)
+            dic['flat'] = np.ones([3072, 3072]) 
+            dic['mask'] = np.zeros([3072, 3072])
+        else:
+            dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072]) #
+            dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # np.zeros([3072, 3072])
         dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
+        dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['geometry'] = geometry
+
+        if input_dict["debug"]:
+            print(f"Flat shape: ",dic['flat'].shape)
+            print(f"Mask shape: ",dic['mask'].shape)
 
         if len(filepaths) == 1:
             dic['path'] = dic['path'][0]
