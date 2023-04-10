@@ -1,12 +1,7 @@
-import os, sys, json, time
+import os, sys, json
+import h5py
 import numpy as np
-import uuid
-import SharedArray as sa
-import multiprocessing
-import multiprocessing.sharedctypes
-import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
-from numpy.fft import fftshift, fft2, ifft2
 
 """ Sirius Scientific Computing Imports """
 import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
@@ -14,7 +9,7 @@ from sscPimega import pi540D
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group
 from ..ptycho.ptychography import  call_G_ptychography
 from .cat_restoration import Geometry
 
@@ -22,12 +17,17 @@ from .cat_restoration import Geometry
 
 def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
 
+    input_dict["restoration_id"] = restored_data_info_list
+
     if strategy == "serial":
 
         angles_file = []
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
             filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+
+            if input_dict['projections'] != []: # remove unwanted frame from list
+                filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths, filenames)
 
             for file_number, (filepath,filename) in enumerate(zip(filepaths,filenames)):
 
@@ -37,21 +37,23 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 restored_data_info = restored_data_info_list[folder_number]
 
                 """ Read Diffraction Patterns for one angle """
-                if len(filepaths) > 1:
+                if len(input_dict["projections"]) > 1:
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
                 else:
                     DPs, DP_avg, DP_raw_avg = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
 
-                DPs = DPs[1::] # DEBUG
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
                 if frame == 0: 
                     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
                     estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
                     print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-                    save_mean_DPs(input_dict,DP_avg, DP_raw_avg)
+                    # save_mean_DPs(input_dict,DP_avg, DP_raw_avg)
+                    add_to_hdf5_group(input_dict["hdf5_output"],'log','DP_avg',DP_avg)
+                    add_to_hdf5_group(input_dict["hdf5_output"],'log','raw_DP_avg',DP_raw_avg)
+
 
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
@@ -61,7 +63,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     input_dict = set_object_shape(DPs.shape,input_dict, probe_positions, input_dict["object_padding"])
                     sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                     probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                
+                    errors = []
+
                 run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
 
                 """ Call Ptycho """
@@ -72,17 +75,24 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
                     angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
-                    sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                    sinogram[frame, :, :], probes[frame, :, :], error = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                    errors.append(error)
+
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_object.npy"),sinogram[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_probe.npy"),probes[frame])
+
                 """ Clean DPs temporary data """
-                if len(filepaths) > 1:
+                if len(input_dict["projections"]) > 1:
                     pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
                 else:
                     pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
-                os.rmdir(input_dict["temporary_output"]) # delete temporary folder
 
-        np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
+
+        add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(errors))
+        add_to_hdf5_group(input_dict["hdf5_output"],'recon','angles',angles_file)
+        # np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
 
     return sinogram, probes, input_dict, probe_positions
 
@@ -101,7 +111,8 @@ def define_paths(input_dict):
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
     input_dict["output_path"]  = os.path.join(beamline_outputs_path,input_dict["custom_output_folder"])
-    input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp/')
+    input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
+    input_dict["temporary_output_recons"]  = os.path.join(input_dict["output_path"],'recons')
 
     create_output_directories(input_dict) # create all output directories of interest
     delete_files_if_not_empty_directory(input_dict["temporary_output"])
@@ -122,13 +133,30 @@ def define_paths(input_dict):
     input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
     input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
+
+    input_dict["datetime"] = get_datetime(input_dict)
+
+    input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file
+    hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
+    hdf5_output.create_group("recon")
+    hdf5_output.create_group("log")
+
     return input_dict
 
+
+def get_datetime(input_dict):
+    from datetime import datetime
+    now = datetime.now()
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    name = input_dict["acquisition_folders"][0]
+    datetime = dt_string + "_" + name.split('.')[0]
+    return datetime 
 
 def create_output_directories(input_dict):
     if input_dict["output_path"] != "": # if no path is given, create directory
         create_directory_if_doesnt_exist(input_dict["output_path"])
         create_directory_if_doesnt_exist(input_dict["temporary_output"])
+        create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
 
 def get_files_of_interest(input_dict,acquistion_folder=''):
@@ -206,8 +234,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         line = str(line)
         if line_counter < 1:
             angle = float(line.split(':')[1].split('\t')[0]) # get rotation angle for that frame
-        elif line_counter == 1:
-            pass
+        # elif line_counter == 1:
+            # pass
         else:  # skip first line, which is the header;
 
             positions_x = float(line.split()[1])
@@ -233,7 +261,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 
-    np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
+    # np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','positions',probe_positions)
 
     return probe_positions, angle
 
@@ -364,7 +393,7 @@ def autocrop_miqueles_operatorT(image):
         return img
 
     from skimage.morphology import square, erosion, convex_hull_image
-
+    import skimage
     img = np.angle(image) ### um certo frame, que vem direto de ptycho
     img_gradient = skimage.filters.scharr(img)
     img_gradient = skimage.util.img_as_ubyte(img_gradient / img_gradient.max())

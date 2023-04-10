@@ -4,7 +4,7 @@ import numpy as np
 import sys, os
 import sscPtycho
 from ..processing.propagation import calculate_fresnel_number
-from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage, plot_error
+from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage, plot_error, add_to_hdf5_group
 
 def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
 
@@ -71,10 +71,10 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             loop_counter += 1
             error = np.concatenate((error,datapack["error"]),axis=0)
 
-    np.save(os.path.join(input_dict["output_path"],f"error.npy"),error)
-    plot_error(error,path=os.path.join(input_dict["output_path"],f"error.png"),log=True)
+    # np.save(os.path.join(input_dict["output_path"],f"error.npy"),error)
+    # plot_error(error,path=os.path.join(input_dict["output_path"],f"error.png"),log=True)
 
-    return datapack['obj'], datapack['probe']
+    return datapack['obj'], datapack['probe'], error
 
 
 
@@ -146,7 +146,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probe_positions = append_zeros(probe_positions)
 
-    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]) ) # Compute probe: initial guess:
+    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # Compute probe: initial guess:
     
     obj = set_initial_object(input_dict) # Object initial guess:
 
@@ -162,10 +162,14 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_obj',datapack['obj'])
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack['probe'])
+
+
     return datapack, probe_positions, sigmask
 
 
-def set_initial_probe(input_dict,DP_shape):
+def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     def set_modes(probe, input_dict):
 
@@ -199,6 +203,8 @@ def set_initial_probe(input_dict,DP_shape):
             probe = np.ones(DP_shape)
         elif type == 'random':
             probe = np.random.rand(*DP_shape)
+        elif type == 'inverse':
+            probe = np.sqrt(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(DPs_avg))))
         else:
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
