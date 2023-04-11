@@ -71,8 +71,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if not run_ptycho:
                     print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction pattern!')
                     input_dict['ignored_scans'].append((folder_number,file_number))
-                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1])) # build 3D Sinogram
-                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
+                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=complex64) # build 3D Sinogram
+                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=complex64)
                     angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
                     sinogram[frame, :, :], probes[frame, :, :], error = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
@@ -247,7 +247,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
             probe_positions.append([positions_y, positions_x])
 
-    probe_positions = np.asarray(probe_positions) # convert list of lists to numpy array
+    probe_positions = np.asarray(probe_positions).astype(np.float32) # convert list of lists to numpy array
 
     n_of_positions = probe_positions.shape[0]
 
