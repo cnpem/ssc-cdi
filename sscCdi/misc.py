@@ -364,7 +364,7 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
 
 def combine_volume(*args):
     shape = np.load(args[0]).shape
-    volume = np.empty((0,*shape))
+    volume = np.empty((0,*shape),dtype=np.float32)
     for arg in args:
         data = np.load(arg)
         data = np.expand_dims(data,axis=0)

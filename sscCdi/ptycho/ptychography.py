@@ -71,8 +71,8 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             loop_counter += 1
             error = np.concatenate((error,datapack["error"]),axis=0)
 
-    # np.save(os.path.join(input_dict["output_path"],f"error.npy"),error)
-    # plot_error(error,path=os.path.join(input_dict["output_path"],f"error.png"),log=True)
+    datapack['obj'] = datapack['obj'].astype(np.float32)
+    datapack['probe'] = datapack['probe'].astype(np.float32)
 
     return datapack['obj'], datapack['probe'], error
 
@@ -217,6 +217,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     else:
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
+    probe = probe.astype(np.float32)
     probe = np.expand_dims(probe,axis=0)
 
     probe = set_modes(probe, input_dict) # add incoherent modes 
@@ -244,7 +245,7 @@ def set_initial_object(input_dict):
         else:
             sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 
-        return obj
+        return obj.astype(np.float32)
 
 
 
