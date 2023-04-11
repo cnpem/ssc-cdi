@@ -364,9 +364,10 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
 
 def combine_volume(*args):
     shape = np.load(args[0]).shape
-    volume = np.empty((0,shape[0],shape[1]))
+    volume = np.empty((0,*shape))
     for arg in args:
         data = np.load(arg)
+        data = np.expand_dims(data,axis=0)
         volume = np.concatenate((volume,data),axis=0)
     return volume
 
@@ -374,12 +375,13 @@ def save_volume_from_parts(input_dict):
     
     print("Combining objects into single file...")
     objects = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="object.npy")[0]
-    volume = combine_volume(objects)
+    print(objects)
+    volume = combine_volume(*objects)
     np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_object.npy"), volume)
 
     print("Combining probes into single file...")
     probes = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="probe.npy")[0]
-    volume = combine_volume(probes)
+    volume = combine_volume(*probes)
     np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_probe.npy"), volume)
 
     print("Deleting temporary object and probe files...")
