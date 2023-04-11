@@ -58,11 +58,13 @@ if __name__ == '__main__':
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
+    object, probe = sscCdi.misc.save_volume_from_parts(input_dict)
+    
     print('\nSaving Object of shape: ',object.shape)
     sscCdi.misc.save_variable(input_dict, object,flag='object')
+  
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
-    sscCdi.misc.save_volume_from_parts(input_dict)
 
     sscCdi.misc.save_json_logfile(input_dict) # overwrite logfile with new information
 

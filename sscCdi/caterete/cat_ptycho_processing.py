@@ -31,7 +31,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
             for file_number, (filepath,filename) in enumerate(zip(filepaths,filenames)):
 
-                frame = file_number + folder_number*len(filenames) # attribute singular value to each angle
+                frame =  file_number + folder_number*len(filenames) # attribute singular value to each angle
 
                 restoration_dict = restoration_dict_list[folder_number]
                 restored_data_info = restored_data_info_list[folder_number]
@@ -80,8 +80,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_object.npy"),sinogram[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_probe.npy"),probes[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_object.npy"),sinogram[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_probe.npy"),probes[frame])
 
                 """ Clean DPs temporary data """
                 if len(input_dict["projections"]) > 1:

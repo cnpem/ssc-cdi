@@ -375,16 +375,13 @@ def save_volume_from_parts(input_dict):
     
     print("Combining objects into single file...")
     objects = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="object.npy")[0]
-    print(objects)
-    volume = combine_volume(*objects)
-    np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_object.npy"), volume)
+    object = combine_volume(*objects)
 
     print("Combining probes into single file...")
     probes = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="probe.npy")[0]
-    volume = combine_volume(*probes)
-    np.save(os.path.join(input_dict["output_path"],input_dict["acquisition_folders"][0]+"_probe.npy"), volume)
+    probes = combine_volume(*probes)
 
     print("Deleting temporary object and probe files...")
     delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
 
-    
+    return object, probes 
