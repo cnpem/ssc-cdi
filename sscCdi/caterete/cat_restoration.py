@@ -62,13 +62,12 @@ def restoration_CAT(input_dict):
         else:
             dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072]) #
             dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # np.zeros([3072, 3072])
-        dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;        dic['daxpy']    = [0,np.zeros([3072,3072])] 
+        if os.path.isfile(input_dict["empty"]):
+            dic['empty'] = read_hdf5(input_dict["empty"])[()][0, 0, :, :] 
+        else:
+            dic['empty'] = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;      
         dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['geometry'] = geometry
-
-        if input_dict["debug"]:
-            print(f"Flat shape: ",dic['flat'].shape)
-            print(f"Mask shape: ",dic['mask'].shape)
 
         if len(filepaths) == 1:
             dic['path'] = dic['path'][0]
