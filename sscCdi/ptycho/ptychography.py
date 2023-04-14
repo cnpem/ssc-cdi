@@ -160,6 +160,11 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
+    np.save(os.path.join(input_dict["output_path"],'used_pos_new.npy'),datapack['rois'])
+    np.save(os.path.join(input_dict["output_path"],'used_DPs_new.npy'),datapack['difpads'])
+    np.save(os.path.join(input_dict["output_path"],'used_init_obj_new.npy'),datapack['obj'])
+    np.save(os.path.join(input_dict["output_path"],'used_init_probe_new.npy'),datapack['probe'])
+
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
     add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_obj',datapack['obj'])

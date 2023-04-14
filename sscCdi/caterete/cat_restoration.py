@@ -62,7 +62,7 @@ def restoration_CAT(input_dict):
         else:
             dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072]) #
             dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :] # np.zeros([3072, 3072])
-        dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
+        dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;        dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['daxpy']    = [0,np.zeros([3072,3072])] 
         dic['geometry'] = geometry
 

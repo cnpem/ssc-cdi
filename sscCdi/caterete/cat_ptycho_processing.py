@@ -43,7 +43,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     DPs, DP_avg, DP_raw_avg = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
-
+                DPs = DPs[1::]
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
                 if frame == 0: 
@@ -133,6 +133,7 @@ def define_paths(input_dict):
     input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
     input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
+    input_dict["empty"]                = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
 
     input_dict["datetime"] = get_datetime(input_dict)
 
@@ -234,8 +235,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         line = str(line)
         if line_counter < 1:
             angle = float(line.split(':')[1].split('\t')[0]) # get rotation angle for that frame
-        # elif line_counter == 1:
-            # pass
+        elif line_counter == 1:
+            pass
         else:  # skip first line, which is the header;
 
             positions_x = float(line.split()[1])
