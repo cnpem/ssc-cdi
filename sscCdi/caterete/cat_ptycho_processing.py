@@ -115,7 +115,6 @@ def define_paths(input_dict):
     create_output_directories(input_dict) # create all output directories of interest
     delete_files_if_not_empty_directory(input_dict["temporary_output"])
 
-
     input_dict['scans_string'] = 'scans'
     input_dict['positions_string']  = 'positions'
 
