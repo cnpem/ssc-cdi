@@ -46,7 +46,7 @@ if __name__ == '__main__':
     if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')
         phase = sscCdi.caterete.unwrap_in_parallel(object, input_dict["phase_unwrap"]) 
-        np.save(os.path.join(input_dict["output_path"],'unwrapped_object.npy',phase))
+        sscCdi.misc.save_variable(input_dict,phase, flag = 'object_unwrapped')
 
     if input_dict["FRC"] != []:
         print('\tCalculating Fourier Ring Correlation...')
@@ -66,7 +66,8 @@ if __name__ == '__main__':
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 
-    sscCdi.misc.save_json_logfile(input_dict) # overwrite logfile with new information
+    sscCdi.misc.save_json_logfile(input_dict) 
+    sscCdi.misc.delete_temporary_folders(input_dict)
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1

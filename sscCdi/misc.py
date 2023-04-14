@@ -238,14 +238,6 @@ def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
         plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
 
 
-def save_variable(input_dict,variable, flag = 'FLAG'):
-
-    if input_dict["output_filename"] == "":
-        savename = input_dict["acquisition_folders"][0]+ '_' + flag
-    else:
-        savename = input_dict["output_filename"] + '_' + flag
-
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon',savename,variable)
 
 
 def wavelength_from_energy(energy_keV):
@@ -353,6 +345,9 @@ def plot_error(error,path='',log=False):
         fig.savefig(path)
 
     
+def save_variable(input_dict,variable, flag = 'FLAG'):
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
     hdf5_output = h5py.File(path, mode)
@@ -385,4 +380,5 @@ def save_volume_from_parts(input_dict):
     return object, probes 
 
 def delete_temporary_folders(input_dict):
-    pass
+    if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
+    if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
