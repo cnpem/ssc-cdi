@@ -40,7 +40,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if len(input_dict["projections"]) > 1:
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
                 else:
-                    DPs, DP_avg, DP_raw_avg = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+                    DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
                 DPs = DPs[1::]
@@ -50,9 +50,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
                     estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
                     print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-                    # save_mean_DPs(input_dict,DP_avg, DP_raw_avg)
-                    add_to_hdf5_group(input_dict["hdf5_output"],'log','DP_avg',DP_avg)
-                    add_to_hdf5_group(input_dict["hdf5_output"],'log','raw_DP_avg',DP_raw_avg)
 
 
                 """ Read positions """
@@ -407,16 +404,29 @@ def autocrop_miqueles_operatorT(image):
     return image
 
 
-def calculate_FRC(image, input_dict):
+def calculate_FRC(sinogram, input_dict):
 
-    frame     = input_dict["FRC"][0]
-    padding   = input_dict["FRC"][1]
-    sharpness = input_dict["FRC"][2]
-    radius    = input_dict["FRC"][3]
 
-    wimg = sscResolution.frc.window( image, padding, [sharpness, radius] )
-    dic  = sscResolution.frc.computep( wimg , input_dict["CPUs"] ) 
-    sscResolution.frc.plot(dic, {'label': "Resolution", 'unit': "nm", 'pxlsize': input_dict["object_pixel"]},savepath=os.path.join(input_dict["output_path"],'frc.png') )
+    start, size = input_dict["FRC"][1], input_dict["FRC"][2]
+    print(img.shape)
+    img = sinogram[input_dict["FRC"][0]]
+    if img.shape[0] != img.shape[1]:
+        img = img[start:start+size,start:start+size]
+
+    padding = input_dict["FRC"][3]
+    sharpness = input_dict["FRC"][4]
+    radius = input_dict["FRC"][5]
+    wimg = sscResolution.frc.window( img, padding, [sharpness, radius] )
+    dic = sscResolution.frc.computep( wimg , input_dict["CPUs"] ) 
+    
+    halfbit  = dic['x']['even']['halfbit']
+    resolution = 1e9*input_dict["object_pixel"]/halfbit
+    print(f"\t Resolution via FRC = {resolution} nm")
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
 def auto_crop_noise_borders(complex_array):

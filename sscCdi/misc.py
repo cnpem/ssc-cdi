@@ -346,7 +346,6 @@ def plot_error(error,path='',log=False):
 
     
 def save_variable(input_dict,variable, flag = 'FLAG'):
-
     add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
