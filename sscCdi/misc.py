@@ -248,7 +248,6 @@ def save_variable(input_dict,variable, flag = 'FLAG'):
     add_to_hdf5_group(input_dict["hdf5_output"],'recon',savename,variable)
 
 
-
 def wavelength_from_energy(energy_keV):
     """ Constants """
     speed_of_light = 299792458  # Speed of Light [m/s]
@@ -361,7 +360,6 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
     hdf5_output.close()
 
 
-
 def combine_volume(*args):
     shape = np.load(args[0]).shape
     volume = np.empty((0,*shape),dtype=np.float32)
@@ -385,3 +383,6 @@ def save_volume_from_parts(input_dict):
     delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
 
     return object, probes 
+
+def delete_temporary_folders(input_dict):
+    pass

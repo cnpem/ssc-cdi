@@ -71,8 +71,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if not run_ptycho:
                     print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction pattern!')
                     input_dict['ignored_scans'].append((folder_number,file_number))
-                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=complex64) # build 3D Sinogram
-                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=complex64)
+                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # build 3D Sinogram
+                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
                     sinogram[frame, :, :], probes[frame, :, :], error = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
@@ -89,10 +89,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
 
-
         add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(errors))
         add_to_hdf5_group(input_dict["hdf5_output"],'recon','angles',angles_file)
-        # np.savetxt(os.path.join(input_dict["output_path"],"angles.txt"),angles_file,delimiter='\t',header = "frame\tbad\tangle_radians\tangle_degrees")
 
     return sinogram, probes, input_dict, probe_positions
 
@@ -262,7 +260,6 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 
-    # np.savetxt(os.path.join(input_dict["output_path"],"probe_positions_pxls.txt"),probe_positions) # save positions in pixels
     add_to_hdf5_group(input_dict["hdf5_output"],'recon','positions',probe_positions)
 
     return probe_positions, angle

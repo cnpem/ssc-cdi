@@ -71,8 +71,8 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
             loop_counter += 1
             error = np.concatenate((error,datapack["error"]),axis=0)
 
-    datapack['obj'] = datapack['obj'].astype(np.float32)
-    datapack['probe'] = datapack['probe'].astype(np.float32)
+    datapack['obj'] = datapack['obj'].astype(np.complex64)
+    datapack['probe'] = datapack['probe'].astype(np.complex64)
 
     return datapack['obj'], datapack['probe'], error
 
@@ -159,11 +159,6 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     print(f"\nDiffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}\n")
     
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
-
-    np.save(os.path.join(input_dict["output_path"],'used_pos_new.npy'),datapack['rois'])
-    np.save(os.path.join(input_dict["output_path"],'used_DPs_new.npy'),datapack['difpads'])
-    np.save(os.path.join(input_dict["output_path"],'used_init_obj_new.npy'),datapack['obj'])
-    np.save(os.path.join(input_dict["output_path"],'used_init_probe_new.npy'),datapack['probe'])
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
