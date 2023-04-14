@@ -48,13 +48,13 @@ if __name__ == '__main__':
         phase = sscCdi.caterete.unwrap_in_parallel(object, input_dict["phase_unwrap"]) 
         sscCdi.misc.save_variable(input_dict,phase, flag = 'object_unwrapped')
 
-    if input_dict["FRC"] != []:
-        print('\tCalculating Fourier Ring Correlation...')
-        if input_dict['phase_unwrap'] != []: # if unwrapping, FRC is calculated on phase image
-            img = phase[input_dict["FRC"][0]]
-        else: # else, on the absorption image
-            img = np.abs(object)[input_dict["FRC"][0]] 
-        sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
+    # if input_dict["FRC"] != []:
+        # print('\tCalculating Fourier Ring Correlation...')
+        # if input_dict['phase_unwrap'] != []: # if unwrapping, FRC is calculated on phase image
+            # img = phase[input_dict["FRC"][0]]
+        # else: # else, on the absorption image
+            # img = np.abs(object)[input_dict["FRC"][0]] 
+        # sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
 
     t5 = time.time()
     """ ===================== Save and preview data ===================== """
