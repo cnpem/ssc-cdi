@@ -192,7 +192,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
         type = input_dict['initial_probe'][0]
 
         if type == 'circular':
-            probe = create_circular_mask(input_dict["DP_center"],input_dict['initial_probe'][1],DP_shape)
+            probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
         elif type == 'squared':
             probe = create_rectangular_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1])
         elif type == 'rectangular':
