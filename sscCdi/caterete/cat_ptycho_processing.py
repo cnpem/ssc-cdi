@@ -44,6 +44,9 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
                 DPs = DPs[1::]
+
+                # add_to_hdf5_group(input_dict["hdf5_output"],'recon','DP_avg',np.mean(DPs,axis=0)) #DEBUG
+
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
                 if frame == 0: 
@@ -135,6 +138,7 @@ def define_paths(input_dict):
     hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
     hdf5_output.create_group("recon")
     hdf5_output.create_group("log")
+    hdf5_output.create_group("frc")
 
     return input_dict
 
@@ -404,12 +408,11 @@ def autocrop_miqueles_operatorT(image):
     return image
 
 
-def calculate_FRC(sinogram, input_dict):
+def calculate_FRC(img, input_dict):
 
 
     start, size = input_dict["FRC"][1], input_dict["FRC"][2]
-    print(img.shape)
-    img = sinogram[input_dict["FRC"][0]]
+
     if img.shape[0] != img.shape[1]:
         img = img[start:start+size,start:start+size]
 
@@ -421,7 +424,7 @@ def calculate_FRC(sinogram, input_dict):
     
     halfbit  = dic['x']['even']['halfbit']
     resolution = 1e9*input_dict["object_pixel"]/halfbit
-    print(f"\t Resolution via FRC = {resolution} nm")
+    print(f"\tResolution via halfbit criterion: {resolution:.2f} nm")
 
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)

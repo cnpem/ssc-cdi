@@ -247,9 +247,9 @@ def wavelength_from_energy(energy_keV):
     return planck * speed_of_light / energy_keV
 
 
-def create_circular_mask(center, radius, mask_shape):
+def create_circular_mask(mask_shape, radius):
     """ All values in pixels """
-    center_row, center_col = center
+    center_row, center_col = mask_shape
     y_array = np.arange(0, mask_shape[0], 1)
     x_array = np.arange(0, mask_shape[1], 1)
     Xmesh, Ymesh = np.meshgrid(x_array, y_array)

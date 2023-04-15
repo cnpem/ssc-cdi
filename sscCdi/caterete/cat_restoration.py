@@ -50,7 +50,10 @@ def restoration_CAT(input_dict):
         dic['saving']   = 1  # save or not
         dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
-        dic['center']   = (input_dict["DP_center"][1],input_dict["DP_center"][0]) # [1400,1400]
+
+        input_dict["DP_center"][1],input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )) # change from raw to restored coordinates
+        dic['center'] = (input_dict["DP_center"][1],input_dict["DP_center"][0]) # [1400,1400]
+
         if input_dict["detector_ROI_radius"] < 0:
             dic['roi'] = min(min(input_dict["DP_center"][1],detector_size-input_dict["DP_center"][1]),min(input_dict["DP_center"][0],detector_size-input_dict["DP_center"][0])) # get the biggest size possible such that the restored difpad is still squared
         else:
