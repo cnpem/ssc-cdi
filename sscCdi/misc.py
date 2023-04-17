@@ -253,7 +253,7 @@ def create_circular_mask(mask_shape, radius):
     y_array = np.arange(0, mask_shape[0], 1)
     x_array = np.arange(0, mask_shape[1], 1)
     Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    return np.where((Xmesh - center_col) ** 2 + (Ymesh - center_row) ** 2 <= radius ** 2, 1, 0)
+    return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
 
 def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
     if length_x == 0: length_x = length_y

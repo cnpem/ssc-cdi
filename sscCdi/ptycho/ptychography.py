@@ -8,15 +8,21 @@ from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_
 
 def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
 
-    if initial_obj != np.ones(1):
-        input_dict["initial_obj"] = initial_obj
-    if initial_probe != np.ones(1):
-        input_dict["initial_probe"] = initial_probe
-
     probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
 
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_obj',datapack['obj'])
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack['probe'])
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','DPs',datapack['difpads'])
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','sigmask',sigmask)
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','pos2',datapack['rois'])
+
+    # datapack['obj'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_init_obj.npy")
+    # datapack['probe'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_init_probe.npy")
+    # datapack['difpads'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_DPs.npy")
+    # datapack['rois'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_pos.npy")    
+    
     print(f'\nStarting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
     loop_counter = 1
@@ -133,7 +139,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
         zeros = np.zeros((probe_positions.shape[0],1))
         probe_positions = np.concatenate((probe_positions,zeros),axis=1)
         probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
-        probe_positions2 = np.zeros_like(probe_positions)
+        probe_positions2 = np.ones_like(probe_positions)
         probe_positions2[:,0] = probe_positions[:,1] # change x and y column order
         probe_positions2[:,1] = probe_positions[:,0]
         return probe_positions2
@@ -148,7 +154,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # Compute probe: initial guess:
     
-    obj = set_initial_object(input_dict) # Object initial guess:
+    obj = set_initial_object(input_dict,DPs,probe) # Object initial guess:
 
     sigmask = set_sigmask(DPs)  # mask of 1 and 0:
 
@@ -161,10 +167,6 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
-
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_obj',datapack['obj'])
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack['probe'])
-
 
     return datapack, probe_positions, sigmask
 
@@ -193,6 +195,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
         if type == 'circular':
             probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
+            probe = probe + 1j*probe
         elif type == 'squared':
             probe = create_rectangular_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1])
         elif type == 'rectangular':
@@ -204,7 +207,8 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
         elif type == 'random':
             probe = np.random.rand(*DP_shape)
         elif type == 'inverse':
-            probe = np.sqrt(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(DPs_avg))))
+            ft = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(DPs_avg)))
+            probe = np.sqrt(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         else:
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
@@ -217,15 +221,16 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     else:
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
-    probe = probe.astype(np.float32)
+    probe = probe.astype(np.complex64)
     probe = np.expand_dims(probe,axis=0)
 
     probe = set_modes(probe, input_dict) # add incoherent modes 
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','probe_aftermodes',probe)
 
     return probe
 
 
-def set_initial_object(input_dict):
+def set_initial_object(input_dict,DPs, probe):
 
         print('Creating initial object...')
 
@@ -234,7 +239,7 @@ def set_initial_object(input_dict):
             if type == 'constant':
                 obj = np.ones(input_dict["object_shape"])
             elif type == 'random':
-                obj = np.random.rand(*input_dict["object_shape"])
+                obj = np.random.rand(*input_dict["object_shape"]) * (np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2)))
             elif type == 'initialize':
                 pass #TODO: implement method from https://doi.org/10.1364/OE.465397
         elif isinstance(input_dict['initial_obj'],str): 
@@ -245,7 +250,7 @@ def set_initial_object(input_dict):
         else:
             sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 
-        return obj.astype(np.float32)
+        return obj.astype(np.complex64)
 
 
 
