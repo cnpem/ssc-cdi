@@ -51,7 +51,7 @@ def restoration_CAT(input_dict):
         dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
 
-        input_dict["DP_center"][1],input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )) # change from raw to restored coordinates
+        # input_dict["DP_center"][1],input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )) # change from raw to restored coordinates
         dic['center'] = (input_dict["DP_center"][1],input_dict["DP_center"][0]) # [1400,1400]
 
         if input_dict["detector_ROI_radius"] < 0:
