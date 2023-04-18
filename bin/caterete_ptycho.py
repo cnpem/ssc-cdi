@@ -1,13 +1,13 @@
 from sys import argv
 import numpy as np
-import os, time, json
+import time, json
 
 """ Sirius Scientific Computing Imports """
 import sscCdi
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++
 #
-# MAIN APPLICATION (for SIRIUS' CATERETE beamline)
+# MAIN APPLICATION (for SIRIUS CATERETE beamline)
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
