@@ -67,8 +67,6 @@ if __name__ == '__main__':
     print('Saving Probe...')
     sscCdi.ptycho.ptycho_processing.save_variable(probe, os.path.join(input_dict['ReconsPath'], input_dict["acquisition_folders"][0]) + '_probe' )
 
-    for i in range(phase.shape[0]):
-        sscCdi.ptycho.ptycho_processing.preview_ptycho(input_dict, phase, absol, probe, frame=i)
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1

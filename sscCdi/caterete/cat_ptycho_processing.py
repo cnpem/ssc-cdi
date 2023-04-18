@@ -38,14 +38,11 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 """ Read Diffraction Patterns for one angle """
                 if len(input_dict["projections"]) > 1:
-                    DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number)
+                    DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
-                DPs = DPs[1::]
-
-                # add_to_hdf5_group(input_dict["hdf5_output"],'recon','DP_avg',np.mean(DPs,axis=0)) #DEBUG
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
@@ -54,36 +51,35 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
                     print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
 
-
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
                 print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-                if file_number == 0 and folder_number == 0: # Compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                    input_dict = set_object_shape(DPs.shape,input_dict, probe_positions, input_dict["object_padding"])
+                if file_number == 0 and folder_number == 0: # computes object size, object pixel size for the first frame and use it in all 3D ptycho
+                    input_dict = set_object_shape(input_dict, DPs.shape, probe_positions, input_dict["object_padding"])
                     sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                     probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     errors = []
 
-                run_ptycho = np.any(probe_positions)  # check if probe_positions == null matrix. If so, won't run current iteration
+                run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
 
                 """ Call Ptycho """
                 if not run_ptycho:
-                    print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction pattern!')
+                    print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
                     input_dict['ignored_scans'].append((folder_number,file_number))
-                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # build 3D Sinogram
+                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
                     sinogram[frame, :, :], probes[frame, :, :], error = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
                     errors.append(error)
-
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
+                """ Save single frame of object and probe to temporary folder"""
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_object.npy"),sinogram[frame])
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_probe.npy"),probes[frame])
 
-                """ Clean DPs temporary data """
+                """ Clean restored DPs temporary data """
                 if len(input_dict["projections"]) > 1:
                     pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
                 else:
@@ -98,6 +94,14 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
 
 def define_paths(input_dict):
+    """ Defines paths of interest for the ptychographic reconstruction and adds them to dictionary variable. Creates folders of interest and instantiates hdf5 output file
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+
+    Returns:
+        input_dict: updated input dictionary
+    """
     if 'PreviewGCC' not in input_dict: input_dict['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
     
     #=========== Set Parameters and Folders =====================
@@ -144,6 +148,14 @@ def define_paths(input_dict):
 
 
 def get_datetime(input_dict):
+    """ Get custom str with acquisition name and current datetime to use as filename
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+
+    Returns:
+        datetime (str): custom date-time string
+    """
     from datetime import datetime
     now = datetime.now()
     dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
@@ -152,18 +164,30 @@ def get_datetime(input_dict):
     return datetime 
 
 def create_output_directories(input_dict):
+    """ Create output directory and temporary folders in it
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+
+    """
     if input_dict["output_path"] != "": # if no path is given, create directory
         create_directory_if_doesnt_exist(input_dict["output_path"])
         create_directory_if_doesnt_exist(input_dict["temporary_output"])
         create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
 
-def get_files_of_interest(input_dict,acquistion_folder=''):
+def get_files_of_interest(input_dict):
+    """ Get filepaths and filenames of the data 
 
-    if acquistion_folder != '':
-            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] , acquistion_folder,input_dict['scans_string'] ), look_for_extension=".hdf5")
-    else:
-        filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] , input_dict["acquisition_folders"][0],input_dict['scans_string'] ), look_for_extension=".hdf5")
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+
+    Returns:
+        filenames: list of all data file names
+        filepaths: absolute path to all data file paths
+    """
+
+    filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] ,"", input_dict['scans_string'] ), look_for_extension=".hdf5")
 
     if input_dict['projections'] != []:
         filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths, filenames)
@@ -171,7 +195,18 @@ def get_files_of_interest(input_dict,acquistion_folder=''):
     return filepaths, filenames
 
 
-def set_object_shape(DP_shape,input_dict,probe_positions,offset_bottomright):
+def set_object_shape(input_dict,DP_shape,probe_positions,offset_bottomright):
+    """ Determines shape (Y,X) of object matrix from size of probe and its positions.
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        DP_shape (tuple): shape of the diffraction patterns array
+        probe_positions (numpy array): array os probe positiions in pixels 
+        offset_bottomright (int): value in pixels to pad the object array size
+
+    Returns:
+        input_dict (dict)): updated input dictionary containing object_shape information
+    """
 
     DP_size_y = DP_shape[1]
     DP_size_x = DP_shape[2]
@@ -182,9 +217,7 @@ def set_object_shape(DP_shape,input_dict,probe_positions,offset_bottomright):
     maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    # input_dict["object_shape"] = (object_shape_y, object_shape_x)
-    input_dict["object_shape"] = (object_shape_x,object_shape_x)
-
+    input_dict["object_shape"] = (object_shape_y, object_shape_x)
     return input_dict
 
 
@@ -217,6 +250,18 @@ def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions
 
 
 def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram_shape):
+    """ Read raw probe positions file (in microns) and convert them to pixels. Also read the rotation angle of the frame for tomography measurements.
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        acquisitions_folder (_type_): _description_
+        measurement_file (_type_): _description_
+        sinogram_shape (tuple): shape of diffraction patterns array
+
+    Returns:
+        probe_positions (numpy array): array (Y,X) of probe positions in pixels
+        angle (float): rotation angle in radians
+    """
 
     def rotate_coordinate_system(angle_rad,px,py):
         px_rotated = np.cos(angle_rad) * px - np.sin(angle_rad) * py
