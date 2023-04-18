@@ -11,17 +11,6 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
     probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
 
     datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
-
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_obj',datapack['obj'])
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack['probe'])
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','DPs',datapack['difpads'])
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','sigmask',sigmask)
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','pos2',datapack['rois'])
-
-    # datapack['obj'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_init_obj.npy")
-    # datapack['probe'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_init_probe.npy")
-    # datapack['difpads'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_DPs.npy")
-    # datapack['rois'] = np.load("/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/bertha_old_new/used_pos.npy")    
     
     print(f'\nStarting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
@@ -225,7 +214,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     probe = np.expand_dims(probe,axis=0)
 
     probe = set_modes(probe, input_dict) # add incoherent modes 
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','probe_aftermodes',probe)
 
     return probe
 
@@ -239,7 +227,8 @@ def set_initial_object(input_dict,DPs, probe):
             if type == 'constant':
                 obj = np.ones(input_dict["object_shape"])
             elif type == 'random':
-                obj = np.random.rand(*input_dict["object_shape"]) * (np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2)))
+                normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
+                obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
             elif type == 'initialize':
                 pass #TODO: implement method from https://doi.org/10.1364/OE.465397
         elif isinstance(input_dict['initial_obj'],str): 
