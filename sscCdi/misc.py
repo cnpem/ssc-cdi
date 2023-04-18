@@ -203,37 +203,6 @@ def wavelength_from_energy(energy_keV):
     planck         = 4.135667662E-18  # Plank constant [keV*s]
     return planck * speed_of_light / energy_keV
 
-def create_circular_mask(mask_shape, radius):
-    """ All values in pixels """
-    center_row, center_col = mask_shape
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
-
-def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
-    """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,center_col-length_x//2:center_col+length_x//2] = 1
-    return mask 
-
-def create_cross_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
-    """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,:] = 1
-    mask[:,center_col-length_x//2:center_col+length_x//2] = 1
-    return mask 
-
 def get_array_size_bytes(array):
     """ Calculate size of array in multiples units
 
@@ -315,6 +284,18 @@ def save_variable(input_dict,variable, flag = 'FLAG'):
     add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
+    """ Add data to hdf5 file. Creates a dataset with certain name inside a pre-existing group
+
+    Args:
+        path (str): absolute path to hdf5 file
+        group (str): group name
+        name (str): dataset name
+        data: metadata to be saved
+        mode (str, optional): h5py.File option for selecting interaction mode. Defaults to "a".
+
+    Returns:
+        _type_: _description_
+    """
     hdf5_output = h5py.File(path, mode)
     hdf5_output[group].create_dataset(name,data=data)
     hdf5_output.close()
