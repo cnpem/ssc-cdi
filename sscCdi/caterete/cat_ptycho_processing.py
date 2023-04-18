@@ -16,6 +16,20 @@ from .cat_restoration import Geometry
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
 def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
+    """ Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
+    
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        restoration_dict_list: parameters from restoration function, listed for each acquisition folder
+        restored_data_info_list: parameters from restoration function, listed for each acquisition folder
+        strategy: flag to select ptychography mode. Only had "serial" mode for now.
+
+    Returns:
+        input_dict (dict): update input dictionary
+        sinogram: numpy array containing reconstructed frames
+        probe: numpy array containing reconstructed probes
+        probe_positions: numpy array containing probe positions in pixels
+    """
 
     input_dict["restoration_id"] = restored_data_info_list
 
@@ -43,32 +57,31 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
-                if frame == 0: 
-                    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                    estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                    print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-
                 """ Read positions """
                 probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
                 print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-                if file_number == 0 and folder_number == 0: # computes object size, object pixel size for the first frame and use it in all 3D ptycho
+                if file_number == 0 and folder_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
                     input_dict = set_object_shape(input_dict, DPs.shape, probe_positions, input_dict["object_padding"])
                     sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                     probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     errors = []
 
+                    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+                    estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
+                    print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
+
                 run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
 
-                """ Call Ptycho """
+                """ Call Ptychography """
                 if not run_ptycho:
-                    print(f'\t\t WARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
+                    print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
                     input_dict['ignored_scans'].append((folder_number,file_number))
                     sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     angles_file.append([frame,True,angle,angle*180/np.pi])
                 else:
-                    sinogram[frame, :, :], probes[frame, :, :], error = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                    sinogram[frame, :, :], probes[frame, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
                     errors.append(error)
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
@@ -85,7 +98,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
         add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(errors))
         add_to_hdf5_group(input_dict["hdf5_output"],'recon','angles',angles_file)
 
-    return sinogram, probes, input_dict, probe_positions
+    return input_dict, sinogram, probes, probe_positions
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
