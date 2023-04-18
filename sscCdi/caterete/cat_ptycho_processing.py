@@ -24,12 +24,9 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
         angles_file = []
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
-            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+            filepaths, filenames = input_dict["filepaths"], input_dict["filenames"]
 
-            if input_dict['projections'] != []: # remove unwanted frame from list
-                filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths, filenames)
-
-            for file_number, (filepath,filename) in enumerate(zip(filepaths,filenames)):
+            for file_number, filename in enumerate(filenames):
 
                 frame =  file_number + folder_number*len(filenames) # attribute singular value to each angle
 
