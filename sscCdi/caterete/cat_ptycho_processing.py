@@ -161,7 +161,7 @@ def get_datetime(input_dict):
     """ Get custom str with acquisition name and current datetime to use as filename
 
     Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
 
     Returns:
         datetime (str): custom date-time string
@@ -177,7 +177,7 @@ def create_output_directories(input_dict):
     """ Create output directory and temporary folders in it
 
     Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
 
     """
     if input_dict["output_path"] != "": # if no path is given, create directory
@@ -190,7 +190,7 @@ def set_object_shape(input_dict,DP_shape,probe_positions,offset_bottomright):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
     Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
         DP_shape (tuple): shape of the diffraction patterns array
         probe_positions (numpy array): array os probe positiions in pixels 
         offset_bottomright (int): value in pixels to pad the object array size
@@ -219,7 +219,7 @@ def set_object_pixel_size(input_dict,DP_size):
     """ Get size of object pixel given energy, distance and detector pixel size
 
     Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
         DP_size (int): lateral size of detector array
 
     Returns:
@@ -266,7 +266,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
     """ Read raw probe positions file (in microns) and convert them to pixels. Also read the rotation angle of the frame for tomography measurements.
 
     Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
         acquisitions_folder (str): specific sample/acquisition folder
         measurement_file (str): name of the file contained in the positions file
         sinogram_shape (tuple): shape of diffraction patterns array
@@ -372,7 +372,17 @@ def make_1st_frame_squared(frame):
     return frame
 
 
-def crop_sinogram(input_dict,sinogram ,probe_positions): 
+def crop_sinogram(input_dict,sinogram ,probe_positions):
+    """ Crop sinogram of 2D images manually or via automatic methods
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        sinogram (array): array with N reconstructed images. shape (N,Y,X)
+        probe_positions (array): probe positions used to crop the array automatically
+
+    Returns:
+        cropped_sinogram (array): cropped sinogram
+    """
 
     if isinstance(input_dict['crop'],list):        
         cropped_sinogram = sinogram[:,input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
@@ -409,6 +419,8 @@ def crop_sinogram(input_dict,sinogram ,probe_positions):
 
 
 def autocrop_using_scan_positions(image,input_dict,probe_positions):
+    """ Automatic crop of the field of view using the probe positions during scan
+    """
 
     probe_positions = 1e-6 * probe_positions / input_dict['object_pixel']     #scanning positions @ image domain
 
@@ -427,6 +439,8 @@ def autocrop_using_scan_positions(image,input_dict,probe_positions):
 
 
 def autocrop_miqueles_operatorT(image):
+    """ Approach to automatic cropping field of view by Eduardo Miqueles
+    """
 
     def _operator_T(u):
         d   = 1.0
@@ -461,30 +475,6 @@ def autocrop_miqueles_operatorT(image):
     chull = convex_hull_image(mask)
     image[ chull == 0 ] = 0 #cropando
     return image
-
-
-def calculate_FRC(img, input_dict):
-
-
-    start, size = input_dict["FRC"][1], input_dict["FRC"][2]
-
-    if img.shape[0] != img.shape[1]:
-        img = img[start:start+size,start:start+size]
-
-    padding = input_dict["FRC"][3]
-    sharpness = input_dict["FRC"][4]
-    radius = input_dict["FRC"][5]
-    wimg = sscResolution.frc.window( img, padding, [sharpness, radius] )
-    dic = sscResolution.frc.computep( wimg , input_dict["CPUs"] ) 
-    
-    halfbit  = dic['x']['even']['halfbit']
-    resolution = 1e9*input_dict["object_pixel"]/halfbit
-    print(f"\tResolution via halfbit criterion: {resolution:.2f} nm")
-
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
 def auto_crop_noise_borders(complex_array):
@@ -525,39 +515,42 @@ def auto_crop_noise_borders(complex_array):
     return best_crop
 
 
-def masks_application(difpad, input_dict):
+def calculate_FRC(img, input_dict):
+    """ Calculate Fourier Ring Correlation (FRC) via sscResolution package. Saves FRC result to the output hdf5 file
 
-    center_row, center_col = input_dict["DP_center"]
+    img (array): image of interest for calculating the FRC
+    input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+    
+    The input_dict entrance input_dict["FRC"] is the one of interest for this function. This is a list, where each item does one specific aspect of the FRC:
+    input_dict["FRC][0]: Selects which frame of the sinogram to calculate the FRC
 
-    if input_dict["detector_exposure"][0]: 
-        print("\t\tRemoving pixels above detector pile-up threshold")
-        mask = np.zeros_like(difpad)
-        difpad_region = np.zeros_like(difpad)
-        half_size = 128 # 128 pixels halfsize mean the region has 256^2, i.e. the size of a single chip
-        mask[center_row-half_size:center_row+half_size,center_col-half_size:center_col+half_size] = 1
-        difpad_region = np.where(mask>0,difpad,0)        
-        detector_pileup_count = 350000  # counts/sec; value according to Kalile
-        detector_exposure_time = input_dict["detector_exposure"][1]
-        difpad_rescaled = difpad_region / detector_exposure_time # apply threshold
-        difpad[difpad_rescaled > detector_pileup_count] = -1
-    elif input_dict["central_mask"][0]:  # circular central mask to block center of the difpad
-        radius = input_dict["central_mask"][1] # pixels
-        central_mask = create_circular_mask((center_row,center_col), radius, difpad.shape)
-        difpad[central_mask > 0] = -1
+    The matrix inputted for the FRC must be squared. Therefore, in case it is not, it will use the following parameters to select a start pixel (start, start) and return a matrix with a certain side
+    input_dict["FRC][1]: start:(pixel_row,pixel_column) values to crop the image to squared format. starting positions at the top-left corner
+    input_dict["FRC][2]: size: size of the square side
 
-    return difpad
+    These are parameters for filtering the image so that it is appropriate for FRC calculation
+    input_dict["FRC][3]: padding: padding on the original image (not necessary, can be = 0);
+    input_dict["FRC][4]: sharpness: sharpness of the sigmoidal window. The higher the value, the sharper the edge;
+    input_dict["FRC][5]: radius: radius of the window from the center of the image;
+    """
 
 
-def save_mean_DPs(input_dict,DP_avg, DP_raw_avg):
-    print("\tSaving mean of diffraction patterns...")
-    # geometry = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
-    # gaps = pi540D.gaps540D ( geometry )              
-    # DP_raw_avg[gaps==1] = -1
-    # DP_avg[gaps==1] = -1
-    DP_raw_avg[DP_raw_avg<0] = -1
-    DP_avg[DP_avg<0] = -1
-    print(f"\tSaving mean of DPs...")
-    np.save(input_dict['output_path'] + '/DPs_raw_mean.npy',DP_raw_avg)
-    np.save(input_dict['output_path'] + '/DPs_mean.npy',DP_avg)
+    start, size = input_dict["FRC"][1], input_dict["FRC"][2]
 
+    if img.shape[0] != img.shape[1]:
+        img = img[start:start+size,start:start+size]
 
+    padding = input_dict["FRC"][3]
+    sharpness = input_dict["FRC"][4]
+    radius = input_dict["FRC"][5]
+    wimg = sscResolution.frc.window( img, padding, [sharpness, radius] )
+    dic = sscResolution.frc.computep( wimg , input_dict["CPUs"] ) 
+    
+    halfbit  = dic['x']['even']['halfbit']
+    resolution = 1e9*input_dict["object_pixel"]/halfbit
+    print(f"\tResolution via halfbit criterion: {resolution:.2f} nm")
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
+    add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
