@@ -90,7 +90,6 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     datapack['obj'] = datapack['obj'].astype(np.complex64)
     datapack['probe'] = datapack['probe'].astype(np.complex64)
 
-    print(datapack['probe'].shape,datapack['obj'].shape)
     return datapack['obj'], datapack['probe'], error
 
 
@@ -210,12 +209,12 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
 
 def set_initial_probe(input_dict,DP_shape,DPs_avg):
-    """_summary_
+    """ Get initial probe with multiple modes, with format required by Giovanni's code
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-        DP_shape (tuple): _description_
-        DPs_avg (array): _description_
+        DP_shape (tuple): shape of single diffraction pattern
+        DPs_avg (array): average of all diffraction data
 
     Returns:
         probe: initial probe array 
@@ -244,10 +243,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
         if type == 'circular':
             probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
             probe = probe + 1j*probe
-        elif type == 'squared':
-            probe = create_rectangular_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1])
-        elif type == 'rectangular':
-            probe = create_rectangular_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1],input_dict['initial_probe'][2])
         elif type == 'cross':
             probe = create_cross_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1],input_dict['initial_probe'][2])
         elif type == 'constant':
@@ -278,48 +273,57 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
 
 def set_initial_object(input_dict,DPs, probe):
+    """ Get initial object from file at input dictionary or define a constant or random matrix for it
 
-        print('Creating initial object...')
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DPs (array): diffraction data used for calculating normalization factor
+        probe (array): probe used for calculating normalization factor
 
-        if isinstance(input_dict['initial_obj'],list):
-            type = input_dict['initial_obj'][0]
-            if type == 'constant':
-                obj = np.ones(input_dict["object_shape"])
-            elif type == 'random':
-                normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
-                obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
-            elif type == 'initialize':
-                pass #TODO: implement method from https://doi.org/10.1364/OE.465397
-        elif isinstance(input_dict['initial_obj'],str): 
-            obj = np.load(input_dict['initial_obj'])
-            obj = np.squeeze(obj)
-        elif isinstance(input_dict['initial_obj'],int):
-            obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
-        else:
-            sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
+    Returns:
+        _type_: _description_
+    """
 
-        return obj.astype(np.complex64)
+    print('Creating initial object...')
+
+    if isinstance(input_dict['initial_obj'],list):
+        type = input_dict['initial_obj'][0]
+        if type == 'constant':
+            obj = np.ones(input_dict["object_shape"])
+        elif type == 'random':
+            normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
+            obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
+        elif type == 'initialize':
+            pass #TODO: implement method from https://doi.org/10.1364/OE.465397
+    elif isinstance(input_dict['initial_obj'],str): 
+        obj = np.load(input_dict['initial_obj'])
+        obj = np.squeeze(obj)
+    elif isinstance(input_dict['initial_obj'],int):
+        obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
+    else:
+        sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
+
+    return obj.astype(np.complex64)
 
 
 def create_circular_mask(mask_shape, radius):
+    """" Create circular mask 
+
+    Args:
+        mask_shape (tuple): Y,X shape of the mask
+        radius (int): radius of the mask in pixels
+
+    Returns:
+        mask (array): circular mask of 1s and 0s
+    """
+
+
     """ All values in pixels """
     center_row, center_col = mask_shape
     y_array = np.arange(0, mask_shape[0], 1)
     x_array = np.arange(0, mask_shape[1], 1)
     Xmesh, Ymesh = np.meshgrid(x_array, y_array)
     return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
-
-
-def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
-    """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,center_col-length_x//2:center_col+length_x//2] = 1
-    return mask 
 
 
 def create_cross_mask(mask_shape,center, length_y, length_x=0):

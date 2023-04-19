@@ -64,7 +64,6 @@ if __name__ == '__main__':
 
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
-    print("aasdsa",input_dict)
 
     sscCdi.misc.save_json_logfile(input_dict) 
     sscCdi.misc.delete_temporary_folders(input_dict)
@@ -73,7 +72,7 @@ if __name__ == '__main__':
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
     print('\n')
-    print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
+    print(f'Restoration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
     print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes ({100*(time_elapsed_ptycho)/(t6 - t0):.0f}%)')
     print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes ({100*(t5 - t4)/(t6 - t0):.0f}%)')
     print(f'Save time:             {t6 - t5:.2f} seconds = {(t6 - t5) / 60:.2f} minutes ({100*(t6 - t5)/(t6 - t0):.0f}%)')
