@@ -22,9 +22,6 @@ if __name__ == '__main__':
     print("\nCreating folders...")
     input_dict = sscCdi.caterete.cat_ptycho_processing.define_paths(input_dict)
 
-    print("Reading files of interest...")
-    filepaths, filenames = sscCdi.caterete.cat_ptycho_processing.get_files_of_interest(input_dict)
-
     """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
 
     t1 = time.time()
@@ -39,7 +36,7 @@ if __name__ == '__main__':
 
     t4 = time.time()
     """ ===================== Post-processing ===================== """
-
+    print(input_dict)
     print("Post-processing data...")
     if input_dict['crop'] != []:
         print('\tCropping frames...')

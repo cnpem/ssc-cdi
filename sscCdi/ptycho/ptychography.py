@@ -3,34 +3,35 @@
 import numpy as np
 import sys, os
 import sscPtycho
-from ..processing.propagation import calculate_fresnel_number
-from ..misc import estimate_memory_usage
+from ..misc import estimate_memory_usage, add_to_hdf5_group
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
 
     Args:
-        input_dict (dict): _description_
-        DPs (numpy array): _description_
-        probe_positions (numpy array): _description_
-        initial_obj (numpy array, optional): _description_. Defaults to np.ones(1).
-        initial_probe (numpy array, optional): _description_. Defaults to np.ones(1).
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DPs (numpy array): array of diffraction patterns of shape (N,Y,X)
+        probe_positions (numpy array): array of probe positions of shape (N,2)
+        initial_obj (numpy array, optional): initial object array of shape (Y,X). Defaults to np.ones(1), which then uses input from input_dict
+        initial_probe (numpy array, optional): _description_. Defaults to np.ones(1), which then uses input from input_dict.
 
     Returns:
-        object: _description_
-        probe: _description_
-        error: _description_
+        object: object of shape (Y,X)
+        probe: probe of shape (1,M,DY,DX)
+        error: array of ptychography errors along iterations
     """
 
-    probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
 
-    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
+    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions)
     
     if initial_obj!=np.ones(1):
         datapack["obj"] = initial_obj
     
     if initial_probe!=np.ones(1):
         datapack["probe"] = initial_obj
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"])
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"])
 
     print(f'\nStarting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
@@ -92,7 +93,18 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     return datapack['obj'], datapack['probe'], error
 
 
-def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, radius, center_x, center_y, object_size, dx):
+def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
+    """ Adjust probe initial data to be accepted by Giovanni's algorithm
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DPs (numpy array): array of diffraction patterns of shape (N,Y,X)
+        probe_positions (numpy array): array of probe positions of shape (N,2)
+
+    Returns:
+        datapack (dic): dictionary containing the inputs divided by keys
+        sigmask (array): mask of invalid pixels in diffraction data
+    """
 
     def set_datapack(obj, probe, probe_positions, DPs, background, probesupp):
         """Create a dictionary to store the data needed for reconstruction
@@ -132,15 +144,35 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, r
         sigmask[DPs[0] < 0] = 0
         return sigmask
 
-    def probe_support(probe, half_size, radius, center_x, center_y):
+    def probe_support(n_of_probes, half_size, radius, center_x, center_y):
+        """ Create mask containing probe support region
+
+        Args:
+            n_of_probes (_type_): number of probes
+            half_size (_type_): half the size of one dimension of the probe array
+            radius (_type_): radius of the support region
+            center_x (_type_): center coordinate of support ball in x direction
+            center_y (_type_): center coordinate of support ball in y direction
+
+        Returns:
+            probesupp: mask containing probe support
+        """
         print('Setting probe support...')
         ar = np.arange(-half_size, half_size)
         xx, yy = np.meshgrid(ar, ar)
         probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
-        probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
+        probesupp = np.asarray([probesupp for k in range(n_of_probes)])
         return probesupp
 
-    def append_zeros(probe_positions):
+    def append_ones(probe_positions):
+        """ Adjust shape and column order of positions array to be accepted by Giovanni's  code
+
+        Args:
+            probe_positions (array): initial positions array in (PY,PX) shape
+
+        Returns:
+            probe_positions2 (array): rearranged probe positions array
+        """
         zeros = np.zeros((probe_positions.shape[0],1))
         probe_positions = np.concatenate((probe_positions,zeros),axis=1)
         probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
@@ -149,11 +181,12 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, r
         probe_positions2[:,1] = probe_positions[:,0]
         return probe_positions2
     
+
     half_size = DPs.shape[-1] // 2
 
     print('Fresnel number:', input_dict['fresnel_number'])
 
-    probe_positions = append_zeros(probe_positions)
+    probe_positions = append_ones(probe_positions)
 
     probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
     
@@ -163,7 +196,8 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, r
 
     background = np.ones(DPs[0].shape) # dummy array 
 
-    probesupp = probe_support(probe, half_size, radius, center_x, center_y)  
+    probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
+    probesupp = probe_support(probe.shape[0], half_size, probe_support_radius, probe_support_center_x, probe_support_center_y)  
 
     print(f"\nDiffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}\n")
     

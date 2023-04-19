@@ -11,7 +11,7 @@ import sscCdi
 from sscPimega import pi540D
 
 """ sscCdi relative imports"""
-from ..ptycho.ptychography import  call_G_ptychography
+from ..ptycho.ptychography import  call_GB_ptychography
 from .cnb_restoration import restoration_CNB
 
 def cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
@@ -51,7 +51,7 @@ def cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     sinogram[frame, :, :]  = np.zeros((object_shape[0],object_shape[1])) # build 3D Sinogram
                     probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]))
                 else:
-                    sinogram[frame, :, :], probes[frame, :, :] = call_G_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                    sinogram[frame, :, :], probes[frame, :, :] = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
 
     return sinogram, probes, input_dict
