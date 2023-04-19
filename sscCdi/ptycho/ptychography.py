@@ -90,6 +90,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     datapack['obj'] = datapack['obj'].astype(np.complex64)
     datapack['probe'] = datapack['probe'].astype(np.complex64)
 
+    print(datapack['probe'].shape,datapack['obj'].shape)
     return datapack['obj'], datapack['probe'], error
 
 
@@ -209,6 +210,16 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
 
 def set_initial_probe(input_dict,DP_shape,DPs_avg):
+    """_summary_
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DP_shape (tuple): _description_
+        DPs_avg (array): _description_
+
+    Returns:
+        probe: initial probe array 
+    """
 
     def set_modes(probe, input_dict):
 
