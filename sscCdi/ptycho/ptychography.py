@@ -4,14 +4,34 @@ import numpy as np
 import sys, os
 import sscPtycho
 from ..processing.propagation import calculate_fresnel_number
-from ..misc import  create_circular_mask, create_rectangular_mask, create_cross_mask, estimate_memory_usage, plot_error, add_to_hdf5_group
+from ..misc import estimate_memory_usage
 
-def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
+def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
+    """ Call Ptychography CUDA codes developed by Giovanni Baraldi
+
+    Args:
+        input_dict (dict): _description_
+        DPs (numpy array): _description_
+        probe_positions (numpy array): _description_
+        initial_obj (numpy array, optional): _description_. Defaults to np.ones(1).
+        initial_probe (numpy array, optional): _description_. Defaults to np.ones(1).
+
+    Returns:
+        object: _description_
+        probe: _description_
+        error: _description_
+    """
 
     probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
 
-    datapack, _, sigmask = set_initial_parameters_for_G_algos(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
+    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,probe_support_radius,probe_support_center_x,probe_support_center_y,input_dict["object_shape"],input_dict["object_pixel"])
     
+    if initial_obj!=np.ones(1):
+        datapack["obj"] = initial_obj
+    
+    if initial_probe!=np.ones(1):
+        datapack["probe"] = initial_obj
+
     print(f'\nStarting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
     loop_counter = 1
@@ -72,32 +92,7 @@ def call_G_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1),
     return datapack['obj'], datapack['probe'], error
 
 
-
-def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius, center_x, center_y, object_size, dx):
-
-    def set_sigmask(DPs):
-        """Create a mask for invalid pixels
-
-        Args:
-            DPs (array): measured diffraction patterns
-
-        Returns:
-            sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels
-            0 for negative values, intensity measured elsewhere
-        """    
-        # mask of 1 and 0:
-        sigmask = np.ones(DPs[0].shape)
-        sigmask[DPs[0] < 0] = 0
-
-        return sigmask
-
-    def probe_support(probe, half_size, radius, center_x, center_y):
-        print('Setting probe support...')
-        ar = np.arange(-half_size, half_size)
-        xx, yy = np.meshgrid(ar, ar)
-        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
-        probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
-        return probesupp
+def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, radius, center_x, center_y, object_size, dx):
 
     def set_datapack(obj, probe, probe_positions, DPs, background, probesupp):
         """Create a dictionary to store the data needed for reconstruction
@@ -124,6 +119,27 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
         return datapack
 
+    def set_sigmask(DPs):
+        """Create a mask for invalid pixels
+
+        Args:
+            DPs (array): measured diffraction patterns
+
+        Returns:
+            sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels. 0 for negative values
+        """    
+        sigmask = np.ones(DPs[0].shape)
+        sigmask[DPs[0] < 0] = 0
+        return sigmask
+
+    def probe_support(probe, half_size, radius, center_x, center_y):
+        print('Setting probe support...')
+        ar = np.arange(-half_size, half_size)
+        xx, yy = np.meshgrid(ar, ar)
+        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
+        probesupp = np.asarray([probesupp for k in range(probe.shape[0])])
+        return probesupp
+
     def append_zeros(probe_positions):
         zeros = np.zeros((probe_positions.shape[0],1))
         probe_positions = np.concatenate((probe_positions,zeros),axis=1)
@@ -135,21 +151,19 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
     
     half_size = DPs.shape[-1] // 2
 
-    if input_dict['fresnel_number'] == -1:  # Manually choose wether to find Fresnel number automatically or not
-        input_dict['fresnel_number'] = calculate_fresnel_number(dx, pixel=input_dict['restored_pixel_size'], energy=input_dict['energy'], z=input_dict['detector_distance'])
     print('Fresnel number:', input_dict['fresnel_number'])
 
     probe_positions = append_zeros(probe_positions)
 
-    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # Compute probe: initial guess:
+    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
     
-    obj = set_initial_object(input_dict,DPs,probe) # Object initial guess:
+    obj = set_initial_object(input_dict,DPs,probe) # object initial guess
 
-    sigmask = set_sigmask(DPs)  # mask of 1 and 0:
+    sigmask = set_sigmask(DPs) # mask for invalid pixels
 
-    background = np.ones(DPs[0].shape) # dummy
+    background = np.ones(DPs[0].shape) # dummy array 
 
-    probesupp = probe_support(probe, half_size, radius, center_x, center_y)  # Compute probe support:
+    probesupp = probe_support(probe, half_size, radius, center_x, center_y)  
 
     print(f"\nDiffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}\n")
     
@@ -157,7 +171,7 @@ def set_initial_parameters_for_G_algos(input_dict, DPs, probe_positions, radius,
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
-    return datapack, probe_positions, sigmask
+    return datapack, sigmask
 
 
 def set_initial_probe(input_dict,DP_shape,DPs_avg):
@@ -242,4 +256,35 @@ def set_initial_object(input_dict,DPs, probe):
         return obj.astype(np.complex64)
 
 
+def create_circular_mask(mask_shape, radius):
+    """ All values in pixels """
+    center_row, center_col = mask_shape
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
 
+
+def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
+    if length_x == 0: length_x = length_y
+    """ All values in pixels """
+    center_row, center_col = center
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    mask = np.zeros(*mask_shape)
+    mask[center_row-length_y//2:center_row+length_y//2,center_col-length_x//2:center_col+length_x//2] = 1
+    return mask 
+
+
+def create_cross_mask(mask_shape,center, length_y, length_x=0):
+    if length_x == 0: length_x = length_y
+    """ All values in pixels """
+    center_row, center_col = center
+    y_array = np.arange(0, mask_shape[0], 1)
+    x_array = np.arange(0, mask_shape[1], 1)
+    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
+    mask = np.zeros(*mask_shape)
+    mask[center_row-length_y//2:center_row+length_y//2,:] = 1
+    mask[:,center_col-length_x//2:center_col+length_x//2] = 1
+    return mask 
