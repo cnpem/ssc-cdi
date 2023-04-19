@@ -41,7 +41,9 @@ if __name__ == '__main__':
     """ ===================== Post-processing ===================== """
 
     print("Post-processing data...")
-    object = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(object,input_dict,probe_positions)
+    if input_dict['crop'] != []:
+        print('\tCropping frames...')
+        object = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(input_dict,object,probe_positions)
     
     if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')

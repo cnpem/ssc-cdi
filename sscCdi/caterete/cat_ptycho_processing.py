@@ -316,39 +316,36 @@ def make_1st_frame_squared(frame):
 
 def crop_sinogram(sinogram, input_dict,probe_positions): 
 
-    cropped_sinogram = sinogram
-    if input_dict['crop'] != []: 
-        print('\tCropping frames...')
-        if isinstance(input_dict['crop'],list):        
-            cropped_sinogram = sinogram[:,input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
-        elif isinstance(input_dict['crop'],str):        
-            if input_dict['crop'] == "positions": # Miqueles approach using scan positions
-                frame = 0
-                cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
-                if frame == 0: 
-                    cropped_frame =  make_1st_frame_squared(cropped_frame)
-                    cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
-                
-                cropped_frame = match_cropped_frame_dimension(cropped_sinogram,cropped_frame)
-                cropped_sinogram[frame,:,:] = cropped_frame
-                frame += 1
-        
-            if input_dict['crop'] == "operator_T": # Miqueles approach using T operator
-                for frame in range(sinogram.shape[0]):
-                    cropped_sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
-                
-            if input_dict['crop'] == "local_entropy": # Yuri approach using local entropy
-                for frame in range(sinogram.shape[0]):
-                    min_crop_value = []
-                    best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
-                    min_crop_value.append(best_crop)
-                min_crop = min(min_crop_value)
-                cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
+    if isinstance(input_dict['crop'],list):        
+        cropped_sinogram = sinogram[:,input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]
+    elif isinstance(input_dict['crop'],str):        
+        if input_dict['crop'] == "positions": # Miqueles approach using scan positions
+            frame = 0
+            cropped_frame = autocrop_using_scan_positions(sinogram[frame,:,:],input_dict,probe_positions) # crop
+            if frame == 0: 
+                cropped_frame =  make_1st_frame_squared(cropped_frame)
+                cropped_sinogram = np.empty((sinogram.shape[0],cropped_frame.shape[0],cropped_frame.shape[1]),dtype=complex)
+            
+            cropped_frame = match_cropped_frame_dimension(sinogram,cropped_frame)
+            cropped_sinogram[frame,:,:] = cropped_frame
+            frame += 1
+    
+        if input_dict['crop'] == "operator_T": # Miqueles approach using T operator
+            for frame in range(sinogram.shape[0]):
+                cropped_sinogram[frame,:,:] = autocrop_miqueles_operatorT(sinogram[frame,:,:])
+            
+        if input_dict['crop'] == "local_entropy": # Yuri approach using local entropy
+            for frame in range(sinogram.shape[0]):
+                min_crop_value = []
+                best_crop = auto_crop_noise_borders(sinogram[frame,:,:])
+                min_crop_value.append(best_crop)
+            min_crop = min(min_crop_value)
+            cropped_sinogram = sinogram[:, min_crop:-min_crop-1, min_crop:-min_crop-1]
 
-        if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
-            cropped_sinogram = cropped_sinogram[:,0:-1, :]
-        if cropped_sinogram.shape[2] % 2 != 0:
-            cropped_sinogram = cropped_sinogram[:,:, 0:-1]
+    if cropped_sinogram.shape[1] % 2 != 0:  # object array must have even number of pixels to avoid bug during the phase unwrapping later on
+        cropped_sinogram = cropped_sinogram[:,0:-1, :]
+    if cropped_sinogram.shape[2] % 2 != 0:
+        cropped_sinogram = cropped_sinogram[:,:, 0:-1]
         
     return cropped_sinogram
 

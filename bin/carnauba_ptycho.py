@@ -33,7 +33,7 @@ if __name__ == '__main__':
     t2 = time.time()
 
     print('Starting ptychography...')
-    # object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
     print('\tFinished reconstruction!')
