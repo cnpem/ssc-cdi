@@ -64,6 +64,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     input_dict = set_object_shape(input_dict, DPs.shape, probe_positions, input_dict["object_padding"])
                     sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                     probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                    print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
                     errors = []
 
                     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
@@ -207,16 +208,28 @@ def set_object_shape(input_dict,DP_shape,probe_positions,offset_bottomright):
     maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    input_dict["object_shape"] = (object_shape_y, object_shape_x)
+    my_shape = np.max([object_shape_y,object_shape_x])
+
+    input_dict["object_shape"] = (my_shape, my_shape)
+
     return input_dict
 
 
 def set_object_pixel_size(input_dict,DP_size):
+    """ Get size of object pixel given energy, distance and detector pixel size
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json
+        DP_size (int): lateral size of detector array
+
+    Returns:
+        input_dict: update input dictionary containing size of object pixel
+    """
 
     wavelength = wavelength_from_energy(input_dict["energy"])
     input_dict["wavelength"] = wavelength
     
-    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size * input_dict['binning'])
+    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size)
     input_dict["object_pixel"] = object_pixel_size # in meters
 
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
@@ -226,6 +239,16 @@ def set_object_pixel_size(input_dict,DP_size):
 
 
 def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
+    """_summary_
+
+    Args:
+        offset_topleft (_type_): _description_
+        dx (_type_): _description_
+        probe_positions (_type_): _description_
+
+    Returns:
+        probe_positions (array): _descr
+    """
 
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
@@ -349,7 +372,7 @@ def make_1st_frame_squared(frame):
     return frame
 
 
-def crop_sinogram(sinogram, input_dict,probe_positions): 
+def crop_sinogram(input_dict,sinogram ,probe_positions): 
 
     if isinstance(input_dict['crop'],list):        
         cropped_sinogram = sinogram[:,input_dict['crop'][0]:input_dict['crop'][1],input_dict['crop'][2]:input_dict['crop'][3]]

@@ -127,6 +127,16 @@ def save_json_logfile(input_dict):
     """    
     import json, os
 
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return json.JSONEncoder.default(self, obj)
+
     path = input_dict["output_path"]
 
     datetime = input_dict["datetime"]
@@ -134,7 +144,8 @@ def save_json_logfile(input_dict):
 
     filepath = os.path.join(path,name)
     file = open(filepath,"w")
-    file.write(json.dumps(input_dict,indent=3,sort_keys=True))
+    json_string = json.dumps(input_dict,indent=2,separators=(', ',': '),sort_keys=True,cls=NpEncoder)
+    file.write(json_string)
     file.close()
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
