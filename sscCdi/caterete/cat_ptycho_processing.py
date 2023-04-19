@@ -9,9 +9,8 @@ from sscPimega import pi540D
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, create_circular_mask, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group
-from ..ptycho.ptychography import  call_G_ptychography
-from .cat_restoration import Geometry
+from ..misc import create_directory_if_doesnt_exist, list_files_in_folder, select_specific_angles, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group
+from ..ptycho.ptychography import  call_GB_ptychography, create_circular_mask
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -186,25 +185,6 @@ def create_output_directories(input_dict):
         create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
 
-def get_files_of_interest(input_dict):
-    """ Get filepaths and filenames of the data 
-
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json
-
-    Returns:
-        filenames: list of all data file names
-        filepaths: absolute path to all data file paths
-    """
-
-    filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'] ,"", input_dict['scans_string'] ), look_for_extension=".hdf5")
-
-    if input_dict['projections'] != []:
-        filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths, filenames)
-
-    return filepaths, filenames
-
-
 def set_object_shape(input_dict,DP_shape,probe_positions,offset_bottomright):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
@@ -264,8 +244,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json
-        acquisitions_folder (_type_): _description_
-        measurement_file (_type_): _description_
+        acquisitions_folder (str): specific sample/acquisition folder
+        measurement_file (str): name of the file contained in the positions file
         sinogram_shape (tuple): shape of diffraction patterns array
 
     Returns:
@@ -288,8 +268,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         line = str(line)
         if line_counter < 1:
             angle = float(line.split(':')[1].split('\t')[0]) # get rotation angle for that frame
-        elif line_counter == 1:
-            pass
+        # elif line_counter == 1:
+            # pass
         else:  # skip first line, which is the header;
 
             positions_x = float(line.split()[1])
