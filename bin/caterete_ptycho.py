@@ -1,13 +1,13 @@
 from sys import argv
 import numpy as np
-import os, time, json
+import time, json
 
 """ Sirius Scientific Computing Imports """
 import sscCdi
 
 #+++++++++++++++++++++++++++++++++++++++++++++++++
 #
-# MAIN APPLICATION (for SIRIUS' CATERETE beamline)
+# MAIN APPLICATION (for SIRIUS CATERETE beamline)
 #
 # +++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_CAT(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
-    object,probe, input_dict, probe_positions = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    input_dict, object,probe, probe_positions = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
     t3 = time.time()
 
     print('Finished reconstruction!\n')

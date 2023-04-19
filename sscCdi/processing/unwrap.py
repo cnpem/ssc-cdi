@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
 
 def RemoveGrad(img,mask):
-    """ Giovanni's function for removing a gradient.
+    """ Giovanni Baraldi function for removing a gradient.
 
     Args:
         img 

@@ -10,9 +10,9 @@ def miqueles_colormap(img):
 
     Returns:
         cmap: colormap
-        colors: list of colors
-        bounds:
-        norm:
+        colors: list of colors 
+        bounds: colormap bounds
+        norm: normalized colors
     """    
 
     import matplotlib as mpl
@@ -59,6 +59,11 @@ def plotshow_cmap2(image,title=None,figsize=(20,20),savepath=None,show=False):
         plt.show()
 
 def delete_files_if_not_empty_directory(directory):
+    """ Checks if directory is empty and, if not, deletes files within it
+
+    Args:
+        directory (str): absolute path to directory
+    """
     for root, dirs, files in os.walk(directory):
         if files != []:
             # print("\t\tCleaning directory:", directory)
@@ -97,7 +102,7 @@ def list_files_in_folder(data_directory,look_for_extension=""):
     return filepaths, filenames
 
 def select_specific_angles(frames,filepaths,filenames):
-    """ Function to filter lists, keeping only those with a certain frame number in the string. This is used to select only the desired frames in a 3D recon.
+    """ Function to filter lists, keeping only those with a certain frame number in the string. This is used to select only the desired frames in a 3D ptychography.
 
     Args:
         frames : list of frames to select
@@ -134,19 +139,27 @@ def save_json_logfile(input_dict):
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
 
-
-
 def create_directory_if_doesnt_exist(*args):
+    """ Create directories from a list of paths if they do not already exist
+
+    Args:
+        *args: multiple absolute path to directories
+    """
     for arg in args:
         if os.path.isdir(arg) == False:
             print("\tCreating directory: ",arg)
             os.makedirs(arg)
-        else:
-            pass
-            # print('Tried to created directory, but it already exists: ',arg)
-
 
 def read_hdf5(path,inner_path = 'entry/data/data'):
+    """ Read hdf5 file from path
+
+    Args:
+        path (str): absolute path to hdf5 file
+        inner_path (str, optional): Inner path of hdf5 file structure to data. Defaults to 'entry/data/data'.
+
+    Returns:
+        (h5py File): h5py File object 
+    """
     os.system(f"h5clear -s {path}")
     return h5py.File(path, 'r')[inner_path]
     
@@ -156,52 +169,6 @@ def debug(func): # decorator function for debugging
         print(f"{func.__name__}(args: {args}) -> {result}") # print function with arguments and result
         return result
     return _debug
-
-def plotshow(imgs, file, subplot_title=[], legend=[], cmap='jet', nlines=1, bLog=False, interpolation='bilinear'):  # legend = plot titles
-    """ Show plot in a specific format 
-
-    Args:
-        imgs ([type]): [description]
-        file ([type]): [description]
-        subplot_title (list, optional): [description]. Defaults to [].
-        legend (list, optional): [description]. Defaults to [].
-        cmap (str, optional): [description]. Defaults to 'jet'.
-        nlines (int, optional): [description]. Defaults to 1.
-        bLog (bool, optional): [description]. Defaults to False.
-        interpolation (str, optional): [description]. Defaults to 'bilinear'.
-    """    
-    num = len(imgs)
-
-    for j in range(num):
-        if type(cmap) == str:
-            colormap = cmap
-        elif len(cmap) == len(imgs):
-            colormap = cmap[j]
-        else:
-            colormap = cmap[j // (len(imgs) // nlines)]
-
-        sb = plt.subplot(nlines, (num + nlines - 1) // nlines, j + 1)
-        if type(imgs[j][0, 0]) == np.complex64 or type(imgs[j][0, 0]) == np.complex128:
-            sb.imshow(sscPtycho.CMakeRGB(imgs[j]), cmap='hsv', interpolation=interpolation)
-        elif bLog:
-            sb.imshow(np.log(1 + np.maximum(imgs[j], -0.1)) / np.log(10), cmap=colormap, interpolation=interpolation)
-        else:
-            sb.imshow(imgs[j], cmap=colormap, interpolation=interpolation)
-
-        if len(legend) > j:
-            sb.set_title(legend[j])
-
-        sb.set_yticks([])
-        sb.set_xticks([])
-        sb.set_aspect('equal')
-        if subplot_title != []:
-            sb.set_title(subplot_title[j])
-
-    plt.savefig(file + '.png', format='png', dpi=300)
-    plt.show()
-    plt.clf()
-    plt.close()
-
 
 def export_json(params,output_path):
     """ Exports a dictionary to a json file
@@ -222,63 +189,29 @@ def export_json(params,output_path):
     json.dump(export,out_file)
     return 0
 
-def preview_ptycho(input_dict, phase, absol, probe, frame = 0):
-    from .processing.propagation import Propagate
-    if input_dict['Preview']:  # Preview Reconstruction:
-        ''' Plot scan points
-        plt.figure()
-        plt.scatter(probe_positionsi[:, 0], probe_positionsi[:, 1])
-        plt.scatter(datapack['rois'][:, 0, 0], datapack['rois'][:, 0, 1])
-        plt.savefig(input_dict['output_path'] + '/scatter_2d.png', format='png', dpi=300)
-        plt.clf()
-        plt.close()
-        '''
-
-        plotshow([abs(Propagate(p, input_dict['fresnel_number'])) for p in probe[frame]] + [p for p in probe[frame]], file=input_dict['output_path'] + '/probe_'  + str(frame), nlines=2)
-        plotshow([phase[frame], absol[frame]], subplot_title=['Phase', 'Magnitude'],            file=input_dict['output_path'] + '/object_' + str(frame), nlines=1, cmap='gray')
-
-
-
-
 def wavelength_from_energy(energy_keV):
-    """ Constants """
-    speed_of_light = 299792458  # Speed of Light [m/s]
-    planck = 4.135667662E-18    # Plank constant [keV*s]
+    """ Calculate wavelenth from energy
+
+    Args:
+        energy_keV (float): energy in keV
+
+    Returns:
+        wavelength (float): wavelength in meters
+    """
+
+    speed_of_light = 299792458        # Speed of Light [m/s]
+    planck         = 4.135667662E-18  # Plank constant [keV*s]
     return planck * speed_of_light / energy_keV
 
-
-def create_circular_mask(mask_shape, radius):
-    """ All values in pixels """
-    center_row, center_col = mask_shape
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
-
-def create_rectangular_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
-    """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,center_col-length_x//2:center_col+length_x//2] = 1
-    return mask 
-
-def create_cross_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
-    """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,:] = 1
-    mask[:,center_col-length_x//2:center_col+length_x//2] = 1
-    return mask 
-
 def get_array_size_bytes(array):
+    """ Calculate size of array in multiples units
+
+    Args:
+        array (numpy.ndarrray): n-dimensional numpy array
+
+    Returns:
+        (tuple): tuple containing the size of the array in multiple units
+    """
     bytes = array.itemsize*array.size
     kbytes = bytes/1e3
     Mbytes = bytes/1e6
@@ -289,6 +222,11 @@ def get_array_size_bytes(array):
     return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
 
 def estimate_memory_usage(*args):
+    """ Estimate total size of multiple arrays in bytes and corresponding units
+
+    Returns:
+        (tuple): tuple containing the size of the array in multiple units
+    """
     
     bytes = 0
     for arg in args:
@@ -301,7 +239,6 @@ def estimate_memory_usage(*args):
     Mibytes = bytes/1024/1024
     Gibytes = bytes/1024/1024/1024
     return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
-
 
 def get_RGB_wheel():
     import matplotlib
@@ -331,7 +268,6 @@ def save_plots(complex_array,title='',path=''):
     if path != '':
         plt.savefig(path)
 
-
 def plot_error(error,path='',log=False):
     fig, ax = plt.subplots(dpi=150)
     ax.plot(error, 'o-')
@@ -343,16 +279,26 @@ def plot_error(error,path='',log=False):
         ax.set_yscale('log')
     if path != '':
         fig.savefig(path)
-
     
 def save_variable(input_dict,variable, flag = 'FLAG'):
     add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
+    """ Add data to hdf5 file. Creates a dataset with certain name inside a pre-existing group
+
+    Args:
+        path (str): absolute path to hdf5 file
+        group (str): group name
+        name (str): dataset name
+        data: metadata to be saved
+        mode (str, optional): h5py.File option for selecting interaction mode. Defaults to "a".
+
+    Returns:
+        _type_: _description_
+    """
     hdf5_output = h5py.File(path, mode)
     hdf5_output[group].create_dataset(name,data=data)
     hdf5_output.close()
-
 
 def combine_volume(*args):
     shape = np.load(args[0]).shape
