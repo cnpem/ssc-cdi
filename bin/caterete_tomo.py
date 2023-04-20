@@ -16,7 +16,7 @@ input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 # "Sort":1 ,
 # "Crop":1 ,
 # "Unwrap":1,
-# "ConvexHull":1,
+# "Equalize": 1
 # "Wiggle":1,
 # "Tomo":1
 # }
@@ -46,7 +46,6 @@ equalize_gradient      = input_dictionary["equalize_gradient"]
 equalize_outliers      = input_dictionary["equalize_outliers"]
 equalize_global_offset = input_dictionary["equalize_global_offset"]
 equalize_local_offset  = input_dictionary["equalize_local_offset"]
-
 
 """ Unwrap + Wiggle: Choose (in the ordered frames) a frame to serve as reference for the alignment. Make sure to select a non-null frame!!! """
 wiggle_sinogram_selection = input_dictionary["wiggle_sinogram_selection"]
@@ -85,6 +84,7 @@ cropped_filepath    = [True ,os.path.join(sinogram_folder, '02_frames_cropped')]
 unwrapped_filepath  = [True ,os.path.join(sinogram_folder, '03_frames_unwrapped')]
 equalized_filepath  = [True ,os.path.join(sinogram_folder, '04_frames_equalized')]
 cHull_filepath      = [True ,os.path.join(sinogram_folder, '05_frames_convexHull')]
+
 create_directory_if_doesnt_exist(originals_filepath[1],ordered_filepath[1],cropped_filepath[1],unwrapped_filepath[1],cHull_filepath[1],equalized_filepath[1])
 
 

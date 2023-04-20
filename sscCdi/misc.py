@@ -311,6 +311,55 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
     hdf5_output[group].create_dataset(name,data=data)
     hdf5_output.close()
 
+def open_or_create_h5_dataset(path,group,dataset,data):
+    """ Open hdf5 file and checks if certain dataset exists. If not, creates it.
+
+    Args:
+        path (_type_): _description_
+        group (_type_): _description_
+        dataset (_type_): _description_
+        data (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    group_dataset = group+"/"+dataset
+
+    h5file = h5py.File(path,'a')
+    dataset_exists = group_dataset in h5file
+    
+    if dataset_exists:
+        pass
+    else:
+        # h5file.create_group(group)
+        h5file[group].create_dataset(dataset,data=data)
+
+    return h5file, dataset_exists, group_dataset
+
+def concatenate_array_to_h5_dataset(path,group,dataset,data,concatenate = True):
+    """_summary_
+
+    Args:
+        path (_type_): _description_
+        group (_type_): _description_
+        dataset (_type_): _description_
+        data (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
+    h5file, dataset_exists, group_dataset = open_or_create_h5_dataset(path,group,dataset,data)
+    
+    if dataset_exists and concatenate:
+        array = h5file[group_dataset] # save current array
+        del h5file[group_dataset] # delete 
+        new_data = np.concatenate((array,data),axis=0) # create new array
+        h5file[group].create_dataset(dataset,data=new_data) # add new array to h5 file
+    
+    h5file.close()
+        
 def combine_volume(*args):
     shape = np.load(args[0]).shape
     volume = np.empty((0,*shape),dtype=np.float32)

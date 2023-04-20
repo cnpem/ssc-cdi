@@ -3,7 +3,7 @@
 import numpy as np
 import sys, os
 import sscPtycho
-from ..misc import estimate_memory_usage, add_to_hdf5_group
+from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
@@ -30,10 +30,10 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     if initial_probe!=np.ones(1):
         datapack["probe"] = initial_obj
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"])
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"])
+    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
+    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"],concatenate=False)
 
-    print(f'\nStarting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
+    print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
     loop_counter = 1
     error = np.empty((0,))
@@ -42,7 +42,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
             algorithm = input_dict['Algorithm' + str(loop_counter)]
             algo_name = algorithm["Name"]
             n_of_iterations = algorithm['Iterations']
-            print(f"Calling {n_of_iterations} iterations of {algo_name} algorithm...")
+            print(f"\tCalling {n_of_iterations} iterations of {algo_name} algorithm...")
         except:
             run_algorithms = False
 
