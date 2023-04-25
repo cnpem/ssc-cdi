@@ -91,7 +91,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
             """ Clean restored DPs temporary data """
             if len(input_dict['projections']) == 1:
-                pi540D.ioClean_Backward540D( restoration_dict, restored_data_info )
+                pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
             elif len(input_dict["projections"]) > 1:
                 pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
             else:
