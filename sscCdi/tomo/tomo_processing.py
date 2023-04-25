@@ -1,5 +1,5 @@
 import numpy as np
-import os
+import os, h5py
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
@@ -125,6 +125,7 @@ def angle_mesh_organize_old( original_frames, angles, percentage = 100 ):
 
 def sort_frames_by_angle(ibira_path,foldernames):
     rois = []
+
     counter = -1 
     for folder in foldernames:
 
@@ -150,6 +151,15 @@ def sort_frames_by_angle(ibira_path,foldernames):
                         break    
                     a += 1
 
+    
+    rois = np.asarray(rois)
+    rois = rois[rois[:,1].argsort(axis=0)]
+    return rois 
+
+def sort_frames_by_angle(datapath):
+    rois = []
+
+    data = h5py.File('')
     
     rois = np.asarray(rois)
     rois = rois[rois[:,1].argsort(axis=0)]

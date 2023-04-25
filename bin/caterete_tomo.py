@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import os,sys, json, time
+import os,sys, json, time, h5py
 from skimage.io import imsave
 
 """ Sirius Scientific Computing Imports """
@@ -23,12 +23,12 @@ input_dictionary = json.load(open(sys.argv[1])) # LOAD JSON!
 
 processing_steps = input_dictionary["processing_steps"]
 contrast_type = input_dictionary["contrast_type"] # Phase Or Magnitude?
+recon_method = input_dictionary["method"] # pwcdi or ptycho?
 prefix_string = f'_{contrast_type}'
 
 """ Select data folders  """
-sinogram_folder = input_dictionary["sinogram_path"].rsplit('/',1)[0]  #'/ibira/lnls/labs/tepui/proposals/20210062/yuri/Caterete/yuri-ssc-cdi/outputs/microagg_P2_01/reconstruction/' # folder containing sinogram of 2d projections
-ibira_path = input_dictionary["ibira_data_path"] #'/ibira/lnls/beamlines/caterete/proposals/20210177/data/ptycho3d/' # folder of 2d projections
-foldernames = input_dictionary["folders_list"] # ["microagg_P2_01"] #input
+sinogram_path = input_dictionary["sinogram_path"]  # folder containing sinogram of 2d projections
+raw_angles_path   = input_dictionary["angles_path"]
 
 """ Crop: Select the cropping slices # SLICE MUST HAVE EVEN NUMBER OF POINTS!!! """
 top, bottom = input_dictionary["top_crop"], input_dictionary["bottom_crop"] #300, 300 # number of pixels to crops in each direction
@@ -77,34 +77,21 @@ object_tomogram_filepath = input_dictionary["wiggle_sinogram_filepath"] #contras
 recon_object_filepath = input_dictionary['reconstruction_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '.npy'
 recon_object_filepath_thresholded = input_dictionary['reconstruction_equalized_filepath'] #contrast_type + '_' + foldernames[0] + f'_reconstruction3D_' + which_reconstruction + '_thresholded.npy'
 
-""" Output plot folders """
-originals_filepath  = [True ,os.path.join(sinogram_folder, '00_frames_original')]
-ordered_filepath    = [True,os.path.join(sinogram_folder, '01_frames_ordered')]
-cropped_filepath    = [True ,os.path.join(sinogram_folder, '02_frames_cropped')]
-unwrapped_filepath  = [True ,os.path.join(sinogram_folder, '03_frames_unwrapped')]
-equalized_filepath  = [True ,os.path.join(sinogram_folder, '04_frames_equalized')]
-cHull_filepath      = [True ,os.path.join(sinogram_folder, '05_frames_convexHull')]
-
-create_directory_if_doesnt_exist(originals_filepath[1],ordered_filepath[1],cropped_filepath[1],unwrapped_filepath[1],cHull_filepath[1],equalized_filepath[1])
-
 
 if processing_steps["Sort"]:
     """ ########################## ORDENATION ############################## """
     print('Sort datasets by angle ')
 
-    object = np.load(complex_object_file)
+    if recon_method == 'ptycho':
+        file = h5py.File(sinogram_path, 'r')
+        object = file['recon/object']
+        angles = file['recon/angles']
 
-    if originals_filepath[0]: # Save pngs of frames
-        for i in range(object.shape[0]):
-            plt.figure()
-            plt.imshow(np.angle(object[i,:,:]),cmap='gray')
-            plt.colorbar()
-            plt.savefig( os.path.join(originals_filepath[1],'original_frame_' + str(i) + '.png'), format='png', dpi=300)
-            plt.clf()
-            plt.close()
+    elif recon_method == "pwcdi":
+        object = np.load(sinogram_path)
+        angles = np.load(raw_angles_path)
 
-    rois =  sort_frames_by_angle(ibira_path,foldernames)
-
+    rois =  sort_frames_by_angle(angles)
     np.save(angles_filepath,rois)
     print('\tSorting done')
 
@@ -118,37 +105,10 @@ if processing_steps["Crop"]:
 
     print(" \tBegin Crop")
 
-    if ordered_filepath[0]: # Save pngs of sorted frames
-        for i in range(object.shape[0]):
-            plt.figure()
-            plt.imshow(np.angle(object[i,:,:]),cmap='gray')
-            plt.colorbar()
-            plt.savefig( os.path.join(ordered_filepath[1], 'ordered_frame_' + str(i) + '.png'), format='png', dpi=300)
-            plt.clf()
-            plt.close()
-
     print("\tCropping data")
     object = object[:,top:-bottom,left:-right] # Crop frame
 
-    print('Shape after cropping:',object.shape)
-
-    if 1: # Save image preview
-        slice_number=0
-        figure, subplot = plt.subplots()
-        subplot.imshow(np.angle(object[slice_number,:,:]),cmap='gray')#,interpolation='bilinear')
-        subplot.set_title('object preview')
-        figure.savefig(os.path.join(sinogram_folder,'object_preview.png'))
-
-    print("\tCrop complete!")
-
-    if cropped_filepath[0]: # Save pngs of sorted frames
-        for i in range(object.shape[0]):
-            plt.figure()
-            plt.imshow(np.angle(object[i,:,:]),cmap='gray')
-            plt.colorbar()
-            plt.savefig( os.path.join(sinogram_folder, cropped_filepath[1], 'cropped_frame_' + str(i) + '.png'), format='png', dpi=300)
-            plt.clf()
-            plt.close()
+    print('\tShape after cropping:',object.shape)
 
     np.save(input_dictionary["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
 
@@ -164,23 +124,7 @@ if processing_steps["Unwrap"]:
 
     object = unwrap_in_parallel(object,iterations=phase_unwrap_iterations,non_negativity=phase_unwrap_non_negativity,remove_gradient = phase_unwrap_gradient_removal)
 
-    if 1: # Save image preview
-        slice_number=0
-        figure, subplot = plt.subplots()
-        subplot.imshow(object[slice_number,:,:],cmap='gray',interpolation='bilinear')
-        subplot.set_title('Phase preview')
-        figure.savefig(os.path.join(sinogram_folder,'phaseUnwrap_preview.png'))
-
     np.save(input_dictionary["unwrapped_sinogram_filepath"],object)  
-
-    if unwrapped_filepath[0]: # Save pngs of sorted frames
-        for i in range(object.shape[0]):
-            plt.figure()
-            plt.imshow(object[i,:,:],cmap='gray')
-            plt.colorbar()
-            plt.savefig( os.path.join(unwrapped_filepath[1], 'unwrapped_frame_' + str(i) + '.png'), format='png', dpi=300)
-            plt.clf()
-            plt.close()
 
     print("\tPhase Unwrap done!")
 
@@ -242,24 +186,6 @@ if processing_steps["Wiggle"]:
 
     print('\tWiggle Complete')
 
-    if 1: # Plot shake and unshaked object sinograms
-        slice = object.shape[1] // 2
-        plt.figure()
-        plt.imshow(object[:,slice,:])
-        plt.colorbar()
-        plt.title('No Wiggle')
-        plt.savefig(sinogram_folder + 'object_nowiggle.png', format='png', dpi=300)
-        plt.clf()
-        plt.close()
-
-        plt.figure(0)
-        plt.imshow(tomoP[:,slice,:])
-        plt.colorbar()
-        plt.title('Wiggle')
-        plt.savefig(sinogram_folder + 'object_wiggle.png', format='png', dpi=300)
-        plt.clf()
-        plt.close()
-
 if processing_steps["Tomo"]:
     start = time.time()
 
@@ -273,15 +199,6 @@ if processing_steps["Tomo"]:
     np.save(input_dictionary["reconstruction_filepath"],reconstruction3D)
     imsave(input_dictionary["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
     print('\t Saved!')
-
-    if 1: # Visualize recon slice
-        slice = reconstruction3D.shape[0] // 2
-        plt.figure(0)
-        plt.imshow(reconstruction3D[slice,:,:])
-        plt.colorbar()
-        plt.savefig(sinogram_folder+f'reconstruction3D_slice{slice}.png', format='png', dpi=300)
-        plt.clf()
-        plt.close()
 
 if processing_steps["Equalize Recon"]:
 
