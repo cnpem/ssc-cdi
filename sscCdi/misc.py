@@ -387,3 +387,56 @@ def save_volume_from_parts(input_dict):
 def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
+
+def deploy_visualizer(data,axis=0,title='',cmap='jet'):
+
+    """
+    data (ndarray): real valued data
+    axis (int): slice direction
+    """
+    
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as colors
+    import matplotlib.cm
+
+
+    import ipywidgets as widgets
+    from ipywidgets import fixed
+    import matplotlib.colors as colors
+    import matplotlib.cm
+    
+    colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+    
+    def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=colors.Normalize()):
+        
+        subplot.clear()
+        
+        if axis == 0:
+            subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
+        elif axis == 1:
+            subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
+        elif axis == 2:
+            subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
+
+        if title != "":
+            subplot.set_title(f'{title}')
+        figure.canvas.draw_idle()
+    
+    output = widgets.Output()
+    
+    with output:
+        figure, ax = plt.subplots(dpi=100)
+        ax.imshow(np.random.random((4,4)),cmap='gray')
+        figure.canvas.draw_idle()
+        figure.canvas.header_visible = False
+        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
+        plt.show()   
+
+    slider_layout = widgets.Layout(width='25%')
+    selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
+
+    selection_slider.max, selection_slider.value = data.shape[0] - 1, data.shape[0]//2
+    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'frame_number': selection_slider})    
+    box = widgets.VBox([selection_slider,output])
+    return box
