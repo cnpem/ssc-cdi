@@ -1,168 +1,29 @@
+import os, sys, time, ast
 import numpy as np
-import os, h5py
+import matplotlib.pyplot as plt
 from tqdm import tqdm
-from concurrent.futures import ProcessPoolExecutor
-from skimage.morphology import square, erosion, opening, convex_hull_image, dilation
+from scipy.misc import imsave
 from functools import partial
-import ast
+from concurrent.futures import ProcessPoolExecutor
 
-from ..misc import list_files_in_folder, save_json_logfile
-from ..processing.unwrap import RemoveGrad
+import sscRaft, sscRadon
 
-import sscRaft
-from sscRadon import radon
+from ..misc import save_json_logfile
+from ..processing.unwrap import RemoveGrad, unwrap_in_parallel
 
 ####################### SORTING ###################################
 
-def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
-    """ Project angles to regular mesh and pad it to run from 0 to 180
+def tomo_sort(dic, object, angles):
+    start = time.time()
+    sorted_angles = sort_angles(angles[:,[0,2]]) # input colums with frame number and angle in rad
+    object = reorder_slices_low_to_high_angle(object, sorted_angles)
+    np.save(dic["ordered_angles_filepath"],angles)
+    np.save(dic["ordered_object_filepath"], object) 
+    print(f'Time elapsed - Sort: {time.time() - start} s' )
 
-    Args:
-        original_frames (_type_): _description_
-        angles (_type_): _description_
-        
-    Returns:
-        _type_: _description_
-    """
-    
-    angles_list = []
-    padding_frames_counter = 0
-
-    start_angle = angles[:,1].min()
-    end_angle   = angles[:,1].max()
-
-    neighbor_differences = angles[1::,1] - angles[0:-1,1]  # shift and subtract to get difference between neighbors
-    
-    maxdtheta = abs(neighbor_differences).max() 
-    mindtheta = abs(neighbor_differences).min()
-
-    divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
-
-    n_of_angles = int(np.ceil( np.pi/divider))
-    
-    dtheta = np.pi / (n_of_angles)
-    projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
-
-    previous_idx = -1
-    previous_min_dif = neighbor_differences[0]
-    idx = np.zeros([n_of_angles], dtype=int)
-    for k in range(n_of_angles):
-
-        angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
-        angles_list.append(angle*180/np.pi)
-        if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
-            padding_frames_counter += 1
-            idx[k] = -1
-            projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-        else:
-            difference_array = abs(angle - angles[:,1]) 
-            arg_min_dif = np.argmin( difference_array )
-            min_diff = difference_array[arg_min_dif]
-            idx[k] = int( arg_min_dif)
-
-            if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
-                if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
-                    projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-                    idx[k-1] = -2
-                    projected_frames[k,:,:] = original_frames[idx[k],:]
-                else: 
-                    idx[k] = -3
-                    continue 
-            else:
-                projected_frames[k,:,:] = original_frames[idx[k],:]
-
-            previous_idx = idx[k]
-            previous_min_dif = min_diff
-        
-    angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
-    
-    return projected_frames, idx, padding_frames_counter, angles_array 
-
- 
-
-def angle_mesh_organize_old( original_frames, angles, percentage = 100 ): 
-        """ Project angles to regular mesh and pad it to run from 0 to 180
-
-        Args:
-            original_frames (_type_): _description_
-            angles (_type_): _description_
-            use_max (bool, optional): _description_. Defaults to True.
-
-        Returns:
-            _type_: _description_
-        """
-        angles_list = []
-
-        start_angle = angles[:,1].min()
-        end_angle   = angles[:,1].max()
-        rangea = end_angle - start_angle
-        neighbor_differences = np.roll(angles[:,1],1,0) - angles[:,1]
-        neighbor_differences[-1] = neighbor_differences[-2]
-        neighbor_differences[0] = neighbor_differences[1]
-        maxdtheta = abs(neighbor_differences).max() 
-        mindtheta = abs(neighbor_differences).min()
-
-        divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
-        print(f'Chosen regular interval: {divider}')
-        
-        n_of_angles = int( (np.pi)/divider ) 
-        dtheta = np.pi / (n_of_angles-1)
-        projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
-        idx = np.zeros([n_of_angles], dtype=np.int)
-        for k in range(n_of_angles):
-            angle = -np.pi/2.0 + k*dtheta
-            if angle > end_angle or angle < start_angle:
-                idx[k] = -1
-                projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-            else:
-                idx[k] = int( np.argmin( abs(angle - angles[:,1]) ) )
-                projected_frames[k,:,:] = original_frames[idx[k],:]
-            angles_list.append(angle*180/np.pi)
-        first = np.argmin((idx < 0)) - 1
-        angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
-        return projected_frames, idx, first, angles_array 
-
-
-def sort_frames_by_angle(ibira_path,foldernames):
-    rois = []
-
-    counter = -1 
-    for folder in foldernames:
-
-        print(f"Sorting data for {folder} folder")
-
-        filepaths, filenames = list_files_in_folder(os.path.join(ibira_path, folder,'positions'), look_for_extension=".txt")
-
-        print('\t # of files in folder:',len(filenames))
-        for filepath in filepaths:
-            roisname = filepath  
-            if roisname == os.path.join(ibira_path,folder, 'positions', folder + '_Ry_positions.txt'): # ignore this file, to use only the positions file inside /positions/ folder
-            # if roisname == os.path.join(ibira_path, folder) + '/Ry_positions.txt': # use for old file standard
-                continue
-            else:
-                counter += 1 
-                posfile = open(roisname)
-                a = 0
-                for line in posfile:
-                    line = str(line)
-                    if a < 1: # get value from first line of the file only
-                        angle = line.split(':')[1].split('\t')[0]
-                        rois.append([int(counter),float(angle)])
-                        break    
-                    a += 1
-
-    
-    rois = np.asarray(rois)
-    rois = rois[rois[:,1].argsort(axis=0)]
-    return rois 
-
-def sort_frames_by_angle(datapath):
-    rois = []
-
-    data = h5py.File('')
-    
-    rois = np.asarray(rois)
-    rois = rois[rois[:,1].argsort(axis=0)]
+def sort_angles(angles):
+    rois = np.asarray(angles)
+    rois = rois[rois[:,2].argsort(axis=0)]
     return rois 
 
 def reorder_slices_low_to_high_angle(object, rois):
@@ -174,7 +35,41 @@ def reorder_slices_low_to_high_angle(object, rois):
 
     return object_temporary
 
+######################### CROP #################################################
+
+def tomo_crop(dic):
+    start = time.time()
+    object = np.load(dic["ordered_object_filepath"])
+    object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
+    np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
+    print(f'Time elapsed - Crop: {time.time() - start} s' )
+    return object
+
+######################### UNWRAP #################################################
+
+def tomo_unwrap(dic):
+    start = time.time()
+    object = np.load(dic["cropped_sinogram_filepath"])  
+    object = unwrap_in_parallel(object,tomo_iterations=dic["tomo_iterations"],non_negativity=dic["unwrap_non_negativity"],remove_gradient = dic["unwrap_gradient_removal"])
+    np.save(dic["unwrapped_sinogram_filepath"],object)  
+    print(f'Time elapsed - Unwrap: {time.time() - start} s' )
+
 ######################### EQUALIZATION #################################################
+
+def tomo_equalize(dic):
+    start = time.time()
+    unwrapped_sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
+    equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], ast.literal_eval(dic["equalize_local_offset"]))
+    np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
+    print(f'Time elapsed - Equalization: {time.time() - start} s' )
+
+def tomo_equalize3D(dic):
+    start = time.time()
+    reconstruction = np.load(dic["reconstruction_filepath"])
+    equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
+    np.save(dic["reconstruction_equalized_filepath"],equalized_tomogram)
+    imsave(dic["reconstruction_equalized_filepath"][:-4] + '.tif',equalized_tomogram)
+    print(f'Time elapsed - 3D equalization: {time.time() - start} s' )
 
 def remove_outliers(data,sigma):
     minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
@@ -253,70 +148,6 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
 
     return equalized_sinogram
 
-######################### CONVEX HULL #################################################
-
-def operator_T(u):
-    d   = 1.0
-    uxx = (np.roll(u,1,1) - 2 * u + np.roll(u,-1,1) ) / (d**2)
-    uyy = (np.roll(u,1,0) - 2 * u + np.roll(u,-1,0) ) / (d**2)
-    uyx = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,1,1),-1,0) - np.roll(np.roll(u,1,0),-1,1) + np.roll(np.roll(u,-1,1),-1,0)  )/ (2 * d**2) 
-    uxy = (np.roll(np.roll(u,1,1),1,1) - np.roll(np.roll(u,-1,1),1,0) - np.roll(np.roll(u,-1,0),1,1) + np.roll(np.roll(u,-1,1),-1,0)   )/ (2 * d**2)
-    delta = (uxx + uyy)**2 - 4 * (uxx * uyy - uyx * uxy)
-    z = np.sqrt( delta )
-    return z
-
-def do_chull(sinogram,invert,tolerance,opening_param,erosion_param,chull_param,frame):
-    img = sinogram[frame,:,:] 
-    where = operator_T(img).real
-    new = np.copy(img)
-    if invert:
-        new[ new > 0] = operator_T(new).real[ img > 0]
-    else:
-        new[ new < 0] = operator_T(new).real[ img < 0]
-
-    mask = (np.abs( new - img) < tolerance) * 1.0
-    mask2 = opening(mask, square(opening_param))
-    mask3 = erosion(mask2, square(erosion_param))
-    chull = dilation( convex_hull_image(mask3), square(chull_param) ) # EXPAND CASCA DA MASCARA
-    img_masked = np.copy(img * chull)  #nova imagem apenas com o suporte
-    # sinogram[frame,:,:] = img_masked
-    return new,mask,mask2,mask3,chull,img_masked
-
-def apply_chull_parallel(sinogram,invert=True,tolerance=1e-5,opening_param=10,erosion_param=30,chull_param=50):
-    if sinogram.ndim == 2:
-        sinogram = np.expand_dims(sinogram, axis=0) # add dummy dimension to get 3d array
-    chull_sinogram = np.empty_like(sinogram)
-    do_chull_partial = partial(do_chull,sinogram,invert,tolerance,opening_param,erosion_param,chull_param)
-    frames = [f for f in range(sinogram.shape[0])]
-    processes = min(os.cpu_count(),32)
-    print(f'Using {processes} parallel processes')
-    with ProcessPoolExecutor(max_workers=processes) as executor:
-        results = list(tqdm(executor.map(do_chull_partial,frames),total=sinogram.shape[0]))
-        for counter, result in enumerate(results):
-            new,mask,mask2,mask3,chull,img_masked = result
-            chull_sinogram[counter,:,:] = img_masked
-    return [new,mask,mask2,mask3,chull,img_masked,chull_sinogram]
-
-####################### TOMOGRAPHY ###########################################3
-
-def regularization(sino, L):
-    a = 1
-    R = sino.shape[1]
-    V = sino.shape[0]
-    th = np.linspace(0, np.pi, V, endpoint=False)
-    t  = np.linspace(-a, a, R)
-    dt = (2*a)/float((R-1))
-    wc = 1.0/(2*dt)
-    w = np.linspace(-wc, wc, R)
-    if 1: # two options
-        h = np.abs(w) / (1 + 4 * np.pi * L * (w**2) )
-    else:
-        h = 1 / (1 + 4 * np.pi * L * (w**2) )
-    G = np.fft.fftshift(np.transpose(np.kron(np.ones((V, 1)), h))).T
-    B = np.fft.fft(sino, axis=1)
-    D = np.fft.ifft(B * G, axis=1).real
-    return D
-
 def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[],axis_direction=1,mask_slice=[]):
     
     if type(bkg_window) == type("a_string"):
@@ -358,6 +189,128 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[]
 
     return equalized_tomogram
 
+####################### ALIGNMENT ###########################################
+
+def tomo_alignment(dic):
+    start = time.time()
+
+    angles  = np.load(dic["ordered_angles_filepath"])
+    object = np.load(dic["wiggle_sinogram_selection"]) 
+
+    object = make_bad_frame_null(dic,object)
+    object, _, _, projected_angles = angle_mesh_organize(object, angles)
+    tomoP, _, _, wiggle_cmas = wiggle(dic, object)
+
+    np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
+    np.save(dic["ordered_angles_filepath"],projected_angles)
+    np.save(dic["wiggle_sinogram_filepath"],tomoP)
+    print(f'Time elapsed - Alignment: {time.time() - start} s' )
+
+def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
+    """ Project angles to regular mesh and pad it to run from 0 to 180
+
+    Args:
+        original_frames (_type_): _description_
+        angles (_type_): _description_
+        
+    Returns:
+        _type_: _description_
+    """
+    
+    angles_list = []
+    padding_frames_counter = 0
+
+    start_angle = angles[:,1].min()
+    end_angle   = angles[:,1].max()
+
+    neighbor_differences = angles[1::,1] - angles[0:-1,1]  # shift and subtract to get difference between neighbors
+    
+    maxdtheta = abs(neighbor_differences).max() 
+    mindtheta = abs(neighbor_differences).min()
+
+    divider = (percentage*maxdtheta - (percentage-100)*mindtheta)/100 # if 100, = max; if 0 = min; intermediary values between 0 and 100 results in values between min and max
+
+    n_of_angles = int(np.ceil( np.pi/divider))
+    
+    dtheta = np.pi / (n_of_angles)
+    projected_frames = np.zeros([n_of_angles,original_frames.shape[1],original_frames.shape[2]])
+
+    previous_idx = -1
+    previous_min_dif = neighbor_differences[0]
+    idx = np.zeros([n_of_angles], dtype=int)
+    for k in range(n_of_angles):
+
+        angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
+        angles_list.append(angle*180/np.pi)
+        if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
+            padding_frames_counter += 1
+            idx[k] = -1
+            projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+        else:
+            difference_array = abs(angle - angles[:,1]) 
+            arg_min_dif = np.argmin( difference_array )
+            min_diff = difference_array[arg_min_dif]
+            idx[k] = int( arg_min_dif)
+
+            if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
+                if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
+                    projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
+                    idx[k-1] = -2
+                    projected_frames[k,:,:] = original_frames[idx[k],:]
+                else: 
+                    idx[k] = -3
+                    continue 
+            else:
+                projected_frames[k,:,:] = original_frames[idx[k],:]
+
+            previous_idx = idx[k]
+            previous_min_dif = min_diff
+        
+    angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
+    
+    return projected_frames, idx, padding_frames_counter, angles_array 
+
+def make_bad_frame_null(dic, object):
+    for k in dic["bad_frames_before_wiggle"]:
+        object[k,:,:] = 0
+    return object
+
+def wiggle(dic, object):
+    temp_tomogram, shiftv = sscRadon.radon.get_wiggle( object, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
+    temp_tomogram, shiftv = sscRadon.radon.get_wiggle( temp_tomogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
+    print('\tFinished vertical wiggle. Starting horizontal wiggle...')
+    tomoP, shifth, wiggle_cmas_temp = sscRadon.radon.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
+    wiggle_cmas = [[],[]]
+    wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
+    return tomoP, shifth, shiftv, wiggle_cmas
+
+####################### TOMOGRAPHY ###########################################
+
+def tomo_recon(dic):
+    start = time.time()
+    reconstruction3D = tomography(dic,use_regularly_spaced_angles=True)
+    np.save(dic["reconstruction_filepath"],reconstruction3D)
+    imsave(dic["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
+    print(f'Time elapsed - Tomography: {time.time() - start} s' )
+
+def regularization(sino, L):
+    a = 1
+    R = sino.shape[1]
+    V = sino.shape[0]
+    th = np.linspace(0, np.pi, V, endpoint=False)
+    t  = np.linspace(-a, a, R)
+    dt = (2*a)/float((R-1))
+    wc = 1.0/(2*dt)
+    w = np.linspace(-wc, wc, R)
+    if 1: # two options
+        h = np.abs(w) / (1 + 4 * np.pi * L * (w**2) )
+    else:
+        h = 1 / (1 + 4 * np.pi * L * (w**2) )
+    G = np.fft.fftshift(np.transpose(np.kron(np.ones((V, 1)), h))).T
+    B = np.fft.fft(sino, axis=1)
+    D = np.fft.ifft(B * G, axis=1).real
+    return D
+
 def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
     if save:
         wiggle_cmass = np.asarray(wiggle_cmass)
@@ -378,7 +331,6 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
-
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
     algorithm                = input_dict["tomo_algorithm"]
@@ -386,7 +338,6 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["GPUs"]
-    CPUs                     = input_dict["CPUs"]
     do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
     output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
@@ -404,15 +355,6 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     angles = np.load(angles_filepath) # sorted angles?
 
     """ ######################## Regularization ################################ """
-
-    if 0: # Paola's approach to correcting angles
-        # Padded zeros for completion of missing wedge:  from (-70,70) - 140 degrees, to (-90,90) - 180 degrees
-        angles = angles[:,1] # get the angles
-        anglesmax, anglesmin = angles[-1],  angles[0]     # max and min angles
-        angles = np.insert(angles, 0, -90)     # Insert the first angle as -90. Why I do that? Beacause I assume that the first angles is always zero, in order to correctly find the angle step size inside the EM algorithm fro all angles.
-        data = np.pad(data,((1,0),(0,0),(0,0)),'constant') # Pad zeros corresponding to the extra -90 value
-        angles = (angles + 90) # Transform the angles from (-90,90) to (0,180)
-
     if do_regularization == True and algorithm == "EEM": # If which_reconstruction == "EEM" MIQUELES
         print('\tBegin Regularization')
         for k in range(data.shape[1]):
@@ -421,32 +363,9 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         print('\tRegularization Done')
 
     """ ######################## RECON ################################ """
-
-
     print('Starting tomographic algorithm: ',algorithm)
-    if algorithm == "TEM" or algorithm == "EM":
-        data = np.exp(-data)
-    elif algorithm == "ART":
-        flat = np.ones([1,data.shape[-2],data.shape[-2]],dtype=np.uint16)
-        dark = np.zeros(flat.shape[1:],dtype=np.uint16)
-        centersino1 = Centersino(frame0=data[0,:,:], frame1=data[-1,:,:], flat=flat[0], dark=dark, device=0) 
-
-    if algorithm != "EEM": # for these
-        
-        rays, slices = data.shape[-1], data.shape[-2]
-        reconstruction3D = np.zeros((rays,slices,rays))
-        for i in range(slices):
-            sinogram = data[:,i,:]
-            if algorithm == "ART":
-                reconstruction3D[:,i,:]= maskedART( sino=sinogram,mask=flat,niter=iterations ,device=GPUs)
-            elif algorithm == "FBP": 
-                reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
-            elif algorithm == "RegBackprojection":
-                reconstruction3D[:,i,:]= Backprojection( sino=sinogram,device=GPUs)
-            elif algorithm == "EM":
-                reconstruction3D[:,i,:]= EM(sinogram, flat, iter=iterations, pad=2, device=GPUs, csino=0)
-            elif algorithm == "SIRT":
-                reconstruction3D[:,i,:]= SIRT_FST(sinogram, iter=iterations, zpad=2, step=1.0, csino=0, device=GPUs, art_alpha=0.2, reg_mu=0.2, param_alpha=0, supp_reg=0.2, img=None)
+    if algorithm == "FBP": 
+        reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
     elif algorithm == "EEM": #data é o que sai do wiggle! 
         data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
         n_of_angles = data.shape[1]
@@ -455,11 +374,10 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
         dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
         reconstruction3D = sscRaft.emfs( data, dic )
     else:
-        import sys
         sys.exit('Select a proper reconstruction method')
      
     print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
-    reconstruction3D = radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
+    reconstruction3D = sscRadon.radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
     print('\t\t Correction done!')
 
     print('\t Tomography done!')
@@ -470,23 +388,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
     return reconstruction3D
 
-
-
-####################### EXTRA ###########################################3
-"""
-Created on Fri Nov 11 08:03:31 2022
-
-@author: yuri
-"""
-
-import numpy as np
-import matplotlib.pyplot as plt
-from functools import partial
-from concurrent.futures import ProcessPoolExecutor
-from tqdm import tqdm
-import os
-
-
+####################### EXTRA ###########################################
 
 def plane(variables,u,v,a):
     Xmesh,Ymesh = variables
