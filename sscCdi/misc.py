@@ -150,6 +150,41 @@ def save_json_logfile(input_dict):
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
 
+def save_json_logfile_tomo(input_dict):
+    """Save a copy of the json input file with datetime at the filename
+
+    Args:
+        path (string): output folder path 
+        input_dict (dic): input_dict dictionary
+    """    
+    import json, os
+
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return json.JSONEncoder.default(self, obj)
+
+    path = input_dict["output_folder"]
+
+    from datetime import datetime
+    now = datetime.now()
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    name = input_dict["filename"]
+    datetime = dt_string + "_" + name.split('.')[0]
+    name = datetime+".json"
+
+    filepath = os.path.join(path,name)
+    file = open(filepath,"w")
+    json_string = json.dumps(input_dict,indent=2,separators=(', ',': '),sort_keys=True,cls=NpEncoder)
+    file.write(json_string)
+    file.close()
+
+
 def create_directory_if_doesnt_exist(*args):
     """ Create directories from a list of paths if they do not already exist
 

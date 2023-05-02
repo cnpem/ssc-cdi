@@ -2,29 +2,28 @@ import os, sys, time, ast
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from scipy.misc import imsave
+from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 
 import sscRaft, sscRadon
 
-from ..misc import save_json_logfile
-from ..processing.unwrap import RemoveGrad, unwrap_in_parallel
+from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo
+from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel, unwrap_in_sequence
 
-def select_contrast(dic):
+def select_contrast(dic, data):
     if dic["contrast_type"] == "phase":
-        data = np.angle(data)
+        obj = np.angle(data)
     elif dic["contrast_type"] == "magnitude":
-        data = np.abs(data)
+        obj = np.abs(data)
     else:
         sys.exit("Please select the correct contrast type: magnitude or phase")
-    return data
+    return obj
 
-def update_dict(dic):
+def define_paths(dic):
 
-    dic["output_folder"] = dic["sinogram_path"].rsplit('/',0)
-    dic["filename"] = os.path.join(dic["contrast_type"],'_',dic["sinogram_path"].rsplit('/',1).split['.'][0])
-    print(dic["output_folder"],dic["filename"])
+    dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
+    dic["filename"]    = os.path.join(dic["contrast_type"]+'_'+dic["sinogram_path"].rsplit('/',1)[1].split('.')[0])
     dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
     dic["ordered_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
     dic["projected_angles_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
@@ -33,9 +32,12 @@ def update_dict(dic):
     dic["equalized_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_equalized_sinogram.npy')
     dic["unwrapped_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_unwrapped_sinogram.npy')
     dic["wiggle_sinogram_filepath"]    = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_sinogram.npy')
-    dic["wiggle_ctr_mass_filepath"]    = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
+    dic["wiggle_cmas_filepath"]        = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
     dic["reconstruction_filepath"]     = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo.npy')
     dic["eq_reconstruction_filepath"]  = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo_equalized.npy')
+
+    create_directory_if_doesnt_exist(dic["output_folder"])
+    create_directory_if_doesnt_exist(dic["temp_folder"])
 
     return dic
 
@@ -43,15 +45,16 @@ def update_dict(dic):
 
 def tomo_sort(dic, object, angles):
     start = time.time()
-    sorted_angles = sort_angles(angles[:,[0,2]]) # input colums with frame number and angle in rad
+    sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     object = reorder_slices_low_to_high_angle(object, sorted_angles)
     np.save(dic["ordered_angles_filepath"],angles)
     np.save(dic["ordered_object_filepath"], object) 
-    print(f'Time elapsed - Sort: {time.time() - start} s' )
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
 
 def sort_angles(angles):
     rois = np.asarray(angles)
-    rois = rois[rois[:,2].argsort(axis=0)]
+    rois = rois[rois[:,1].argsort(axis=0)]
     return rois 
 
 def reorder_slices_low_to_high_angle(object, rois):
@@ -69,27 +72,30 @@ def tomo_crop(dic):
     start = time.time()
     object = np.load(dic["ordered_object_filepath"])
     object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
+    print(f"Cropped sinogram shape: {object.shape}")
     np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
-    print(f'Time elapsed - Crop: {time.time() - start} s' )
-    return object
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
 
 ######################### UNWRAP #################################################
 
 def tomo_unwrap(dic):
     start = time.time()
     object = np.load(dic["cropped_sinogram_filepath"])  
-    object = unwrap_in_parallel(object,tomo_iterations=dic["tomo_iterations"],non_negativity=dic["unwrap_non_negativity"],remove_gradient = dic["unwrap_gradient_removal"])
+    object = unwrap_in_parallel(object)
     np.save(dic["unwrapped_sinogram_filepath"],object)  
-    print(f'Time elapsed - Unwrap: {time.time() - start} s' )
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
 
 ######################### EQUALIZATION #################################################
 
 def tomo_equalize(dic):
     start = time.time()
     unwrapped_sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
-    equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], ast.literal_eval(dic["equalize_local_offset"]))
+    equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
     np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
-    print(f'Time elapsed - Equalization: {time.time() - start} s' )
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
 
 def tomo_equalize3D(dic):
     start = time.time()
@@ -97,7 +103,8 @@ def tomo_equalize3D(dic):
     equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
     imsave(dic["eq_reconstruction_filepath"][:-4] + '.tif',equalized_tomogram)
-    print(f'Time elapsed - 3D equalization: {time.time() - start} s' )
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
 
 def remove_outliers(data,sigma):
     minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
@@ -113,7 +120,7 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
 
     # Remove Gradient
     for i in range(0,remove_gradient):
-        frame = RemoveGrad(frame,np.ones_like(frame,dtype=bool))
+        frame = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool))
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -139,8 +146,7 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
 def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
 
     minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
-    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
-    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
+
     
     # Invert sinogram
     if invert == True:
@@ -166,13 +172,15 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
         equalized_sinogram = np.empty_like(sinogram)
         results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
         for counter, result in enumerate(results):
-            if counter % 100 == 0: print('Populating results matrix...',counter)
+            # if counter % 100 == 0: print('Populating results matrix...',counter)
             minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
             # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
             equalized_sinogram[counter,:,:] = result
 
-    minimum, maximum, mean, std = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
-    # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    minimum1, maximum1, mean1, std1 = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
+    print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
+    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
+    print('New ',minimum1, mean1-3*std1,mean1, mean1+3*std1,maximum1)
 
     return equalized_sinogram
 
@@ -229,20 +237,39 @@ def tomo_alignment(dic):
     object, _, _, projected_angles = angle_mesh_organize(object, angles)
     tomoP, _, _, wiggle_cmas = wiggle(dic, object)
 
+    dic['n_of_original_angles'] = angles.shape # save to output log
+    dic['n_of_used_angles']     = projected_angles.shape 
+    dic["wiggle_ctr_of_mas"] = wiggle_cmas
+
     np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
-    np.save(dic["ordered_angles_filepath"],projected_angles)
+    np.save(dic["projected_angles_filepath"],projected_angles)
     np.save(dic["wiggle_sinogram_filepath"],tomoP)
-    print(f'Time elapsed - Alignment: {time.time() - start} s' )
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return dic
+
+def preview_angle_projection(dic):
+    print("Simulating projection of angles to regular grid...")
+    angles  = np.load(dic["ordered_angles_filepath"])
+    angles = (np.pi/180.) * angles
+    total_n_of_angles = angles.shape[0]
+    
+    _, selected_indices, n_of_padding_frames, projected_angles = angle_mesh_organize(np.load(dic["wiggle_sinogram_selection"]), angles,percentage=dic["step_percentage"])
+    n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
+    selected_positive_indices = [ i for i in selected_indices if i >= 0]
+    complete_array = [i for i in range(total_n_of_angles)]
+
+    # print('Selected indices: \n',selected_indices)
+    print('Before+after frames added:',n_of_padding_frames)
+    print('Intermediate null frames :',len([ i for i in selected_indices if i < -1]))
+    print('                        + -----')
+    print("Total null frames        :", n_of_negative_idxs)
+    print("Frames being used        :", len(selected_positive_indices)," of ",len(complete_array))
+    print('                        + -----')
+    print('Projected Angles         :', projected_angles.shape[0])
+
 
 def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
     """ Project angles to regular mesh and pad it to run from 0 to 180
-
-    Args:
-        original_frames (_type_): _description_
-        angles (_type_): _description_
-        
-    Returns:
-        _type_: _description_
     """
     
     angles_list = []
@@ -319,7 +346,8 @@ def tomo_recon(dic):
     reconstruction3D = tomography(dic,use_regularly_spaced_angles=True)
     np.save(dic["reconstruction_filepath"],reconstruction3D)
     imsave(dic["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
-    print(f'Time elapsed - Tomography: {time.time() - start} s' )
+    print(f'Time elapsed: Tomography: {time.time() - start} s' )
+    return dic
 
 def regularization(sino, L):
     a = 1
@@ -362,20 +390,18 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
 def tomography(input_dict,use_regularly_spaced_angles=True):
     
     algorithm                = input_dict["tomo_algorithm"]
-    data_selection           = input_dict["contrast_type"]
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["GPUs"]
     do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
-    output_folder            = input_dict["output_folder"] # output should be the same folder where original sinogram is located
     wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
-    wiggle_cmas_path         = input_dict["wiggle_ctr_mass_filepath"]
+    wiggle_cmas_path         = input_dict["wiggle_cmas_filepath"]
 
     if wiggle_cmas == [[],[]]:
         wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
 
-    data = np.load(os.path.join(output_folder,f'{data_selection}_wiggle_sinogram.npy'))
+    data = np.load(input_dict["wiggle_sinogram_filepath"])
 
     if use_regularly_spaced_angles == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
@@ -383,7 +409,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     angles = np.load(angles_filepath) # sorted angles?
 
     """ ######################## Regularization ################################ """
-    if do_regularization == True and algorithm == "EEM": # If which_reconstruction == "EEM" MIQUELES
+    if do_regularization == True and algorithm == "EEM": 
         print('\tBegin Regularization')
         for k in range(data.shape[1]):
             data[:,k,:] = regularization( data[:,k,:], regularization_parameter)
@@ -411,7 +437,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     print('\t Tomography done!')
 
     print('Saving tomography logfile...')
-    save_json_logfile(input_dict)
+    save_json_logfile_tomo(input_dict)
     print('\tSaved!')
 
     return reconstruction3D
@@ -421,44 +447,6 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 def plane(variables,u,v,a):
     Xmesh,Ymesh = variables
     return np.ravel(u*Xmesh+v*Ymesh+a)
-
-def RemoveGrad_3( img, mask ):
-    xy = np.argwhere( mask > 0)
-    n = len(xy)
-    y = xy[:,0].reshape([n,1])
-    x = xy[:,1].reshape([n,1])
-    F = np.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
-    mat = np.zeros([3,3])
-    vec = np.zeros([3,1])
-    mat[0,0] = (x*x).sum()
-    mat[0,1] = (x*y).sum()
-    mat[0,2] = (x).sum()
-    mat[1,0] = mat[0,1]
-    mat[1,1] = (y*y).sum()
-    mat[1,2] = (y).sum()
-    mat[2,0] = mat[0,2]
-    mat[2,1] = mat[1,2]
-    mat[2,2] = n
-    vec[0,0] = (x*F).sum()
-    vec[1,0] = (y*F).sum()
-    vec[2,0] = (F).sum()
-    eye = np.eye(mat.shape[0])
-    eps = 1e-3 # valor tirado do *
-    if 1: # com regularização
-        abc = np.dot( np.linalg.inv(mat + eps * eye), vec).flatten() 
-    else: # sem regularização
-        abc = np.dot( np.linalg.inv(mat), vec).flatten()
-    a = abc[0]
-    b = abc[1]
-    c = abc[2]
-    new   = np.zeros(img.shape)
-    row   = new.shape[0]
-    col   = new.shape[1]
-    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
-    new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c )
-    #for k in range(n):
-    #    new[y[k], x[k]] = img[ y[k], x[k]] - ( a*x[k] + b*y[k] + c )
-    return new, a,b,c
 
 def func(x,alpha,cut=8):
     maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
@@ -476,7 +464,7 @@ def get_best_plane_fit_inside_mask(mask2,frame ):
     a = b = c = 1e9
     counter = 0
     while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter > 5:
-        grad_removed, a,b,c = RemoveGrad_3(frame,mask2)
+        grad_removed, a,b,c = remove_phase_gradient(frame,mask2)
         plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
         frame = frame - plane_fit
         counter += 1

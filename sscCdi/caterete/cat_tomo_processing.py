@@ -3,6 +3,7 @@ import h5py
 import numpy as np
 
 def read_data(dic):
+    
     if dic["recon_method"] == 'ptycho':
         file = h5py.File(dic["sinogram_path"], 'r')
         object = file['recon/object']
