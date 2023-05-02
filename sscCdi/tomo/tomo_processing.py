@@ -11,6 +11,34 @@ import sscRaft, sscRadon
 from ..misc import save_json_logfile
 from ..processing.unwrap import RemoveGrad, unwrap_in_parallel
 
+def select_contrast(dic):
+    if dic["contrast_type"] == "phase":
+        data = np.angle(data)
+    elif dic["contrast_type"] == "magnitude":
+        data = np.abs(data)
+    else:
+        sys.exit("Please select the correct contrast type: magnitude or phase")
+    return data
+
+def update_dict(dic):
+
+    dic["output_folder"] = dic["sinogram_path"].rsplit('/',0)
+    dic["filename"] = os.path.join(dic["contrast_type"],'_',dic["sinogram_path"].rsplit('/',1).split['.'][0])
+    print(dic["output_folder"],dic["filename"])
+    dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
+    dic["ordered_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
+    dic["projected_angles_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
+    dic["ordered_object_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_object.npy')
+    dic["cropped_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_cropped_sinogram.npy')
+    dic["equalized_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_equalized_sinogram.npy')
+    dic["unwrapped_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_unwrapped_sinogram.npy')
+    dic["wiggle_sinogram_filepath"]    = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_sinogram.npy')
+    dic["wiggle_ctr_mass_filepath"]    = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
+    dic["reconstruction_filepath"]     = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo.npy')
+    dic["eq_reconstruction_filepath"]  = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo_equalized.npy')
+
+    return dic
+
 ####################### SORTING ###################################
 
 def tomo_sort(dic, object, angles):
@@ -67,8 +95,8 @@ def tomo_equalize3D(dic):
     start = time.time()
     reconstruction = np.load(dic["reconstruction_filepath"])
     equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
-    np.save(dic["reconstruction_equalized_filepath"],equalized_tomogram)
-    imsave(dic["reconstruction_equalized_filepath"][:-4] + '.tif',equalized_tomogram)
+    np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
+    imsave(dic["eq_reconstruction_filepath"][:-4] + '.tif',equalized_tomogram)
     print(f'Time elapsed - 3D equalization: {time.time() - start} s' )
 
 def remove_outliers(data,sigma):

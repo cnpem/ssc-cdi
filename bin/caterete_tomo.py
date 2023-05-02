@@ -7,25 +7,31 @@ from sscCdi.caterete.cat_tomo_processing import read_data
 dic = json.load(open(sys.argv[1])) # input dictionary
 
 if dic["processing_steps"]["read"]: 
-    object, angles = read_data(dic["sinogram_path"],dic["recon_method"])
+    object, angles, dic = read_data(dic["sinogram_path"],dic["recon_method"])
 
 if dic["processing_steps"]["sort"]: 
-    tomo_sort(dic,object, angles)
+    dic = tomo_sort(dic,object, angles)
 
 if dic["processing_steps"]["crop"]:  
-    tomo_crop(dic)
+    dic = tomo_crop(dic)
 
 if dic["processing_steps"]["unwrap"]:
-    tomo_unwrap(dic)
+    dic = tomo_unwrap(dic)
 
 if dic["processing_steps"]["equalize2D"]:
-    tomo_equalize(dic)
+    dic = tomo_equalize(dic)
 
 if dic["processing_steps"]["alignment"]: 
-    tomo_alignment(dic)
+    dic = tomo_alignment(dic)
 
 if dic["processing_steps"]["tomography"]: 
-    tomo_recon(dic)
+    dic = tomo_recon(dic)
 
 if dic["processing_steps"]["equalize3D"]:
-    tomo_equalize3D(dic)
+    dic = tomo_equalize3D(dic)
+
+# save dic with metadata
+output_dict = json.dumps(dic,indent=3,sort_keys=True)
+jsonFile = open(dic["output_dict_path"], "w")
+jsonFile.write(output_dict)
+jsonFile.close()
