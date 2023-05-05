@@ -1,11 +1,18 @@
 
-import h5py
+import h5py, sys
 import numpy as np
 from numpy import loadtxt
 
-from ..tomo.tomo_processing import select_contrast
-
 def read_data(dic):
+    """ Read data from ptychography or plane-wave CDI measurement.
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    Returns:
+        object: volume containg sinogram of the object either from ptychography or plane-wave CDI
+        angles: array containing rotation angle for each frame of the sinogram
+    """
     
     if dic["recon_method"] == 'ptycho':
         file = h5py.File(dic["sinogram_path"], 'r')
@@ -30,6 +37,16 @@ def read_data(dic):
 
 
 def select_contrast(dic, data):
+    """ Loads either magnitude or phase data from complex-valued array
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline. Should contain "contrast_type" key for selecting desired contrast
+        data (ndarray): array of complex values
+
+    Returns:
+        obj (ndarray): real valued array contaning only magnitude or phase of data
+    """
+
     if dic["contrast_type"] == "phase":
         obj = np.angle(data)
     elif dic["contrast_type"] == "magnitude":
