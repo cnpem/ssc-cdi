@@ -423,9 +423,9 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
-def deploy_visualizer(data,axis=0,title='',cmap='jet'):
-
+def deploy_visualizer(data,axis=0,title='',cmap='jet',limits=()):
     """
+
     data (ndarray): real valued data
     axis (int): slice direction
     """
@@ -441,7 +441,10 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet'):
     import matplotlib.colors as colors
     import matplotlib.cm
     
-    colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+    if limits == ():
+        colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+    else:
+        colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
     
     def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=colors.Normalize()):
         
