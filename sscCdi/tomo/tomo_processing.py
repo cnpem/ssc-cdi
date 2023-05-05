@@ -11,15 +11,6 @@ import sscRaft, sscRadon
 from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo
 from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel, unwrap_in_sequence
 
-def select_contrast(dic, data):
-    if dic["contrast_type"] == "phase":
-        obj = np.angle(data)
-    elif dic["contrast_type"] == "magnitude":
-        obj = np.abs(data)
-    else:
-        sys.exit("Please select the correct contrast type: magnitude or phase")
-    return obj
-
 def define_paths(dic):
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
@@ -234,7 +225,8 @@ def tomo_alignment(dic):
     object = np.load(dic["wiggle_sinogram_selection"]) 
 
     object = make_bad_frame_null(dic,object)
-    object, _, _, projected_angles = angle_mesh_organize(object, angles)
+    object, _, _, projected_angles = angle_mesh_organize(object, angles,percentage=dic["step_percentage"])
+    print(object.shape,projected_angles.shape)
     tomoP, _, _, wiggle_cmas = wiggle(dic, object)
 
     dic['n_of_original_angles'] = angles.shape # save to output log
@@ -564,3 +556,8 @@ def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, p
     # frame_preview = 0 # select which frame of the sinogram to preview in the plots
 
     # gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding,frame_preview)        
+
+def flip_frames_of_interest(sinogram,frame_list):
+    for i in frame_list:
+        sinogram[i] = sinogram[i,::-1,::-1]
+    return sinogram

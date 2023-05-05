@@ -13,7 +13,7 @@
    
    "contrast_type": "phase",
 
-   "data_path":                  "/ibira/lnls/beamlines/caterete/proposals/20220684/proc/recons/pollen_mem4_01/pollen_mem4_01_object.npy",
+   "data_path": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/phantom_complex/phantom_complex.hdf5",
 
    "CPUs": 32,
    "GPUs": [0],

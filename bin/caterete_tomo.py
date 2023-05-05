@@ -7,7 +7,7 @@ from sscCdi.caterete.cat_tomo_processing import read_data
 dic = json.load(open(sys.argv[1])) # input dictionary
 
 if dic["processing_steps"]["read"]: 
-    object, angles, dic = read_data(dic["sinogram_path"],dic["recon_method"])
+    object, angles = read_data(dic)
 
 if dic["processing_steps"]["sort"]: 
     dic = tomo_sort(dic,object, angles)
