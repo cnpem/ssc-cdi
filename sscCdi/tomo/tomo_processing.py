@@ -12,6 +12,14 @@ from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_jso
 from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel, unwrap_in_sequence
 
 def define_paths(dic):
+    """ Defines all the path required for the remaining parts of the code; adds them to the dicitionary and creates necessary folders
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    Returns:
+        dic (dict): updated dictionary of inputs for CAT beamline
+    """
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
     dic["filename"]    = os.path.join(dic["contrast_type"]+'_'+dic["sinogram_path"].rsplit('/',1)[1].split('.')[0])
@@ -35,83 +43,151 @@ def define_paths(dic):
 ####################### SORTING ###################################
 
 def tomo_sort(dic, object, angles):
+    """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+        object (ndarray): read sinogram to be sorted
+        angles (ndarray): rotation angle for each frame of the sinogram
+
+    """
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     object = reorder_slices_low_to_high_angle(object, sorted_angles)
     np.save(dic["ordered_angles_filepath"],angles)
     np.save(dic["ordered_object_filepath"], object) 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
 
 def sort_angles(angles):
-    rois = np.asarray(angles)
-    rois = rois[rois[:,1].argsort(axis=0)]
-    return rois 
+    """ Sort angles array from smallest to highest angle
+
+    Args:
+        angles (array): angle array in time/acquisition order
+
+    Returns:
+        angles (array): angle array in sorted from smallest to highest angle
+    """
+    angles = np.asarray(angles)
+    sorted_angles = angles[angles[:,1].argsort(axis=0)]
+    return sorted_angles 
 
 def reorder_slices_low_to_high_angle(object, rois):
-    object_temporary = np.zeros_like(object)
+    """ Reorder sinogram according to the sorted angles array
+
+    Args:
+        object (ndarray): sinogram to be sorted
+        angles (array): angle array in sorted from smallest to highest angle
+
+    Returns:
+        sorted_object (array): sinogram sorted by angle
+    """
+    sorted_object = np.zeros_like(object)
 
     for k in range(object.shape[0]): # reorder slices from lowest to highest angle
             # print(f'New index: {k}. Old index: {int(rois[k,0])}')
-            object_temporary[k,:,:] = object[int(rois[k,0]),:,:] 
+            sorted_object[k,:,:] = object[int(rois[k,0]),:,:] 
 
-    return object_temporary
+    return sorted_object
 
 ######################### CROP #################################################
 
 def tomo_crop(dic):
+    """ Crops sinogram according to cropping parameters in dic
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    """
     start = time.time()
     object = np.load(dic["ordered_object_filepath"])
     object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
     print(f"Cropped sinogram shape: {object.shape}")
     np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
 
 ######################### UNWRAP #################################################
 
 def tomo_unwrap(dic):
+    """ Calls unwrapping algorithms in multiple processes for the sinogram frames
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    """
     start = time.time()
     object = np.load(dic["cropped_sinogram_filepath"])  
     object = unwrap_in_parallel(object)
     np.save(dic["unwrapped_sinogram_filepath"],object)  
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
 
 ######################### EQUALIZATION #################################################
 
 def tomo_equalize(dic):
+    """ Calls equalization algorithms in multiple processes for sinogram frames
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    """
     start = time.time()
     unwrapped_sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
     equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
     np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
 
 def tomo_equalize3D(dic):
+    """ Call equalization algorithms for tomogram frames
+
+    Args:
+        dic (dict): dictionary of inputs for CAT beamline
+
+    """
     start = time.time()
     reconstruction = np.load(dic["reconstruction_filepath"])
     equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
     imsave(dic["eq_reconstruction_filepath"][:-4] + '.tif',equalized_tomogram)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
+
 
 def remove_outliers(data,sigma):
-    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
-    # print(f'Min \t Mean-{sigma}*sigma \t Mean \t Mean+{sigma}*sigma \t Max ')
-    # print('Old',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
+    """ Remove all values above/below +sigma/-sigma sigma values. 1 sigma = 1 standard deviation
+
+    Args:
+        data (array): sinogram slice
+        sigma (int): number of sigmas to reject
+
+    Returns:
+        data (array): sinogram slice with filtered values
+    """
+    mean, std = np.mean(data), np.std(data)
     data = np.where(data > mean + sigma*std,0,data)
     data = np.where(data < mean - sigma*std,0,data)
-    minimum, maximum, mean, std = np.min(data), np.max(data), np.mean(data), np.std(data)
-    # print('New',minimum, mean-sigma*std,mean, mean+sigma*std,maximum)
     return data
 
 def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset,frame):
+    """ Performs a series of processing steps over a 2D array, namely:
 
-    # Remove Gradient
+        1) Removes a gradient (i.e. the phase ramp) for the image as a whole
+        2) Makes any NaN values null
+        3) Removes outlier values above/below a certain sigma
+        4) Removes the global offset of the array, making the smallest value null
+        5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
+
+    Args:
+        remove_gradient (_type_): _description_
+        remove_outlier (_type_): _description_
+        remove_global_offset (_type_): _description_
+        remove_avg_offset (_type_): _description_
+        frame (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    # Remove phase ramp
     for i in range(0,remove_gradient):
-        frame = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool))
+        frame = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool),full=True)
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -157,7 +233,6 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
 
     processes = min(os.cpu_count(),32)
     print(f'Using {processes} parallel processes')
-
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
