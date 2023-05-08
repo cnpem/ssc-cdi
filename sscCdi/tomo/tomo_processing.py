@@ -15,10 +15,10 @@ def define_paths(dic):
     """ Defines all the path required for the remaining parts of the code; adds them to the dicitionary and creates necessary folders
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs  
 
     Returns:
-        dic (dict): updated dictionary of inputs for CAT beamline
+        dic (dict): updated dictionary of inputs  
     """
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
@@ -46,7 +46,7 @@ def tomo_sort(dic, object, angles):
     """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs  
         object (ndarray): read sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
 
@@ -95,7 +95,7 @@ def tomo_crop(dic):
     """ Crops sinogram according to cropping parameters in dic
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs  
 
     """
     start = time.time()
@@ -111,7 +111,7 @@ def tomo_unwrap(dic):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs  
 
     """
     start = time.time()
@@ -126,7 +126,7 @@ def tomo_equalize(dic):
     """ Calls equalization algorithms in multiple processes for sinogram frames
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs  
 
     """
     start = time.time()
@@ -139,7 +139,7 @@ def tomo_equalize3D(dic):
     """ Call equalization algorithms for tomogram frames
 
     Args:
-        dic (dict): dictionary of inputs for CAT beamline
+        dic (dict): dictionary of inputs f 
 
     """
     start = time.time()
@@ -261,29 +261,21 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
 
     return equalized_sinogram
 
-def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[],axis_direction=1,mask_slice=[]):
+def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
     """_summary_
 
     Args:
-        recon (array): 3D reconstructed volume from tomography
+        equalized_tomogram (array): 3D reconstructed volume from tomographic algorithm
         mean (float): mean value of 3D reconstruction
         std (float): standard deviation of 3D reconstruction
         remove_outliers (int, optional): if not zero, will remove outliers above/below a certain sigma, sigma being this variable. Defaults to 0.
-        threshold (int, optional): _description_. Defaults to 0.
-        bkg_window (list, optional): _description_. Defaults to [].
-        axis_direction (int, optional): _description_. Defaults to 1.
-        mask_slice (list, optional): _description_. Defaults to [].
+        threshold (int, optional): value T to threshold the volume. All voxels with absolute value higher than T are set to zero. Defaults to 0.
+        bkg_window (list, optional): List of type [top,bottom,left,right,direction] indication the the coordinates of a squared window over a certain direction. The mean value of the window will be subtracted from all voxels. Value below this mean are set to null. Defaults to [].
 
     Returns:
-        _type_: _description_
+        equalized_tomogram (array): 3D equalized tomogram
     """
     
-    if type(bkg_window) == type("a_string"):
-        bkg_window = ast.literal_eval(bkg_window) # read string as list
-        mask_slice = ast.literal_eval(mask_slice) # read string as list
-    
-    equalized_tomogram = recon
-
     if threshold != 0:
         equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
 
@@ -291,24 +283,14 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[]
             equalized_tomogram = np.where( equalized_tomogram > mean+remove_outliers*std,0,equalized_tomogram)
             equalized_tomogram = np.where( equalized_tomogram < mean-remove_outliers*std,0,equalized_tomogram)
 
-    if mask_slice != []:
-        mask_matrix = np.zeros_like(recon)
-        if axis_direction == 0:
-            mask_matrix[:,mask_slice[0]:mask_slice[1],mask_slice[2]:mask_slice[3]] = 1
-        elif axis_direction == 1:
-            mask_matrix[mask_slice[0]:mask_slice[1],:,mask_slice[2]:mask_slice[3]] = 1
-        elif axis_direction == 2:
-            mask_matrix[mask_slice[0]:mask_slice[1],mask_slice[2]:mask_slice[3],:] = 1
-        recon = recon*mask_matrix
-
     if bkg_window !=[]:
-
+        axis_direction = bkg_window[4] # last item of list indicates the direction of the slicing
         if axis_direction == 0:
-            window = recon[:,bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
+            window = equalized_tomogram[:,bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3]]
         elif axis_direction == 1:
-            window = recon[bkg_window[0]:bkg_window[1],:,bkg_window[2]:bkg_window[3]]
+            window = equalized_tomogram[bkg_window[0]:bkg_window[1],:,bkg_window[2]:bkg_window[3]]
         elif axis_direction == 2:
-            window = recon[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3],:]
+            window = equalized_tomogram[bkg_window[0]:bkg_window[1],bkg_window[2]:bkg_window[3],:]
 
         offset = np.mean(window)
         equalized_tomogram = equalized_tomogram - offset
@@ -319,15 +301,23 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[]
 ####################### ALIGNMENT ###########################################
 
 def tomo_alignment(dic):
+    """ Calls alignment algorithms for aligning the object along the sinogram frames
+
+    Args:
+        dic (dict): dictionary of inputs
+
+    Returns:
+        dic (dict): updated dictionary of inputs 
+    """
+
     start = time.time()
 
     angles  = np.load(dic["ordered_angles_filepath"])
     object = np.load(dic["wiggle_sinogram_selection"]) 
 
     object = make_bad_frame_null(dic,object)
-    object, _, _, projected_angles = angle_mesh_organize(object, angles,percentage=dic["step_percentage"])
-    print(object.shape,projected_angles.shape)
-    tomoP, _, _, wiggle_cmas = wiggle(dic, object)
+    object, _, _, projected_angles = angle_grid_organize(object, angles,percentage=dic["step_percentage"])
+    tomoP, wiggle_cmas = wiggle(dic, object)
 
     dic['n_of_original_angles'] = angles.shape # save to output log
     dic['n_of_used_angles']     = projected_angles.shape 
@@ -345,7 +335,7 @@ def preview_angle_projection(dic):
     angles = (np.pi/180.) * angles
     total_n_of_angles = angles.shape[0]
     
-    _, selected_indices, n_of_padding_frames, projected_angles = angle_mesh_organize(np.load(dic["wiggle_sinogram_selection"]), angles,percentage=dic["step_percentage"])
+    _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(np.load(dic["wiggle_sinogram_selection"]), angles,percentage=dic["step_percentage"])
     n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
     selected_positive_indices = [ i for i in selected_indices if i >= 0]
     complete_array = [i for i in range(total_n_of_angles)]
@@ -360,8 +350,19 @@ def preview_angle_projection(dic):
     print('Projected Angles         :', projected_angles.shape[0])
 
 
-def angle_mesh_organize( original_frames, angles, percentage = 100 ): 
-    """ Project angles to regular mesh and pad it to run from 0 to 180
+def angle_grid_organize( original_frames, angles, percentage = 100 ):
+    """ Given non-regular steps between rotation angles, this function projects angles to regular grid and pad it to run from 0 to 180 degrees. 
+    
+    Args:
+        original_frames (array): sinogram
+        angles (array): array of angles with non-regular steps
+        percentage (int, optional): Value from 0 to 100. 100 indicates the biggest gap between consecutive angles will be used as the step. 0 indicates the smallest gap will be used as step. Used intermediate values between 0 and 100 for gaps in between. Defaults to 100.
+
+    Returns:
+       projected_frames: modified sinogram, containing padded and null frames to account for new angles of the regular grid
+       selected_indices: list of indexes indicating if frame at that positions was nulled or valid
+       padding_frames_counter (int): number of frames padded before and after sinogram to account for angles from 0 to 180 degrees
+       angles_array (array): projected angles array
     """
     
     angles_list = []
@@ -384,64 +385,101 @@ def angle_mesh_organize( original_frames, angles, percentage = 100 ):
 
     previous_idx = -1
     previous_min_dif = neighbor_differences[0]
-    idx = np.zeros([n_of_angles], dtype=int)
+    selected_indices = np.zeros([n_of_angles], dtype=int)
     for k in range(n_of_angles):
 
         angle = -np.pi/2.0 + k*dtheta # start at -pi/2 and move in regular steps of dTheta
         angles_list.append(angle*180/np.pi)
         if angle > end_angle or angle < start_angle: # if current is before initial or final acquired angle, use a zeroed frame
             padding_frames_counter += 1
-            idx[k] = -1
+            selected_indices[k] = -1
             projected_frames[k,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
         else:
             difference_array = abs(angle - angles[:,1]) 
             arg_min_dif = np.argmin( difference_array )
             min_diff = difference_array[arg_min_dif]
-            idx[k] = int( arg_min_dif)
+            selected_indices[k] = int( arg_min_dif)
 
-            if idx[k] == previous_idx: # evaluate if previous and last frames will be the same
+            if selected_indices[k] == previous_idx: # evaluate if previous and last frames will be the same
                 if previous_min_dif > min_diff: # if angle difference is smaller now than before, zero the previous frame and declare the current to be the projected one
                     projected_frames[k-1,:,:] = np.zeros([original_frames.shape[1],original_frames.shape[2]])
-                    idx[k-1] = -2
-                    projected_frames[k,:,:] = original_frames[idx[k],:]
+                    selected_indices[k-1] = -2
+                    projected_frames[k,:,:] = original_frames[selected_indices[k],:]
                 else: 
-                    idx[k] = -3
+                    selected_indices[k] = -3
                     continue 
             else:
-                projected_frames[k,:,:] = original_frames[idx[k],:]
+                projected_frames[k,:,:] = original_frames[selected_indices[k],:]
 
-            previous_idx = idx[k]
+            previous_idx = selected_indices[k]
             previous_min_dif = min_diff
         
     angles_array = np.asarray(angles_list) - np.min(angles_list) # convert values to range 0 - 180
     
-    return projected_frames, idx, padding_frames_counter, angles_array 
+    return projected_frames, selected_indices, padding_frames_counter, angles_array 
 
-def make_bad_frame_null(dic, object):
+def make_bad_frame_null(dic, sinogram):
+    """ Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
+
+    Args:
+        dic (dict): dictionary of inputs
+        sinogram (array): sinogram containing frames to be nulled
+
+    Returns:
+        siogram (array): updated sinogram, with nulled frames
+    """
     for k in dic["bad_frames_before_wiggle"]:
-        object[k,:,:] = 0
-    return object
+        sinogram[k,:,:] = 0
+    return sinogram
 
-def wiggle(dic, object):
-    temp_tomogram, shiftv = sscRadon.radon.get_wiggle( object, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
-    temp_tomogram, shiftv = sscRadon.radon.get_wiggle( temp_tomogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
+def wiggle(dic, sinogram):
+    """ Calls sscRadon wiggle algorithm in both direction and return the aligned sinogram as well as the center-of_mass coordinates for alignment after 3D tomographic recon by slices.
+
+    Args:
+        dic (dict): dictionary of inputs
+        sinogram (array): sinogram containing misaligned frames
+
+    Returns:
+        aligned_sinogram: updated sinogram after alignment
+        wiggle_cmas: center of mass coordinates to be used for final alignment, after 3D tomographic reconstruction by slices
+    """
+    temp_tomogram, shift_vertical = sscRadon.radon.get_wiggle( sinogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
+    temp_tomogram, shift_vertical = sscRadon.radon.get_wiggle( temp_tomogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
     print('\tFinished vertical wiggle. Starting horizontal wiggle...')
-    tomoP, shifth, wiggle_cmas_temp = sscRadon.radon.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
+    aligned_sinogram, shift_horizontal, wiggle_cmas_temp = sscRadon.radon.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
     wiggle_cmas = [[],[]]
     wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
-    return tomoP, shifth, shiftv, wiggle_cmas
+    return aligned_sinogram, wiggle_cmas
 
 ####################### TOMOGRAPHY ###########################################
 
 def tomo_recon(dic):
+    """ Calls tomographic algorithms from sscRaft
+
+    Args:
+        dic (dict): dictionary of inputs
+
+    Returns:
+        reconstruction3D (array): 3D reconstructed volume via tomography
+
+    """
     start = time.time()
     reconstruction3D = tomography(dic,use_regularly_spaced_angles=True)
     np.save(dic["reconstruction_filepath"],reconstruction3D)
     imsave(dic["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
-    return dic
+    return reconstruction3D
 
-def regularization(sino, L):
+def regularization(sino, L=0.001):
+    """ Applies regularization according to: https://doi.org/10.1016/j.rinam.2019.100088
+
+    Args:
+        sino (array): aligned sinogram frame
+        L (float): regulirization parameter 
+
+    Returns:
+        D (array): regularized frame
+    """
     a = 1
     R = sino.shape[1]
     V = sino.shape[0]
@@ -480,12 +518,19 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     return downsampled_sinogram
 
 def tomography(input_dict,use_regularly_spaced_angles=True):
-    
+    """
+    Args:
+        input_dict (dict): dictionary of inputs
+        use_regularly_spaced_angles (bool): boolean to select if angle steps are regular or not
+
+    Returns:
+        reconstruction3D (array): tomographic volume
+    """
+
     algorithm                = input_dict["tomo_algorithm"]
     angles_filepath          = input_dict["ordered_angles_filepath"]
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["GPUs"]
-    do_regularization        = input_dict["tomo_regularization"]
     regularization_parameter = input_dict["tomo_regularization_param"]
     wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
     wiggle_cmas_path         = input_dict["wiggle_cmas_filepath"]
@@ -493,38 +538,39 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
     if wiggle_cmas == [[],[]]:
         wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
 
-    data = np.load(input_dict["wiggle_sinogram_filepath"])
+    sinogram = np.load(input_dict["wiggle_sinogram_filepath"])
 
     if use_regularly_spaced_angles == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
 
     angles = np.load(angles_filepath) # sorted angles?
 
-    """ ######################## Regularization ################################ """
-    if do_regularization == True and algorithm == "EEM": 
-        print('\tBegin Regularization')
-        for k in range(data.shape[1]):
-            data[:,k,:] = regularization( data[:,k,:], regularization_parameter)
+    """                      Regularization                      """
+    if regularization_parameter != 0 and algorithm == "EEM": 
+        print('\tStarting regularization frame by...')
+        for k in range(sinogram.shape[1]):
+            sinogram[:,k,:] = regularization( sinogram[:,k,:], regularization_parameter)
+        print('\tRegularization done!')
 
-        print('\tRegularization Done')
-
-    """ ######################## RECON ################################ """
-    print('Starting tomographic algorithm: ',algorithm)
+    """                       Tomography                      """
+    print(f'Starting tomographic algorithm {algorithm} with {iterations} iterations')
     if algorithm == "FBP": 
-        reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1)
-    elif algorithm == "EEM": #data é o que sai do wiggle! 
-        data = np.swapaxes(data, 0, 1) #tem que trocar eixos 0,1 - por isso o swap.
-        n_of_angles = data.shape[1]
-        recsize = data.shape[2]
-        iterations_list = [iterations,3,8] # [# iterations globais, # iterations EM, # iterations TV total variation], para o EM-TV
+        #TODO: fix use of FBP from Raft package
+        # reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1) 
+        pass
+    elif algorithm == "EEM": # sinogram is what comes out of wiggle
+        sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
+        n_of_angles = sinogram.shape[1]
+        recsize = sinogram.shape[2]
+        #TODO: pass total variation and EM iteration as parameters
+        iterations_list = [iterations,3,8] # [# global iterations, # iterations EM, # iterations TV total variation], for EM-TV
         dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
-        reconstruction3D = sscRaft.emfs( data, dic )
+        reconstruction3D = sscRaft.emfs( sinogram, dic )
     else:
         sys.exit('Select a proper reconstruction method')
      
-    print("\tApplying wiggle center-of-mass correction to 3D recon slices...")
+    print("\tApplying wiggle center-of-mass correction to 3D reconstructed slices...")
     reconstruction3D = sscRadon.radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
-    print('\t\t Correction done!')
 
     print('\t Tomography done!')
 
@@ -540,9 +586,8 @@ def plane(variables,u,v,a):
     Xmesh,Ymesh = variables
     return np.ravel(u*Xmesh+v*Ymesh+a)
 
-def func(x,alpha,cut=8):
+def exponential_decay_at_border(x,alpha,cut=8):
     maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
-    # func += np.where(np.abs(x) < cut,maximum,1 - np.exp(alpha*x))
     func = np.where(np.abs(x) < cut ,1 - np.exp(alpha*x),0)
     func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
     return func
@@ -606,8 +651,8 @@ def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, p
             N = null_size
             x = np.linspace(-N,N,frame.shape[1])
             y = np.linspace(-N,N,frame.shape[0])
-            func_x = np.where(x>=0,func(x,decay,cut=cutoff) , func(x,-decay,cut=cutoff))
-            func_y = np.where(y>=0,func(y,decay,cut=cutoff) , func(y,-decay,cut=cutoff))
+            func_x = np.where(x>=0,exponential_decay_at_border(x,decay,cut=cutoff) , exponential_decay_at_border(x,-decay,cut=cutoff))
+            func_y = np.where(y>=0,exponential_decay_at_border(y,decay,cut=cutoff) , exponential_decay_at_border(y,-decay,cut=cutoff))
             meshY, meshX = np.meshgrid(func_x,func_y)
             border_attenuation_matrix = meshY*meshX
         elif 0: #. gaussian filter
@@ -648,15 +693,6 @@ def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, p
     ax[1].imshow(data[n_frame])
     plt.show()
         
-    # loadpath = 'data.npy'
-    # savepath = 'data2.npy' # if "", data won't be saved
-    # background_region = (500,650,850,1100) # Rectangular region of the background. Use () to skip gradient removal for the background
-    # filter_params = (40,1,50) # Parameters for the filter: (cutoff, decay, null_size). Use () to skip filtering
-    # padding = (10,20) # Number of pixels to add: (rows, columns). Use () to skip padding
-    # frame_preview = 0 # select which frame of the sinogram to preview in the plots
-
-    # gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding,frame_preview)        
-
 def flip_frames_of_interest(sinogram,frame_list):
     for i in frame_list:
         sinogram[i] = sinogram[i,::-1,::-1]

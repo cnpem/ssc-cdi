@@ -31,7 +31,7 @@
    "equalize_gradient": false,
    "equalize_outliers": 0,
    "equalize_global_offset": false,
-   "equalize_local_offset": [ 150,  250,    150,   250 ],
+   "equalize_local_offset": [ 150,  250,  150,   250 ],
    
    "bad_frames_before_wiggle": [  0,  1,   2 ],
    "wiggle_ctr_of_mas": [],
@@ -41,8 +41,6 @@
    "tomo_algorithm": "EEM",
    "tomo_iterations": 40,
    "tomo_local_offset": [],
-   "tomo_mask": [],
-   "tomo_regularization": false,
    "tomo_regularization_param": 0.001,
    "tomo_remove_outliers": 0,
    "tomo_threshold": 10.0
