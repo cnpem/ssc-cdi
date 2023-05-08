@@ -175,18 +175,18 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
 
     Args:
-        remove_gradient (_type_): _description_
-        remove_outlier (_type_): _description_
-        remove_global_offset (_type_): _description_
-        remove_avg_offset (_type_): _description_
-        frame (_type_): _description_
+        remove_gradient (bool): select wheter to remove phase ramp over the whole image or not
+        remove_global_offset (bool): removes global offset from the image, subtracting the minimum from all pixel values
+        remove_outlier (int): integer value indicating the number of sigma. Values above/below sigma will be considered outliers and set as zero
+        remove_avg_offset (list): coordinates of squared region (top,bottom,left, right). The mean value of such region in the frame will be subtracted from all pixels.
+        frame (array): 2D image/frame to be equalized
 
     Returns:
-        _type_: _description_
+        frame (array): equalized frame
     """
 
     # Remove phase ramp
-    for i in range(0,remove_gradient):
+    if remove_gradient == True:
         frame = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool),full=True)
 
     # Check for NaNs
@@ -196,8 +196,8 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         frame = np.where(whereNaN,0,frame)
 
     # Remove outliers
-    for i in range(0,remove_outlier):
-        frame = remove_outliers(frame,3)
+    if remove_outlier != 0:
+        frame = remove_outliers(frame,remove_outlier)
 
     # Remove global offsset
     if remove_global_offset:
@@ -211,10 +211,21 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
     return frame
 
 def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
+    """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
+
+    Args:
+        sinogram (adday): array of shape (N,Y,X) containing all N reconstructed 2D frames
+        remove_gradient (bool): select wheter to remove phase ramp over the whole image or not
+        remove_global_offset (bool): removes global offset from the image, subtracting the minimum from all pixel values
+        remove_outlier (int): integer value indicating the number of sigma. Values above/below sigma will be considered outliers and set as zero
+        remove_avg_offset (list): coordinates of squared region (top,bottom,left, right). The mean value of such region in the frame will be subtracted from all pixels.
+
+    Returns:
+        equalized_sinogram: equalized sinogram
+    """
 
     minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
 
-    
     # Invert sinogram
     if invert == True:
         sinogram = -sinogram
@@ -251,6 +262,21 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
     return equalized_sinogram
 
 def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[],axis_direction=1,mask_slice=[]):
+    """_summary_
+
+    Args:
+        recon (array): 3D reconstructed volume from tomography
+        mean (float): mean value of 3D reconstruction
+        std (float): standard deviation of 3D reconstruction
+        remove_outliers (int, optional): if not zero, will remove outliers above/below a certain sigma, sigma being this variable. Defaults to 0.
+        threshold (int, optional): _description_. Defaults to 0.
+        bkg_window (list, optional): _description_. Defaults to [].
+        axis_direction (int, optional): _description_. Defaults to 1.
+        mask_slice (list, optional): _description_. Defaults to [].
+
+    Returns:
+        _type_: _description_
+    """
     
     if type(bkg_window) == type("a_string"):
         bkg_window = ast.literal_eval(bkg_window) # read string as list
@@ -262,9 +288,8 @@ def equalize_tomogram(recon,mean,std,remove_outliers=0,threshold=0,bkg_window=[]
         equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
 
     if remove_outliers != 0:
-        for i in range(remove_outliers):
-            equalized_tomogram = np.where( equalized_tomogram > mean+3*std,0,equalized_tomogram)
-            equalized_tomogram = np.where( equalized_tomogram < mean-3*std,0,equalized_tomogram)
+            equalized_tomogram = np.where( equalized_tomogram > mean+remove_outliers*std,0,equalized_tomogram)
+            equalized_tomogram = np.where( equalized_tomogram < mean-remove_outliers*std,0,equalized_tomogram)
 
     if mask_slice != []:
         mask_matrix = np.zeros_like(recon)

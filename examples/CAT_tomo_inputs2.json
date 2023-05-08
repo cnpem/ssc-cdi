@@ -27,11 +27,11 @@
    "unwrap_gradient_removal": false,
    
    "bad_frames_before_equalization": [],
-   "equalize_gradient": 0,
-   "equalize_global_offset": true,
    "equalize_invert": true,
-   "equalize_local_offset": [ 150,  250,    150,   250 ],
+   "equalize_gradient": false,
    "equalize_outliers": 0,
+   "equalize_global_offset": false,
+   "equalize_local_offset": [ 150,  250,    150,   250 ],
    
    "bad_frames_before_wiggle": [  0,  1,   2 ],
    "wiggle_ctr_of_mas": [],

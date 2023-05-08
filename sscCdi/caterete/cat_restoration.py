@@ -48,8 +48,11 @@ def restoration_CAT(input_dict):
         
         if input_dict['projections'] != []:
             filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths0,  filenames0)
-            input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
             print(f"\tUsing {len(filenames)} of {len(filenames0)} angle(s)")
+        else:
+            filepaths, filenames  = filepaths0, filenames0 
+        
+        input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
 
         geometry, params = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
 
