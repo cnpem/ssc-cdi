@@ -199,7 +199,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
     probesupp = probe_support(probe.shape[0], half_size, probe_support_radius, probe_support_center_x, probe_support_center_y)  
 
-    print(f"\nDiffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}\n")
+    print(f"Diffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}")
     
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
 
