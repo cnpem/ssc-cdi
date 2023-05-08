@@ -9,8 +9,8 @@ from sscPimega import pi540D
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset
-from ..ptycho.ptychography import  call_GB_ptychography
+from ..misc import create_directory_if_doesnt_exist, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder
+from ..ptycho.ptychography import call_GB_ptychography
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -32,12 +32,18 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
     input_dict["restoration_id"] = restored_data_info_list
 
+
+    total_number_of_angles = 0
+    for acquisitions_folder in input_dict['acquisition_folders']:
+        _, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        total_number_of_angles += len(filenames)
+
     if strategy == "serial":
 
         angles_file = []
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
-            filepaths, filenames = input_dict["filepaths"], input_dict["filenames"]
+            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
 
             restoration_dict = restoration_dict_list[folder_number]
             restored_data_info = restored_data_info_list[folder_number]
@@ -47,7 +53,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 frame =  file_number + folder_number*len(filenames) # attribute singular value to each angle
 
                 print(f"\nReading diffraction data for angle: {frame}")
-                if len(input_dict["projections"]) > 1:
+                if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
                     DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
                 else:
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
@@ -62,8 +68,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
                 if file_number == 0 and folder_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
                     input_dict = set_object_shape(input_dict, DPs.shape, probe_positions, input_dict["object_padding"])
-                    sinogram = np.zeros((len(input_dict["projections"]),input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                    probes   = np.zeros((len(input_dict["projections"]),1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                    sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
+                    probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
                     errors = []
 
@@ -86,16 +92,14 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
                 """ Save single frame of object and probe to temporary folder"""
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_object.npy"),sinogram[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{input_dict['projections'][0]+frame}_probe.npy"),probes[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_object.npy"),sinogram[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_probe.npy"),probes[frame])
 
             """ Clean restored DPs temporary data """
             if len(input_dict['projections']) == 1:
                 pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
-            elif len(input_dict["projections"]) > 1:
-                pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
             else:
-                sys.exit("Length of acquisitions folder is null! Check input dicitionary")
+                pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
         add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(errors))
         concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','angles',angles_file)
