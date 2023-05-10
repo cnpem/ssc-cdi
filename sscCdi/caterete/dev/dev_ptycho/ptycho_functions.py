@@ -19,7 +19,7 @@ def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess,positions):
     from sscMisc.plots import convert_complex_to_RGB
 
     colormap = 'viridis'
-    colormap2 = 'viridis'    
+    colormap2 = 'hsv'    
     figure, ax = plt.subplots(2,5,dpi=150,figsize=(15,5))
     count = -1
     # for i,ax0 in enumerate(ax.reshape(-1)):
@@ -133,15 +133,15 @@ def set_object_pixel_size(input_dict,half_size):
     
 def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='gaussian'):
         if type == 'gaussian':
-            deltaX = np.round(np.random.normal(mu, sigma, positionsX.shape)).astype(int)
-            deltaY = np.round(np.random.normal(mu, sigma, positionsY.shape)).astype(int)
+            deltaX = np.random.normal(mu, sigma, positionsX.shape)
+            deltaY = np.random.normal(mu, sigma, positionsY.shape)
             # X, Y = np.round(positionsX+deltaX).astype(np.int),np.round(positionsY+deltaY).astype(np.int)
             # X -= np.min(X)
             # Y -= np.min(Y)
             # return X, Y
         elif type=='random':
-            deltaX = np.round(sigma*np.random.rand(*positionsX.shape)).astype(int)
-            deltaY = np.round(sigma*np.random.rand(*positionsY.shape)).astype(int)
+            deltaX = np.round(sigma*np.random.rand(*positionsX.shape))
+            deltaY = np.round(sigma*np.random.rand(*positionsY.shape))
         return positionsX+deltaX, positionsY+deltaY
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
@@ -346,7 +346,7 @@ def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propag
     wave_at_detector = np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)+epsilon)
     # wave_at_detector[measurement>=0] = (np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)))[measurement>=0]
     updated_exit_wave = propagate_beam(wave_at_detector, (experiment_params[0],experiment_params[1],-experiment_params[2]),propagator=propagator)
-    return updated_exit_wave, wave_at_detector
+    return updated_exit_wave
 
 def momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe):
     T_counter += 1 
@@ -762,7 +762,7 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_pa
             psi_after_Pr = probe*obj_box
             
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
+            psi_after_projection_Fspace = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
             
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
 
@@ -911,7 +911,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
         
         _, O_aux, P_aux = 0, obj+0, probe+0
 
-        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=np.complex64)
+        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]))
 
         # for i in range(len(diffraction_patterns)): # save current obj portions
         #     py, px = positions[i,1],  positions[i,0]
@@ -929,7 +929,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
             exitWave = obj[py:py+offset[0],px:px+offset[1]]*probe
 
             """ Propagate + Update + Backpropagate """
-            exitWaveNew, updated_wave = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
+            exitWaveNew = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
 
             difference = exitWaveNew - exitWave
 
@@ -939,15 +939,8 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
 
             obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
             probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
-            
-            # if j%2==0:
-            #     plt.figure()
-            #     plt.imshow(np.angle(obj))
-            #     plt.show(), plt.close()
-            
-            # if j > 20:
-            #     new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
-            #     positions[i,1],  positions[i,0] = new_positions
+            new_positions = position_correction2(i,updated_obj,obj_box_matrix[i],probe,px,py,betas, probe_threshold=0.2, upsampling=500)
+            positions[i,1],  positions[i,0] = new_positions
 
         if mPIE == True: # momentum addition
             T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
@@ -962,59 +955,8 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
     # obj = obj.get()
 
     return obj, probe, positions, error_list, time.perf_counter() - t0, positions_history
+          
 
-def finite_difference(obj):
-    
-    obj_dx = np.roll(obj,1,axis=1)
-    diff_x = obj - obj_dx # backward difference
-    diff_x[:,0] = obj[:,1]-obj[:,0] # forward difference for first column only
-    
-    obj_dy = np.roll(obj,1,axis=0)
-    diff_y = obj - obj_dy # backward difference
-    diff_y[0,:] = obj[1,:]-obj[0,:] # forward difference for first line only
-    
-    return diff_x, diff_y
+def position_correction2():
 
-def position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params):
-    """ Position correct of the gradient of intensities """ 
-    
-    beta_x, beta_y = betas
-    
-    # Calculate intensity difference
-    updated_intensity_at_detector = np.abs(updated_wave)**2
-    intensity_diff = (measurement-updated_intensity_at_detector).flatten()
-    
-    # Calculate wavefront gradient
-    obj_dx, obj_dy = finite_difference(obj)
-    
-    obj_box     = obj[py:py+offset[0],px:px+offset[1]]
-    obj_dy_box  = obj_dy[py:py+offset[0],px:px+offset[1]]
-    obj_dx_box  = obj_dx[py:py+offset[0],px:px+offset[1]]
-    
-    wave_at_detector    = propagate_beam(obj_box*probe,    experiment_params,propagator='fourier')
-    wave_at_detector_dy = propagate_beam(obj_dy_box*probe, experiment_params,propagator='fourier')
-    wave_at_detector_dx = propagate_beam(obj_dx_box*probe, experiment_params,propagator='fourier')
-
-    obj_pxl = experiment_params[0]
-    wavefront_gradient_x = (wave_at_detector_dx)/obj_pxl
-    wavefront_gradient_y = (wave_at_detector_dy)/obj_pxl
-   
-    # Calculate intensity gradient
-    intensity_gradient_x = 2*np.real(wavefront_gradient_x*np.conj(wave_at_detector))
-    intensity_gradient_y = 2*np.real(wavefront_gradient_y*np.conj(wave_at_detector))
-    
-    # Solve linear system
-    A_matrix = np.column_stack((intensity_gradient_x.flatten(),intensity_gradient_y.flatten()))
-    A_transpose = np.transpose(A_matrix)
-    inverse = np.linalg.pinv(A_transpose@A_matrix)@A_transpose
-    relative_shift = inverse@intensity_diff
-
-    # Update positions
-    new_positions = np.array([py - beta_y*relative_shift[1],px - beta_x*relative_shift[0]])
-    
-    if i == 0:
-        print(px, beta_x*relative_shift[1],'\t',py,beta_y*relative_shift[0],relative_shift)
-        # print(A_matrix[0:6,0:2])
-        # print(inverse[0:6])
-    
-    return new_positions
+    return new_positions 
