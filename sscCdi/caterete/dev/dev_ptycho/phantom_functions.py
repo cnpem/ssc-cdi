@@ -14,37 +14,27 @@ import sscPhantom
 from sscCdi.caterete.cat_ptycho_processing import convert_probe_positions_meters_to_pixels
 from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
 
-def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,dimension=512, object_offset = 0):
+def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,object_offset = 50,dimension = 100):
 
     """ Create Probe """
-    if 0:
-        probe = get_circular_mask(dimension,0.5)
-    else:
-        half=dimension//2 # half the size you want in one dimension
-        probe = np.load(os.path.join("phantom_data/probe_at_focus_1.25156micros_pixel.npy"))
-        probe = probe[probe.shape[0]//2-half:probe.shape[0]//2+half,probe.shape[1]//2-half:probe.shape[1]//2+half]
-    
-    """ Get probe positions """
-    positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
-    # positionsX += object_offset # offset probe by the same amount as the object
-    # positionsY += object_offset
-    
-    print(positionsX)
-    
-    """ Create object """
-    phase = np.array( np.load('phantom_data/phase.npy')) # Load Imagem
-    phase = 4*np.pi*phase/np.max(phase)
-    
-    magnitude = np.array( np.load('phantom_data/magnitude.npy')) # Load Imagem
-    magnitude = magnitude/np.max(magnitude)
-    model_object = np.abs(magnitude)*np.exp(1j*phase)
+    # dimension = 100 # Must be < than object!
+    probe = get_circular_mask(dimension,0.5)
 
+    positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
+
+    """ Create object """
+    phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
+
+    magnitude = np.array( np.load('data/star.npy')) # Load Imagem
+    magnitude = magnitude/np.max(magnitude)
+    model_object = np.abs(magnitude)*np.exp(-1j*phase)
+
+    
     model_object = set_object_frame(positionsY, positionsX,model_object,probe,object_offset,'',save=False)
-    print(model_object.shape)
 
     difpads = []
     for px,py in zip(positionsX,positionsY):
-        
+    
         """ Exit wave-field """
         W = model_object[py:py+dimension,px:px+dimension]*probe
     
@@ -58,6 +48,10 @@ def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False
         if use_bad_points:# add invalid grid to data
             difpad = apply_invalid_regions(difpad)
         
+        # misc.imshow(np.abs(difpad),(5,5),savename='difpadgrid.png')
+        # plt.show()
+        # plt.close()
+
         difpads.append(difpad)
 
     positions = np.hstack((np.array([positionsX]).T ,np.array([positionsY]).T)) # adjust positions format for proper input
@@ -267,7 +261,6 @@ def set_object_size_pxls(x_pos,y_pos,probe_size,border):
 
 def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
     obj = np.zeros(set_object_size_pxls(x_pxls,y_pxls,probe.shape,object_offset),dtype=complex)
-    print(obj.shape)
     obj[object_offset:object_offset+frame.shape[0],object_offset:object_offset+frame.shape[1]] = frame
 
     if save:
