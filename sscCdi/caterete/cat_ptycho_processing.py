@@ -24,7 +24,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
         strategy: flag to select ptychography mode. Only had "serial" mode for now.
 
     Returns:
-        input_dict (dict): update input dictionary
+        input_dict (dict): updated input dictionary
         sinogram: numpy array containing reconstructed frames
         probe: numpy array containing reconstructed probes
         probe_positions: numpy array containing probe positions in pixels
@@ -92,8 +92,14 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     angles_file.append([frame,False,angle,angle*180/np.pi])
 
                 """ Save single frame of object and probe to temporary folder"""
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_object.npy"),sinogram[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{frame}_probe.npy"),probes[frame])
+
+                if input_dict['projections'] != []:
+                    output_number = input_dict['projections'][0]+frame
+                else:
+                    output_number = frame
+
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number}_object.npy"),sinogram[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number}_probe.npy"),probes[frame])
 
             """ Clean restored DPs temporary data """
             if len(input_dict['projections']) == 1:
