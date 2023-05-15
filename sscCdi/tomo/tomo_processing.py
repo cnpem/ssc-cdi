@@ -53,9 +53,9 @@ def tomo_sort(dic, object, angles):
     """
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
-    object = reorder_slices_low_to_high_angle(object, sorted_angles)
-    np.save(dic["ordered_angles_filepath"],angles)
-    np.save(dic["ordered_object_filepath"], object) 
+    sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
+    np.save(dic["ordered_angles_filepath"], sorted_angles)
+    np.save(dic["ordered_object_filepath"], sorted_object) 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def sort_angles(angles):
@@ -84,8 +84,8 @@ def reorder_slices_low_to_high_angle(object, rois):
     sorted_object = np.zeros_like(object)
 
     for k in range(object.shape[0]): # reorder slices from lowest to highest angle
-            # print(f'New index: {k}. Old index: {int(rois[k,0])}')
-            sorted_object[k,:,:] = object[int(rois[k,0]),:,:] 
+        print(f'New index: {k}. Old index: {int(rois[k,0])}')
+        sorted_object[k] = object[int(rois[k,0])]
 
     return sorted_object
 
@@ -312,7 +312,7 @@ def tomo_alignment(dic):
 
     start = time.time()
 
-    angles  = np.load(dic["ordered_angles_filepath"])
+    angles  = np.load(dic["ordered_angles_filepath"])*np.pi/180
     object = np.load(dic["wiggle_sinogram_selection"]) 
 
     object = make_bad_frame_null(dic,object)
@@ -348,7 +348,6 @@ def preview_angle_projection(dic):
     print("Frames being used        :", len(selected_positive_indices)," of ",len(complete_array))
     print('                        + -----')
     print('Projected Angles         :', projected_angles.shape[0])
-
 
 def angle_grid_organize( original_frames, angles, percentage = 100 ):
     """ Given non-regular steps between rotation angles, this function projects angles to regular grid and pad it to run from 0 to 180 degrees. 
