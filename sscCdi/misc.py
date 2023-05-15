@@ -423,7 +423,7 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
-def deploy_visualizer(data,axis=0,title='',cmap='jet',limits=()):
+def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
     """
 
     data (ndarray): real valued data
@@ -441,12 +441,15 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',limits=()):
     import matplotlib.colors as colors
     import matplotlib.cm
     
-    if limits == ():
-        colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
-    else:
-        colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
+    if norm == None:
+        colornorm = None
+    elif norm == "normalize":
+        if limits == ():
+            colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+        else:
+            colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
     
-    def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=colors.Normalize()):
+    def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
         
         subplot.clear()
         
@@ -460,6 +463,9 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',limits=()):
         if title != "":
             subplot.set_title(f'{title}')
         figure.canvas.draw_idle()
+
+        if aspect_ratio != '':
+            subplot.set_aspect(aspect_ratio)
     
     output = widgets.Output()
     
@@ -474,7 +480,7 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',limits=()):
     slider_layout = widgets.Layout(width='25%')
     selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
 
-    selection_slider.max, selection_slider.value = data.shape[0] - 1, data.shape[0]//2
-    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'frame_number': selection_slider})    
+    selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
+    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
     box = widgets.VBox([selection_slider,output])
     return box

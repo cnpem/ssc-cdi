@@ -22,7 +22,7 @@ def define_paths(dic):
     """
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
-    dic["filename"]    = os.path.join(dic["contrast_type"]+'_'+dic["sinogram_path"].rsplit('/',1)[1].split('.')[0])
+    dic["filename"]    = os.path.join(dic["sinogram_path"].rsplit('/',1)[1].split('.')[0]+'_'+dic["contrast_type"])
     dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
     dic["ordered_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
     dic["projected_angles_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
@@ -84,7 +84,7 @@ def reorder_slices_low_to_high_angle(object, rois):
     sorted_object = np.zeros_like(object)
 
     for k in range(object.shape[0]): # reorder slices from lowest to highest angle
-        print(f'New index: {k}. Old index: {int(rois[k,0])}')
+        # print(f'New index: {k}. Old index: {int(rois[k,0])}')
         sorted_object[k] = object[int(rois[k,0])]
 
     return sorted_object
@@ -130,8 +130,14 @@ def tomo_equalize(dic):
 
     """
     start = time.time()
-    unwrapped_sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
-    equalized_sinogram = equalize_frames_parallel(unwrapped_sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
+    if dic["sinogram_to_equalize"] == "unwrapped":
+        sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
+    elif dic["sinogram_to_equalize"] == "cropped":
+        sinogram = np.load(dic["cropped_sinogram_filepath"] )        
+    else:
+        sys.error('Select proper sinogram to equalize: cropped or unwrapped')
+
+    equalized_sinogram = equalize_frames_parallel(sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
     np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
@@ -187,7 +193,7 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
 
     # Remove phase ramp
     if remove_gradient == True:
-        frame = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool),full=True)
+        frame, _ = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool),full=True)
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -546,7 +552,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
     """                      Regularization                      """
     if regularization_parameter != 0 and algorithm == "EEM": 
-        print('\tStarting regularization frame by...')
+        print('\tStarting regularization frame by frame...')
         for k in range(sinogram.shape[1]):
             sinogram[:,k,:] = regularization( sinogram[:,k,:], regularization_parameter)
         print('\tRegularization done!')
@@ -581,9 +587,6 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
 ####################### EXTRA ###########################################
 
-def plane(variables,u,v,a):
-    Xmesh,Ymesh = variables
-    return np.ravel(u*Xmesh+v*Ymesh+a)
 
 def exponential_decay_at_border(x,alpha,cut=8):
     maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
@@ -591,20 +594,7 @@ def exponential_decay_at_border(x,alpha,cut=8):
     func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
     return func
 
-def get_best_plane_fit_inside_mask(mask2,frame ):
-    new   = np.zeros(frame.shape)
-    row   = new.shape[0]
-    col   = new.shape[1]
-    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
 
-    a = b = c = 1e9
-    counter = 0
-    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter > 5:
-        grad_removed, a,b,c = remove_phase_gradient(frame,mask2)
-        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
-        frame = frame - plane_fit
-        counter += 1
-    return frame
 
 def pad_sinogram_frames(padding,sinogram):
     pad_row, pad_col = padding
@@ -696,3 +686,28 @@ def flip_frames_of_interest(sinogram,frame_list):
     for i in frame_list:
         sinogram[i] = sinogram[i,::-1,::-1]
     return sinogram
+
+def plot_histograms(recon3D, equalized_tomogram,bins=300):
+
+    recon_hist = recon3D.flatten()
+    equalized_hist = equalized_tomogram.flatten()
+
+    statistics_recon = (np.max(recon3D),np.min(recon3D),np.mean(recon3D),np.std(recon3D))
+    print('Original data statistics: ',f'\n\tMax = {statistics_recon[0]:.2e}\n\t Min = {statistics_recon[1]:.2e}\n\t Mean = {statistics_recon[2]:.2e}\n\t StdDev = {statistics_recon[3]:.2e}')
+
+    statistics_equalized = (np.max(equalized_tomogram),np.min(equalized_tomogram),np.mean(equalized_tomogram),np.std(equalized_tomogram))
+    print('Thresholded data statistics: ',f'\n\tMax = {statistics_equalized[0]:.2e}\n\t Min = {statistics_equalized[1]:.2e}\n\t Mean = {statistics_equalized[2]:.2e}\n\t StdDev = {statistics_equalized[3]:.2e}')
+
+    figure2, axs = plt.subplots(1,2,figsize=(13,2))
+
+    axs[0].set_yscale('log'), axs[1].set_yscale('log')
+    axs[0].set_title("Histogram: Original")
+    axs[1].set_title("Histogram: Equalized")
+    figure2.canvas.header_visible = False 
+    figure2.tight_layout()
+
+
+    axs[0].hist(recon_hist,bins=bins)
+    axs[1].hist(np.where(equalized_hist==0,np.NaN,equalized_hist),bins=bins,color='green')
+
+    plt.show()

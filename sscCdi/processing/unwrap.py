@@ -43,7 +43,7 @@ def remove_phase_gradient( img, mask, full=True ):
         new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c ) # subtract only from masked region
     else:
         new = img - ( a*XX + b*YY + c ) # subtract plane from whole image
-    return new
+    return new, (a,b,c)
 
 def unwrap_in_parallel(sinogram):
 
@@ -74,5 +74,25 @@ def unwrap_in_sequence(sinogram, remove_gradient):
 
     return unwrapped_sinogram
 
+
+def get_best_plane_fit_inside_mask(mask2,frame ):
+
+    def plane(variables,u,v,a):
+        Xmesh,Ymesh = variables
+        return np.ravel(u*Xmesh+v*Ymesh+a)
+
+    new   = np.zeros(frame.shape)
+    row   = new.shape[0]
+    col   = new.shape[1]
+    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
+
+    a = b = c = 1e9
+    counter = 0
+    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter > 5:
+        grad_removed, a,b,c = remove_phase_gradient(frame,mask2)
+        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
+        frame = frame - plane_fit
+        counter += 1
+    return frame
 
 
