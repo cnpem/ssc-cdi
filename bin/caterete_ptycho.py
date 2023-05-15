@@ -66,7 +66,7 @@ if __name__ == '__main__':
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 
     sscCdi.misc.save_json_logfile(input_dict) 
-    sscCdi.misc.delete_temporary_folders(input_dict)
+    # sscCdi.misc.delete_temporary_folders(input_dict)
 
     t6 = time.time()
     time_elapsed_restauration = t2 - t1

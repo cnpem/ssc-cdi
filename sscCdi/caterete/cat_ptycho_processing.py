@@ -98,8 +98,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 else:
                     output_number = frame
 
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number}_object.npy"),sinogram[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number}_probe.npy"),probes[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_object.npy"),sinogram[frame])
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_probe.npy"),probes[frame])
 
             """ Clean restored DPs temporary data """
             if len(input_dict['projections']) == 1:
