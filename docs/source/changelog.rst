@@ -13,6 +13,18 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
  
+
+[0.5.1] - 2023-05-16
+
+Changed
+~~~~~
+- Refactored code with new folder structure and modules
+- Major changes to functions and code cleanup
+
+Added
+~~~~~
+- CUDA restoration for single and multiple acquisitions
+
 [0.4.16] - 2023-03-07
 --------------------
 

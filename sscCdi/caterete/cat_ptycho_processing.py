@@ -134,7 +134,7 @@ def define_paths(input_dict):
 
     beamline_outputs_path = os.path.join(input_dict['data_folder'] .rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
-    input_dict["output_path"]  = os.path.join(beamline_outputs_path,input_dict["custom_output_folder"])
+    input_dict["output_path"]  = os.path.join(beamline_outputs_path)
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
     input_dict["temporary_output_recons"]  = os.path.join(input_dict["output_path"],'recons')
 

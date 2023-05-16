@@ -7,9 +7,6 @@
    "acquisition_folders": ["SS03112022_02"],
    "projections": [0],
   
-   "custom_output_folder": "",
-   "output_filename": "",
-
    "CPUs": 96,
    "GPUs": [0,1,2],
 
