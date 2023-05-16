@@ -1,7 +1,7 @@
 
 
 import numpy as np
-import sys, os
+import sys, os, h5py
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset
 
@@ -256,7 +256,10 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
     elif isinstance(input_dict['initial_probe'],str):
-        probe = np.load(input_dict['initial_probe'])[0] # load guess from file
+        if os.path.splitext(input_dict['initial_probe'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_probe'])[1] == '.h5':
+            probe = h5py.File(input_dict['initial_probe'],'r')['recon/probe'][0]
+        elif os.path.splitext(input_dict['initial_probe'])[1] == '.npy':
+            probe = np.load(input_dict['initial_probe'])[0] # load guess from file
         probe = np.squeeze(probe)
         probe = probe.reshape((1,*probe.shape))
     elif isinstance(input_dict['initial_probe'],int):
@@ -296,7 +299,10 @@ def set_initial_object(input_dict,DPs, probe):
         elif type == 'initialize':
             pass #TODO: implement method from https://doi.org/10.1364/OE.465397
     elif isinstance(input_dict['initial_obj'],str): 
-        obj = np.load(input_dict['initial_obj'])
+        if os.path.splitext(input_dict['initial_obj'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_obj'])[1] == '.h5':
+            obj = h5py.File(input_dict['initial_obj'],'r')['recon/object'][0] # select first frame of object
+        elif os.path.splitext(input_dict['initial_obj'])[1] == '.npy':
+            obj = np.load(input_dict['initial_obj'])
         obj = np.squeeze(obj)
     elif isinstance(input_dict['initial_obj'],int):
         obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
