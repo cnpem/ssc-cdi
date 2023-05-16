@@ -570,9 +570,11 @@ def calculate_FRC(img, input_dict):
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
-def save_input_dictionary(folder_path,input_dict):
+def save_input_dictionary(input_dict):
     import os
     
+    folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"
+
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     
