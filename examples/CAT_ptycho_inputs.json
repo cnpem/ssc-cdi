@@ -16,7 +16,6 @@
    "binning": 1,
    "direct_beam_path": "",
    "DP_center": [1418,1383],
-   "central_mask": [false, 5],
    "fill_blanks": false,
    "keep_original_negative_values": false,
    "suspect_border_pixels": 3,

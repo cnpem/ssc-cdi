@@ -346,7 +346,7 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
     hdf5_output[group].create_dataset(name,data=data)
     hdf5_output.close()
 
-def open_or_create_h5_dataset(path,group,dataset,data):
+def open_or_create_h5_dataset(path,group,dataset,data,create_group=False):
     """ Open hdf5 file and checks if certain dataset exists. If not, creates it.
 
     Args:
@@ -367,7 +367,8 @@ def open_or_create_h5_dataset(path,group,dataset,data):
     if dataset_exists:
         pass
     else:
-        # h5file.create_group(group)
+        if create_group:
+            h5file.create_group(group)
         h5file[group].create_dataset(dataset,data=data)
 
     return h5file, dataset_exists, group_dataset

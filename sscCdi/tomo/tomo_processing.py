@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 import sscRaft, sscRadon
 
-from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo
+from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo, open_or_create_h5_dataset
 from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel, unwrap_in_sequence
 
 def define_paths(dic):
@@ -152,7 +152,7 @@ def tomo_equalize3D(dic):
     reconstruction = np.load(dic["reconstruction_filepath"])
     equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
-    imsave(dic["eq_reconstruction_filepath"][:-4] + '.tif',equalized_tomogram)
+    open_or_create_h5_dataset(dic["eq_reconstruction_filepath"],'recon','equalized_volume',equalized_tomogram,create_group=True)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 
@@ -322,16 +322,19 @@ def tomo_alignment(dic):
     object = np.load(dic["wiggle_sinogram_selection"]) 
 
     object = make_bad_frame_null(dic,object)
-    object, _, _, projected_angles = angle_grid_organize(object, angles,percentage=dic["step_percentage"])
-    tomoP, wiggle_cmas = wiggle(dic, object)
+
+    if dic['project_angles_to_regular_grid']:
+        object, _, _, projected_angles = angle_grid_organize(object, angles,percentage=dic["step_percentage"])
+        dic['n_of_used_angles']     = projected_angles.shape 
+        np.save(dic["projected_angles_filepath"],projected_angles)
 
     dic['n_of_original_angles'] = angles.shape # save to output log
-    dic['n_of_used_angles']     = projected_angles.shape 
-    dic["wiggle_ctr_of_mas"] = wiggle_cmas
 
+    tomoP, wiggle_cmas = wiggle(dic, object)
+    dic["wiggle_ctr_of_mas"] = wiggle_cmas
     np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
-    np.save(dic["projected_angles_filepath"],projected_angles)
     np.save(dic["wiggle_sinogram_filepath"],tomoP)
+
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return dic
 
@@ -471,7 +474,7 @@ def tomo_recon(dic):
     start = time.time()
     reconstruction3D = tomography(dic,use_regularly_spaced_angles=True)
     np.save(dic["reconstruction_filepath"],reconstruction3D)
-    imsave(dic["reconstruction_filepath"][:-4] + '.tif',reconstruction3D)
+    open_or_create_h5_dataset(dic["reconstruction_filepath"],'recon','volume',reconstruction3D,create_group=True)
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
     return reconstruction3D
 
@@ -522,7 +525,7 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
-def tomography(input_dict,use_regularly_spaced_angles=True):
+def tomography(input_dict):
     """
     Args:
         input_dict (dict): dictionary of inputs
@@ -545,7 +548,7 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
     sinogram = np.load(input_dict["wiggle_sinogram_filepath"])
 
-    if use_regularly_spaced_angles == True:
+    if dic['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
 
     angles = np.load(angles_filepath) # sorted angles?
@@ -587,14 +590,22 @@ def tomography(input_dict,use_regularly_spaced_angles=True):
 
 ####################### EXTRA ###########################################
 
+def clean_pwcdi_dataset(input_path, inverted_frames, bad_frames,output_path):
+    sinogram = np.load(input_path)
+
+    for frame in inverted_frames:
+        sinogram[frame] = sinogram[frame,::-1,::-1]
+    for frame in bad_frames:
+        sinogram[frame] = np.zeros_like(sinogram[0])
+
+    np.save(output_path, sinogram)
+    print("Saved data at: ",output_path)
 
 def exponential_decay_at_border(x,alpha,cut=8):
     maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
     func = np.where(np.abs(x) < cut ,1 - np.exp(alpha*x),0)
     func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
     return func
-
-
 
 def pad_sinogram_frames(padding,sinogram):
     pad_row, pad_col = padding

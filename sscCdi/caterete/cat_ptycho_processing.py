@@ -566,3 +566,14 @@ def calculate_FRC(img, input_dict):
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
+
+def save_input_dictionary(folder_path,input_dict):
+    import os
+    
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    
+    filepath = os.path.join(folder_path, os.getlogin()+'_ptycho_input.json')
+    out_file = open(filepath, "w")
+    json.dump(input_dict, out_file, indent = 3)
+    out_file.close()

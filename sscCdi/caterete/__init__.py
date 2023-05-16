@@ -5,3 +5,4 @@ from ..processing.unwrap import *
 from ..processing.propagation import *
 from ..tomo.tomo_processing import *
 from ..misc import *
+from .jupyter_gui import *
