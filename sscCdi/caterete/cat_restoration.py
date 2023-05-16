@@ -56,7 +56,7 @@ def restoration_CAT(input_dict):
 
         geometry, params = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
 
-        if input_dict["direct_beam_path"] != "":
+        if input_dict["using_direct_beam"]:
             print("\t Using direct beam to find center: ",input_dict["DP_center"])
             input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], input_dict["detector_distance"]*1000, params)
             print("\t\t New center: ",input_dict["DP_center"])

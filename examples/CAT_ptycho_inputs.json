@@ -11,7 +11,7 @@
    "GPUs": [0,1,2],
 
    "binning": 1,
-   "direct_beam_path": "",
+   "using_direct_beam": false,
    "DP_center": [1418,1383],
    "fill_blanks": false,
    "keep_original_negative_values": false,
