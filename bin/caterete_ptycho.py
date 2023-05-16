@@ -22,8 +22,6 @@ if __name__ == '__main__':
     print("\nCreating folders...")
     input_dict = sscCdi.caterete.cat_ptycho_processing.define_paths(input_dict)
 
-    """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
-
     t1 = time.time()
     print('Starting restoration...')
     restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_CAT(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
@@ -35,27 +33,7 @@ if __name__ == '__main__':
     print('Finished reconstruction!\n')
 
     t4 = time.time()
-    """ ===================== Post-processing ===================== """
 
-    print("Post-processing data...")
-    if input_dict['crop'] != []:
-        print('\tCropping frames...')
-        object = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(input_dict,object,probe_positions)
-    
-    if input_dict['phase_unwrap']: # Apply phase unwrap to data 
-        print('\tUnwrapping sinogram...')
-        phase = sscCdi.caterete.unwrap_in_parallel(object)
-        sscCdi.misc.save_variable(input_dict,phase, flag = 'object_unwrapped')
-
-    if input_dict["FRC"] != []:
-        print('\tCalculating Fourier Ring Correlation...')
-        if input_dict['phase_unwrap'] != []: # if unwrapping, FRC is calculated on phase image
-            img = phase[input_dict["FRC"][0]]
-        else: # else, on the absorption image
-            img = np.abs(object)[input_dict["FRC"][0]] 
-        sscCdi.caterete.cat_ptycho_processing.calculate_FRC(img, input_dict)
-
-    t5 = time.time()
     """ ===================== Save and preview data ===================== """
     object, probe = sscCdi.misc.save_volume_from_parts(input_dict)
 
@@ -74,6 +52,5 @@ if __name__ == '__main__':
     print('\n')
     print(f'Restoration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
     print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes ({100*(time_elapsed_ptycho)/(t6 - t0):.0f}%)')
-    print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes ({100*(t5 - t4)/(t6 - t0):.0f}%)')
-    print(f'Save time:             {t6 - t5:.2f} seconds = {(t6 - t5) / 60:.2f} minutes ({100*(t6 - t5)/(t6 - t0):.0f}%)')
+    print(f'Save time:             {t6 - t4:.2f} seconds = {(t6 - t4) / 60:.2f} minutes ({100*(t6 - t4)/(t6 - t0):.0f}%)')
     print(f'Total time:            {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
