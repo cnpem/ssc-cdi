@@ -14,7 +14,7 @@ from sscPimega import pi540D, opt540D
 from sscPimega import misc as miscPimega
 
 from .jupyter import slide_and_play
-from .ptycho_restoration import restoration_processing_binning, Geometry, Restaurate
+
 
 def restoration_via_interface(data_path,inputs,flat_path='',empty_path='',mask_path='',subtraction_path='', save_path="", preview=False,keep_original_negatives=True,hdf5_datapath='/entry/data/data',use_direct_beam=True):
     
@@ -202,3 +202,120 @@ def plot_flipped_full_DP(restored_full_DP):
     from matplotlib.colors import LogNorm
     fig, ax = plt.subplots(dpi=150)
     ax.imshow(restored_full_DP,norm=LogNorm()), ax.set_title("Average of DPs")
+
+def restoration_processing_binning(DP, args):
+
+    Binning, empty, flat, cx, cy, hsize, geometry, mask,jason, apply_crop, apply_binning, subtraction_mask, keep_original_negatives = args
+
+    img = corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives)
+
+    img = G_binning(img,apply_binning,Binning,mask) # binning strategy by G. Baraldi
+    
+    return img
+
+def Restaurate(DP, geom):
+    return pi540D.backward540D(DP, geom)
+
+def Geometry(L,susp=3,scale=0.98,fill=False):
+    """ Detector geometry parameters for sscPimega restoration
+
+    Args:
+        L : sample-detector distancef
+    Returns:
+        geo : geometry 
+    """    
+
+    project = pi540D.dictionary540D( L, {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'scale': scale, 'susp': susp } ) 
+    geo = pi540D.geometry540D( project )
+    return geo
+
+
+
+def corrections_and_restoration(DP,empty,flat,subtraction_mask,mask,geometry,jason,apply_crop,cx,cy,hsize,keep_original_negatives):
+    
+    DP[empty > 1] = -1 # apply empty 
+    
+    DP = DP * np.squeeze(flat) # apply flatfield
+    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    
+    DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
+
+    DP = DP.astype(np.float32) # convert to float
+    
+    DP[np.abs(mask) ==1] = -1 # apply Mask
+    
+    DP = Restaurate(DP, geometry) # restaurate
+
+    if keep_original_negatives == False:
+        DP[DP < 0] = -1 # all invalid values must be -1 by convention
+
+    if hsize == 0:
+        hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
+        if hsize % 2 != 0: 
+            hsize = hsize -  1 # make it even
+
+    if apply_crop:
+        DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+
+
+    return DP
+
+def G_binning(DP,apply_binning,binning,mask):
+
+    if apply_binning == False:
+        pass
+    else:
+        while binning % 2 == 0 and binning > 0:
+            avg = DP + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(np.roll(DP, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
+
+            div = 1 * (DP >= 0) + np.roll(1 * (DP >= 0), -1, -1) + np.roll(1 * (DP >= 0), -1, -2) + np.roll( np.roll(1 * (DP >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
+
+            avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
+
+            avgmask = (DP < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. DP < 0 means top-left values is invalid.
+
+            DP[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
+
+            DP = DP[:, 0::2] + DP[:, 1::2]  # Binning columns
+            DP = DP[0::2] + DP[1::2]  # Binning lines
+
+            DP[DP < 0] = -1
+
+            DP[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
+
+            binning = binning // 2
+
+        while binning % 3 == 0 and binning > 0:
+            avg = np.roll(DP, 1, -1) + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(DP, 1, -2) + np.roll( np.roll(DP, 1, -2), 1, -1) + np.roll(np.roll(DP, 1, -2), -1, -1) + np.roll(np.roll(DP, -1, -2), 1, -1) + np.roll( np.roll(DP, -1, -2), -1, -1)
+            div = np.roll(DP > 0, 1, -1) + np.roll(DP > 0, -1, -1) + np.roll(DP > 0, -1, -2) + np.roll(DP > 0, 1, -2) + np.roll( np.roll(DP > 0, 1, -2), 1, -1) + np.roll(np.roll(DP > 0, 1, -2), -1, -1) + np.roll( np.roll(DP > 0, -1, -2), 1, -1) + np.roll(np.roll(DP > 0, -1, -2), -1, -1)
+
+            avgmask = (DP < 0) & (div > 0) / div[avgmask]
+
+            DP = DP[:, 0::3] + DP[:, 1::3] + DP[:, 2::3]
+            DP = DP[0::3] + DP[1::3] + DP[2::3]
+
+            DP[DP < 0] = -1
+            binning = binning // 3
+
+        if binning > 1:
+            print('Entering binning > 1 only')
+            avg = -DP * 1.0 + binning ** 2 - 1
+            div = DP * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    avg += np.roll(np.roll(DP, j, -2), i, -1)
+                    div += np.roll(np.roll(DP > 0, j, -2), i, -1)
+
+            avgmask = (DP < 0) & (div > 0)
+            DP[avgmask] = avg[avgmask] / div[avgmask]
+
+            DPold = DP + 0
+            DP = DP[0::binning, 0::binning] * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    DP += DPold[j::binning, i::binning]
+
+            DP[DP < 0] = -1
+
+    return DP
+
