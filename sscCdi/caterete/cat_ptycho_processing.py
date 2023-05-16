@@ -9,7 +9,7 @@ from sscPimega import pi540D
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder
+from ..misc import create_directory_if_doesnt_exist, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
 from ..ptycho.ptychography import call_GB_ptychography
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
@@ -44,6 +44,8 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
             filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+            if input_dict['projections'] != []:
+                filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
 
             restoration_dict = restoration_dict_list[folder_number]
             restored_data_info = restored_data_info_list[folder_number]

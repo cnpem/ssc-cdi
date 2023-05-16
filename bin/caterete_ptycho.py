@@ -42,9 +42,9 @@ if __name__ == '__main__':
         print('\tCropping frames...')
         object = sscCdi.caterete.cat_ptycho_processing.crop_sinogram(input_dict,object,probe_positions)
     
-    if input_dict['phase_unwrap'] != []: # Apply phase unwrap to data 
+    if input_dict['phase_unwrap']: # Apply phase unwrap to data 
         print('\tUnwrapping sinogram...')
-        phase = sscCdi.caterete.unwrap_in_parallel(object, input_dict["phase_unwrap"]) 
+        phase = sscCdi.caterete.unwrap_in_parallel(object)
         sscCdi.misc.save_variable(input_dict,phase, flag = 'object_unwrapped')
 
     if input_dict["FRC"] != []:
