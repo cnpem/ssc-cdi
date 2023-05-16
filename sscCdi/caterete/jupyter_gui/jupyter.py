@@ -1,6 +1,6 @@
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
-import time
+import time, os
 import ast
 
 import ipywidgets as widgets 
@@ -169,3 +169,40 @@ def slide_and_play(slider_layout=widgets.Layout(width='90%'),label="",descriptio
 
 def get_box_layout(width,flex_flow='column',align_items='center',border='1px none black'):
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
+
+
+def write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName='jobName',queue='cat',gpus=1,cpus=32):
+    logfiles_path = slurm_filepath.rsplit('/',2)[0]
+    username = os.getlogin()
+    string = f"""#!/bin/bash
+
+#SBATCH -J {jobName}          # Select slurm job name
+#SBATCH -p {queue}            # Fila (partition) a ser utilizada
+#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
+#SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
+#SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
+
+source /etc/profile.d/modules.sh # need this to load the correct python version from modules
+
+module load python3/3.9.2
+module load cuda/11.2
+module load hdf5/1.12.2_parallel
+
+python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_error.log')}
+"""
+    
+    with open(slurm_filepath,'w') as the_file:
+        the_file.write(string)
+    
+def run_ptycho_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/'):
+    
+    user = os.getlogin()
+    
+    python_script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"
+    slurm_filepath = os.path.join(slurm_path,f'{user}_ptycho_job.srm')
+    jobName = user+'_ptycho'
+    
+    gpus = len(gpus)
+    write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName,queue,gpus,cpus)
+    
+    call_cmd_terminal(slurm_filepath,mafalda,remove=False)
