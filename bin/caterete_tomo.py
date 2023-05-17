@@ -10,25 +10,25 @@ if dic["processing_steps"]["read"]:
     object, angles = read_data(dic)
 
 if dic["processing_steps"]["sort"]: 
-    dic = tomo_sort(dic,object, angles)
+    tomo_sort(dic,object, angles)
 
 if dic["processing_steps"]["crop"]:  
-    dic = tomo_crop(dic)
+    tomo_crop(dic)
 
 if dic["processing_steps"]["unwrap"]:
-    dic = tomo_unwrap(dic)
+    tomo_unwrap(dic)
 
 if dic["processing_steps"]["equalize2D"]:
-    dic = tomo_equalize(dic)
+    tomo_equalize(dic)
 
 if dic["processing_steps"]["alignment"]: 
     dic = tomo_alignment(dic)
 
 if dic["processing_steps"]["tomography"]: 
-    dic = tomo_recon(dic)
+    recon3d = tomo_recon(dic)
 
 if dic["processing_steps"]["equalize3D"]:
-    dic = tomo_equalize3D(dic)
+    tomo_equalize3D(dic)
 
 # save dic with metadata
 output_dict = json.dumps(dic,indent=3,sort_keys=True)

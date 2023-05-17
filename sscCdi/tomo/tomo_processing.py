@@ -116,6 +116,9 @@ def tomo_unwrap(dic):
     """
     start = time.time()
     object = np.load(dic["cropped_sinogram_filepath"])  
+
+    object = make_bad_frame_null(dic["bad_frames_before_unwrap"],object)
+
     object = unwrap_in_parallel(object)
     np.save(dic["unwrapped_sinogram_filepath"],object)  
     print(f'Time elapsed: {time.time() - start:.2f} s' )
@@ -137,6 +140,8 @@ def tomo_equalize(dic):
     else:
         sys.error('Select proper sinogram to equalize: cropped or unwrapped')
 
+    sinogram = make_bad_frame_null(dic["bad_frames_before_equalization"],sinogram)
+
     equalized_sinogram = equalize_frames_parallel(sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
     np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
@@ -152,7 +157,7 @@ def tomo_equalize3D(dic):
     reconstruction = np.load(dic["reconstruction_filepath"])
     equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
-    open_or_create_h5_dataset(dic["eq_reconstruction_filepath"],'recon','equalized_volume',equalized_tomogram,create_group=True)
+    open_or_create_h5_dataset(dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','equalized_volume',equalized_tomogram,create_group=True)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 
@@ -321,7 +326,7 @@ def tomo_alignment(dic):
     angles  = np.load(dic["ordered_angles_filepath"])*np.pi/180
     object = np.load(dic["wiggle_sinogram_selection"]) 
 
-    object = make_bad_frame_null(dic,object)
+    object = make_bad_frame_null(dic["bad_frames_before_wiggle"],object)
 
     if dic['project_angles_to_regular_grid']:
         object, _, _, projected_angles = angle_grid_organize(object, angles,percentage=dic["step_percentage"])
@@ -426,7 +431,7 @@ def angle_grid_organize( original_frames, angles, percentage = 100 ):
     
     return projected_frames, selected_indices, padding_frames_counter, angles_array 
 
-def make_bad_frame_null(dic, sinogram):
+def make_bad_frame_null(bad_list, sinogram):
     """ Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
 
     Args:
@@ -436,7 +441,7 @@ def make_bad_frame_null(dic, sinogram):
     Returns:
         siogram (array): updated sinogram, with nulled frames
     """
-    for k in dic["bad_frames_before_wiggle"]:
+    for k in bad_list:
         sinogram[k,:,:] = 0
     return sinogram
 
@@ -472,9 +477,9 @@ def tomo_recon(dic):
 
     """
     start = time.time()
-    reconstruction3D = tomography(dic,use_regularly_spaced_angles=True)
+    reconstruction3D = tomography(dic)
     np.save(dic["reconstruction_filepath"],reconstruction3D)
-    open_or_create_h5_dataset(dic["reconstruction_filepath"],'recon','volume',reconstruction3D,create_group=True)
+    open_or_create_h5_dataset(dic["reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','volume',reconstruction3D,create_group=True)
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
     return reconstruction3D
 
@@ -540,15 +545,19 @@ def tomography(input_dict):
     iterations               = input_dict["tomo_iterations"]
     GPUs                     = input_dict["GPUs"]
     regularization_parameter = input_dict["tomo_regularization_param"]
-    wiggle_cmas              = input_dict["wiggle_ctr_of_mas"]
     wiggle_cmas_path         = input_dict["wiggle_cmas_filepath"]
+
+    try:
+        wiggle_cmas = input_dict["wiggle_ctr_of_mas"]
+    except:
+        wiggle_cmas = np.load(input_dict["wiggle_cmas_filepath"])
 
     if wiggle_cmas == [[],[]]:
         wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
 
     sinogram = np.load(input_dict["wiggle_sinogram_filepath"])
 
-    if dic['project_angles_to_regular_grid'] == True:
+    if input_dict['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
 
     angles = np.load(angles_filepath) # sorted angles?
