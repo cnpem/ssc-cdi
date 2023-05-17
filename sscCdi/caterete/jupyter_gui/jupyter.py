@@ -188,21 +188,19 @@ module load python3/3.9.2
 module load cuda/11.2
 module load hdf5/1.12.2_parallel
 
-python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_ptycho_error.log')}
+python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_error.log')}
 """
     
     with open(slurm_filepath,'w') as the_file:
         the_file.write(string)
     
-def run_ptycho_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/'):
+def run_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, jobName='job', slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/',script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"):
     
     user = os.getlogin()
     
-    python_script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"
-    slurm_filepath = os.path.join(slurm_path,f'{user}_ptycho_job.srm')
-    jobName = user+'_ptycho'
+    slurm_filepath = os.path.join(slurm_path,f'{user}_job.srm')
+    jobName = user+'_'+jobName
     
     gpus = len(gpus)
-    write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName,queue,gpus,cpus)
-    
+    write_slurm_file(script_path,json_filepath_path,slurm_filepath,jobName,queue,gpus,cpus)
     call_cmd_terminal(slurm_filepath,mafalda,remove=False)
