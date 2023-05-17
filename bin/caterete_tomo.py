@@ -29,9 +29,3 @@ if dic["processing_steps"]["tomography"]:
 
 if dic["processing_steps"]["equalize3D"]:
     tomo_equalize3D(dic)
-
-# save dic with metadata
-output_dict = json.dumps(dic,indent=3,sort_keys=True)
-jsonFile = open(dic["output_dict_path"], "w")
-jsonFile.write(output_dict)
-jsonFile.close()
