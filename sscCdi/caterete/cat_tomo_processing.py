@@ -35,7 +35,6 @@ def read_data(dic):
 
     return object, angles
 
-
 def select_contrast(dic, data):
     """ Loads either magnitude or phase data from complex-valued array
 
