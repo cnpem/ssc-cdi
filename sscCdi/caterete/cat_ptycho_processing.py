@@ -572,13 +572,15 @@ def calculate_FRC(img, input_dict):
 
 def save_input_dictionary(input_dict):
     import os
+    import getpass 
+    
     
     folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
     
-    filepath = os.path.join(folder_path, os.getlogin()+'_ptycho_input.json')
+    filepath = os.path.join(folder_path, getpass.getuser()+'_ptycho_input.json')
     out_file = open(filepath, "w")
     json.dump(input_dict, out_file, indent = 3)
     out_file.close()
