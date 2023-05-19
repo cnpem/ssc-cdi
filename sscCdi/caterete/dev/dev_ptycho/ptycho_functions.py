@@ -233,6 +233,18 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
 
     return output
 
+def calculate_recon_error_Fspace(diffractions_patterns,wavefronts,experiment_params):
+
+    n_points = diffractions_patterns.shape[1]*diffractions_patterns.shape[2]
+
+    for DP, wave in zip(diffractions_patterns,wavefronts):
+        wave_at_detector = propagate_beam(wave, experiment_params,propagator='fourier')
+        intensity = np.abs(wave_at_detector)**2
+        error = np.sum( np.sum((DP-intensity)**2) /n_points)
+
+    return error
+
+
 def calculate_recon_error(model,obj):
     
     if model.shape[0] != obj.shape[0]:
@@ -259,7 +271,7 @@ def projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon):
     obj   = RAAR_update_object(wavefronts, probe, obj.shape, positions,epsilon=epsilon)
     return probe, obj
 
-def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
+def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon):
 
     m,n = probe.shape
     k,l = object_shape
@@ -280,7 +292,7 @@ def RAAR_update_object(exit_waves, probe, object_shape, positions,epsilon=0.01):
     return object
 
 
-def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
+def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon):
     m,n = probe_shape
 
     object_sum = np.zeros((m,n),dtype=complex)
@@ -289,7 +301,6 @@ def RAAR_update_probe(exit_waves, obj, probe_shape,positions, epsilon=0.01):
     obj_conj = np.conj(obj)
 
     for index, pos in enumerate((positions)):
-        # posy, posx = pos[0], pos[1]
         posy, posx = pos[1], pos[0]
         object_sum = object_sum + obj_intensity[posy:posy + m , posx:posx+n]
         wave_sum = wave_sum + obj_conj[posy:posy + m , posx:posx+n]*exit_waves[index]
@@ -303,7 +314,7 @@ def projection_Rspace_multiprobe_RAAR(wavefronts,obj,probes,positions,epsilon):
     obj   = RAAR_multiprobe_update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
     return probes, obj
 
-def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,epsilon=0.01):
+def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,epsilon):
 
     modes,m,n = probe.shape
     k,l = object_shape
@@ -346,7 +357,7 @@ def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propag
     wave_at_detector = np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)+epsilon)
     # wave_at_detector[measurement>=0] = (np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)))[measurement>=0]
     updated_exit_wave = propagate_beam(wave_at_detector, (experiment_params[0],experiment_params[1],-experiment_params[2]),propagator=propagator)
-    return updated_exit_wave
+    return updated_exit_wave, wave_at_detector
 
 def momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe):
     T_counter += 1 
@@ -487,8 +498,6 @@ def position_correction(i, obj,previous_obj,probe,position_x,position_y, betas, 
     return new_position, relative_shift, illumination_mask
 
 
-
-
 """ PTYCHO """
 
 import numpy as np
@@ -498,6 +507,64 @@ from matplotlib.colors import LogNorm
 import time
 import random
 random.seed(0)
+
+def plot_results4(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR2_obj, RAAR2_probe, RAAR2_error ,RAAR2_time,axis=False):
+    colormap = 'viridis'
+    colormap2 = 'hsv'    
+    figure, ax = plt.subplots(5,5,dpi=150,figsize=(15,10))
+    
+    if axis == False: # remove ticks and values
+        count = -1
+        for i,ax0 in enumerate(ax.reshape(-1)):
+            count += 1
+            if count == 5: 
+                ax0.grid()
+                continue
+            ax0.set_yticks([])
+            ax0.set_xticks([])
+
+    ax[0,0].imshow(np.sum(difpads,axis=0),norm=LogNorm(),cmap=colormap)
+    ax[0,0].set_title("Sum of difpads")
+    ax[0,1].imshow(np.abs(model_obj),cmap=colormap)
+    ax[0,1].set_title("Magnitude")
+    ax[0,2].imshow(np.angle(model_obj),cmap=colormap2)
+    ax[0,2].set_title("Phase")
+    ax[0,3].imshow(np.abs(probe),cmap=colormap)
+    ax[0,3].set_title("Magnitude")
+    ax[0,4].imshow(np.angle(probe),cmap=colormap2)
+    ax[0,4].set_title("Phase")
+    
+    ax[0,0].set_ylabel('Model')
+    ax[1,0].set_ylabel('RAAR')
+    ax[2,0].set_ylabel('RAAR multi')
+    
+    try:
+        ax[1,0].plot(RAAR_error,'.-',label='RAAR')
+        ax[1,0].plot(RAAR2_error,'.-',label='RAAR-multi')
+    except:
+        pass
+    
+    try:
+        ax[1,1].imshow(np.abs(RAAR_obj),cmap=colormap)
+        ax[1,2].imshow(np.angle(RAAR_obj),cmap=colormap2)
+        ax[1,3].imshow(np.abs(RAAR_probe),cmap=colormap)
+        ax[1,4].imshow(np.angle(RAAR_probe),cmap=colormap2)
+    except:
+        pass
+    
+    try:
+        crop = 25        
+        ax[2,0].imshow(np.abs(RAAR2_obj[crop:-crop,crop:-crop]),cmap=colormap)
+        # ax[2,0].axis('off')
+        ax[2,1].imshow(np.abs(RAAR2_obj),cmap=colormap)
+        ax[2,2].imshow(np.angle(RAAR2_obj),cmap=colormap2)
+        ax[2,3].imshow(np.abs(RAAR2_probe),cmap=colormap)
+        ax[2,4].imshow(np.angle(RAAR2_probe),cmap=colormap2)    
+    except:
+        pass    
+
+    ax[1,0].legend()
+    figure.tight_layout()
 
 def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR_time,PIE_obj, PIE_probe, PIE_error, PIE_time,PIE2_obj, PIE2_probe, PIE2_error, PIE2_time, RAAR2_obj, RAAR2_probe, RAAR2_error, RAAR2_time ,axis=False):
     colormap = 'viridis'
@@ -727,18 +794,21 @@ def momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity
 
 """ MAIN LOOPS """
 
-def RAAR_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model):
+def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
     t0 = time.perf_counter()
-    print("Starting RAAR...")
-    
-    beta, epsilon = RAAR_params
-    dx, wavelength,distance = experiment_params 
+
+    iterations = inputs['iterations']
+    beta       = inputs['beta']
+    epsilon    = inputs['epsilon']
+    dx         = inputs['pixel_size']
+    wavelength = inputs['wavelength']
+    distance   = inputs['distance']
+
     shapey,shapex = probe.shape
     wavefronts = np.zeros((len(positions),probe.shape[0],probe.shape[1]),dtype=complex)
 
-    for index, pos in enumerate((positions)):
+    for index, pos in enumerate(positions): # get wavefront at each probe position
         posy, posx = pos[1], pos[0]
-        # posy, posx = pos[0], pos[1]
         obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe*obj_box
 
@@ -747,28 +817,67 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_pa
         """
         RAAR update function:
         psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
-        psi' = beta*(Pf*Rr + I)*psi    + (1-2*beta)*Pr*psi
-        psi' = beta*(Pf*(2*Pr-I)*psi   + (1-2*beta)*Pr*psi
-        psi' = beta*(Pf*(2*Pr*psi-psi) + (1-2*beta)*Pr*psi
+        psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
+        psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
         if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
 
         for index in range(len(positions)): 
             pos = positions[index]
             posy, posx = pos[1], pos[0]
-            # posy, posx = pos[0], pos[1]
             obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
             
             psi_after_Pr = probe*obj_box
+            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index] # R = 2*P - I
+            psi_after_projection_Fspace, _ = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],(dx,wavelength,distance),epsilon=epsilon) # Projection in Fourier space
+           
+            wavefronts[index] = beta*(psi_after_projection_Fspace + wavefronts[index]) + (1-2*beta)*psi_after_Pr  # eq 1
+
+        probe, obj = projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon) # Projection in Real space (consistency condition)
+
+        error.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance))) 
+    
+    return obj, probe, error, time.perf_counter()-t0
+
+
+def RAAR_loop2(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model):
+    t0 = time.perf_counter()
+
+    beta, epsilon = RAAR_params
+    dx, wavelength,distance = experiment_params 
+
+    shapey,shapex = probe.shape
+    wavefronts = np.zeros((len(positions),probe.shape[0],probe.shape[1]),dtype=complex)
+
+    for index, pos in enumerate((positions)):
+        posy, posx = pos[1], pos[0]
+        obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
+        wavefronts[index] = probe*obj_box
+
+    error = []
+    for iteration in range(0,iterations):
+        """
+        RAAR update function:
+        psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
+        psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
+        psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
+        """
+        if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
+
+        for index in range(len(positions)): 
+            pos = positions[index]
+            posy, posx = pos[1], pos[0]
+            obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
             
-            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
+            psi_after_Pr = probe*obj_box
+            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index] # R = 2*P - I
             psi_after_projection_Fspace = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
-            
-            wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+           
+            wavefronts[index] = beta*(psi_after_projection_Fspace + wavefronts[index]) + (1-2*beta)*psi_after_Pr  # eq 1
 
-        probe, obj = projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon)# Projection in Real space (consistency condition)
+        probe, obj = projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon) # Projection in Real space (consistency condition)
 
-        error.append(calculate_recon_error(model,obj)) #absolute error
+        error.append(calculate_recon_error(model,obj)) # absolute error
     return obj, probe, error, time.perf_counter()-t0
 
 def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model,n_of_modes = 1):
@@ -821,8 +930,6 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
     return obj_matrix[0], probe_modes, error, dt
 
 
-
-    
 def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
     t0 = time.perf_counter()
     print("Starting multiprobe PIE algorithm...")
@@ -911,7 +1018,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
         
         _, O_aux, P_aux = 0, obj+0, probe+0
 
-        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]))
+        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=np.complex64)
 
         # for i in range(len(diffraction_patterns)): # save current obj portions
         #     py, px = positions[i,1],  positions[i,0]
@@ -929,7 +1036,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
             exitWave = obj[py:py+offset[0],px:px+offset[1]]*probe
 
             """ Propagate + Update + Backpropagate """
-            exitWaveNew = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
+            exitWaveNew, updated_wave = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
 
             difference = exitWaveNew - exitWave
 
@@ -939,8 +1046,9 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
 
             obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
             probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
-            new_positions = position_correction2(i,updated_obj,obj_box_matrix[i],probe,px,py,betas, probe_threshold=0.2, upsampling=500)
-            positions[i,1],  positions[i,0] = new_positions
+            
+            # new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
+            # positions[i,1],  positions[i,0] = new_positions
 
         if mPIE == True: # momentum addition
             T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
@@ -957,6 +1065,81 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
     return obj, probe, positions, error_list, time.perf_counter() - t0, positions_history
           
 
-def position_correction2():
+def position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params):
+    """ Position correct of the gradient of intensities """ 
+    
+    beta_x, beta_y = betas
+    
+    
+    # Calculate intensity difference
+    updated_intensity_at_detector = np.abs(updated_wave)**2
+    intensity_diff = (updated_intensity_at_detector-measurement).flatten()
+    
+    # Calculate wavefront gradient
+    obj_dy = np.roll(obj,1,axis=0)
+    obj_dx = np.roll(obj,1,axis=1)
+    
+    obj_box     = obj[py:py+offset[0],px:px+offset[1]]
+    obj_dy_box  = obj_dy[py:py+offset[0],px:px+offset[1]]
+    obj_dx_box  = obj_dx[py:py+offset[0],px:px+offset[1]]
+    
+    wave_at_detector    = propagate_beam(obj_box*probe,    experiment_params,propagator='fourier')
+    wave_at_detector_dy = propagate_beam(obj_dy_box*probe, experiment_params,propagator='fourier')
+    wave_at_detector_dx = propagate_beam(obj_dx_box*probe, experiment_params,propagator='fourier')
 
-    return new_positions 
+    obj_pxl = experiment_params[0]
+    wavefront_gradient_x = (wave_at_detector-wave_at_detector_dx)/obj_pxl
+    wavefront_gradient_y = (wave_at_detector-wave_at_detector_dy)/obj_pxl
+   
+    # Calculate intensity gradient
+    intensity_gradient_x = 2*np.real(wavefront_gradient_x*np.conj(wave_at_detector))
+    intensity_gradient_y = 2*np.real(wavefront_gradient_y*np.conj(wave_at_detector))
+    
+    
+    # Solve linear system
+    A_matrix = np.column_stack((intensity_gradient_x.flatten(),intensity_gradient_y.flatten()))
+    A_transpose = np.transpose(A_matrix)
+    relative_shift = np.linalg.pinv(A_transpose@A_matrix)@A_transpose@intensity_diff
+
+    # Update positions
+    # new_positions = np.array([px - beta_x*relative_shift[0], py - beta_y*relative_shift[1]])
+    new_positions = np.array([py - beta_y*relative_shift[1],px - beta_x*relative_shift[0]])
+    
+    if i == 0:
+        print(px, beta_x*relative_shift[1],'\t',py,beta_y*relative_shift[0],relative_shift)
+    
+    return new_positions
+
+
+def plot_positions_and_errors(data_folder,dataname,offset,PIE_positions=[],positions_story=[]):
+    
+    import os, json
+    
+    metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
+    distance = metadata['/entry/beamline/experiment']['distance']*1e-3
+    energy = metadata['/entry/beamline/experiment']['energy']
+    pixel_size = metadata['/entry/beamline/detector']['pimega']['pixel size']*1e-6
+    wavelength, wavevector = calculate_wavelength(energy)
+    
+    diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
+
+    n_pixels = diffraction_patterns.shape[1]
+    obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
+    
+    _,_,measured = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
+    _,_,true = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}_without_error",obj_pixel_size,offset,0)
+    
+    colors = np.linspace(0,positions.shape[0]-1,positions.shape[0])
+    fig, ax = plt.subplots(dpi=150)
+    ax.legend(["True" , "Measured", "Corrected", "Path"],loc=(1.05,0.84))    
+    ax.scatter(measured[:,1],measured[:,0],marker='o',c='red')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
+    if positions_story != []:
+        for i in range(PIE_positions.shape[0]):
+            y = positions_story[:,i,1]
+            x = positions_story[:,i,0]
+            ax.scatter(y,x,color='blue',s=2,marker=',',alpha=0.2)
+    if PIE_positions != []:
+        ax.scatter(PIE_positions[:,1],PIE_positions[:,0],marker='x',color='blue')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
+    ax.scatter(true[:,1],true[:,0],marker='*',color='green')#,c=colors,cmap='jet')
+    ax.set_ylim(ax.get_ylim()[::-1])
+    ax.grid()
