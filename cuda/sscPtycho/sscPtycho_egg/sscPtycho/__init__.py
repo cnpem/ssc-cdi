@@ -227,7 +227,7 @@ def MAKENICE(obj,probe,difpads,rois,iter,batch,objbeta,probebeta,_funcc,regulari
         if len(probe.shape) < 3:
                 nummodes = int32(1)
         
-        print("Algo:", difpads.shape, obj.shape, probe.shape, batch, iter, regularization)
+        print(f"\t DPs: {difpads.shape}\n\t Object: {obj.shape}\n\t Probe: {probe.shape}\n\t Batch: {batch}\n\t Iterations: {iter}\n\t Regularization:{regularization}")
         time0 = time()
 
         _funcc(objptr, probeptr, difpadsptr, psizex, osizex, dsizex, roisptr, numrois, batch, iter, 

@@ -9,3 +9,7 @@ except:
 from .cditypes import *
 from .caterete import *
 from .carnauba import *
+from .processing import *
+from .ptycho import *
+from .tomo import *
+

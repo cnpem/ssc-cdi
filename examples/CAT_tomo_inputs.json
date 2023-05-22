@@ -1,0 +1,47 @@
+{
+   "versions": "sscCdi=0.4.16,sscPimega=0.5.3,sscResolution=1.2.3,sscRaft=2.0.1,sscRadon=1.0.0",
+   "processing_steps": {
+      "read": false,
+      "sort": false,
+      "crop": false,
+      "equalize2D": false,
+      "unwrap": false,
+      "alignment": false,
+      "tomography": true,
+      "equalize3D": false
+   },
+   
+   "contrast_type": "phase",
+
+   "data_path": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/phantom_complex/phantom_complex.hdf5",
+
+   "CPUs": 32,
+   "GPUs": [0],
+
+   "top_crop": 707,
+   "bottom_crop": 627,
+   "left_crop": 644,
+   "right_crop": 626,
+
+   "bad_frames_before_unwrap": [],
+   "unwrap_gradient_removal": false,
+   
+   "bad_frames_before_equalization": [],
+   "equalize_invert": true,
+   "equalize_gradient": false,
+   "equalize_outliers": 0,
+   "equalize_global_offset": false,
+   "equalize_local_offset": [ 150,  250,  150,   250 ],
+   
+   "bad_frames_before_wiggle": [  0,  1,   2 ],
+   "wiggle_ctr_of_mas": [],
+   "wiggle_reference_frame": 152,
+   "wiggle_sinogram_selection": "equalized",
+
+   "tomo_algorithm": "EEM",
+   "tomo_iterations": 40,
+   "tomo_local_offset": [],
+   "tomo_regularization_param": 0.001,
+   "tomo_remove_outliers": 0,
+   "tomo_threshold": 10.0
+}

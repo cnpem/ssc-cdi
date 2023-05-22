@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../../sscCdi/caterete')) # add folder with o
 # -- Project information -----------------------------------------------------
 
 project = 'ssc-cdi'
-copyright = '2022, Sirius Scientific Computing Group'
+copyright = '2023, Sirius Scientific Computing Group'
 author = 'Sirius Scientific Computing Group'
 
 # The full version, including alpha/beta/rc tags

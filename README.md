@@ -1,18 +1,19 @@
-#Ptychography
 -------------------------------------------------------------------
-Sirius Scientic Computing approach for ptychographic reconstruction
+Sirius Scientic Computing approach for coherent diffraction imaging
 -------------------------------------------------------------------
 
 Authors:
 	Scientific Computing Group / LNLS / CNPEM
-	
-	Paola Ferraz Cunha	-
 
 	Yuri Rossi Tonin	-
 
 	Julia C.Carvalho	-
 
+	Paola Ferraz Cunha	-
+	
 	Eduardo X. Miqueles	-
+
+	Camila F. Afonso Lages -
 
 	Giovanni Baraldi	-	
 
