@@ -12,7 +12,20 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
-[0.4.18] - 2023-03-17
+ 
+
+[0.5.1] - 2023-05-16
+
+Changed
+~~~~~
+- Refactored code with new folder structure and modules
+- Major changes to functions and code cleanup
+
+Added
+~~~~~
+- CUDA restoration for single and multiple acquisitions
+
+[0.4.16] - 2023-03-07
 --------------------
 - Added variable to input that can increase ptycho object size by padding
 - Bugfixes
