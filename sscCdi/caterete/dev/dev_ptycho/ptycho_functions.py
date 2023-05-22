@@ -511,7 +511,7 @@ random.seed(0)
 def plot_results4(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR2_obj, RAAR2_probe, RAAR2_error ,RAAR2_time,axis=False):
     colormap = 'viridis'
     colormap2 = 'hsv'    
-    figure, ax = plt.subplots(5,5,dpi=150,figsize=(15,10))
+    figure, ax = plt.subplots(3,5,dpi=150,figsize=(15,5))
     
     if axis == False: # remove ticks and values
         count = -1
