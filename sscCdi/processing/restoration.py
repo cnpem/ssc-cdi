@@ -11,7 +11,6 @@ from sscPimega import misc as miscPimega
 
 """ sscCdi relative imports"""
 from ..misc import read_hdf5
-from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
 
 def restore_pimega(diffraction_pattern,geometry,detector):
     if detector == '135D':
@@ -45,7 +44,7 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
-def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
+def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="h5py"):
 
     if input_dict["detector"] == '540D':
         DP_shape = 3072
@@ -60,8 +59,13 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
     
+    print(np.max(raw_DPs),np.mean(raw_DPs),np.min(raw_DPs))
+
     if input_dict["beamline"] == "CNB":
+        from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
         raw_DPs = cnb_preprocessing_linear_correction(input_dict,raw_DPs)
+
+    print(np.max(raw_DPs),np.mean(raw_DPs),np.min(raw_DPs))
 
     binning = int(input_dict['binning'])
 
@@ -87,8 +91,22 @@ def restoration_with_processing_and_binning(DP, args):
     return DP
 
 def read_masks(input_dict):
-    flatfield = read_hdf5(input_dict["flat_path"])
-    mask = read_hdf5(input_dict["mask_path"])
+
+    if input_dict["detector"] == '135D':
+        shape = (1536,1536)
+    elif input_dict["detector"] == '540D':
+        shape = (3072,3072)
+
+    if input_dict["flatfield"] != "":
+        flatfield = read_hdf5(input_dict["flatfield"])[()]
+    else:
+        flatfield = np.ones(shape)
+
+    if input_dict["mask"] != "":
+        mask = read_hdf5(input_dict["mask"])[()]
+    else:
+        mask = np.zeros(shape)
+
     return flatfield, mask
 
 def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
@@ -97,27 +115,28 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
 
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
-    DP = DP * np.squeeze(flat) # apply flatfield
-    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    # DP = DP * np.squeeze(flat) # apply flatfield
+    # DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
     
     DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
     DP = DP.astype(np.float32) # convert to float
     
-    DP[np.abs(mask) ==1] = -1 # apply mask
+    # DP[np.abs(mask) == 1] = -1 # apply mask
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
 
     if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
-    if hsize == 0:
+    if input_dict["detector_ROI_radius"] <= 0:
         hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
         if hsize % 2 != 0: 
             hsize = hsize -  1 # make it even
+    else:
+        hsize = input_dict["detector_ROI_radius"]
 
-    if input_dict["detector_ROI_radius"] > 0:
-        DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+    DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
     return DP 
 

@@ -13,6 +13,7 @@
 
    "using_direct_beam": false,
    "DP_center": [1418,1383],
+   "apply_linearity_correction": false,
    "fill_blanks": false,
    "keep_original_negative_values": false,
    "suspect_border_pixels": 3,

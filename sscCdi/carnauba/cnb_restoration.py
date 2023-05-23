@@ -8,7 +8,6 @@ from sscPimega import pi135D
 
 from ..processing.restoration import restore_IO_SharedArray
 
-
 def restoration_CNB(input_dict):
     hdf5_path = input_dict["data_path"]
     geometry = geometry_CNB(input_dict)
@@ -16,8 +15,8 @@ def restoration_CNB(input_dict):
     return diffraction_patterns
 
 def geometry_CNB(input_dict):
+    project = pi135D.dictionary135D( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
     susp = input_dict["suspect_border_pixels"]
-    project = pi135D.get_detector_dictionary( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
     project['s'] = [susp,susp] 
     geometry = pi135D.geometry135D( project )
     return geometry
@@ -31,7 +30,7 @@ def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
             trajectory = p['general_info/Trajectory'][()]
             trajectory = trajectory.decode('utf-8')
 
-            with open(input_dict["Trajectory_Path"] + 'trajetorias.txt') as trajectories:
+            with open(input_dict["Trajectory_Path"]) as trajectories:
                 lines = trajectories.readlines()
             
             for line in lines:
@@ -40,20 +39,18 @@ def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
                     acq_time = float(line.split(' ')[-2])
         return acq_time
 
-    positionspath = os.path.join(input_dict["ProposalPath"], str(input_dict['Proposal']), 'proc', input_dict["BeamlineParameters_Filename"])
-
-    positions = h5py.File(positionspath, 'r')
+    positions = h5py.File(input_dict["beamline_parameters_path"], 'r')
 
     acquisition_time = get_acquisition_time(input_dict,positions)
 
-    if input_dict["Linearity_Function"]:
-        print("\nApplying Linearity_Function")
+    if input_dict["apply_linearity_correction"]:
+        print("\nApplying linearity correction")
         DPs = linearity_batch(input_dict, raw_DPs, acquisition_time)
     else:
         DPs = raw_DPs
 
-    if input_dict['empty_acquisition']:
-        DPs = apply_empty_acquisition(DPs, input_dict)
+    # if input_dict['empty'] != "":
+        # DPs = apply_empty_acquisition(DPs, input_dict)
     
     return DPs
 
