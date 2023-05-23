@@ -1,6 +1,6 @@
 from sys import argv
 import numpy as np
-import os, time, json
+import time, json
 
 """ Sirius Scientific Computing Imports """
 import sscCdi
@@ -20,60 +20,30 @@ if __name__ == '__main__':
     input_dict = json.load(open(argv[1]))  # open input_dict file containing desired inputs
 
     print("Creating folders...")
-    input_dict = sscCdi.ptycho.ptycho_processing.define_paths(input_dict)
-
-    print("Reading files of interest...")
-    filepaths, filenames = sscCdi.ptycho.ptycho_processing.get_files_of_interest(input_dict)
-
-    """ =========== MAIN PTYCHO RUN: RESTAURATION + PTYCHO 3D and 2D ===================== """
-
+    input_dict = sscCdi.carnauba.cnb_ptycho_processing.define_paths(input_dict)
     t1 = time.time()
+
     print('Starting restoration...')
-    DPs = sscCdi.caterete.cnb_restoration.restoration_CNB(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
+    DPs = sscCdi.carnauba.cnb_restoration.restoration_CNB(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
     t2 = time.time()
 
     print('Starting ptychography...')
-    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,DPs)
     t3 = time.time()
 
-    print('\tFinished reconstruction!')
+    print('\nSaving Object of shape: ',object.shape)
+    sscCdi.misc.save_variable(input_dict, object,flag='object')
+
+    print('\nSaving Probe of shape: ',probe.shape)
+    sscCdi.misc.save_variable(input_dict,probe,flag='probe')
+
+    sscCdi.misc.save_json_logfile(input_dict) 
 
     t4 = time.time()
-    """ ===================== Post-processing ===================== """
-
-    cropped_sinogram = sscCdi.ptycho.ptycho_processing.crop_sinogram(object,input_dict)
-    
-    if input_dict['phase_unwrap'][0]: # Apply phase unwrap to data 
-        print('Unwrapping sinogram...')
-        phase, absol = sscCdi.ptycho.ptycho_processing.apply_phase_unwrap(cropped_sinogram, input_dict) # phase = np.angle(object), absol = np.abs(object)
-        cropped_sinogram = absol*np.exp(-1j*phase)
-        sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram, os.path.join(input_dict['ReconsPath'],'unwrapped_object_' + input_dict["acquisition_folders"][0]))
-    else:
-        print("Extracting phase and magnitude...")
-        phase = np.angle(cropped_sinogram)
-        absol = np.abs(cropped_sinogram)
-
-    print('Calculating Fourier Ring Correlation...')
-    input_dict = sscCdi.ptycho.ptycho_processing.calculate_FRC(cropped_sinogram, input_dict)
-
-    t5 = time.time()
-    """ ===================== Save and preview data ===================== """
-
-    if input_dict["LogfilePath"] != "":  sscCdi.misc.misc.save_json_logfile(input_dict["LogfilePath"], input_dict) # overwrite logfile with new information
-            
-    print('Saving Object...')
-    sscCdi.ptycho.ptycho_processing.save_variable(cropped_sinogram  , os.path.join(input_dict['ReconsPath'],input_dict["acquisition_folders"][0]) + '_object')
-
-    print('Saving Probe...')
-    sscCdi.ptycho.ptycho_processing.save_variable(probe, os.path.join(input_dict['ReconsPath'], input_dict["acquisition_folders"][0]) + '_probe' )
-
-
-    t6 = time.time()
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
     print('\n')
-    print(f'Restauration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes')
-    print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes')
-    print(f'Post-processing time:  {t5 - t4:.2f} seconds = {(t5 - t4) / 60:.2f} minutes')
-    print(f'Save time:             {t6 - t5:.2f} seconds = {(t6 - t5) / 60:.2f} minutes')
-    print(f'Total time:            {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
+    print(f'Restoration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
+    print(f'Ptychography time:    {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes ({100*(time_elapsed_ptycho)/(t6 - t0):.0f}%)')
+    print(f'Save time:            {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes ({100*(t4 - t3)/(t4 - t0):.0f}%)')
+    print(f'Total time:           {t4 - t0:.2f} seconds = {(t4 - t0) / 60:.2f} minutes')

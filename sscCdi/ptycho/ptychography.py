@@ -3,7 +3,7 @@
 import numpy as np
 import sys, os, h5py
 import sscPtycho
-from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset
+from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
@@ -28,7 +28,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
         datapack["obj"] = initial_obj
     
     if initial_probe!=np.ones(1):
-        datapack["probe"] = initial_obj
+        datapack["probe"] = initial_probe
 
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"],concatenate=False)
@@ -343,3 +343,55 @@ def create_cross_mask(mask_shape,center, length_y, length_x=0):
     mask[center_row-length_y//2:center_row+length_y//2,:] = 1
     mask[:,center_col-length_x//2:center_col+length_x//2] = 1
     return mask 
+
+
+def set_object_pixel_size(input_dict,DP_size):
+    """ Get size of object pixel given energy, distance and detector pixel size
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DP_size (int): lateral size of detector array
+
+    Returns:
+        input_dict: update input dictionary containing size of object pixel
+    """
+
+    wavelength = wavelength_from_energy(input_dict["energy"])
+    input_dict["wavelength"] = wavelength
+    
+    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size)
+    input_dict["object_pixel"] = object_pixel_size # in meters
+
+    print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
+    PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
+    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
+    return input_dict
+
+def set_object_shape(input_dict,DP_shape,probe_positions):
+    """ Determines shape (Y,X) of object matrix from size of probe and its positions.
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DP_shape (tuple): shape of the diffraction patterns array
+        probe_positions (numpy array): array os probe positiions in pixels 
+
+    Returns:
+        input_dict (dict)): updated input dictionary containing object_shape information
+    """
+
+    offset_bottomright = input_dict["object_padding"]
+
+    DP_size_y = DP_shape[1]
+    DP_size_x = DP_shape[2]
+
+    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
+    object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
+
+    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
+    object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
+
+    my_shape = np.max([object_shape_y,object_shape_x])
+
+    input_dict["object_shape"] = (my_shape, my_shape)
+
+    return input_dict

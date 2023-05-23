@@ -9,8 +9,9 @@ from sscPimega import pi540D
 
 
 """ sscCdi relative imports"""
-from ..misc import create_directory_if_doesnt_exist, wavelength_from_energy, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
+from ..misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
 from ..ptycho.ptychography import call_GB_ptychography
+from ..ptycho import set_object_pixel_size, set_object_shape
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -31,7 +32,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
     """
 
     input_dict["restoration_id"] = restored_data_info_list
-
 
     total_number_of_angles = 0
     for acquisitions_folder in input_dict['acquisition_folders']:
@@ -69,7 +69,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
                 if file_number == 0 and folder_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                    input_dict = set_object_shape(input_dict, DPs.shape, probe_positions, input_dict["object_padding"])
+                    input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
                     sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                     probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                     print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
@@ -199,57 +199,6 @@ def create_output_directories(input_dict):
         create_directory_if_doesnt_exist(input_dict["temporary_output"])
         create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
-
-def set_object_shape(input_dict,DP_shape,probe_positions,offset_bottomright):
-    """ Determines shape (Y,X) of object matrix from size of probe and its positions.
-
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-        DP_shape (tuple): shape of the diffraction patterns array
-        probe_positions (numpy array): array os probe positiions in pixels 
-        offset_bottomright (int): value in pixels to pad the object array size
-
-    Returns:
-        input_dict (dict)): updated input dictionary containing object_shape information
-    """
-
-    DP_size_y = DP_shape[1]
-    DP_size_x = DP_shape[2]
-
-    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
-    object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
-
-    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
-    object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
-
-    my_shape = np.max([object_shape_y,object_shape_x])
-
-    input_dict["object_shape"] = (my_shape, my_shape)
-
-    return input_dict
-
-
-def set_object_pixel_size(input_dict,DP_size):
-    """ Get size of object pixel given energy, distance and detector pixel size
-
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-        DP_size (int): lateral size of detector array
-
-    Returns:
-        input_dict: update input dictionary containing size of object pixel
-    """
-
-    wavelength = wavelength_from_energy(input_dict["energy"])
-    input_dict["wavelength"] = wavelength
-    
-    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size)
-    input_dict["object_pixel"] = object_pixel_size # in meters
-
-    print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
-    PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
-    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
-    return input_dict
 
 
 def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):

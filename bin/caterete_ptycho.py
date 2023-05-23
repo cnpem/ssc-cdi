@@ -20,7 +20,7 @@ if __name__ == '__main__':
     input_dict = json.load(open(argv[1]))  # open input_dict file containing desired inputs
 
     print("\nCreating folders...")
-    input_dict = sscCdi.caterete.cat_ptycho_processing.define_paths(input_dict)
+    input_dict = sscCdi.carnauba.cnb_ptycho_processing.define_paths(input_dict)
 
     t1 = time.time()
     print('Starting restoration...')
@@ -32,8 +32,6 @@ if __name__ == '__main__':
 
     print('Finished reconstruction!\n')
 
-    t4 = time.time()
-
     """ ===================== Save and preview data ===================== """
     object, probe = sscCdi.misc.save_volume_from_parts(input_dict)
 
@@ -44,13 +42,13 @@ if __name__ == '__main__':
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 
     sscCdi.misc.save_json_logfile(input_dict) 
-    # sscCdi.misc.delete_temporary_folders(input_dict)
+    sscCdi.misc.delete_temporary_folders(input_dict)
 
-    t6 = time.time()
+    t4 = time.time()
     time_elapsed_restauration = t2 - t1
     time_elapsed_ptycho = t3 - t2
     print('\n')
     print(f'Restoration time:     {time_elapsed_restauration:.2f} seconds = {(time_elapsed_restauration) / 60:.2f} minutes ({100*(time_elapsed_restauration)/(t6 - t0):.0f}%)')
     print(f'Ptychography time:     {time_elapsed_ptycho:.2f} seconds = {(time_elapsed_ptycho) / 60:.2f} minutes ({100*(time_elapsed_ptycho)/(t6 - t0):.0f}%)')
-    print(f'Save time:             {t6 - t4:.2f} seconds = {(t6 - t4) / 60:.2f} minutes ({100*(t6 - t4)/(t6 - t0):.0f}%)')
-    print(f'Total time:            {t6 - t0:.2f} seconds = {(t6 - t0) / 60:.2f} minutes')
+    print(f'Save time:             {t4 - t3:.2f} seconds = {(t4 - t3) / 60:.2f} minutes ({100*(t4 - t3)/(t4 - t0):.0f}%)')
+    print(f'Total time:            {t4 - t0:.2f} seconds = {(t4 - t0) / 60:.2f} minutes')
