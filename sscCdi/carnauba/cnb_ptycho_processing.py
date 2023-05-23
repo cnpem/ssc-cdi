@@ -34,6 +34,8 @@ def define_paths(input_dict):
  
     input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
 
+ 
+    input_dict["dataset_name"] = input_dict['data_path'].rsplit('/',1)[1].rsplit('.')[0]
     input_dict["output_path"] = input_dict["beamline_parameters_path"].rsplit('/',1)[0]
     print("\tOutput path:", input_dict["output_path"])
 
@@ -41,12 +43,12 @@ def define_paths(input_dict):
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
 
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
-    input_dict["energy"]               = data['beamline_parameters']['4CM Energy']
-    input_dict["detector_distance"]    = data['beamline_parameters']['Distance Pimega']*1e-3 # convert to meters
-    input_dict["detector_exposure"]    = data['general_info']['Acquisition time']
+    input_dict["energy"]               = data['beamline_parameters']['4CM Energy'][()]*1e-3 # keV
+    input_dict["detector_distance"]    = data['beamline_parameters']['Distance PiMega'][()]*1e-3 # convert to meters
+    input_dict["detector_exposure"]    = data['general_info']['Acquisition time'][()] # seconds
     data.close()
 
-    input_dict["datetime"] = get_datetime(input_dict)
+    input_dict["datetime"] = get_datetime(input_dict["dataset_name"])
     input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file
 
     hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
