@@ -10,7 +10,6 @@
    "CPUs": 96,
    "GPUs": [0,1,2],
 
-   "binning": 1,
    "using_direct_beam": false,
    "DP_center": [1418,1383],
    "fill_blanks": false,
@@ -52,12 +51,6 @@
       "Name": "GL",
       "ObjBeta": 0.5,
       "ProbeBeta": 0.5,
-      "TV": 0.01  },
-
-   "crop": [],
-   
-   "phase_unwrap": [],
-
-   "FRC": []
+      "TV": 0.01  }
 
 }

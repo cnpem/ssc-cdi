@@ -326,8 +326,8 @@ def plot_error(error,path='',log=False):
     if path != '':
         fig.savefig(path)
     
-def save_variable(input_dict,variable, flag = 'FLAG'):
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
+def save_variable(input_dict,variable, name = 'FLAG'):
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon',name,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
     """ Add data to hdf5 file. Creates a dataset with certain name inside a pre-existing group

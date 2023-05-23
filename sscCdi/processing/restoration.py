@@ -11,6 +11,7 @@ from sscPimega import misc as miscPimega
 
 """ sscCdi relative imports"""
 from ..misc import read_hdf5
+from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
 
 def restore_pimega(diffraction_pattern,geometry,detector):
     if detector == '135D':
@@ -58,6 +59,9 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
         raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
+    
+    if input_dict["beamline"] == "CNB":
+        raw_DPs = cnb_preprocessing_linear_correction(input_dict,raw_DPs)
 
     binning = int(input_dict['binning'])
 
@@ -104,7 +108,7 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
 
-    if input_dict["keep_original_negative_values"] > 0 == False:
+    if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
     if hsize == 0:
