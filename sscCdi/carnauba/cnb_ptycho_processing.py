@@ -12,9 +12,9 @@ def cnb_ptychography(input_dict,DPs):
 
     input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
 
-    sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1])) # first dimension to be expanded in the future for multiple angles
-    probes   = np.zeros((1,1,DPs.shape[-2],DPs.shape[-1]))
-    sinogram[0, :, :], probes[0, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+    sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
+    probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+    sinogram[0, :, :], probes[0, :, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
     return sinogram, probes, input_dict
 

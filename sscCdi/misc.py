@@ -184,7 +184,6 @@ def save_json_logfile_tomo(input_dict):
     file.write(json_string)
     file.close()
 
-
 def create_directory_if_doesnt_exist(*args):
     """ Create directories from a list of paths if they do not already exist
 
