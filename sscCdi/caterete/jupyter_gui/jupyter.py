@@ -2,6 +2,7 @@ import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import time, os
 import ast
+import getpass
 
 import ipywidgets as widgets 
 from ipywidgets import fixed 
@@ -173,7 +174,7 @@ def get_box_layout(width,flex_flow='column',align_items='center',border='1px non
 
 def write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName='jobName',queue='cat',gpus=1,cpus=32):
     logfiles_path = slurm_filepath.rsplit('/',2)[0]
-    username = os.getlogin()
+    username = getpass.getuser()
     string = f"""#!/bin/bash
 
 #SBATCH -J {jobName}          # Select slurm job name
@@ -196,7 +197,7 @@ python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,
     
 def run_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, jobName='job', slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/',script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"):
     
-    user = os.getlogin()
+    user = getpass.getuser()
     
     slurm_filepath = os.path.join(slurm_path,f'{user}_job.srm')
     jobName = user+'_'+jobName
