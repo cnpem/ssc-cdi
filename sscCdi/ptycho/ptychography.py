@@ -367,6 +367,7 @@ def set_object_pixel_size(input_dict,DP_size):
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return input_dict
 
+
 def set_object_shape(input_dict,DP_shape,probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
@@ -378,6 +379,8 @@ def set_object_shape(input_dict,DP_shape,probe_positions):
     Returns:
         input_dict (dict)): updated input dictionary containing object_shape information
     """
+
+    print(DP_shape)
 
     offset_bottomright = input_dict["object_padding"]
 

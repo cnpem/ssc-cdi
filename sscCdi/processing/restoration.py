@@ -44,7 +44,7 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
-def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="h5py"):
+def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
 
     if input_dict["detector"] == '540D':
         DP_shape = 3072
@@ -54,18 +54,14 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="h5py"):
         sys.error('Please selector correct detector type: 135D or 540D')
 
     if method == "IO":
-        os.system(f"h5clear -s {hdf5_path}")
-        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
+        # os.system(f"h5clear -s {hdf5_path}")
+        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=32)#input_dict["CPUs"])
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
     
-    print(np.max(raw_DPs),np.mean(raw_DPs),np.min(raw_DPs))
-
     if input_dict["beamline"] == "CNB":
         from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
         raw_DPs = cnb_preprocessing_linear_correction(input_dict,raw_DPs)
-
-    print(np.max(raw_DPs),np.mean(raw_DPs),np.min(raw_DPs))
 
     binning = int(input_dict['binning'])
 
