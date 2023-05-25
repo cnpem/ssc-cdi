@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     print('\nSaving Object of shape: ',object.shape)
     sscCdi.misc.save_variable(input_dict, object,flag='object')
-
+    
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,flag='probe')
 

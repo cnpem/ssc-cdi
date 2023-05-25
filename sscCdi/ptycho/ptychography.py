@@ -144,7 +144,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         sigmask[DPs[0] < 0] = 0
         return sigmask
 
-    def probe_support(n_of_probes, half_size, radius, center_x, center_y):
+    def probe_support(probe_shape, half_size, radius, center_x, center_y):
         """ Create mask containing probe support region
 
         Args:
@@ -157,12 +157,17 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         Returns:
             probesupp: mask containing probe support
         """
+
+        
         print('Setting probe support...')
+        
+        probe = np.zeros(probe_shape)
+        
         ar = np.arange(-half_size, half_size)
         xx, yy = np.meshgrid(ar, ar)
-        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
-        probesupp = np.asarray([probesupp for k in range(n_of_probes)])
-        return probesupp
+        support = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2
+        probe[:,:] = support # all frames and all modes with same support
+        return probe
 
     def append_ones(probe_positions):
         """ Adjust shape and column order of positions array to be accepted by Giovanni's  code
@@ -197,7 +202,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     background = np.ones(DPs[0].shape) # dummy array 
 
     probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
-    probesupp = probe_support(probe.shape[0], half_size, probe_support_radius, probe_support_center_x, probe_support_center_y)  
+    probesupp = probe_support(probe.shape, half_size, probe_support_radius, probe_support_center_x, probe_support_center_y)  
 
     print(f"Diffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}")
     
@@ -221,7 +226,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     """
 
     def set_modes(probe, input_dict):
-
+        print(probe.shape)
         mode = probe.shape[0]
 
         if input_dict['incoherent_modes'] > mode:
@@ -268,9 +273,10 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
     probe = probe.astype(np.complex64)
-    probe = np.expand_dims(probe,axis=0)
 
     probe = set_modes(probe, input_dict) # add incoherent modes 
+
+    probe = np.expand_dims(probe,axis=0) # add dimension that represents frame number
 
     return probe
 
