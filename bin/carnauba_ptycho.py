@@ -28,7 +28,7 @@ if __name__ == '__main__':
     t2 = time.time()
 
     print('Starting ptychography...')
-    object,probe, input_dict = sscCdi.ptycho.ptycho_processing.cnb_ptychography(input_dict,DPs)
+    object,probe, input_dict = sscCdi.carnauba.cnb_ptycho_processing.cnb_ptychography(input_dict,DPs)
     t3 = time.time()
 
     print('\nSaving Object of shape: ',object.shape)

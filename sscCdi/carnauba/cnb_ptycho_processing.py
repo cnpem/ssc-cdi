@@ -4,14 +4,13 @@ import h5py, os
 import sscCdi, sscPimega, sscResolution, sscRaft, sscRadon
 
 """ sscCdi relative imports"""
-from ..ptycho.ptychography import call_GB_ptychography, set_object_shape
-from ..caterete.cat_ptycho_processing import set_object_shape
+from ..ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size
 
 def cnb_ptychography(input_dict,DPs):
 
-    probe_positions = read_cnb_probe_positions(input_dict)
+    probe_positions = read_cnb_probe_positions(input_dict,DPs.shape)
 
-    input_dict = set_object_shape(input_dict,DPs[0].shape,probe_positions) # add object shape to input_dict
+    input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1])) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,1,DPs.shape[-2],DPs.shape[-1]))
@@ -45,6 +44,7 @@ def define_paths(input_dict):
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
     input_dict["energy"]               = data['beamline_parameters']['4CM Energy'][()]*1e-3 # keV
     input_dict["detector_distance"]    = data['beamline_parameters']['Distance PiMega'][()]*1e-3 # convert to meters
+    input_dict["restored_pixel_size"]  = data['beamline_parameters']['PiMega Pixel Size'][()]*1e-6 # convert to microns
     input_dict["detector_exposure"]    = data['general_info']['Acquisition time'][()] # seconds
     data.close()
 
@@ -66,9 +66,10 @@ def get_datetime(name):
     datetime = dt_string + "_" + name.split('.')[0]
     return datetime 
 
-def read_cnb_probe_positions(input_dict, dx, objsize):
+def read_cnb_probe_positions(input_dict,sinogram_shape):
     positions_mm = read_position_metadata(input_dict)
-    positions_pixels = convert_probe_positions_meters_to_pixels(positions_mm, dx, input_dict, objsize)
+    input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
+    positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
     return positions_pixels
 
 def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
