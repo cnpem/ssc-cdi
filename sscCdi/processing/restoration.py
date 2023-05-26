@@ -55,7 +55,7 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
 
     if method == "IO":
         # os.system(f"h5clear -s {hdf5_path}")
-        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=32)#input_dict["CPUs"])
+        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
     
@@ -94,12 +94,12 @@ def read_masks(input_dict):
         shape = (3072,3072)
 
     if input_dict["flatfield"] != "":
-        flatfield = read_hdf5(input_dict["flatfield"])[()]
+        flatfield = h5py.File(input_dict["flatfield"], 'r')['entry/data/data'][()]
     else:
         flatfield = np.ones(shape)
 
     if input_dict["mask"] != "":
-        mask = read_hdf5(input_dict["mask"])[()]
+        mask = h5py.File(input_dict["mask"], 'r')['entry/data/data'][()]
     else:
         mask = np.zeros(shape)
 
@@ -111,8 +111,8 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
 
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
-    # DP = DP * np.squeeze(flat) # apply flatfield
-    # DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    DP = DP * np.squeeze(flat) # apply flatfield
+    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
     
     DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
 
@@ -121,6 +121,8 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     # DP[np.abs(mask) == 1] = -1 # apply mask
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
+
+    # np.save(os.path.join(input_dict["output_path"],"DP.npy"),DP)
 
     if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
