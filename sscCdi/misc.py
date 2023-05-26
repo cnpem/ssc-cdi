@@ -205,7 +205,10 @@ def read_hdf5(path,inner_path = 'entry/data/data'):
     Returns:
         (h5py File): h5py File object 
     """
-    os.system(f"h5clear -s {path}")
+    try:
+        os.system(f"h5clear -s {path}")
+    except:
+        pass
     return h5py.File(path, 'r')[inner_path]
     
 def debug(func): # decorator function for debugging
