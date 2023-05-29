@@ -12,9 +12,35 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+
+[0.5.13] - 2023-05-29
+--------------------
+
+Added
+~~~~~
+- Added option to apply flatfield in CAT ptycho after restoration
  
 
-[0.5.1] - 2023-05-16
+[0.5.12] - 2023-05-29
+--------------------
+
+Added
+~~~~~
+- Added system call to h5clear hdf5 file prior to restoration call
+
+
+
+[0.5.11] - 2023-05-25
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for reading username from system when sending jobs to cluster
+
+
+
+[0.5.10] - 2023-05-16
+--------------------
 
 Changed
 ~~~~~
@@ -25,10 +51,13 @@ Added
 ~~~~~
 - CUDA restoration for single and multiple acquisitions
 
+
+
 [0.4.16] - 2023-03-07
 --------------------
 - Added variable to input that can increase ptycho object size by padding
 - Bugfixes
+
 
 
 [0.4.15] - 2023-03-06
