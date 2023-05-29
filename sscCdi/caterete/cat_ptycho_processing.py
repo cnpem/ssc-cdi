@@ -61,6 +61,10 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
+                
+                if input_dict["extra_flat"] != "":
+                    extra_flat = np.load(input_dict["extra_flat"])
+                    DPs[:] = DPs[:]*extra_flat
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
