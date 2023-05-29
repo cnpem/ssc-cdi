@@ -97,8 +97,10 @@ def restoration_CAT(input_dict):
 
         if len(filepaths) == 1:
             dic['path'] = dic['path'][0]
+            os.system(f"h5clear -s {dic['path']}")
             restored_data_info = pi540D.ioSet_Backward540D( dic )
         else:
+            os.system(f"h5clear -s {dic['path']}")
             restored_data_info = pi540D.ioSetM_Backward540D( dic )
             
         dic_list.append(dic)
