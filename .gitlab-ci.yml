@@ -45,7 +45,7 @@ build_power:
             - ./dist/*whl
         expire_in: 1 day
 
-deploy_power_shell:
+deploy_power:
     stage: deploy
     script:
         - python3 -m pip install keyring==12.0.0 keyrings.alt
