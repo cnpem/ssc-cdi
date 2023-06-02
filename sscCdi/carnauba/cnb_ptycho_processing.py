@@ -130,32 +130,8 @@ def read_position_metadata(input_dict):
     posx -= posx.mean()
     posy -= posy.mean()
 
-    positions_mm = np.asarray([posx,posy]).swapaxes(0,-1).swapaxes(0,1)
+    positions_mm = np.asarray([posy,posx]).swapaxes(0,-1).swapaxes(0,1)
     positions_mm = positions_mm.mean(1)[:,None]
     positions_mm = np.reshape(positions_mm, (positions_mm.shape[0], 2))
 
     return positions_mm
-
-def cnb_probe():
-
-    beam_params = GetBeamlineParams(input_dict)
-    rois = np.asarray([beam_params['posx'],beam_params['posy']]).swapaxes(0,-1).swapaxes(0,1)
-    rois = rois.mean(1)[:,None]
-    rois = np.reshape(rois, (rois.shape[0], 2))
-
-    object_shape, half_size, object_pixel_size, input_dict = set_cnb_object_shape(DPs,input_dict)
-    objsize = object_shape[1]
-
-    print('Objsize: ', objsize)
-    
-    probe_positions = read_cnb_probe_positions(input_dict, input_dict["object_pixel"], objsize)
-    
-    I0 = beam_params['I0']
-    I1 = beam_params['I1']
-    I0 = np.reshape(I0, (rois.shape[0], 1))
-    I1 = np.reshape(I1, (rois.shape[0], 1))
-    print('\nRois, I0 and I1 shape: ', rois.shape, I0.shape, I1.shape)
-    probe_positions = np.concatenate((probe_positions, I0, I1), axis = 1)
-    print('\nProbe positions shape: ', probe_positions.shape)   
-
-
