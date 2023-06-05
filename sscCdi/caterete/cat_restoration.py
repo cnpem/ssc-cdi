@@ -126,7 +126,6 @@ def restoration_CAT(input_dict,method = 'IO'):
         input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["distance"], {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
         print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
-    data_path = input_dict['save_path']
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
@@ -153,12 +152,12 @@ def restoration_CAT(input_dict,method = 'IO'):
         else:
             dic['roi'] = input_dict["detector_ROI_radius"] # integer
 
-        if input_dict["flat_path"] != '':    
+        if input_dict["flatfield"] != '':    
             dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] 
         else:
             dic['flat'] = np.ones([detector_size, detector_size])
 
-        if input_dict["mask_path"] != '':    
+        if input_dict["mask"] != '':    
             dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
         else:
             dic['mask'] = np.zeros([detector_size, detector_size])
@@ -189,6 +188,8 @@ def restoration_CAT(input_dict,method = 'IO'):
 
 
     elif method == "IO":
+    
+        data_path = input_dict['data_path'][0]
 
         """ Get detector geometry from distance """
         geometry, _ = Geometry(input_dict["distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
