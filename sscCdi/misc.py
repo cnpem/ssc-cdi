@@ -451,7 +451,9 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
             colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
         else:
             colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
-    
+    elif norm == "LogNorm":
+            colornorm=colors.LogNorm()
+
     def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
         
         subplot.clear()
@@ -469,7 +471,9 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
 
         if aspect_ratio != '':
             subplot.set_aspect(aspect_ratio)
-    
+
+        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
+
     output = widgets.Output()
     
     with output:
@@ -477,7 +481,6 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
         ax.imshow(np.random.random((4,4)),cmap='gray')
         figure.canvas.draw_idle()
         figure.canvas.header_visible = False
-        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
         plt.show()   
 
     slider_layout = widgets.Layout(width='25%')

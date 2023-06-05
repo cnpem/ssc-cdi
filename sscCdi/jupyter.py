@@ -160,7 +160,6 @@ def get_box_layout(width,flex_flow='column',align_items='center',border='1px non
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 
-
 def plot_DPs_with_slider(data,axis=0):
 
     colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())

@@ -38,7 +38,8 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     dic['center']   = input_dict["DP_center"] # [1400,1400]
     dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
     dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
-    
+    dic['daxpy'] = [0,np.zeros([3072,3072])] 
+
     restored_data_info = pi540D.ioSetM_Backward540D( dic )
     output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
@@ -99,7 +100,15 @@ def read_masks(input_dict):
     else:
         mask = np.zeros(shape)
 
-    return flatfield, mask
+    if input_dict["subtraction_path"] != "":
+        path = input_dict["subtraction_path"]
+        os.system(f"h5clear -s {path}") # gambiarra because file is not closed at the backend!
+        subtraction_mask = np.asarray(h5py.File(input_dict["subtraction_path"], 'r')['entry/data/data']).squeeze().astype(np.float32)
+        subtraction_mask = subtraction_mask * np.squeeze(flatfield) # Apply flatfield
+    else:
+        subtraction_mask = np.zeros(shape)
+
+    return flatfield, mask, subtraction_mask
 
 def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
     
