@@ -12,11 +12,11 @@ from ipywidgets import fixed
 import sscPimega, sscResolution
 
 from .ptycho_fresnel import propagate_beam, fit_2Dgaussian, fit_2Dsinc
-from ..caterete.ptycho_fresnel import  create_propagation_video_f1
-from ..caterete.misc import miqueles_colormap
+from ... import  create_propagation_video_f1
+from ... import miqueles_colormap
 from .jupyter import monitor_job_execution, call_cmd_terminal, Button, Input, update_imshow, slide_and_play, call_and_read_terminal
 
-from ..caterete.misc import create_directory_if_doesnt_exist
+from ... import create_directory_if_doesnt_exist
 
 
 

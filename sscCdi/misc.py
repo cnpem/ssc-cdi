@@ -184,7 +184,6 @@ def save_json_logfile_tomo(input_dict):
     file.write(json_string)
     file.close()
 
-
 def create_directory_if_doesnt_exist(*args):
     """ Create directories from a list of paths if they do not already exist
 
@@ -206,7 +205,10 @@ def read_hdf5(path,inner_path = 'entry/data/data'):
     Returns:
         (h5py File): h5py File object 
     """
-    os.system(f"h5clear -s {path}")
+    try:
+        os.system(f"h5clear -s {path}")
+    except:
+        pass
     return h5py.File(path, 'r')[inner_path]
     
 def debug(func): # decorator function for debugging
@@ -326,8 +328,8 @@ def plot_error(error,path='',log=False):
     if path != '':
         fig.savefig(path)
     
-def save_variable(input_dict,variable, flag = 'FLAG'):
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon',flag,variable)
+def save_variable(input_dict,variable, name = 'FLAG'):
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon',name,variable)
 
 def add_to_hdf5_group(path,group,name,data,mode="a"):
     """ Add data to hdf5 file. Creates a dataset with certain name inside a pre-existing group

@@ -25,7 +25,6 @@
 "order": "only", 
 "empty_acquisition": true,
 "empty_acquisition_directory": "/ibira/lnls/beamlines/carnauba/apps/detector_corrections/",
-"invalid_pixels": [],
 "Binning": 1, 
 "Trajectory_Path": "/ibira/lnls/beamlines/carnauba/apps/gcc-apps/jupyter/gcc/", 
 "DifpadCenter": [832, 1062], 
