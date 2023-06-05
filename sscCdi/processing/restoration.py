@@ -54,10 +54,14 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
         sys.error('Please selector correct detector type: 135D or 540D')
 
     if method == "IO":
-        os.system(f"h5clear -s {hdf5_path}")
+        # os.system(f"h5clear -s {hdf5_path}")
         raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
+    
+    if input_dict["beamline"] == "CNB":
+        from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
+        raw_DPs = cnb_preprocessing_linear_correction(input_dict,raw_DPs)
 
     binning = int(input_dict['binning'])
 
@@ -83,8 +87,22 @@ def restoration_with_processing_and_binning(DP, args):
     return DP
 
 def read_masks(input_dict):
-    flatfield = read_hdf5(input_dict["flat_path"])
-    mask = read_hdf5(input_dict["mask_path"])
+
+    if input_dict["detector"] == '135D':
+        shape = (1536,1536)
+    elif input_dict["detector"] == '540D':
+        shape = (3072,3072)
+
+    if input_dict["flatfield"] != "":
+        flatfield = h5py.File(input_dict["flatfield"], 'r')['entry/data/data'][()]
+    else:
+        flatfield = np.ones(shape)
+
+    if input_dict["mask"] != "":
+        mask = h5py.File(input_dict["mask"], 'r')['entry/data/data'][()]
+    else:
+        mask = np.zeros(shape)
+
     return flatfield, mask
 
 def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
@@ -100,20 +118,23 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
 
     DP = DP.astype(np.float32) # convert to float
     
-    DP[np.abs(mask) ==1] = -1 # apply mask
+    # DP[np.abs(mask) == 1] = -1 # apply mask
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
 
-    if input_dict["keep_original_negative_values"] > 0 == False:
+    # np.save(os.path.join(input_dict["output_path"],"DP.npy"),DP)
+
+    if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
-    if hsize == 0:
+    if input_dict["detector_ROI_radius"] <= 0:
         hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
         if hsize % 2 != 0: 
             hsize = hsize -  1 # make it even
+    else:
+        hsize = input_dict["detector_ROI_radius"]
 
-    if input_dict["detector_ROI_radius"] > 0:
-        DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+    DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
     return DP 
 

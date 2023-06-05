@@ -3,7 +3,7 @@
 import numpy as np
 import sys, os, h5py
 import sscPtycho
-from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset
+from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
@@ -28,10 +28,11 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
         datapack["obj"] = initial_obj
     
     if initial_probe!=np.ones(1):
-        datapack["probe"] = initial_obj
+        datapack["probe"] = initial_probe
 
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"],concatenate=False)
+    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','probe_support',datapack["probesupp"],concatenate=False)
 
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     run_algorithms = True
@@ -144,7 +145,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         sigmask[DPs[0] < 0] = 0
         return sigmask
 
-    def probe_support(n_of_probes, half_size, radius, center_x, center_y):
+    def get_probe_support(input_dict,probe_shape):
         """ Create mask containing probe support region
 
         Args:
@@ -157,15 +158,29 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         Returns:
             probesupp: mask containing probe support
         """
+
+        
         print('Setting probe support...')
-        ar = np.arange(-half_size, half_size)
-        xx, yy = np.meshgrid(ar, ar)
-        probesupp = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2 
-        probesupp = np.asarray([probesupp for k in range(n_of_probes)])
-        return probesupp
+
+        probe = np.zeros(probe_shape)
+        
+        if input_dict["probe_support"][0] == "circular":
+            radius, center_x, center_y = input_dict["probe_support"][1], input_dict["probe_support"][2], input_dict["probe_support"][3]
+
+            half_size = probe_shape[-1]//2
+
+            ar = np.arange(-half_size, half_size)
+            xx, yy = np.meshgrid(ar, ar)
+            support = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2
+            probe[:] = support # all frames and all modes with same support
+
+        if input_dict["probe_support"][0] == "cross":
+            cross_width_y, border, center_square_side = input_dict['probe_support'][1],input_dict['probe_support'][2],input_dict['probe_support'][3]
+            probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
+        return probe
 
     def append_ones(probe_positions):
-        """ Adjust shape and column order of positions array to be accepted by Giovanni's  code
+        """ Adjust shape and column order of positions array to be accepted by Giovanni's code
 
         Args:
             probe_positions (array): initial positions array in (PY,PX) shape
@@ -190,18 +205,16 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
     probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
     
+    probe_support = get_probe_support(input_dict, probe.shape)
+    
     obj = set_initial_object(input_dict,DPs,probe) # object initial guess
 
     sigmask = set_sigmask(DPs) # mask for invalid pixels
-
     background = np.ones(DPs[0].shape) # dummy array 
 
-    probe_support_radius, probe_support_center_x, probe_support_center_y = input_dict["probe_support"]
-    probesupp = probe_support(probe.shape[0], half_size, probe_support_radius, probe_support_center_x, probe_support_center_y)  
-
-    print(f"Diffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probesupp.shape}\nProbe Positions: {probe_positions.shape}")
+    print(f"Diffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probe_support.shape}\nProbe Positions: {probe_positions.shape}")
     
-    datapack = set_datapack(obj, probe, probe_positions, DPs, background, probesupp)     # Set data for Ptycho algorithms:
+    datapack = set_datapack(obj, probe, probe_positions, DPs, background, probe_support)     # Set data for Ptycho algorithms:
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
@@ -221,7 +234,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     """
 
     def set_modes(probe, input_dict):
-
         mode = probe.shape[0]
 
         if input_dict['incoherent_modes'] > mode:
@@ -244,7 +256,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
             probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
             probe = probe + 1j*probe
         elif type == 'cross':
-            probe = create_cross_mask(DP_shape,input_dict["DP_center"],input_dict['initial_probe'][1],input_dict['initial_probe'][2])
+            probe = create_cross_mask(DP_shape,input_dict['initial_probe'][1],input_dict['initial_probe'][2],input_dict['initial_probe'][3])
         elif type == 'constant':
             probe = np.ones(DP_shape)
         elif type == 'random':
@@ -257,20 +269,19 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     elif isinstance(input_dict['initial_probe'],str):
         if os.path.splitext(input_dict['initial_probe'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_probe'])[1] == '.h5':
-            probe = h5py.File(input_dict['initial_probe'],'r')['recon/probe'][0]
+            probe = h5py.File(input_dict['initial_probe'],'r')['recon/probe'][()]
         elif os.path.splitext(input_dict['initial_probe'])[1] == '.npy':
-            probe = np.load(input_dict['initial_probe'])[0] # load guess from file
-        probe = np.squeeze(probe)
-        probe = probe.reshape((1,*probe.shape))
+            probe = np.load(input_dict['initial_probe']) # load guess from file
+        probe = probe[0]
     elif isinstance(input_dict['initial_probe'],int):
         probe = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_probe.npy"))
     else:
         sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
 
     probe = probe.astype(np.complex64)
-    probe = np.expand_dims(probe,axis=0)
 
-    probe = set_modes(probe, input_dict) # add incoherent modes 
+    if probe.shape[0] <= 1:
+        probe = set_modes(probe, input_dict) # add incoherent modes 
 
     return probe
 
@@ -296,6 +307,8 @@ def set_initial_object(input_dict,DPs, probe):
         elif type == 'random':
             normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
             obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
+        elif type == 'complex_random':
+            obj =  1 * (np.random.rand(*input_dict["object_shape"]) + 1j*np.random.rand(*input_dict["object_shape"]))
         elif type == 'initialize':
             pass #TODO: implement method from https://doi.org/10.1364/OE.465397
     elif isinstance(input_dict['initial_obj'],str): 
@@ -332,14 +345,77 @@ def create_circular_mask(mask_shape, radius):
     return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
 
 
-def create_cross_mask(mask_shape,center, length_y, length_x=0):
-    if length_x == 0: length_x = length_y
+def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side = 10, cross_width_x=0):
+    
+    if cross_width_x == 0: cross_width_x = cross_width_y
+    
     """ All values in pixels """
-    center_row, center_col = center
-    y_array = np.arange(0, mask_shape[0], 1)
-    x_array = np.arange(0, mask_shape[1], 1)
-    Xmesh, Ymesh = np.meshgrid(x_array, y_array)
-    mask = np.zeros(*mask_shape)
-    mask[center_row-length_y//2:center_row+length_y//2,:] = 1
-    mask[:,center_col-length_x//2:center_col+length_x//2] = 1
+    
+    # center
+    center_row, center_col = mask_shape[0]//2, mask_shape[1]//2
+    mask = np.zeros(mask_shape)
+    mask[center_row-cross_width_y//2:center_row+cross_width_y//2,:] = 1
+    mask[:,center_col-cross_width_x//2:center_col+cross_width_x//2] = 1
+    
+    # null border
+    mask[0:border,:]  = 0 
+    mask[:,0:border]  = 0 
+    mask[-border::,:] = 0
+    mask[:,-border::] = 0
+
+    # center square
+    mask[center_row-center_square_side:center_row+center_square_side,center_col-center_square_side:center_col+center_square_side] = 1
+    
     return mask 
+
+def set_object_pixel_size(input_dict,DP_size):
+    """ Get size of object pixel given energy, distance and detector pixel size
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DP_size (int): lateral size of detector array
+
+    Returns:
+        input_dict: update input dictionary containing size of object pixel
+    """
+
+    wavelength = wavelength_from_energy(input_dict["energy"])
+    input_dict["wavelength"] = wavelength
+    
+    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size)
+    input_dict["object_pixel"] = object_pixel_size # in meters
+
+    print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
+    PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
+    print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
+    return input_dict
+
+
+def set_object_shape(input_dict,DP_shape,probe_positions):
+    """ Determines shape (Y,X) of object matrix from size of probe and its positions.
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        DP_shape (tuple): shape of the diffraction patterns array
+        probe_positions (numpy array): array os probe positiions in pixels 
+
+    Returns:
+        input_dict (dict)): updated input dictionary containing object_shape information
+    """
+
+    offset_bottomright = input_dict["object_padding"]
+
+    DP_size_y = DP_shape[1]
+    DP_size_x = DP_shape[2]
+
+    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
+    object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
+
+    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
+    object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
+
+    my_shape = np.max([object_shape_y,object_shape_x])
+
+    input_dict["object_shape"] = (my_shape, my_shape)
+
+    return input_dict

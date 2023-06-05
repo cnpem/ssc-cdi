@@ -1,17 +1,19 @@
 {
-   "beamline": "CAT",
-   "detector": "540D",
+   "beamline": "CNB",
+   "detector": "135D",
    "debug": false,
   
-   "data_folder": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho2d/",
-   "acquisition_folders": ["SS03112022_02"],
-   "projections": [0],
-  
+   "data_path": "/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/data/20230307_ANT1_Ptycho__PiMega_019.hdf5",
+   "beamline_parameters_path": "/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/proc/20230307_ANT1_Ptycho_19/20220831_ANT1_ptycho_1.hdf5", 
+   "flatfield": "/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/proc/20230307_ANT1_Ptycho_19/2022-02-07_flatfield.tif", 
+   "mask": "",
+
    "CPUs": 96,
    "GPUs": [0,1,2],
 
    "using_direct_beam": false,
    "DP_center": [1418,1383],
+   "apply_linearity_correction": false,
    "fill_blanks": false,
    "keep_original_negative_values": false,
    "suspect_border_pixels": 3,
@@ -52,5 +54,6 @@
       "ObjBeta": 0.5,
       "ProbeBeta": 0.5,
       "TV": 0.01  }
+
 
 }
