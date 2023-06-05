@@ -12,6 +12,13 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.1] - 2023-06-05
+--------------------
+
+Added
+~~~~~
+- Merged codes for Ptychography both at CATERETE and CARNAUBA beamlines
+- Changed input options for probe support
 
 [0.5.13] - 2023-05-29
 --------------------
