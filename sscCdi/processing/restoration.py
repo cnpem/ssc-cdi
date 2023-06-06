@@ -38,7 +38,8 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     dic['center']   = input_dict["DP_center"] # [1400,1400]
     dic['flat']     = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # numpy.ones([3072, 3072])
     dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
-    
+    dic['daxpy']    = [0,np.zeros([3072,3072])] 
+
     restored_data_info = pi540D.ioSetM_Backward540D( dic )
     output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
@@ -54,15 +55,11 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
         sys.error('Please selector correct detector type: 135D or 540D')
 
     if method == "IO":
-        # os.system(f"h5clear -s {hdf5_path}")
+        os.system(f"h5clear -s {hdf5_path}")
         raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
     elif method == "h5py":
         raw_DPs = read_hdf5(hdf5_path)
     
-    if input_dict["beamline"] == "CNB":
-        from ..carnauba.cnb_restoration import cnb_preprocessing_linear_correction
-        raw_DPs = cnb_preprocessing_linear_correction(input_dict,raw_DPs)
-
     binning = int(input_dict['binning'])
 
     if input_dict["detector_ROI_radius"] > 0:
@@ -73,14 +70,14 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
     if binning > 1: # if applying binning
         DP_shape = DP_shape // binning
 
-    restoration_params = (input_dict,geometry, np.zeros_like(raw_DPs[0])) 
+    restoration_params = (input_dict,geometry)
     diffraction_patterns, _ = miscPimega.batch(raw_DPs, input_dict['CPUs'], [ DP_shape,DP_shape ], restoration_with_processing_and_binning,  restoration_params)
     
     return diffraction_patterns
 
 def restoration_with_processing_and_binning(DP, args):
-    input_dict, geometry, subtraction_mask = args
-    flat, mask = read_masks(input_dict)
+    input_dict, geometry = args
+    flat, mask, subtraction_mask = read_masks(input_dict)
     DP = corrections_and_restoration(input_dict,DP,geometry, flat, mask, subtraction_mask)
     if input_dict["binning"] > 1: 
         DP = binning_G(DP,input_dict["binning"]) # binning strategy by G. Baraldi
@@ -103,7 +100,13 @@ def read_masks(input_dict):
     else:
         mask = np.zeros(shape)
 
-    return flatfield, mask
+    if "subtraction_path" in input_dict and input_dict["subtraction_path"] != "":
+        subtraction_mask = np.asarray(h5py.File(input_dict["subtraction_path"], 'r')['entry/data/data']).squeeze().astype(np.float32)
+        subtraction_mask = subtraction_mask * np.squeeze(flatfield) # Apply flatfield
+    else:
+        subtraction_mask = np.zeros(shape)
+
+    return flatfield, mask, subtraction_mask
 
 def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
     
@@ -112,17 +115,15 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
     DP = DP * np.squeeze(flat) # apply flatfield
-    DP[flat==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    DP[np.squeeze(flat)==-1] = -1 # null values in both the data and in the flat will be disconsidered
     
-    DP = DP - subtraction_mask # apply subtraction mask; mask is null when no subtraction is wanted
+    DP = DP - np.squeeze(subtraction_mask) # apply subtraction mask; mask is null when no subtraction is wanted
 
     DP = DP.astype(np.float32) # convert to float
     
-    # DP[np.abs(mask) == 1] = -1 # apply mask
+    DP[np.abs(np.squeeze(mask)) == 1] = -1 # apply mask
     
     DP = restore_pimega(DP, geometry,input_dict["detector"]) # restaurate
-
-    # np.save(os.path.join(input_dict["output_path"],"DP.npy"),DP)
 
     if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention

@@ -1,7 +1,6 @@
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
 import time, os
-import ast
 import getpass
 
 import ipywidgets as widgets 
@@ -48,6 +47,42 @@ def monitor_job_execution(given_jobID,mafalda):
         else:
             print(f'\tWaiting for job {given_jobID} to finish. Current duration: {job_duration/60:.2f} minutes')
     return print(f"\t \t Job {given_jobID} done!")
+
+def write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName='jobName',queue='cat',gpus=1,cpus=32):
+    logfiles_path = slurm_filepath.rsplit('/',2)[0]
+    username = getpass.getuser()
+    string = f"""#!/bin/bash
+
+#SBATCH -J {jobName}          # Select slurm job name
+#SBATCH -p {queue}            # Fila (partition) a ser utilizada
+#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
+#SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
+#SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
+
+source /etc/profile.d/modules.sh # need this to load the correct python version from modules
+
+module load python3/3.9.2
+module load cuda/11.2
+module load hdf5/1.12.2_parallel
+
+python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_error.log')}
+"""
+    
+    with open(slurm_filepath,'w') as the_file:
+        the_file.write(string)
+    
+def run_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, jobName='job', slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/',script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"):
+    
+    user = getpass.getuser()
+    
+    slurm_filepath = os.path.join(slurm_path,f'{user}_job.srm')
+    jobName = user+'_'+jobName
+    
+    gpus = len(gpus)
+    write_slurm_file(script_path,json_filepath_path,slurm_filepath,jobName,queue,gpus,cpus)
+    call_cmd_terminal(slurm_filepath,mafalda,remove=False)
+
+############################ PLOTS ####################################
 
 def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=True,cmap='gray',norm=None):
     subplot.clear()
@@ -98,53 +133,6 @@ class Button:
     def trigger(self,func):
         self.widget.on_click(func)
 
-class Input(object):
-
-    def __init__(self,dictionary,key,description="",layout=None,bounded=(),slider=False):
-        
-        self.dictionary = dictionary
-        self.key = key
-        
-        if layout == None:
-            self.items_layout = widgets.Layout()
-        else:
-            self.items_layout = layout
-   
-        field_description = description
-
-        if isinstance(self.dictionary[self.key],bool):
-            self.widget = widgets.Checkbox(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],int):
-            if bounded == ():
-                self.widget = widgets.IntText( description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-            else:
-                if slider:
-                    self.widget = widgets.IntSlider(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-                else:
-                    self.widget = widgets.BoundedIntText(min=bounded[0],max=bounded[1],step=bounded[2], description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],float):
-            if bounded == ():
-                self.widget = widgets.FloatText(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-            else:
-                self.widget = widgets.BoundedFloatText(min=bounded[0],max=bounded[1],step=bounded[2],description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],list):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],str):
-            self.widget = widgets.Text(description=field_description,value=self.dictionary[self.key],layout=self.items_layout, style=field_style)
-        elif isinstance(self.dictionary[self.key],dict):
-            self.widget = widgets.Text(description=field_description,value=str(self.dictionary[self.key]),layout=self.items_layout, style=field_style)
-        
-        widgets.interactive_output(self.update_dict_value,{'value':self.widget})
-
-    def update_dict_value(self,value):
-        if isinstance(self.dictionary[self.key],list) or isinstance(self.dictionary[self.key],dict):
-            if isinstance(value,str):
-                self.dictionary[self.key] = ast.literal_eval(value)
-            else :
-                self.dictionary[self.key] = value    
-        else:
-            self.dictionary[self.key] = value    
-
 def slide_and_play(slider_layout=widgets.Layout(width='90%'),label="",description="",frame_time_milisec = 0):
 
     def update_frame_time(play_control,time_per_frame):
@@ -172,36 +160,53 @@ def get_box_layout(width,flex_flow='column',align_items='center',border='1px non
     return widgets.Layout(flex_flow=flex_flow,align_items=align_items,border=border,width=width)
 
 
-def write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobName='jobName',queue='cat',gpus=1,cpus=32):
-    logfiles_path = slurm_filepath.rsplit('/',2)[0]
-    username = getpass.getuser()
-    string = f"""#!/bin/bash
+def plot_DPs_with_slider(data,axis=0):
 
-#SBATCH -J {jobName}          # Select slurm job name
-#SBATCH -p {queue}            # Fila (partition) a ser utilizada
-#SBATCH --gres=gpu:{gpus}     # Number of GPUs to use
-#SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
-#SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
+    colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+    cmap = 'viridis'
+    
+    def update_imshow(sinogram,figure,subplot,frame_number,top=0, bottom=None,left=0,right=None,axis=0,title=False,clear_axis=False,cmap=cmap,norm=colors.LogNorm()):
+        subplot.clear()
+        if bottom == None or right == None:
+            if axis == 0:
+                subplot.imshow(sinogram[frame_number,top:bottom,left:right],cmap=cmap,norm=norm)
+            elif axis == 1:
+                subplot.imshow(sinogram[top:bottom,frame_number,left:right],cmap=cmap,norm=norm)
+            elif axis == 2:
+                subplot.imshow(sinogram[top:bottom,left:right,frame_number],cmap=cmap,norm=norm)
+        else:
+            if axis == 0:
+                subplot.imshow(sinogram[frame_number,top:-bottom,left:-right],cmap=cmap,norm=norm)
+            elif axis == 1:
+                subplot.imshow(sinogram[top:-bottom,frame_number,left:-right],cmap=cmap,norm=norm)
+            elif axis == 2:
+                subplot.imshow(sinogram[top:-bottom,left:-right,frame_number],cmap=cmap,norm=norm)
+        if title == True:
+            subplot.set_title(f'#{frame_number}')
+        if clear_axis == True:
+            subplot.set_xticks([])
+            subplot.set_yticks([])    
+        figure.canvas.draw_idle()
+    
+    output = widgets.Output()
+    
+    with output:
+        figure, ax = plt.subplots(dpi=150)
+        figure.canvas.draw_idle()
+        figure.canvas.header_visible = False
+        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
+        plt.show()   
 
-source /etc/profile.d/modules.sh # need this to load the correct python version from modules
+    play_box, selection_slider,play_control = slide_and_play(label="Frame Selector",frame_time_milisec=300)
 
-module load python3/3.9.2
-module load cuda/11.2
-module load hdf5/1.12.2_parallel
+    selection_slider.widget.max, selection_slider.widget.value = data.shape[0] - 1, data.shape[0]//2
+    play_control.widget.max =  selection_slider.widget.max
+    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(True),'subplot':fixed(ax),'axis':fixed(axis), 'norm':fixed(colors.LogNorm()),'frame_number': selection_slider.widget})    
+    box = widgets.VBox([play_box,output])
+    return box
 
-python3 {python_script_path} {json_filepath_path} > {os.path.join(logfiles_path,'logfiles',f'{username}_output.log')} 2> {os.path.join(logfiles_path,'logfiles',f'{username}_error.log')}
-"""
-    
-    with open(slurm_filepath,'w') as the_file:
-        the_file.write(string)
-    
-def run_at_cluster(mafalda,json_filepath_path,queue='cat',gpus=[0],cpus=32, jobName='job', slurm_path = '/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/',script_path = "/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/bin/caterete_ptycho.py"):
-    
-    user = getpass.getuser()
-    
-    slurm_filepath = os.path.join(slurm_path,f'{user}_job.srm')
-    jobName = user+'_'+jobName
-    
-    gpus = len(gpus)
-    write_slurm_file(script_path,json_filepath_path,slurm_filepath,jobName,queue,gpus,cpus)
-    call_cmd_terminal(slurm_filepath,mafalda,remove=False)
+def plot_flipped_full_DP(restored_full_DP):
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+    fig, ax = plt.subplots(dpi=150)
+    ax.imshow(restored_full_DP,norm=LogNorm()), ax.set_title("Average of DPs")
