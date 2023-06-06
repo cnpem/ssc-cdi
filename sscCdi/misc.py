@@ -488,3 +488,16 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
     widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
     box = widgets.VBox([selection_slider,output])
     return box
+
+
+def plot_probe_modes(probe,contrast='phase',frame=0):
+    if contrast == 'phase':
+        probe_plot = np.angle(probe)[frame]
+    else:
+        probe_plot = np.abs(probe)[frame]
+    
+    fig, ax = plt.subplots(1,probe.shape[1],figsize=(15,3),dpi=150)
+    
+    for i, ax in enumerate(ax):
+        ax.imshow(probe_plot[i],cmap='jet')
+        ax.set_title(f'Mode {i}')

@@ -100,7 +100,7 @@ def read_masks(input_dict):
     else:
         mask = np.zeros(shape)
 
-    if input_dict["subtraction_path"] != "":
+    if "subtraction_path" in input_dict and input_dict["subtraction_path"] != "":
         subtraction_mask = np.asarray(h5py.File(input_dict["subtraction_path"], 'r')['entry/data/data']).squeeze().astype(np.float32)
         subtraction_mask = subtraction_mask * np.squeeze(flatfield) # Apply flatfield
     else:
