@@ -438,11 +438,8 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
     import matplotlib.colors as colors
     import matplotlib.cm
 
-
     import ipywidgets as widgets
     from ipywidgets import fixed
-    import matplotlib.colors as colors
-    import matplotlib.cm
     
     if norm == None:
         colornorm = None
@@ -459,11 +456,11 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
         subplot.clear()
         
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
+            ax = subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
         elif axis == 1:
-            subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
+            ax =subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
         elif axis == 2:
-            subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
+            ax = subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
 
         if title != "":
             subplot.set_title(f'{title}')
@@ -472,15 +469,16 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
         if aspect_ratio != '':
             subplot.set_aspect(aspect_ratio)
 
-        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
-
+        colorbar.update_normal(ax)
+        
     output = widgets.Output()
     
     with output:
         figure, ax = plt.subplots(dpi=100)
-        ax.imshow(np.random.random((4,4)),cmap='gray')
+        ax.imshow(data[0,:,:],cmap='gray')
         figure.canvas.draw_idle()
         figure.canvas.header_visible = False
+        colorbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=colors.SymLogNorm(1,vmin=np.min(data),vmax=np.max(data)),cmap=cmap))
         plt.show()   
 
     slider_layout = widgets.Layout(width='25%')

@@ -126,6 +126,8 @@ def restoration_CAT(input_dict,method = 'IO'):
         input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["distance"], {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
         print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
+    """ Get detector geometry from distance """
+    geometry, _ = Geometry(input_dict["distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
@@ -133,7 +135,7 @@ def restoration_CAT(input_dict,method = 'IO'):
     if method == "CUDA":
         dic = {} # dictionary for restoration function
         dic['path']     = input_dict["data_path"]
-        dic['outpath']  = input_dict["temporary_DPs"]
+        dic['outpath']  = input_dict["save_path"]
         dic['order']    = "yx" 
         dic['rank']     = "ztyx" # order of axis
         dic['dataset']  = "entry/data/data"
@@ -167,8 +169,9 @@ def restoration_CAT(input_dict,method = 'IO'):
         else:
             dic['empty'] = np.zeros([detector_size, detector_size])
 
-        if input_dict["subtraction_path"] != '':    
-            dic['daxpy'] = read_hdf5(input_dict["subtraction_path"])[()][0, 0, :, :] 
+        if input_dict["subtraction_path"] != '':
+            subtraction_mask = read_hdf5(input_dict["subtraction_path"])[()][0, 0, :, :]*dic['flat'] # apply flat to subtraction measurement
+            dic['daxpy'] = [-1,subtraction_mask]
         else:
             dic['daxpy'] = [0,np.zeros([3072,3072])] 
 
@@ -176,37 +179,44 @@ def restoration_CAT(input_dict,method = 'IO'):
 
         if len(input_dict["data_path"]) == 1:
             dic['path'] = dic['path'][0]
+            print("Restoring data...")
             restored_data_info = pi540D.ioSet_Backward540D( dic )
+            print("Reading restored data...")
             DPs = pi540D.ioGet_Backward540D( dic, restored_data_info[0],restored_data_info[1])
+            print("Cleaning temporary data...")
             pi540D.ioClean_Backward540D( dic, restored_data_info[0] )
         else:
+            print("Restoring data...")
             restored_data_info = pi540D.ioSetM_Backward540D( dic )
-            DPs = np.array([])
+            print("Reading restored data...")
             for file_number in range(len(input_dict["data_path"])):
-                DPs = np.concatenate((DPs,pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number)),axis=0)# read restored DPs from temporary folder
+                if file_number == 0:
+                    DPs = pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number) # read restored DPs from temporary folder
+                else:
+                    DPs = np.concatenate((DPs,pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number)),axis=0)# read restored DPs from temporary folder
+            print("Cleaning temporary data...")
             pi540D.ioCleanM_Backward540D( dic, restored_data_info )
 
+        DPs = DPs.astype(np.float32)
 
     elif method == "IO":
     
         data_path = input_dict['data_path'][0]
 
-        """ Get detector geometry from distance """
-        geometry, _ = Geometry(input_dict["distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
-        
         """ Restore data """
         os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
         DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="IO")
+
+    print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
+    print(f"Dataset size: {sys.getsizeof(DPs)/(1e6):.2f} MBs = {sys.getsizeof(DPs)/(1e9):.2f} GBs")
 
     if input_dict["save_path"] != '':
         if not os.path.exists(input_dict['save_path']):
             os.makedirs(input_dict['save_path'])
         print("Saving data at: ",input_dict['save_path'])
-        h5f = h5py.File(os.path.join(input_dict['save_path'],data_path.rsplit('/',2)[-1]), 'w')
+        h5f = h5py.File(os.path.join(input_dict['save_path'],input_dict["data_path"][0].rsplit('/',2)[-1]), 'w')
         h5f.create_dataset('entry/data/data', data=DPs)
         h5f.close()
 
-    print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
-    print(f"Dataset size: {sys.getsizeof(DPs)/(1e6):.2f} MBs = {sys.getsizeof(DPs)/(1e9):.2f} GBs")
     return DPs
 
