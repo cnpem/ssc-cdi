@@ -21,7 +21,6 @@ example:
 	@for j in example/*.py; do python3 $$j; done
 
 	
-
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

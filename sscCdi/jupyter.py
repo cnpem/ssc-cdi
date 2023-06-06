@@ -12,6 +12,16 @@ field_style = {'description_width': 'initial'}
 
 
 def call_and_read_terminal(cmd,mafalda,use_mafalda=True):
+    """_summary_
+
+    Args:
+        cmd (_type_): _description_
+        mafalda (_type_): _description_
+        use_mafalda (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        _type_: _description_
+    """
     if use_mafalda == False:
         p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True)
         terminal_output = p.stdout.read() # Read output from terminal

@@ -24,7 +24,7 @@ else:
 
 _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + _lib + ext
 # print(os.path.dirname(os.path.abspath(__file__)))
-libradon  = ctypes.CDLL(_path)
+# libradon  = ctypes.CDLL(_path)
 
 #########################
 
