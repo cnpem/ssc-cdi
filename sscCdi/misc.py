@@ -438,11 +438,8 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
     import matplotlib.colors as colors
     import matplotlib.cm
 
-
     import ipywidgets as widgets
     from ipywidgets import fixed
-    import matplotlib.colors as colors
-    import matplotlib.cm
     
     if norm == None:
         colornorm = None
@@ -451,17 +448,19 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
             colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
         else:
             colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
-    
+    elif norm == "LogNorm":
+            colornorm=colors.LogNorm()
+
     def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
         
         subplot.clear()
         
         if axis == 0:
-            subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
+            ax = subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
         elif axis == 1:
-            subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
+            ax =subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
         elif axis == 2:
-            subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
+            ax = subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
 
         if title != "":
             subplot.set_title(f'{title}')
@@ -469,15 +468,17 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
 
         if aspect_ratio != '':
             subplot.set_aspect(aspect_ratio)
-    
+
+        colorbar.update_normal(ax)
+        
     output = widgets.Output()
     
     with output:
         figure, ax = plt.subplots(dpi=100)
-        ax.imshow(np.random.random((4,4)),cmap='gray')
+        ax.imshow(data[0,:,:],cmap='gray')
         figure.canvas.draw_idle()
         figure.canvas.header_visible = False
-        figure.colorbar(matplotlib.cm.ScalarMappable(norm=colornorm, cmap=cmap))
+        colorbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=colors.SymLogNorm(1,vmin=np.min(data),vmax=np.max(data)),cmap=cmap))
         plt.show()   
 
     slider_layout = widgets.Layout(width='25%')
@@ -487,3 +488,16 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
     widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
     box = widgets.VBox([selection_slider,output])
     return box
+
+
+def plot_probe_modes(probe,contrast='phase',frame=0):
+    if contrast == 'phase':
+        probe_plot = np.angle(probe)[frame]
+    else:
+        probe_plot = np.abs(probe)[frame]
+    
+    fig, ax = plt.subplots(1,probe.shape[1],figsize=(15,3),dpi=150)
+    
+    for i, ax in enumerate(ax):
+        ax.imshow(probe_plot[i],cmap='jet')
+        ax.set_title(f'Mode {i}')
