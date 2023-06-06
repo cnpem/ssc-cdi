@@ -167,8 +167,9 @@ def restoration_CAT(input_dict,method = 'IO'):
         else:
             dic['empty'] = np.zeros([detector_size, detector_size])
 
-        if input_dict["subtraction_path"] != '':    
-            dic['daxpy'] = read_hdf5(input_dict["subtraction_path"])[()][0, 0, :, :] 
+        if input_dict["subtraction_path"] != '':
+            subtraction_mask = read_hdf5(input_dict["subtraction_path"])[()][0, 0, :, :]*dic['flat'] # apply flat to subtraction measurement
+            dic['daxpy'] = [-1,subtraction_mask]
         else:
             dic['daxpy'] = [0,np.zeros([3072,3072])] 
 
@@ -198,6 +199,9 @@ def restoration_CAT(input_dict,method = 'IO'):
         os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
         DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="IO")
 
+    print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
+    print(f"Dataset size: {sys.getsizeof(DPs)/(1e6):.2f} MBs = {sys.getsizeof(DPs)/(1e9):.2f} GBs")
+
     if input_dict["save_path"] != '':
         if not os.path.exists(input_dict['save_path']):
             os.makedirs(input_dict['save_path'])
@@ -206,7 +210,5 @@ def restoration_CAT(input_dict,method = 'IO'):
         h5f.create_dataset('entry/data/data', data=DPs)
         h5f.close()
 
-    print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
-    print(f"Dataset size: {sys.getsizeof(DPs)/(1e6):.2f} MBs = {sys.getsizeof(DPs)/(1e9):.2f} GBs")
     return DPs
 
