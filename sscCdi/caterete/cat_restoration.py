@@ -197,7 +197,7 @@ def restoration_CAT(input_dict,method = 'IO'):
             print("Cleaning temporary data...")
             pi540D.ioCleanM_Backward540D( dic, restored_data_info )
 
-        DPs = DPs.astype(np.float32)
+        DPs = DPs.astype(np.float32) 
 
     elif method == "IO":
     
