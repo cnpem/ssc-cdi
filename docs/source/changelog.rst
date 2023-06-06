@@ -12,7 +12,21 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
-[0.6.1] - 2023-06-05
+
+[0.6.11] - 2023-06-06
+--------------------
+
+Changed
+~~~~~
+- Restructured functions in files for unified restoration between CNB and CAT 
+- Added option for subtraction mask 
+
+Fixed
+~~~~~
+- Fixed bugs in restoration functions
+
+
+[0.6.10] - 2023-06-05
 --------------------
 
 Added
