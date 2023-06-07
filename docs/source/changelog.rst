@@ -12,6 +12,12 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.12] - 2023-06-07
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for correctly counting number of frames when doing ptychography for CAT using multiple data folders
 
 [0.6.11] - 2023-06-06
 --------------------
