@@ -74,7 +74,7 @@ def restoration_ptycho_CAT(input_dict):
 
         dic = {} # dictionary for restoration function
         dic['path']     = filepaths
-        dic['outpath']  = input_dict["temporary_DPs"]
+        dic['outpath']  = input_dict["temporary_output"]
         dic['order']    = "yx" 
         dic['rank']     = "ztyx" # order of axis
         dic['dataset']  = "entry/data/data"
@@ -127,7 +127,7 @@ def restoration_CAT(input_dict,method = 'IO'):
         print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
     """ Get detector geometry from distance """
-    geometry, _ = Geometry(input_dict["distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
+    geometry, _ = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
