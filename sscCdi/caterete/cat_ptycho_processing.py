@@ -35,12 +35,16 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
     total_number_of_angles = 0
     for acquisitions_folder in input_dict['acquisition_folders']:
-        _, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
-        total_number_of_angles += len(filenames)
+        filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        if input_dict['projections'] != []:
+            _, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
+            total_number_of_angles += len(filenames)
 
     if strategy == "serial":
 
         angles_file = []
+        start_frame = 0
+        frame = 0
         for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
     
             filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
@@ -50,9 +54,14 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
             restoration_dict = restoration_dict_list[folder_number]
             restored_data_info = restored_data_info_list[folder_number]
 
+            if frame == 0:
+                start_frame = frame
+            else:
+                start_frame = frame + 1
+
             for file_number, filename in enumerate(filenames):
 
-                frame =  file_number + folder_number*len(filenames) # attribute singular value to each angle
+                frame = start_frame + file_number # attribute singular value to each angle
 
                 print(f"\nReading diffraction data for angle: {frame}")
                 if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
