@@ -35,8 +35,10 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
 
     total_number_of_angles = 0
     for acquisitions_folder in input_dict['acquisition_folders']:
-        _, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
-        total_number_of_angles += len(filenames)
+        filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        if input_dict['projections'] != []:
+            _, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
+            total_number_of_angles += len(filenames)
 
     if strategy == "serial":
 
