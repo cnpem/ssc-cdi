@@ -123,7 +123,7 @@ def restoration_ptycho_CAT(input_dict):
 def restoration_CAT(input_dict,method = 'IO'):
     
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
-        input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["distance"], {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
+        input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"], {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
         print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
     """ Get detector geometry from distance """
