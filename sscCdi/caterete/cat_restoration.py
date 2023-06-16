@@ -33,7 +33,7 @@ def Geometry(distance,susp,fill):
     params = {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp }
     project = pi540D.dictionary540D( distance, params ) 
     geo = pi540D.geometry540D( project )
-    return geo, params
+    return geo, project
 
 def restoration_ptycho_CAT(input_dict):
     """ Restore diffraction patterns and saves them in temporary folder
@@ -65,11 +65,11 @@ def restoration_ptycho_CAT(input_dict):
         
         input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
 
-        geometry, params = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
+        geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
 
         if input_dict["using_direct_beam"]:
             print("\t Using direct beam to find center: ",input_dict["DP_center"])
-            input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], input_dict["detector_distance"]*1000, params)
+            input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], project)
             print("\t\t New center: ",input_dict["DP_center"])
 
         dic = {} # dictionary for restoration function
@@ -85,20 +85,14 @@ def restoration_ptycho_CAT(input_dict):
         dic['timing']   = 0  # print timers 
         dic['blocksize']= 10
 
-        input_dict["DP_center"][1],input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, params )) # change from raw to restored coordinates
         dic['center'] = (input_dict["DP_center"][1],input_dict["DP_center"][0]) # [1400,1400]
 
         if input_dict["detector_ROI_radius"] < 0:
             dic['roi'] = min(min(input_dict["DP_center"][1],detector_size-input_dict["DP_center"][1]),min(input_dict["DP_center"][0],detector_size-input_dict["DP_center"][0])) # get the biggest size possible such that the restored difpad is still squared
         else:
             dic['roi'] = input_dict["detector_ROI_radius"] # integer
-        if input_dict["debug"]: 
-            print(dic)
-            dic['flat'] = np.ones([3072, 3072]) 
-            dic['mask'] = np.zeros([3072, 3072])
-        else:
-            dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
-            dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      # np.zeros([3072, 3072])
+        dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
+        dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      # np.zeros([3072, 3072])
         if os.path.isfile(input_dict["empty"]):
             dic['empty'] = read_hdf5(input_dict["empty"])[()][0, 0, :, :] 
         else:
@@ -122,12 +116,13 @@ def restoration_ptycho_CAT(input_dict):
 
 def restoration_CAT(input_dict,method = 'IO'):
     
-    if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
-        input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"], {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
-        print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
-
     """ Get detector geometry from distance """
-    geometry, _ = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
+    geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
+
+    if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
+            input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], project)
+            print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
+
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
