@@ -12,6 +12,15 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+
+[0.6.13] - 2023-06-16
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for clearing multiple open hdf5 files that were not correctly closed by the Pimega backend via h5clear -s command
+
+
 [0.6.12] - 2023-06-07
 --------------------
 
