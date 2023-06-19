@@ -69,6 +69,14 @@ def write_slurm_file(python_script_path,json_filepath_path,slurm_filepath,jobNam
 #SBATCH --ntasks={cpus}       # Number of CPUs to use. Rule of thumb: 1 GPU for each 32 CPUs
 #SBATCH -o {logfiles_path}/logfiles/{username}_slurm.log        # Select output path of slurm file
 
+if [ ${{SLURMD_NODENAME}} = "bertha" ]; then
+    HOME=/home/ABTLUS/${{USER}}
+    source /etc/profile
+    source /etc/bash.bashrc
+    source ${{HOME}}/.bashrc
+    cd $HOME
+fi
+
 source /etc/profile.d/modules.sh # need this to load the correct python version from modules
 
 module load python3/3.9.2
