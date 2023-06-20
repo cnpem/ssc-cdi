@@ -583,6 +583,13 @@ def tomography(input_dict):
         iterations_list = [iterations,3,8] # [# global iterations, # iterations EM, # iterations TV total variation], for EM-TV
         dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
         reconstruction3D = sscRaft.emfs( sinogram, dic )
+    elif algorithm == "TEM": # sinogram is what comes out of wiggle
+        sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
+        n_of_angles = sinogram.shape[1]
+        recsize = sinogram.shape[2]
+        iterations_list = [iterations,3,8] # [# global iterations, # iterations EM, # iterations TV total variation], for EM-TV
+        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'tEM','angles':angles}
+        reconstruction3D = sscRaft.emfs( sinogram, dic )
     else:
         sys.exit('Select a proper reconstruction method')
      
