@@ -12,6 +12,7 @@ from sscPimega import pi540D
 from ..misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
 from ..ptycho.ptychography import call_GB_ptychography
 from ..ptycho import set_object_pixel_size, set_object_shape
+from ..processing.restoration import binning_G_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
@@ -74,8 +75,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 if input_dict["extra_flat"] != "":
                     extra_flat = np.load(input_dict["extra_flat"])
                     DPs[:] = DPs[:]*extra_flat
-
-                # DP = binning_G(DP,input_dict["binning"]) # binning strategy by G. Baraldi
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 

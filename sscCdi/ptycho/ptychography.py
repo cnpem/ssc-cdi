@@ -382,7 +382,7 @@ def set_object_pixel_size(input_dict,DP_size):
     wavelength = wavelength_from_energy(input_dict["energy"])
     input_dict["wavelength"] = wavelength
     
-    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict['restored_pixel_size'] * DP_size)
+    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict["binning"]*input_dict['restored_pixel_size'] * DP_size)
     input_dict["object_pixel"] = object_pixel_size # in meters
 
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")

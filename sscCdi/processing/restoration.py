@@ -3,6 +3,8 @@ import os, sys, h5py, time
 from scipy import ndimage
 from numpy.fft import fft2 as fft2
 from numpy.fft import ifft2 as ifft2
+from concurrent.futures import ProcessPoolExecutor
+import tqdm
 
 """ Sirius Scientific Computing Imports """
 from sscIO import io
@@ -140,7 +142,7 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     return DP 
 
 
-def binning_G(DP,binning):
+def binning_G(binning,DP):
 
     if binning % 2 != 0: # no binning
         sys.error(f'Please select an EVEN integer value for the binning parameters. Selected value: {binning}')
@@ -186,6 +188,33 @@ def binning_G(DP,binning):
             DP[DP < 0] = -1
 
     return DP
+
+
+def binning_G_parallel(DPs,binning, processes):
+
+    # def call_binning_parallel(DP):
+    #     return binning_G(DP,binning) # binning strategy by G. Baraldi
+
+    def binning_G2(binning,DP):
+        return binning_G(DP,binning)
+
+    from functools import partial
+    call_binning_parallel = partial(binning_G, binning)
+
+    n_frames = DPs.shape[0]
+
+    binned_DPs = np.empty((DPs.shape[0],DPs.shape[1]//binning,DPs.shape[2]//binning))
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        results = executor.map(call_binning_parallel,[DPs[i,:,:] for i in range(n_frames)])
+        for counter, result in enumerate(results):
+            binned_DPs[counter,:,:] = result
+
+    if binned_DPs.shape[1] % 2 != 0: # make shape even
+        binned_DPs = binned_DPs[:,0:-1,:]
+    if binned_DPs.shape[2] % 2 != 0:    
+        binned_DPs = binned_DPs[:,:,0:-1]
+
+    return binned_DPs
 
 
 def get_DP_center_miqueles(dbeam, project):
