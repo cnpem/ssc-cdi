@@ -12,6 +12,7 @@
 
    "extra_flat": "",
 
+   "binning": 1, 
    "using_direct_beam": false,
    "DP_center": [1418,1383],
    "fill_blanks": false,
