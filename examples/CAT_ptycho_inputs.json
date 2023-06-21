@@ -10,6 +10,8 @@
    "CPUs": 96,
    "GPUs": [0,1,2],
 
+   "extra_flat": "",
+
    "using_direct_beam": false,
    "DP_center": [1418,1383],
    "fill_blanks": false,
@@ -22,7 +24,7 @@
    "object_padding": 20,
 
    "incoherent_modes": 0,
-   "probe_support": [ 300, 0, 0 ],
+   "probe_support": [ "circular", 300, 0, 0 ],
    "fresnel_number": -0.001,
 
    "initial_obj": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/proc/recons/SS03112022_02/initial_obj.npy",
