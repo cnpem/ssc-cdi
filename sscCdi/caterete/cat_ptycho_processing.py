@@ -82,6 +82,13 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                         DPs = binning_G_parallel(DPs,input_dict["binning"],input_dict["CPUs"]) # binning strategy by G. Baraldi
                     if input_dict["binning"] < 0:
                         DPs = DPs[:,0::np.abs(input_dict["binning"]),0::np.abs(input_dict["binning"])]
+                        input_dict["binning"] = np.abs(input_dict["binning"])
+                        
+                    if DPs.shape[1] % 2 != 0: # make shape even
+                        DPs = DPs[:,0:-1,:]
+                    if DPs.shape[2] % 2 != 0:    
+                        DPs = DPs[:,:,0:-1]
+
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
