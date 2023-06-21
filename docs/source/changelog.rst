@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
 
+[0.6.14] - 2023-06-21
+--------------------
+
+Added
+~~~~~
+- Added binning strategies after restoration for CATERETE
+
+
 [0.6.13] - 2023-06-16
 --------------------
 
