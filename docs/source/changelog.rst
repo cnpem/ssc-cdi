@@ -12,6 +12,12 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.15] - 2023-06-22
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug when for correctly determining sinogram size when running ptycho reconstructions for all frames, that is, with projections = []
 
 [0.6.14] - 2023-06-21
 --------------------
