@@ -74,9 +74,9 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
                 
-                if input_dict["extra_flat"] != "":
-                    extra_flat = np.load(input_dict["extra_flat"])
-                    DPs[:] = DPs[:]*extra_flat
+                # if input_dict["extra_flat"] != "":
+                #     extra_flat = np.load(input_dict["extra_flat"])
+                #     DPs[:] = DPs[:]*extra_flat
 
                 if np.abs(input_dict["binning"]) > 1:
                     print('Binning data...')
@@ -186,7 +186,8 @@ def define_paths(input_dict):
     input_dict["restored_pixel_size"]  = mdata_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
     input_dict["detector_exposure"]    = [None,None]
     input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
-    input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
+    if input_dict["flatfield"] == "" or "flatfield" not in input_dict:
+        input_dict["flatfield"]            = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
     input_dict["empty"]                = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
 

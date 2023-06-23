@@ -35,6 +35,28 @@ def Geometry(distance,susp,fill):
     geo = pi540D.geometry540D( project )
     return geo, project
 
+def flatfield_forward_restoration(input_dict: dict):
+    """
+    Generates forward flat field restoration
+    
+    Args:
+        input_dict (dict): 
+        
+    Returns:
+        flat_forward (nunpy array): array with new flat
+    """
+    
+    flat_backward = np.load(input_dict["flatfield"])
+    geometry, project = Geometry(
+        input_dict["detector_distance"]*1000,
+        susp = input_dict["suspect_border_pixels"],
+        fill = input_dict["fill_blanks"]
+    ) # distance in milimeters
+    
+    flat_forward = pi540D.forward540D(flat_backward,  geometry)
+        
+    return flat_forward
+
 def restoration_ptycho_CAT(input_dict):
     """ Restore diffraction patterns and saves them in temporary folder
 
@@ -96,7 +118,14 @@ def restoration_ptycho_CAT(input_dict):
             dic['flat'] = np.ones([3072, 3072]) 
             dic['mask'] = np.zeros([3072, 3072])
         else:
-            dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
+            flat_path = input_dict["flatfield"]
+            flat_type = flat_path.rsplit(".")[-1]
+
+            if flat_type == "npy":
+                dic["flat"] = flatfield_forward_restoration(input_dict)
+            else:
+                dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
+            
             dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      # np.zeros([3072, 3072])
         if os.path.isfile(input_dict["empty"]):
             dic['empty'] = read_hdf5(input_dict["empty"])[()][0, 0, :, :] 
