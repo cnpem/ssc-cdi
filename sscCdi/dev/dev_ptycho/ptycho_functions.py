@@ -142,7 +142,11 @@ def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='ga
         elif type=='random':
             deltaX = np.round(sigma*np.random.rand(*positionsX.shape))
             deltaY = np.round(sigma*np.random.rand(*positionsY.shape))
-        return positionsX+deltaX, positionsY+deltaY
+            
+        deltaX = np.round(deltaX).astype(int)
+        deltaY = np.round(deltaY).astype(int)
+        
+        return np.abs(positionsX+deltaX), np.abs(positionsY+deltaY)
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
 
@@ -990,39 +994,37 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters,
     
     return obj, probe_modes, error_list, dt
 
-def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_params,experiment_params, iterations,model_obj,centralize_probe,beta=100):
+def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
     t0 = time.perf_counter()
     print("Starting PIE...")
     
-    mPIE = True
-    
-    _,_,_,_,eta_obj,eta_probe,T_lim = mPIE_params
+    mPIE_params = (inputs['regularization_object'],inputs['regularization_probe'],inputs['step_object'],inputs['step_probe'],inputs['friction_object'],inputs['friction_probe'],inputs['momentum_counter'])
+    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
     
     offset = probe_guess.shape
-    probeVelocity = 0
-    objVelocity = 0
-    T_counter = 0
+    
+    if inputs["use_mPIE"]:
+        probeVelocity = 0
+        objVelocity = 0
+        T_counter = 0
 
     obj = object_guess
     probe = probe_guess
 
     pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
 
-    positions_history = np.ones((iterations,positions.shape[0],positions.shape[1]))
-
-    betas = (beta,beta)
+    positions_history = np.ones((inputs["iterations"],positions.shape[0],positions.shape[1]))
+    if inputs['position_correction_beta'] != 0:
+        betas = (beta,beta)
+    
     error_list = []
-    for j in range(iterations):
+    for j in range(inputs["iterations"]):
 
-        if j%25 ==0 : print(f'\tIteration {j}/{iterations}')
+        if j%50 ==0 : print(f'\tIteration {j}/{inputs["iterations"]}')
         
-        _, O_aux, P_aux = 0, obj+0, probe+0
+        O_aux, P_aux = obj.copy(), probe.copy()
 
         obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=np.complex64)
-
-        # for i in range(len(diffraction_patterns)): # save current obj portions
-        #     py, px = positions[i,1],  positions[i,0]
-        #     obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
 
         random_order = np.random.permutation(len(diffraction_patterns))
 
@@ -1040,24 +1042,31 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess, mPIE_par
 
             difference = exitWaveNew - exitWave
 
-            if 0: #TODO
+            if 0: 
                 """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
             obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
-            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset )       
+            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset)       
             
-            # new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
-            # positions[i,1],  positions[i,0] = new_positions
+            if inputs['position_correction_beta'] != 0:
+                new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
+                positions[i,1],  positions[i,0] = new_positions
 
-        if mPIE == True: # momentum addition
-            T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,T_lim,probeVelocity,objVelocity,O_aux,P_aux,obj, probe,eta_obj,eta_probe)
-        
+        if inputs["use_mPIE"] == True: # momentum addition
+            T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,mPIE_params[6],probeVelocity,objVelocity,O_aux,P_aux,obj, probe,mPIE_params[4],mPIE_params[5])
+
+        if inputs['position_correction_beta'] != 0:
             positions_history[j] = positions
-        # beta_x, beta_y = update_beta(shifts_array[:,0],new_shifts_array[:,0], beta_x), update_beta(shifts_array[:,1],new_shifts_array[:,1], bet--a_y)
-        # print("New betas: ",beta_x, beta_y)
-        # shifts_array = new_shifts_array
-        error_list.append(calculate_recon_error(model_obj,obj)) #absolute error
+            beta_x, beta_y = update_beta(shifts_array[:,0],new_shifts_array[:,0], beta_x), update_beta(shifts_array[:,1],new_shifts_array[:,1], bet--a_y)
+            print("New betas: ",beta_x, beta_y)
+            shifts_array = new_shifts_array
+        
+        if 'model_obj' in inputs:
+            error_list.append(calculate_recon_error(inputs['model_obj'],obj)) #absolute error
+        # else:
+            # error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params)) 
+
 
     # probe = probe.get() # get from cupy to numpy
     # obj = obj.get()
