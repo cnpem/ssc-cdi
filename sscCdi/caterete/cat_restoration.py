@@ -187,8 +187,17 @@ def restoration_CAT(input_dict,method = 'IO'):
         else:
             dic['roi'] = input_dict["detector_ROI_radius"] # integer
 
-        if input_dict["flatfield"] != '':    
-            dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] 
+        if "flatfield" not in input_dict:
+            dic['flat'] = np.ones([detector_size, detector_size])
+        elif input_dict["flatfield"] != '':    
+            # dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] 
+            flat_path = input_dict["flatfield"]
+            flat_type = flat_path.rsplit(".")[-1]
+
+            if flat_type == "npy":
+                dic["flat"] = flatfield_forward_restoration(input_dict)
+            else:
+                dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
         else:
             dic['flat'] = np.ones([detector_size, detector_size])
 
