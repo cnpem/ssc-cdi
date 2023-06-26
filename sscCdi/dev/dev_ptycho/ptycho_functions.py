@@ -92,6 +92,20 @@ def plot_results(model_obj,probe_guess,RAAR_obj, RAAR_probe, RAAR_error, RAAR_ti
     figure.tight_layout()
     
 
+def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_rPIE_update_function=True):
+    
+    """ Obsolete """
+    
+    alpha,beta,gamma_obj,gamma_prb,eta_obj,eta_probe,T_lim = mPIE_params
+    
+    objbx = obj[py:py+offset[0],px:px+offset[1]]
+    
+    if use_rPIE_update_function: # rPIE update function
+        objbx = objbx + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
+        probe = probe + gamma_prb*difference*objbx.conj()/ ( (1-beta) *np.abs(objbx)**2+beta *(np.abs(objbx)**2).max() )
+    obj[py:py+offset[0],px:px+offset[1]] = objbx
+    return obj, probe, objbx
+    
 def PIE_update_obj(mPIE_params,difference,probe,obj_box,positions,offset,position_idx,i_to_start_p_update=10,centralize_probe = False):
     
     px, py = positions[position_idx,0] ,positions[position_idx,1]
@@ -110,15 +124,11 @@ def PIE_update_probe(iteration,probe,mPIE_params,difference, obj,positions, offs
 
     obj_box = obj[py:py+offset[0],px:px+offset[1]]
     
-    if iteration > 15:    
-        centralize_probe = False
-    if centralize_probe:
-        centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
-    
-    if centralize_probe:
-        probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max() + centralization_weight)
-    else:
-        probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max())
+    # if centralize_probe:
+        # centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
+        # probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max() + centralization_weight)
+    # else:
+    probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max())
 
     return probe
 
@@ -607,6 +617,7 @@ def plot_results3(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAA
         ax[1,0].plot(RAAR2_error,'.-',label='RAAR-multi')
         ax[1,0].plot(PIE_error,'.-',label='PIE')
         ax[1,0].plot(PIE2_error,'.-',label='PIE-multi')
+        ax[1,0].set_yscale('log')
     except:
         pass
     
@@ -799,6 +810,7 @@ def momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity
 """ MAIN LOOPS """
 
 def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
+    print('Starting RAAR...')
     t0 = time.perf_counter()
 
     iterations = inputs['iterations']
@@ -994,6 +1006,10 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, iterations, parameters,
     
     return obj, probe_modes, error_list, dt
 
+
+
+
+
 def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
     t0 = time.perf_counter()
     print("Starting PIE...")
@@ -1003,13 +1019,15 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
     
     offset = probe_guess.shape
     
+    obj = object_guess
+    probe = probe_guess
+    
+    wavefronts = np.empty((len(diffraction_patterns),probe.shape[0],probe.shape[1]),dtype=complex)
+
     if inputs["use_mPIE"]:
         probeVelocity = 0
         objVelocity = 0
         T_counter = 0
-
-    obj = object_guess
-    probe = probe_guess
 
     pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
 
@@ -1027,9 +1045,10 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
         obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=np.complex64)
 
         random_order = np.random.permutation(len(diffraction_patterns))
-
+        
         for i in random_order:  # loop in random order improves results!
             py, px = positions[i,1],  positions[i,0]
+            
             obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
             
             measurement = diffraction_patterns[i]
@@ -1040,6 +1059,8 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
             """ Propagate + Update + Backpropagate """
             exitWaveNew, updated_wave = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
 
+            wavefronts[i] = exitWaveNew # save to calculate iteration error in Fourier space
+            
             difference = exitWaveNew - exitWave
 
             if 0: 
@@ -1047,7 +1068,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
             obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
-            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset)       
+            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])       
             
             if inputs['position_correction_beta'] != 0:
                 new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
@@ -1064,8 +1085,8 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
         
         if 'model_obj' in inputs:
             error_list.append(calculate_recon_error(inputs['model_obj'],obj)) #absolute error
-        # else:
-            # error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params)) 
+        else:
+            error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params)) 
 
 
     # probe = probe.get() # get from cupy to numpy
