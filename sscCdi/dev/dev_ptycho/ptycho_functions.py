@@ -251,10 +251,11 @@ def calculate_recon_error_Fspace(diffractions_patterns,wavefronts,experiment_par
 
     n_points = diffractions_patterns.shape[1]*diffractions_patterns.shape[2]
 
+    error = 0
     for DP, wave in zip(diffractions_patterns,wavefronts):
         wave_at_detector = propagate_beam(wave, experiment_params,propagator='fourier')
         intensity = np.abs(wave_at_detector)**2
-        error = np.sum( np.sum((DP-intensity)**2) /n_points)
+        error += np.sum( np.sum((DP-intensity)**2) /n_points)
 
     return error
 

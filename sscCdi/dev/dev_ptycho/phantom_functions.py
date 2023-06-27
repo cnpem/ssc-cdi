@@ -23,11 +23,14 @@ def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False
     positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
 
     """ Create object """
-    phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
-
-    magnitude = np.array( np.load('data/star.npy')) # Load Imagem
+    # phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
+    # magnitude = np.array( np.load('data/star.npy')) # Load Imagem
+    phase = np.array( np.load('data/camera128.npy')) # Load Imagem
+    magnitude = np.array( np.load('data/gravel128.npy')) # Load Imagem
+    
+    phase = np.pi*phase/np.max(phase)
     magnitude = magnitude/np.max(magnitude)
-    model_object = np.abs(magnitude)*np.exp(-1j*phase)
+    model_object = np.abs(magnitude)*np.exp(1j*phase)
 
     
     model_object = set_object_frame(positionsY, positionsX,model_object,probe,object_offset,'',save=False)
