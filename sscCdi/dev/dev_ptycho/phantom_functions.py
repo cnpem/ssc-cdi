@@ -18,15 +18,16 @@ def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False
 
     """ Create Probe """
     # dimension = 100 # Must be < than object!
-    probe = get_circular_mask(dimension,0.5)
+    mask = get_circular_mask(dimension,0.5)
+    probe = np.load('data/probe80.npy')*mask
 
     positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
 
     """ Create object """
     # phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
     # magnitude = np.array( np.load('data/star.npy')) # Load Imagem
-    phase = np.array( np.load('data/camera128.npy')) # Load Imagem
-    magnitude = np.array( np.load('data/gravel128.npy')) # Load Imagem
+    phase = np.array( np.load('data/gravel128.npy')) # Load Imagem
+    magnitude = np.array( np.load('data/camera128.npy')) # Load Imagem
     
     phase = np.pi*phase/np.max(phase)
     magnitude = magnitude/np.max(magnitude)
@@ -35,6 +36,10 @@ def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False
     
     model_object = set_object_frame(positionsY, positionsX,model_object,probe,object_offset,'',save=False)
 
+    print('Model object:',model_object.shape)
+    print('Probe: ',probe.shape)
+    
+    
     difpads = []
     for px,py in zip(positionsX,positionsY):
     
@@ -259,7 +264,7 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,posit
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
 
 def set_object_size_pxls(x_pos,y_pos,probe_size,border):
-    shape = (np.int(2*border + probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(2*border+probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+    shape = (np.int(probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
     return shape
 
 def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
