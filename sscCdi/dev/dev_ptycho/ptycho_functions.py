@@ -156,7 +156,15 @@ def apply_random_shifts_to_positions(positionsX,positionsY,mu=0,sigma=3,type='ga
         deltaX = np.round(deltaX).astype(int)
         deltaY = np.round(deltaY).astype(int)
         
-        return np.abs(positionsX+deltaX), np.abs(positionsY+deltaY)
+        new_positions_x = positionsX+deltaX
+        min_x = np.min(new_positions_x)
+        new_positions_x -= min_x
+        
+        new_positions_y = positionsY+deltaY
+        min_Y = np.min(new_positions_y)
+        new_positions_y -= min_Y
+        
+        return new_positions_x, new_positions_y
 
 def get_positions_array(probe_steps_xy,frame_shape,random_positions=True):
 
@@ -1037,6 +1045,8 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
         betas = (beta,beta)
     
     error_list = []
+    object_movie = [] # np.empty((inputs["iterations"]*len(diffraction_patterns),obj.shape[0],obj.shape[1]),dtype=np.complex64)
+    probe_movie = []
     for j in range(inputs["iterations"]):
 
         if j%50 ==0 : print(f'\tIteration {j}/{inputs["iterations"]}')
@@ -1047,7 +1057,7 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
 
         random_order = np.random.permutation(len(diffraction_patterns))
         
-        for i in random_order:  # loop in random order improves results!
+        for counter, i in enumerate(random_order):  # loop in random order improves results!
             py, px = positions[i,1],  positions[i,0]
             
             obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
@@ -1069,7 +1079,12 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
                 probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
 
             obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
-            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])       
+            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])  
+            
+            probe = probe*get_circular_mask(probe.shape[0],0.6)
+            
+            object_movie.append(obj.copy())
+            probe_movie.append(probe.copy())
             
             if inputs['position_correction_beta'] != 0:
                 new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
@@ -1089,9 +1104,11 @@ def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
         else:
             error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params)) 
 
-
     # probe = probe.get() # get from cupy to numpy
     # obj = obj.get()
+    
+    np.save('recon/object.npy',np.asarray(object_movie))
+    np.save('recon/probe.npy',np.asarray(probe_movie))
 
     return obj, probe, positions, error_list, time.perf_counter() - t0, positions_history
           
