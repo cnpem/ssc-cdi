@@ -12,6 +12,17 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.17] - 2023-07-03
+--------------------
+
+Added
+~~~~~
+- Added new dynamic plotting function to preview both magnitude and phase
+
+Changed
+~~~~~
+- Saving also angles, positions and errors after each iteration and combining them into single volume at output hdf5 file at the end. 
+
 [0.6.16] - 2023-06-29
 --------------------
 
