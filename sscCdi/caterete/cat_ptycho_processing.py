@@ -72,10 +72,6 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
-                
-                if 'save_restored_data' in input_dict:
-                    if input_dict['save_restored_data'] == True:
-                        np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"))
 
                 if np.abs(input_dict["binning"]) > 1:
                     print('Binning data...')
@@ -90,6 +86,10 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                     if DPs.shape[2] % 2 != 0:    
                         DPs = DPs[:,:,0:-1]
 
+                if 'save_restored_data' in input_dict:
+                    print(f"Saving restored diffraction patterns...")
+                    if input_dict['save_restored_data'] == True:
+                        np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
 
                 print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
                 
