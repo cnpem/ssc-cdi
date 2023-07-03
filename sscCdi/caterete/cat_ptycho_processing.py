@@ -73,9 +73,9 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 
                 DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
                 
-                # if input_dict["extra_flat"] != "":
-                #     extra_flat = np.load(input_dict["extra_flat"])
-                #     DPs[:] = DPs[:]*extra_flat
+                if 'save_restored_data' in input_dict:
+                    if input_dict['save_restored_data'] == True:
+                        np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"))
 
                 if np.abs(input_dict["binning"]) > 1:
                     print('Binning data...')
