@@ -33,13 +33,16 @@ if __name__ == '__main__':
     print('Finished reconstruction!\n')
 
     """ ===================== Save and preview data ===================== """
-    object, probe, angles, error = sscCdi.misc.save_volume_from_parts(input_dict)
+    object, probe, angles, positions, error = sscCdi.misc.save_volume_from_parts(input_dict)
 
     print('\nSaving Object of shape: ',object.shape)
     sscCdi.misc.save_variable(input_dict, object,name='object')
 
     print('\nSaving Probe of shape: ',probe.shape)
     sscCdi.misc.save_variable(input_dict,probe,name='probe')
+
+    print('\nSaving positions of shape: ',positions.shape)
+    sscCdi.misc.save_variable(input_dict,positions,name='positions')
 
     print('\nSaving angles of shape: ',angles.shape)
     sscCdi.misc.save_variable(input_dict,angles,name='angles')

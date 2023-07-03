@@ -130,6 +130,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_object.npy"),sinogram[frame])
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_probe.npy"),probes[frame])
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_angle.npy"),angle)
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_error.npy"),error)
 
             """ Clean restored DPs temporary data """
@@ -307,8 +308,6 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
-
-    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','positions',np.expand_dims(probe_positions,axis=0))
 
     return probe_positions, angle
 
