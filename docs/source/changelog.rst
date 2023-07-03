@@ -12,6 +12,13 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.16] - 2023-06-29
+--------------------
+
+Added
+~~~~~
+- Added new feature to load already restored .npy flatfield. It also does the forward restoration of the flatfield.
+
 [0.6.15] - 2023-06-22
 --------------------
 
