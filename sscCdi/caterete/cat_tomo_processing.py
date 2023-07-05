@@ -21,6 +21,14 @@ def read_data(dic):
 
         angles = angles[:,[0,2]]
 
+        if 'angles' in dic: # read angles directly from 
+            data = np.loadtxt(dic['angles'])
+            angles_file = []
+            for frame, angle in enumerate(data):
+                angles_file.append([frame,True,angle*np.pi/180,angle])
+
+            angles_file = angles_file[0:object.shape[0]]
+
     elif dic["recon_method"] == "pwcdi":
         
         object = np.load(dic["sinogram_path"])
