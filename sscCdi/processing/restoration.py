@@ -130,14 +130,15 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     if input_dict["keep_original_negative_values"] == False:
         DP[DP < 0] = -1 # all invalid values must be -1 by convention
 
-    if input_dict["detector_ROI_radius"] <= 0:
+    if input_dict["detector_ROI_radius"] < 0:
         hsize = min(min(cx,DP.shape[1]-cx),min(cy,DP.shape[0]-cy)) # get the biggest size possible such that the restored difpad is still squared
         if hsize % 2 != 0: 
             hsize = hsize -  1 # make it even
     else:
         hsize = input_dict["detector_ROI_radius"]
 
-    DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
+    if input_dict["detector_ROI_radius"] != 0:
+        DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
     return DP 
 
