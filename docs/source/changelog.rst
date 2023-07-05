@@ -12,6 +12,13 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.18] - 2023-07-05
+--------------------
+
+Added
+~~~~~
+- Added: added option to skip cropping of the diffraction pattern when restoring DP without CUDA
+
 [0.6.17] - 2023-07-03
 --------------------
 
