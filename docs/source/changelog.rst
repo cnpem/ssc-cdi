@@ -12,6 +12,31 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.18] - 2023-07-05
+--------------------
+
+Added
+~~~~~
+- Added: added option to skip cropping of the diffraction pattern when restoring DP without CUDA
+
+[0.6.17] - 2023-07-03
+--------------------
+
+Added
+~~~~~
+- Added new dynamic plotting function to preview both magnitude and phase
+
+Changed
+~~~~~
+- Saving also angles, positions and errors after each iteration and combining them into single volume at output hdf5 file at the end. 
+
+[0.6.16] - 2023-06-29
+--------------------
+
+Added
+~~~~~
+- Added new feature to load already restored .npy flatfield. It also does the forward restoration of the flatfield.
+
 [0.6.15] - 2023-06-22
 --------------------
 
