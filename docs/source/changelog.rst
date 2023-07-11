@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
 
+[0.6.20] - 2023-07-11
+--------------------
+
+Added
+~~~~~
+- Included wrapper and script for running reconstruction with Ptypy using Caterete data. Only single 2D reconstruction possible for now. 
+
 
 [0.6.19] - 2023-07-07
 --------------------
