@@ -226,6 +226,8 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
     Returns:
         output: propagated wavefront
     """    
+
+    from numpy.fft import fft2, fftshift, ifftshift, ifft2
     
     dx, wavelength,distance = experiment_params 
     
