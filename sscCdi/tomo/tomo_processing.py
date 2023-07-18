@@ -559,10 +559,10 @@ def tomography(input_dict):
     input_dict['algorithm_dic']['angles'] = np.load(angles_filepath) # sorted angles?
 
     """ Automatic Regularization """
-    if input_dict['algorithm_dic']['automatic_regularization'] != 0:
+    if input_dict['automatic_regularization'] != 0:
         print('\tStarting automatic regularization frame by frame...')
         for k in range(sinogram.shape[1]):
-            sinogram[:,k,:] = automatic_regularization( sinogram[:,k,:], input_dict['algorithm_dic']['automatic_regularization'])
+            sinogram[:,k,:] = automatic_regularization( sinogram[:,k,:], input_dict['automatic_regularization'])
 
     """ Tomography """
     sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
@@ -575,6 +575,7 @@ def tomography(input_dict):
             input_dict["algorithm_dic"]['tomooffset'] = 0
         reconstruction3D = sscRaft.fbp(sinogram, input_dict["algorithm_dic"])
     elif input_dict["algorithm_dic"]['algorithm'] == "EM": # sinogram is what comes out of wiggle
+        input_dict["algorithm_dic"]['is360'] = False
         print(f'Starting tomographic algorithm EM algorithm')
         reconstruction3D = sscRaft.em( sinogram, input_dict['algorithm_dic'] )
     else:
