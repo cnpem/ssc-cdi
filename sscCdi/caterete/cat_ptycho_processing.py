@@ -41,7 +41,7 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
             _, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
             total_number_of_angles += len(filenames)
         else:
-            total_number_of_angles = len(filepaths)
+            total_number_of_angles += len(filepaths)
 
     if strategy == "serial":
 

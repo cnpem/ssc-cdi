@@ -483,7 +483,7 @@ def tomo_recon(dic):
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
     return reconstruction3D
 
-def regularization(sino, L=0.001):
+def automatic_regularization(sino, L=0.001):
     """ Applies regularization according to: https://doi.org/10.1016/j.rinam.2019.100088
 
     Args:
@@ -540,11 +540,7 @@ def tomography(input_dict):
         reconstruction3D (array): tomographic volume
     """
 
-    algorithm                = input_dict["tomo_algorithm"]
     angles_filepath          = input_dict["ordered_angles_filepath"]
-    iterations               = input_dict["tomo_iterations"]
-    GPUs                     = input_dict["GPUs"]
-    regularization_parameter = input_dict["tomo_regularization_param"]
     wiggle_cmas_path         = input_dict["wiggle_cmas_filepath"]
 
     try:
@@ -559,37 +555,30 @@ def tomography(input_dict):
 
     if input_dict['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
+        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)*np.pi/180
+    else:
+        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)[:,1]*np.pi/180 
 
-    angles = np.load(angles_filepath) # sorted angles?
-
-    """                      Regularization                      """
-    if regularization_parameter != 0 and algorithm == "EEM": 
-        print('\tStarting regularization frame by frame...')
+    """ Automatic Regularization """
+    if input_dict['automatic_regularization'] != 0:
+        print('\tStarting automatic regularization frame by frame...')
         for k in range(sinogram.shape[1]):
-            sinogram[:,k,:] = regularization( sinogram[:,k,:], regularization_parameter)
-        print('\tRegularization done!')
+            sinogram[:,k,:] = automatic_regularization( sinogram[:,k,:], input_dict['automatic_regularization'])
 
-    """                       Tomography                      """
-    print(f'Starting tomographic algorithm {algorithm} with {iterations} iterations')
-    if algorithm == "FBP": 
-        #TODO: fix use of FBP from Raft package
-        # reconstruction3D[:,i,:]= FBP( sino=sinogram,angs=angles,device=GPUs,csino=centersino1) 
-        pass
-    elif algorithm == "EEM": # sinogram is what comes out of wiggle
-        sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
-        n_of_angles = sinogram.shape[1]
-        recsize = sinogram.shape[2]
-        #TODO: pass total variation and EM iteration as parameters
-        iterations_list = [iterations,3,8] # [# global iterations, # iterations EM, # iterations TV total variation], for EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'eEM','angles':angles}
-        reconstruction3D = sscRaft.emfs( sinogram, dic )
-    elif algorithm == "TEM": # sinogram is what comes out of wiggle
-        sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
-        n_of_angles = sinogram.shape[1]
-        recsize = sinogram.shape[2]
-        iterations_list = [iterations,3,8] # [# global iterations, # iterations EM, # iterations TV total variation], for EM-TV
-        dic = {'gpu': GPUs, 'blocksize':20, 'nangles': n_of_angles, 'niterations': iterations_list,  'regularization': 0.0001,  'epsilon': 1e-15, 'method': 'tEM','angles':angles}
-        reconstruction3D = sscRaft.emfs( sinogram, dic )
+    """ Tomography """
+    sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
+    input_dict['algorithm_dic']['nangles'] = sinogram.shape[1]
+    input_dict['algorithm_dic']['reconSize'] = sinogram.shape[2]
+
+    if input_dict["algorithm_dic"]['algorithm'] == "FBP": 
+        print(f'Starting tomographic algorithm FBP algorithm')
+        if 'tomooffset' not in input_dict["algorithm_dic"]: 
+            input_dict["algorithm_dic"]['tomooffset'] = 0
+        reconstruction3D = sscRaft.fbp(sinogram, input_dict["algorithm_dic"])
+    elif input_dict["algorithm_dic"]['algorithm'] == "EM": # sinogram is what comes out of wiggle
+        input_dict["algorithm_dic"]['is360'] = False
+        print(f'Starting tomographic algorithm EM algorithm')
+        reconstruction3D = sscRaft.em( sinogram, input_dict['algorithm_dic'] )
     else:
         sys.exit('Select a proper reconstruction method')
      
