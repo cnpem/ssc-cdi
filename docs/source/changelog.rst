@@ -12,12 +12,40 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.21] - 2023-07-19
+--------------------
+
+Added
+~~~~~
+- Changes to tomo_processing for using new version 2.2.0 of sscRaft with FBP and EM without regular angles
+
+
+Fixed
+~~~~~
+- Fixed angle conversion for degrees to radians for tomography
+
+
+[0.6.20] - 2023-07-11
+--------------------
+
+Added
+~~~~~
+- Included wrapper and script for running reconstruction with Ptypy using Caterete data. Only single 2D reconstruction possible for now. 
+
+
+[0.6.19] - 2023-07-07
+--------------------
+
+Fixed
+~~~~~
+- Fixed count of files when doing ptycho from multiple datafolders for determining sinogram dimension
+
 [0.6.18] - 2023-07-05
 ----------------------------
 
 Added
-~~~~~~~~~~
-- Added: added option to skip cropping of the diffraction pattern when restoring DP without CUDA
+~~~~~
+- Added option to skip cropping of the diffraction pattern when restoring DP without CUDA
 
 [0.6.17] - 2023-07-03
 ----------------------------
