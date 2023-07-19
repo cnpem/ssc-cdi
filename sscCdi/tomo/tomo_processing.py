@@ -555,8 +555,9 @@ def tomography(input_dict):
 
     if input_dict['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
-
-    input_dict['algorithm_dic']['angles'] = np.load(angles_filepath) # sorted angles?
+        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)*np.pi/180
+    else:
+        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)[:,1]*np.pi/180 
 
     """ Automatic Regularization """
     if input_dict['automatic_regularization'] != 0:
