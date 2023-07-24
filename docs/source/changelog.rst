@@ -12,6 +12,15 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+
+[0.6.22] - 2023-07-24
+--------------------
+
+Added
+~~~~~
+- Commented PtyPy imports for now. Need to update Python version to 3.9 in all cluster machines before making it fully available. 
+
+
 [0.6.21] - 2023-07-19
 --------------------
 
