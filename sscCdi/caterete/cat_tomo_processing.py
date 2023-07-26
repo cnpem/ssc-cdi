@@ -58,6 +58,8 @@ def select_contrast(dic, data):
         obj = np.angle(data)
     elif dic["contrast_type"] == "magnitude":
         obj = np.abs(data)
+    elif dic["contrast_type"] == "complex":
+        obj = np.asarray(data)
     else:
         sys.exit("Please select the correct contrast type: magnitude or phase")
     return obj

@@ -160,7 +160,6 @@ def tomo_equalize3D(dic):
     open_or_create_h5_dataset(dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','equalized_volume',equalized_tomogram,create_group=True)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
-
 def remove_outliers(data,sigma):
     """ Remove all values above/below +sigma/-sigma sigma values. 1 sigma = 1 standard deviation
 
@@ -197,8 +196,13 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
     """
 
     # Remove phase ramp
-    if remove_gradient == True:
-        frame, _ = remove_phase_gradient(frame,np.ones_like(frame,dtype=bool),full=True)
+    if remove_gradient[0] == True:
+        if remove_gradient[1] == []:
+            mask = np.ones_like(frame,dtype=bool)
+        else:
+            mask = np.zeros_like(frame,dtype=bool)
+            mask[remove_gradient[1][0]:remove_gradient[1][1],remove_gradient[1][2]:remove_gradient[1][3]] = True
+        frame = remove_phase_gradient(frame, mask)
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -210,14 +214,20 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
     if remove_outlier != 0:
         frame = remove_outliers(frame,remove_outlier)
 
-    # Remove global offsset
+    # Remove global offset
     if remove_global_offset:
         frame -= np.min(frame)
 
     # Remove average offset from specific region
     if remove_avg_offset != []:
-        frame -= np.mean(frame[remove_avg_offset[0]:remove_avg_offset[1],remove_avg_offset[2]:remove_avg_offset[3]])
-        frame = np.where(frame<0,0,frame)
+        mean = np.mean(frame[remove_avg_offset[0]:remove_avg_offset[1],remove_avg_offset[2]:remove_avg_offset[3]])
+        frame -= mean
+
+    non_negative = False
+    if non_negative:    
+        frame = np.where(frame<0,0,frame) # put remaining negative values to zero
+
+    
 
     return frame
 

@@ -9,6 +9,7 @@ from ptypy import defaults_tree
 
 @defaults_tree.parse_doc('scandata.numpyscan') # decorator to get defaults from docstring
 class caterete_data_for_ptypy(PtyScan):
+
     """
     A PtyScan subclass to extract data from a numpy array.
 
