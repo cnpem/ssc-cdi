@@ -5,7 +5,7 @@ from functools import partial
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
 
-def remove_phase_gradient( img, mask, full=True ):
+def plane_fit_inside_mask( img, mask, epsilon = 1e-3, regularization=True ):
     xy = np.argwhere( mask > 0)
     n = len(xy)
     y = xy[:,0].reshape([n,1])
@@ -13,6 +13,7 @@ def remove_phase_gradient( img, mask, full=True ):
     F = np.array([ img[y[k],x[k]] for k in range(n) ]).reshape([n,1])
     mat = np.zeros([3,3])
     vec = np.zeros([3,1])
+   
     mat[0,0] = (x*x).sum()
     mat[0,1] = (x*y).sum()
     mat[0,2] = (x).sum()
@@ -26,24 +27,53 @@ def remove_phase_gradient( img, mask, full=True ):
     vec[1,0] = (y*F).sum()
     vec[2,0] = (F).sum()
     eye = np.eye(mat.shape[0])
-    eps = 1e-3 # arbitrary value
-    if 1: # with regularization
-        abc = np.dot( np.linalg.inv(mat + eps * eye), vec).flatten() 
+
+    if regularization: # with regularization
+        abc = np.dot( np.linalg.inv(mat + epsilon * eye), vec).flatten() 
     else: # without regularization
         abc = np.dot( np.linalg.inv(mat), vec).flatten()
+   
     a = abc[0]
     b = abc[1]
     c = abc[2]
-    new   = np.zeros(img.shape)
+   
+    return a,b,c
+
+def remove_phase_gradient(img, mask,loop_count_limit=5,epsilon = 1e-3, regularization=True):
+
+    row   = img.shape[0]
+    col   = img.shape[1]
+    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
+
+    a = b = c = 1e9
+    counter = 0
+    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter < loop_count_limit:
+        a,b,c = plane_fit_inside_mask( img, mask, epsilon, regularization )
+        img = img - ( a*XX + b*YY + c ) # subtract plane from whole image
+        counter += 1
+
+    return img
+
+def get_best_plane_fit_inside_mask(mask2, loop_count_limit = 5 ):
+
+    def plane(variables,u,v,a):
+        Xmesh,Ymesh = variables
+        return np.ravel(u*Xmesh+v*Ymesh+a)
+
+    new   = np.zeros(frame.shape)
     row   = new.shape[0]
     col   = new.shape[1]
     XX,YY = np.meshgrid(np.arange(col),np.arange(row))
 
-    if full == False:
-        new[y, x] = img[ y, x] - ( a*XX[y,x] + b*YY[y,x] + c ) # subtract only from masked region
-    else:
-        new = img - ( a*XX + b*YY + c ) # subtract plane from whole image
-    return new, (a,b,c)
+    a = b = c = 1e9
+    counter = 0
+    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter < loop_count_limit:
+        grad_removed, (a,b,c) = remove_phase_gradient(frame,mask2)
+        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
+        frame = frame - plane_fit
+        counter += 1
+    return frame
+
 
 def unwrap_in_parallel(sinogram):
 
@@ -75,24 +105,6 @@ def unwrap_in_sequence(sinogram, remove_gradient):
     return unwrapped_sinogram
 
 
-def get_best_plane_fit_inside_mask(mask2,frame ):
 
-    def plane(variables,u,v,a):
-        Xmesh,Ymesh = variables
-        return np.ravel(u*Xmesh+v*Ymesh+a)
-
-    new   = np.zeros(frame.shape)
-    row   = new.shape[0]
-    col   = new.shape[1]
-    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
-
-    a = b = c = 1e9
-    counter = 0
-    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter > 5:
-        grad_removed, a,b,c = remove_phase_gradient(frame,mask2)
-        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
-        frame = frame - plane_fit
-        counter += 1
-    return frame
 
 
