@@ -51,7 +51,6 @@ def remove_phase_gradient(img, mask,loop_count_limit=5,epsilon = 1e-3, regulariz
         a,b,c = plane_fit_inside_mask( img, mask, epsilon, regularization )
         img = img - ( a*XX + b*YY + c ) # subtract plane from whole image
         counter += 1
-
     return img
 
 def get_best_plane_fit_inside_mask(mask2, loop_count_limit = 5 ):
