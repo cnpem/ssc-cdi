@@ -566,3 +566,14 @@ def plot_probe_modes(probe,contrast='phase',frame=0):
     for i, ax in enumerate(ax):
         ax.imshow(probe_plot[i],cmap='jet')
         ax.set_title(f'Mode {i}')
+
+def plot_volume_histogram(volume):
+    
+    maximum = np.max(volume)
+    minimum = np.min(volume)
+    mean    = np.mean(volume)
+    stddev  = np.stddev(volume)
+    
+    fig, ax = plt.subplots()
+    ax.histogram(volume.flatten())
+    ax.set_title(f'Max={maximum}\tMin={minimum}\tMean={mean}\tStdDev={stddev}')

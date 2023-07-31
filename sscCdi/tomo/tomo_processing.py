@@ -202,7 +202,10 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         else:
             mask = np.zeros_like(frame,dtype=bool)
             mask[remove_gradient[1][0]:remove_gradient[1][1],remove_gradient[1][2]:remove_gradient[1][3]] = True
-        frame = remove_phase_gradient(frame, mask)
+        
+        if remove_gradient[2] == 0:
+            remove_gradient[2] = 5
+        frame = remove_phase_gradient(frame, mask,loop_count_limit=remove_gradient[2])
 
     # Check for NaNs
     whereNaN = np.isnan(frame)

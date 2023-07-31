@@ -172,11 +172,15 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
             ar = np.arange(-half_size, half_size)
             xx, yy = np.meshgrid(ar, ar)
             support = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2
+
             probe[:] = support # all frames and all modes with same support
 
-        if input_dict["probe_support"][0] == "cross":
+        elif input_dict["probe_support"][0] == "cross":
             cross_width_y, border, center_square_side = input_dict['probe_support'][1],input_dict['probe_support'][2],input_dict['probe_support'][3]
             probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
+        else: 
+            sys.exit('Please select the correct probe support: circular or cross')
+
         return probe
 
     def append_ones(probe_positions):

@@ -51,28 +51,8 @@ def remove_phase_gradient(img, mask,loop_count_limit=5,epsilon = 1e-3, regulariz
         a,b,c = plane_fit_inside_mask( img, mask, epsilon, regularization )
         img = img - ( a*XX + b*YY + c ) # subtract plane from whole image
         counter += 1
+    
     return img
-
-def get_best_plane_fit_inside_mask(mask2, loop_count_limit = 5 ):
-
-    def plane(variables,u,v,a):
-        Xmesh,Ymesh = variables
-        return np.ravel(u*Xmesh+v*Ymesh+a)
-
-    new   = np.zeros(frame.shape)
-    row   = new.shape[0]
-    col   = new.shape[1]
-    XX,YY = np.meshgrid(np.arange(col),np.arange(row))
-
-    a = b = c = 1e9
-    counter = 0
-    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter < loop_count_limit:
-        grad_removed, (a,b,c) = remove_phase_gradient(frame,mask2)
-        plane_fit = plane((XX,YY),a,b,c).reshape(XX.shape)
-        frame = frame - plane_fit
-        counter += 1
-    return frame
-
 
 def unwrap_in_parallel(sinogram):
 
