@@ -84,3 +84,5 @@ deploy_docs:
     - cp -r ./docs/build/html/* /var/www/html/ssc/ssc-cdi/
   tags:
     - wiki
+  only:
+    - tags
