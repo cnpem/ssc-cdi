@@ -567,13 +567,14 @@ def plot_probe_modes(probe,contrast='phase',frame=0):
         ax.imshow(probe_plot[i],cmap='jet')
         ax.set_title(f'Mode {i}')
 
-def plot_volume_histogram(volume):
+def plot_volume_histogram(volume,bins=100):
     
     maximum = np.max(volume)
     minimum = np.min(volume)
     mean    = np.mean(volume)
-    stddev  = np.stddev(volume)
+    stddev  = np.std(volume)
     
     fig, ax = plt.subplots()
-    ax.histogram(volume.flatten())
-    ax.set_title(f'Max={maximum}\tMin={minimum}\tMean={mean}\tStdDev={stddev}')
+    ax.hist(volume.flatten(),bins=bins)
+    ax.grid()
+    ax.set_title(f'Max={maximum:.2f}   Min={minimum:.2f}   Mean={mean:.2f}   StdDev={stddev:.2f}')

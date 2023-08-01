@@ -175,7 +175,7 @@ def remove_outliers(data,sigma):
     data = np.where(data < mean - sigma*std,0,data)
     return data
 
-def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset,frame):
+def equalize_frame(dic,frame):
     """ Performs a series of processing steps over a 2D array, namely:
 
         1) Removes a gradient (i.e. the phase ramp) for the image as a whole
@@ -195,17 +195,22 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         frame (array): equalized frame
     """
 
+    if dic["equalize_invert"] == True:
+        frame = -frame
+
     # Remove phase ramp
-    if remove_gradient[0] == True:
-        if remove_gradient[1] == []:
+    if dic["equalize_remove_phase_gradient"] == True:
+        if dic["equalize_ROI"] == []:
             mask = np.ones_like(frame,dtype=bool)
         else:
             mask = np.zeros_like(frame,dtype=bool)
-            mask[remove_gradient[1][0]:remove_gradient[1][1],remove_gradient[1][2]:remove_gradient[1][3]] = True
+            mask[dic["equalize_ROI"][0]:dic["equalize_ROI"][1],dic["equalize_ROI"][2]:dic["equalize_ROI"][3]] = True
         
-        if remove_gradient[2] == 0:
-            remove_gradient[2] = 5
-        frame = remove_phase_gradient(frame, mask,loop_count_limit=remove_gradient[2])
+        if "equalize_remove_phase_gradient_iterations" in dic:
+            iterations = dic["equalize_remove_phase_gradient_iterations"]
+        else:
+            iterations = 5 
+        frame = remove_phase_gradient(frame, mask,loop_count_limit=iterations)
 
     # Check for NaNs
     whereNaN = np.isnan(frame)
@@ -213,46 +218,35 @@ def equalize_frame(remove_gradient, remove_outlier, remove_global_offset, remove
         print("NaN values found in frame after removing gradient. Removing them!")
         frame = np.where(whereNaN,0,frame)
 
-    # Remove outliers
-    if remove_outlier != 0:
-        frame = remove_outliers(frame,remove_outlier)
+    if dic["equalize_set_min_max"] != []:
+        frame = np.where(frame<dic["equalize_set_min_max"][0],0,np.where(frame>dic["equalize_set_min_max"][1],0,frame))
 
-    # Remove global offset
-    if remove_global_offset:
-        frame -= np.min(frame)
+    # OBSOLETE: Remove outliers
+    # if remove_outlier != 0:
+    #     frame = remove_outliers(frame,remove_outlier)
+
+    # OBSOLETE: Remove global offset
+    # if remove_global_offset:
+    #     frame -= np.min(frame)
 
     # Remove average offset from specific region
-    if remove_avg_offset != []:
-        mean = np.mean(frame[remove_avg_offset[0]:remove_avg_offset[1],remove_avg_offset[2]:remove_avg_offset[3]])
+    if dic["equalize_local_offset"]:
+        mean = np.mean(frame[dic["equalize_ROI"][0]:dic["equalize_ROI"][1],dic["equalize_ROI"][2]:dic["equalize_ROI"][3]])
         frame -= mean
 
-    non_negative = False
-    if non_negative:    
+    if dic["equalize_non_negative"]:    
         frame = np.where(frame<0,0,frame) # put remaining negative values to zero
-
-    
 
     return frame
 
-def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_outlier=0, remove_global_offset=0, remove_avg_offset=[0,slice(0,None),slice(0,None)]):
+def equalize_frames_parallel(sinogram,dic):
     """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
-
-    Args:
-        sinogram (adday): array of shape (N,Y,X) containing all N reconstructed 2D frames
-        remove_gradient (bool): select wheter to remove phase ramp over the whole image or not
-        remove_global_offset (bool): removes global offset from the image, subtracting the minimum from all pixel values
-        remove_outlier (int): integer value indicating the number of sigma. Values above/below sigma will be considered outliers and set as zero
-        remove_avg_offset (list): coordinates of squared region (top,bottom,left, right). The mean value of such region in the frame will be subtracted from all pixels.
 
     Returns:
         equalized_sinogram: equalized sinogram
     """
 
     minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
-
-    # Invert sinogram
-    if invert == True:
-        sinogram = -sinogram
 
     # Remove NaNs
     whereNaN = np.isnan(sinogram)
@@ -261,27 +255,25 @@ def equalize_frames_parallel(sinogram,invert=False,remove_gradient=0, remove_out
         sinogram = np.where(whereNaN,0,sinogram)
 
     # Call parallel equalization
-    equalize_frame_partial = partial(equalize_frame, remove_gradient, remove_outlier, remove_global_offset, remove_avg_offset)
+    equalize_frame_partial = partial(equalize_frame, dic)
     print('Sinogram shape to unwrap: ', sinogram.shape)
 
     n_frames = sinogram.shape[0]
 
-    processes = min(os.cpu_count(),32)
+    processes = dic["CPUs"]
     print(f'Using {processes} parallel processes')
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
         results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
         for counter, result in enumerate(results):
-            # if counter % 100 == 0: print('Populating results matrix...',counter)
             minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
-            # print('New ',minimum, mean-3*std,mean, mean+3*std,maximum)
             equalized_sinogram[counter,:,:] = result
 
     minimum1, maximum1, mean1, std1 = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
     print(f'Min \t Mean-3*sigma \t Mean \t Mean+3*sigma \t Max ')
-    print('Old ',minimum, mean-3*std,mean, mean+3*std,maximum)
-    print('New ',minimum1, mean1-3*std1,mean1, mean1+3*std1,maximum1)
+    print(f'Old {minimum:.2f}, {mean-3*std:.2f}, {mean:.2f}, {mean+3*std:.2f},{maximum:.2f}')
+    print(f'New: {minimum1:.2f}, {mean1-3*std1:.2f},{mean1:.2f}, {mean1+3*std1:.2f},{maximum1:.2f}')
 
     return equalized_sinogram
 
