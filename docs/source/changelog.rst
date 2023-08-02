@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
 
+[0.6.23] - 2023-08-02
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug when reading files for specific projections in restoration and ptycho routines
+
 [0.6.22] - 2023-07-24
 --------------------
 
