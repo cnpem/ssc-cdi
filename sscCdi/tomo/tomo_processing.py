@@ -24,16 +24,17 @@ def define_paths(dic):
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
     dic["filename"]    = os.path.join(dic["sinogram_path"].rsplit('/',1)[1].split('.')[0]+'_'+dic["contrast_type"])
     dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
-    dic["ordered_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
-    dic["projected_angles_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
-    dic["ordered_object_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_object.npy')
-    dic["cropped_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_cropped_sinogram.npy')
-    dic["equalized_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_equalized_sinogram.npy')
-    dic["unwrapped_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_unwrapped_sinogram.npy')
-    dic["wiggle_sinogram_filepath"]    = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_sinogram.npy')
-    dic["wiggle_cmas_filepath"]        = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
-    dic["reconstruction_filepath"]     = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo.npy')
-    dic["eq_reconstruction_filepath"]  = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo_equalized.npy')
+    dic["ordered_angles_filepath"]       = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
+    dic["projected_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
+    dic["ordered_object_filepath"]       = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_object.npy')
+    dic["cropped_sinogram_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_cropped_sinogram.npy')
+    dic["pre_aligned_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_prealigned_sinogram.npy')
+    dic["equalized_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_equalized_sinogram.npy')
+    dic["unwrapped_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_unwrapped_sinogram.npy')
+    dic["wiggle_sinogram_filepath"]      = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_sinogram.npy')
+    dic["wiggle_cmas_filepath"]          = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
+    dic["reconstruction_filepath"]       = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo.npy')
+    dic["eq_reconstruction_filepath"]    = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo_equalized.npy')
 
     create_directory_if_doesnt_exist(dic["output_folder"])
     create_directory_if_doesnt_exist(dic["temp_folder"])
@@ -107,7 +108,7 @@ def tomo_crop(dic):
 
 ######################### UNWRAP #################################################
 
-def tomo_unwrap(dic):
+def tomo_unwrap(dic,object):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
 
     Args:
@@ -115,7 +116,6 @@ def tomo_unwrap(dic):
 
     """
     start = time.time()
-    object = np.load(dic["cropped_sinogram_filepath"])  
 
     object = make_bad_frame_null(dic["bad_frames_before_unwrap"],object)
 
@@ -125,7 +125,7 @@ def tomo_unwrap(dic):
 
 ######################### EQUALIZATION #################################################
 
-def tomo_equalize(dic):
+def tomo_equalize(dic, sinogram):
     """ Calls equalization algorithms in multiple processes for sinogram frames
 
     Args:
@@ -133,16 +133,10 @@ def tomo_equalize(dic):
 
     """
     start = time.time()
-    if dic["sinogram_to_equalize"] == "unwrapped":
-        sinogram = np.load(dic["unwrapped_sinogram_filepath"] )
-    elif dic["sinogram_to_equalize"] == "cropped":
-        sinogram = np.load(dic["cropped_sinogram_filepath"] )        
-    else:
-        sys.error('Select proper sinogram to equalize: cropped or unwrapped')
 
     sinogram = make_bad_frame_null(dic["bad_frames_before_equalization"],sinogram)
 
-    equalized_sinogram = equalize_frames_parallel(sinogram,dic["equalize_invert"],dic["equalize_gradient"],dic["equalize_outliers"],dic["equalize_global_offset"], dic["equalize_local_offset"])
+    equalized_sinogram = equalize_frames_parallel(sinogram,dic)
     np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
@@ -218,9 +212,6 @@ def equalize_frame(dic,frame):
         print("NaN values found in frame after removing gradient. Removing them!")
         frame = np.where(whereNaN,0,frame)
 
-    if dic["equalize_set_min_max"] != []:
-        frame = np.where(frame<dic["equalize_set_min_max"][0],0,np.where(frame>dic["equalize_set_min_max"][1],0,frame))
-
     # OBSOLETE: Remove outliers
     # if remove_outlier != 0:
     #     frame = remove_outliers(frame,remove_outlier)
@@ -233,6 +224,10 @@ def equalize_frame(dic,frame):
     if dic["equalize_local_offset"]:
         mean = np.mean(frame[dic["equalize_ROI"][0]:dic["equalize_ROI"][1],dic["equalize_ROI"][2]:dic["equalize_ROI"][3]])
         frame -= mean
+
+    if dic["equalize_set_min_max"] != []:
+        frame = np.where(frame<dic["equalize_set_min_max"][0],0,np.where(frame>dic["equalize_set_min_max"][1],0,frame))
+
 
     if dic["equalize_non_negative"]:    
         frame = np.where(frame<0,0,frame) # put remaining negative values to zero
@@ -256,7 +251,7 @@ def equalize_frames_parallel(sinogram,dic):
 
     # Call parallel equalization
     equalize_frame_partial = partial(equalize_frame, dic)
-    print('Sinogram shape to unwrap: ', sinogram.shape)
+    print('Sinogram shape to equalize: ', sinogram.shape)
 
     n_frames = sinogram.shape[0]
 
@@ -471,7 +466,7 @@ def wiggle(dic, sinogram):
 
 ####################### TOMOGRAPHY ###########################################
 
-def tomo_recon(dic):
+def tomo_recon(dic, sinogram):
     """ Calls tomographic algorithms from sscRaft
 
     Args:
@@ -481,8 +476,9 @@ def tomo_recon(dic):
         reconstruction3D (array): 3D reconstructed volume via tomography
 
     """
+    
     start = time.time()
-    reconstruction3D = tomography(dic)
+    reconstruction3D = tomography(dic, sinogram)
     np.save(dic["reconstruction_filepath"],reconstruction3D)
     open_or_create_h5_dataset(dic["reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','volume',reconstruction3D,create_group=True)
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
@@ -535,65 +531,65 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
-def tomography(input_dict):
+def tomography(dic, sinogram):
     """
     Args:
-        input_dict (dict): dictionary of inputs
+        dic (dict): dictionary of inputs
         use_regularly_spaced_angles (bool): boolean to select if angle steps are regular or not
 
     Returns:
         reconstruction3D (array): tomographic volume
     """
 
-    angles_filepath          = input_dict["ordered_angles_filepath"]
-    wiggle_cmas_path         = input_dict["wiggle_cmas_filepath"]
+    angles_filepath          = dic["ordered_angles_filepath"]
+    
+    if dic['using_wiggle']:
+        wiggle_cmas_path         = dic["wiggle_cmas_filepath"]
+        try:
+            wiggle_cmas = dic["wiggle_ctr_of_mas"]
+        except:
+            wiggle_cmas = np.load(dic["wiggle_cmas_filepath"])
 
-    try:
-        wiggle_cmas = input_dict["wiggle_ctr_of_mas"]
-    except:
-        wiggle_cmas = np.load(input_dict["wiggle_cmas_filepath"])
+        if wiggle_cmas == [[],[]]: # if no ctr of mass, save file with it
+            wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
 
-    if wiggle_cmas == [[],[]]:
-        wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
-
-    sinogram = np.load(input_dict["wiggle_sinogram_filepath"])
-
-    if input_dict['project_angles_to_regular_grid'] == True:
+    if dic['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
-        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)*np.pi/180
+        dic['algorithm_dic']['angles'] = np.load(angles_filepath)*np.pi/180
     else:
-        input_dict['algorithm_dic']['angles'] = np.load(angles_filepath)[:,1]*np.pi/180 
+        dic['algorithm_dic']['angles'] = np.load(angles_filepath)[:,1]*np.pi/180 
 
     """ Automatic Regularization """
-    if input_dict['automatic_regularization'] != 0:
+    if dic['automatic_regularization'] != 0:
         print('\tStarting automatic regularization frame by frame...')
         for k in range(sinogram.shape[1]):
-            sinogram[:,k,:] = automatic_regularization( sinogram[:,k,:], input_dict['automatic_regularization'])
+            sinogram[:,k,:] = automatic_regularization( sinogram[:,k,:], dic['automatic_regularization'])
 
     """ Tomography """
     sinogram = np.swapaxes(sinogram, 0, 1) # exchange axis 0 and 1 
-    input_dict['algorithm_dic']['nangles'] = sinogram.shape[1]
-    input_dict['algorithm_dic']['reconSize'] = sinogram.shape[2]
+    dic['algorithm_dic']['nangles'] = sinogram.shape[1]
+    dic['algorithm_dic']['reconSize'] = sinogram.shape[2]
 
-    if input_dict["algorithm_dic"]['algorithm'] == "FBP": 
+    if dic["algorithm_dic"]['algorithm'] == "FBP": 
         print(f'Starting tomographic algorithm FBP algorithm')
-        if 'tomooffset' not in input_dict["algorithm_dic"]: 
-            input_dict["algorithm_dic"]['tomooffset'] = 0
-        reconstruction3D = sscRaft.fbp(sinogram, input_dict["algorithm_dic"])
-    elif input_dict["algorithm_dic"]['algorithm'] == "EM": # sinogram is what comes out of wiggle
-        input_dict["algorithm_dic"]['is360'] = False
+        if 'tomooffset' not in dic["algorithm_dic"]: 
+            dic["algorithm_dic"]['tomooffset'] = 0
+        reconstruction3D = sscRaft.fbp(sinogram, dic["algorithm_dic"])
+    elif dic["algorithm_dic"]['algorithm'] == "EM": # sinogram is what comes out of wiggle
+        dic["algorithm_dic"]['is360'] = False
         print(f'Starting tomographic algorithm EM algorithm')
-        reconstruction3D = sscRaft.em( sinogram, input_dict['algorithm_dic'] )
+        reconstruction3D = sscRaft.em( sinogram, dic['algorithm_dic'] )
     else:
         sys.exit('Select a proper reconstruction method')
      
-    print("\tApplying wiggle center-of-mass correction to 3D reconstructed slices...")
-    reconstruction3D = sscRadon.radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), input_dict["CPUs"])
+    if dic['using_wiggle']: 
+        print("\tApplying wiggle center-of-mass correction to 3D reconstructed slices...")
+        reconstruction3D = sscRadon.radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), dic["CPUs"])
 
     print('\t Tomography done!')
 
     print('Saving tomography logfile...')
-    save_json_logfile_tomo(input_dict)
+    save_json_logfile_tomo(dic)
     print('\tSaved!')
 
     return reconstruction3D

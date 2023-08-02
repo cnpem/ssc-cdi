@@ -438,7 +438,7 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
-def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
+def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
     """
 
     data (ndarray): real valued data
@@ -453,6 +453,17 @@ def deploy_visualizer(data,axis=0,title='',cmap='jet',aspect_ratio='',norm="norm
     import ipywidgets as widgets
     from ipywidgets import fixed
     
+    if type == '':
+        pass
+    elif type == 'real':
+        data = np.real(data)
+    elif type == 'imag':
+        data = np.imag(data)
+    elif type == 'amplitude':
+        data = np.abs(data)
+    elif type == 'phase':
+        data = np.angle(data)
+
     if norm == None:
         colornorm = None
     elif norm == "normalize":
