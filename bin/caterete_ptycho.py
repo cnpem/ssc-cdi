@@ -24,10 +24,9 @@ if __name__ == '__main__':
 
     t1 = time.time()
     print('Starting restoration...')
-    restoration_dict_list, restored_data_info_list = sscCdi.caterete.cat_restoration.restoration_ptycho_CAT(input_dict) # restoration of all frames; restored DPs saved at output temporary folder
-    t2 = time.time()
+    restoration_dict_list, restored_data_info_list, filepaths, filenames, folder_names, folder_numbers = sscCdi.caterete.cat_restoration.restoration_ptycho_CAT(input_dict) # restoration of all frames; restored DPs saved at temporary folder    t2 = time.time()
 
-    input_dict, object,probe, probe_positions = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list)
+    input_dict, obj, probe, probe_positions = sscCdi.caterete.cat_ptycho_processing.cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,filepaths,filenames,folder_names,folder_numbers)
     t3 = time.time()
 
     print('Finished reconstruction!\n')
