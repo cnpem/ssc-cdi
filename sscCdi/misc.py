@@ -101,22 +101,28 @@ def list_files_in_folder(data_directory,look_for_extension=""):
 
     return filepaths, filenames
 
-def select_specific_angles(frames,filepaths,filenames):
+def select_specific_angles(frames,filepaths,filenames, folders, folders_number):
     """ Function to filter lists, keeping only those with a certain frame number in the string. This is used to select only the desired frames in a 3D ptychography.
 
     Args:
         frames : list of frames to select
-        filepaths (list): inpurt list with full filepaths
-        filenames (list): inpurt list with full filenames
+        filepaths (list): input list with full filepaths
+        filenames (list): input list with full filenames
+        folders (list): input list with full folders names
+        folders_number (list): input list with full folders numbers
 
     Returns:
         filepaths: filtered filepaths list
         filenames: filtered filenames list
+        folders: filtered folders names
+        folders_number: foltered folders numbers
     """    
     filepaths = list( filepaths[i] for i in frames)
     filenames = list( filenames[i] for i in frames)
+    folders = list( folders[i] for i in frames)
+    folders_number = list( folders_number[i] for i in frames)
 
-    return filepaths, filenames
+    return filepaths, filenames, folders, folders_number
 
 def save_json_logfile(input_dict):
     """Save a copy of the json input file with datetime at the filename
