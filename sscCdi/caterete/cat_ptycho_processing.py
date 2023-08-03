@@ -16,13 +16,17 @@ from ..processing.restoration import binning_G_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
-def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,strategy="serial"):
+def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial"):
     """ Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
     
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-        restoration_dict_list: parameters from restoration function, listed for each acquisition folder
-        restored_data_info_list: parameters from restoration function, listed for each acquisition folder
+        restoration_dict: parameters from restoration function, listed for each acquisition folder
+        restored_data_info: parameters from restoration function, listed for each acquisition folder
+        filepaths: path's list of required projections
+        filenames: name's list of required projections
+        folder_names_list: list with the folders containing the required projections
+        folder_numbers_list: list with the folders' number containing the requires projections
         strategy: flag to select ptychography mode. Only had "serial" mode for now.
 
     Returns:
@@ -32,112 +36,93 @@ def cat_ptychography(input_dict,restoration_dict_list,restored_data_info_list,st
         probe_positions: numpy array containing probe positions in pixels
     """
 
-    input_dict["restoration_id"] = restored_data_info_list
-
-    total_number_of_angles = 0
-    for acquisitions_folder in input_dict['acquisition_folders']:
-        filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
-        if input_dict['projections'] != []:
-            _, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
-            total_number_of_angles += len(filenames)
-        else:
-            total_number_of_angles += len(filepaths)
+    input_dict["restoration_id"] = restored_data_info
+    total_number_of_angles = len(filepaths)
 
     if strategy == "serial":
 
         start_frame = 0
         frame = 0
-        for folder_number, acquisitions_folder in enumerate(input_dict['acquisition_folders']):  # loop when multiple acquisitions were performed for a 3D recon
-    
-            filepaths, filenames = list_files_in_folder(os.path.join(input_dict['data_folder'], acquisitions_folder,input_dict['scans_string']), look_for_extension=".hdf5")
+        for file_number, filename in enumerate(filenames):
+            
+            folder_number = folder_numbers_list[file_number]
+            acquisitions_folder = folder_names_list[file_number]
+
+            frame = start_frame + file_number # attribute singular value to each angle
+
+            print(f"\nReading diffraction data for angle: {frame}")
+            if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
+                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
+            else:
+                DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+            
+            DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
+
+            if np.abs(input_dict["binning"]) > 1:
+                print('Binning data...')
+                if input_dict["binning"] > 0:
+                    DPs = binning_G_parallel(DPs,input_dict["binning"],input_dict["CPUs"]) # binning strategy by G. Baraldi
+                if input_dict["binning"] < 0:
+                    DPs = DPs[:,0::np.abs(input_dict["binning"]),0::np.abs(input_dict["binning"])]
+                    input_dict["binning"] = np.abs(input_dict["binning"])
+                    
+                if DPs.shape[1] % 2 != 0: # make shape even
+                    DPs = DPs[:,0:-1,:]
+                if DPs.shape[2] % 2 != 0:    
+                    DPs = DPs[:,:,0:-1]
+
+            if 'save_restored_data' in input_dict:
+                print(f"Saving restored diffraction patterns...")
+                if input_dict['save_restored_data'] == True:
+                    np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
+
+            print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
+            
+            """ Read positions """
+            probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
+            print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
+
+            if file_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
+                input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
+                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
+                probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
+
+                size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+                estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
+                print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
+
+            run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
+
+            """ Call Ptychography """
+            if not run_ptycho:
+                print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
+                input_dict['ignored_scans'].append((folder_number,file_number))
+                sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
+                probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                angle = np.array([frame,1,angle,angle*180/np.pi])
+            else:
+                sinogram[frame, :, :], probes[frame, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                angle = np.array([frame,0,angle,angle*180/np.pi])
+
+            """ Save single frame of object and probe to temporary folder"""
+
             if input_dict['projections'] != []:
-                filepaths, filenames = select_specific_angles(input_dict['projections'], filepaths,  filenames)
-
-            restoration_dict = restoration_dict_list[folder_number]
-            restored_data_info = restored_data_info_list[folder_number]
-
-            if frame == 0:
-                start_frame = frame
+                output_number = input_dict['projections'][0]+frame
             else:
-                start_frame = frame + 1
+                output_number = frame
 
-            for file_number, filename in enumerate(filenames):
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_object.npy"),sinogram[frame])
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_probe.npy"),probes[frame])
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_angle.npy"),angle)
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_error.npy"),error)
 
-                frame = start_frame + file_number # attribute singular value to each angle
-
-                print(f"\nReading diffraction data for angle: {frame}")
-                if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
-                    DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
-                else:
-                    DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
-                
-                DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
-
-                if np.abs(input_dict["binning"]) > 1:
-                    print('Binning data...')
-                    if input_dict["binning"] > 0:
-                        DPs = binning_G_parallel(DPs,input_dict["binning"],input_dict["CPUs"]) # binning strategy by G. Baraldi
-                    if input_dict["binning"] < 0:
-                        DPs = DPs[:,0::np.abs(input_dict["binning"]),0::np.abs(input_dict["binning"])]
-                        input_dict["binning"] = np.abs(input_dict["binning"])
-                        
-                    if DPs.shape[1] % 2 != 0: # make shape even
-                        DPs = DPs[:,0:-1,:]
-                    if DPs.shape[2] % 2 != 0:    
-                        DPs = DPs[:,:,0:-1]
-
-                if 'save_restored_data' in input_dict:
-                    print(f"Saving restored diffraction patterns...")
-                    if input_dict['save_restored_data'] == True:
-                        np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
-
-                print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
-                
-                """ Read positions """
-                probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
-                print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
-
-                if file_number == 0 and folder_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
-                    input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
-                    sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                    probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                    print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
-
-                    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                    estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                    print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-
-                run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
-
-                """ Call Ptychography """
-                if not run_ptycho:
-                    print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
-                    input_dict['ignored_scans'].append((folder_number,file_number))
-                    sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-                    probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                    angle = np.array([frame,1,angle,angle*180/np.pi])
-                else:
-                    sinogram[frame, :, :], probes[frame, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
-                    angle = np.array([frame,0,angle,angle*180/np.pi])
-
-                """ Save single frame of object and probe to temporary folder"""
-
-                if input_dict['projections'] != []:
-                    output_number = input_dict['projections'][0]+frame
-                else:
-                    output_number = frame
-
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_object.npy"),sinogram[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_probe.npy"),probes[frame])
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_angle.npy"),angle)
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_error.npy"),error)
-
-            """ Clean restored DPs temporary data """
-            if len(input_dict['projections']) == 1:
-                pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
-            else:
-                pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
+        """ Clean restored DPs temporary data """
+        if len(input_dict['projections']) == 1:
+            pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
+        else:
+            pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
 
     return input_dict, sinogram, probes, probe_positions
