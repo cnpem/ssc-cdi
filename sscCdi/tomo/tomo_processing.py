@@ -55,9 +55,25 @@ def tomo_sort(dic, object, angles):
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
+
+    np.save(dic["ordered_angles_filepath"], sorted_angles)
+    np.save(dic["ordered_angles_filepath"], sorted_object) 
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+
+def remove_frames_after_sorting(dic):
+
+    sorted_object = np.load(dic["ordered_angles_filepath"])
+    sorted_angles = np.load(dic["ordered_angles_filepath"])
+
+    print('Original shape: ',sorted_object.shape)
+
+    sorted_object = np.delete(sorted_object,dic["bad_frames_after_sorting"],axis=0)
+    sorted_angles = np.delete(sorted_angles,dic["bad_frames_after_sorting"],axis=0)
+
+    print('New shape: ',sorted_object.shape)
+
     np.save(dic["ordered_angles_filepath"], sorted_angles)
     np.save(dic["ordered_object_filepath"], sorted_object) 
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def sort_angles(angles):
     """ Sort angles array from smallest to highest angle
@@ -70,7 +86,7 @@ def sort_angles(angles):
     """
     angles = np.asarray(angles)
     
-    angles = np.asarray([ i for i in range(angles.shape[0])]) # make sure numbering is from 0 to N
+    angles[:,0] = np.asarray([ i for i in range(angles.shape[0])]) # make sure numbering is from 0 to N
 
     sorted_angles = angles[angles[:,1].argsort(axis=0)]
     return sorted_angles 
@@ -95,7 +111,7 @@ def reorder_slices_low_to_high_angle(object, rois):
 
 ######################### CROP #################################################
 
-def tomo_crop(dic):
+def tomo_crop(dic,object):
     """ Crops sinogram according to cropping parameters in dic
 
     Args:
@@ -103,7 +119,6 @@ def tomo_crop(dic):
 
     """
     start = time.time()
-    object = np.load(dic["ordered_object_filepath"])
     object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
     print(f"Cropped sinogram shape: {object.shape}")
     np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
