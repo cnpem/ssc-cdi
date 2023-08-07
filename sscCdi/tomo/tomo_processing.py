@@ -69,6 +69,9 @@ def sort_angles(angles):
         angles (array): angle array in sorted from smallest to highest angle
     """
     angles = np.asarray(angles)
+    
+    angles = np.asarray([ i for i in range(angles.shape[0])]) # make sure numbering is from 0 to N
+
     sorted_angles = angles[angles[:,1].argsort(axis=0)]
     return sorted_angles 
 
