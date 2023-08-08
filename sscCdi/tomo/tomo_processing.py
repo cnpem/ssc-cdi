@@ -57,12 +57,12 @@ def tomo_sort(dic, object, angles):
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
 
     np.save(dic["ordered_angles_filepath"], sorted_angles)
-    np.save(dic["ordered_angles_filepath"], sorted_object) 
+    np.save(dic["ordered_object_filepath"], sorted_object) 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def remove_frames_after_sorting(dic):
 
-    sorted_object = np.load(dic["ordered_angles_filepath"])
+    sorted_object = np.load(dic["ordered_object_filepath"])
     sorted_angles = np.load(dic["ordered_angles_filepath"])
 
     print('Original shape: ',sorted_object.shape)
@@ -559,7 +559,7 @@ def tomography(dic, sinogram):
         reconstruction3D (array): tomographic volume
     """
 
-    angles_filepath          = dic["ordered_angles_filepath"]
+    angles_filepath = dic["ordered_angles_filepath"]
     
     if dic['using_wiggle']:
         wiggle_cmas_path         = dic["wiggle_cmas_filepath"]
