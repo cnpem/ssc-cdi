@@ -12,6 +12,14 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+
+[0.6.25] - 2023-08-08
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for correctly saving ordered angles file
+
 [0.6.24] - 2023-08-08
 --------------------
 
