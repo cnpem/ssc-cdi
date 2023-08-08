@@ -12,6 +12,16 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.24] - 2023-08-08
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug when reading angles indices for the cases where ptychography had to be restarted from an intermediate frames
+
+Added
+~~~~~
+- Added new alignment options (Cross Correlation and Vertical Mass Fluctuation) for tomography pipeline, according to https://doi.org/10.1364/OE.27.036637
 
 [0.6.23] - 2023-08-02
 --------------------
