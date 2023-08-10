@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 
@@ -11,7 +12,6 @@ import random
 random.seed(0)
 
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
-
 
 
 def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess,positions):
@@ -106,16 +106,6 @@ def PIE_update_obj_and_probe(mPIE_params,difference,probe,obj,px,py,offset,use_r
     obj[py:py+offset[0],px:px+offset[1]] = objbx
     return obj, probe, objbx
     
-def PIE_update_obj(mPIE_params,difference,probe,obj_box,positions,offset,position_idx,i_to_start_p_update=10,centralize_probe = False):
-    
-    px, py = positions[position_idx,0] ,positions[position_idx,1]
-    
-    alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
-
-    obj_box = obj_box + gamma_obj*difference*probe.conj()/ ( (1-alpha)*np.abs(probe)**2+alpha*(np.abs(probe)**2).max() )
-
-    return obj_box
-
 def PIE_update_probe(iteration,probe,mPIE_params,difference, obj,positions, offset,centralize_probe = False ):          
 
     alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
@@ -126,11 +116,21 @@ def PIE_update_probe(iteration,probe,mPIE_params,difference, obj,positions, offs
     
     # if centralize_probe:
         # centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
-        # probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max() + centralization_weight)
+        # probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *cp.abs(obj_box)**2+beta *(cp.abs(obj_box)**2).max() + centralization_weight)
     # else:
-    probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *np.abs(obj_box)**2+beta *(np.abs(obj_box)**2).max())
+    probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *cp.abs(obj_box)**2+beta *(cp.abs(obj_box)**2).max())
 
     return probe
+
+def PIE_update_obj(mPIE_params,difference,probe,obj_box,positions,offset,position_idx,i_to_start_p_update=10,centralize_probe = False):
+    
+    px, py = positions[position_idx,0] ,positions[position_idx,1]
+    
+    alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
+
+    obj_box = obj_box + gamma_obj*difference*probe.conj()/ ( (1-alpha)*cp.abs(probe)**2+alpha*(cp.abs(probe)**2).max() )
+
+    return obj_box
 
 def set_object_pixel_size(input_dict,half_size):
     c = 299792458             # Speed of Light [m/s]
@@ -379,8 +379,8 @@ def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon
 
 def update_exit_wave(wavefront,measurement,experiment_params,epsilon=0.01,propagator = 'fourier'):
     wave_at_detector = propagate_beam(wavefront, experiment_params,propagator=propagator)
-    wave_at_detector = np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)+epsilon)
-    # wave_at_detector[measurement>=0] = (np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)))[measurement>=0]
+    # wave_at_detector = np.sqrt(measurement)*wave_at_detector/(np.abs(wave_at_detector)+epsilon)
+    wave_at_detector[measurement>=0] = np.sqrt(measurement[measurement>=0])*wave_at_detector[measurement>=0]/(epsilon + np.abs(wave_at_detector[measurement>=0]))
     updated_exit_wave = propagate_beam(wave_at_detector, (experiment_params[0],experiment_params[1],-experiment_params[2]),propagator=propagator)
     return updated_exit_wave, wave_at_detector
 
@@ -774,7 +774,6 @@ def Fspace_update_multiprobe(wavefront_modes,DP_magnitude,epsilon=0.01):
     
     return updated_wavefront_modes
     
-from numpy.fft import fft2, fftshift, ifftshift, ifft2 
 def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
     if backpropagate == False:
         for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
@@ -847,7 +846,7 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
         psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
-        if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
+        if iteration%10 ==0 : print(f'\tIteration {iteration}/{iterations}')
 
         for index in range(len(positions)): 
             pos = positions[index]
@@ -1193,3 +1192,193 @@ def plot_positions_and_errors(data_folder,dataname,offset,PIE_positions=[],posit
     ax.scatter(true[:,1],true[:,0],marker='*',color='green')#,c=colors,cmap='jet')
     ax.set_ylim(ax.get_ylim()[::-1])
     ax.grid()
+    
+    
+    
+def PIE_update_probe_cupy(iteration,probe,mPIE_params,difference, obj,positions, offset,centralize_probe = False ):          
+
+    alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
+
+    py, px = positions[iteration,1],  positions[iteration,0]
+
+    obj_box = obj[py:py+offset[0],px:px+offset[1]]
+    
+    # if centralize_probe:
+        # centralization_weight = get_circular_mask(probe.shape[0],0.1,invert=True)
+        # probe = probe + gamma_prb*(difference*obj_box.conj() - centralization_weight*probe)/ ( (1-beta) *cp.abs(obj_box)**2+beta *(cp.abs(obj_box)**2).max() + centralization_weight)
+    # else:
+    probe = probe + gamma_prb*(difference*obj_box.conj())/ ( (1-beta) *cp.abs(obj_box)**2+beta *(cp.abs(obj_box)**2).max())
+
+    return probe
+
+def PIE_update_obj_cupy(mPIE_params,difference,probe,obj_box,positions,offset,position_idx,i_to_start_p_update=10,centralize_probe = False):
+    
+    px, py = positions[position_idx,0] ,positions[position_idx,1]
+    
+    alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
+
+    obj_box = obj_box + gamma_obj*difference*probe.conj()/ ( (1-alpha)*cp.abs(probe)**2+alpha*(cp.abs(probe)**2).max() )
+
+    return obj_box
+
+def propagate_beam_cupy(wavefront, experiment_params,propagator='fourier'):
+    
+    from cupy.fft import fft2, fftshift, ifftshift, ifft2
+
+    """ Propagate a wavefront using fresnel ou fourier propagator
+
+    Args:
+        wavefront : the wavefront to propagate
+        dx : pixel spacing of the wavefront input
+        wavelength : wavelength of the illumination
+        distance : distance to propagate
+        propagator (str, optional): 'fresenel' or 'fourier'. Defaults to 'fresnel'.
+
+    Returns:
+        output: propagated wavefront
+    """    
+    
+    dx, wavelength,distance = experiment_params 
+    
+    if propagator == 'fourier':
+        if distance > 0:
+            output = fftshift(fft2(fftshift(wavefront)))
+        else:
+            output = ifftshift(ifft2(ifftshift(wavefront)))            
+    
+    elif propagator == 'fresnel':
+    
+        ysize, xsize = wavefront.shape
+        x_array = cp.linspace(-xsize/2,xsize/2-1,xsize)
+        y_array = cp.linspace(-ysize/2,ysize/2-1,ysize)
+
+        fx = x_array/(xsize)
+        fy = y_array/(ysize)
+
+        FX,FY = cp.meshgrid(fx,fy)
+        # Calculate approx phase distribution for each plane wave component
+        w = FX**2 + FY**2 
+        # Compute FFT
+        F = fftshift(fft2(fftshift(wavefront)))
+        # multiply by phase-shift and inverse transform 
+        a = cp.exp(-1j*cp.pi*( distance*wavelength/dx**2)*w)
+        output = ifftshift(ifft2(ifftshift(F*a)))
+
+    return output
+
+def get_brightest_diff_pattern(diffraction_patterns):
+    maximums = []
+    for i in range(diffraction_patterns.shape[0]):
+        maximums.append(cp.max(diffraction_patterns[i]))
+    idx_where_max = np.where(maximums==np.max(maximums))
+    idx_where_max = cp.asarray(idx_where_max)
+    return idx_where_max[0][0]
+
+def update_exit_wave_cupy(wavefront,measurement,experiment_params,epsilon=0.01,propagator = 'fourier'):
+    wave_at_detector = propagate_beam_cupy(wavefront, experiment_params,propagator=propagator)
+    # wave_at_detector = cp.sqrt(measurement)*wave_at_detector/(cp.abs(wave_at_detector)+epsilon)
+    wave_at_detector[measurement>=0] = cp.sqrt(measurement[measurement>=0])*wave_at_detector[measurement>=0]/(epsilon + cp.abs(wave_at_detector[measurement>=0]))
+    updated_exit_wave = propagate_beam_cupy(wave_at_detector, (experiment_params[0],experiment_params[1],-experiment_params[2]),propagator=propagator)
+    return updated_exit_wave, wave_at_detector
+
+def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inputs):
+    t0 = time.perf_counter()
+    print("Starting PIE...")
+    
+    mPIE_params = (inputs['regularization_object'],inputs['regularization_probe'],inputs['step_object'],inputs['step_probe'],inputs['friction_object'],inputs['friction_probe'],inputs['momentum_counter'])
+    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
+    
+    offset = probe_guess.shape
+    
+    mempool = cp.get_default_memory_pool()
+    
+    obj = cp.array(object_guess)
+    probe = cp.array(probe_guess)
+    diffraction_patterns = cp.array(diffraction_patterns)
+    positions = cp.array(positions)
+    
+    wavefronts = cp.empty((len(diffraction_patterns),probe.shape[0],probe.shape[1]),dtype=complex)
+    GBs = wavefronts.itemsize*wavefronts.size/1024/1024/1024
+    print(GBs,'GBs')
+    
+    if inputs["use_mPIE"]:
+        probeVelocity = 0
+        objVelocity = 0
+        T_counter = 0
+
+    # pre_computed_numerator = cp.sum(cp.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
+
+    positions_history = cp.ones((inputs["iterations"],positions.shape[0],positions.shape[1]))
+    if inputs['position_correction_beta'] != 0:
+        betas = (beta,beta)
+    
+    error_list = []
+    object_movie = [] # cp.empty((inputs["iterations"]*len(diffraction_patterns),obj.shape[0],obj.shape[1]),dtype=cp.complex64)
+    probe_movie = []
+    for j in range(inputs["iterations"]):
+
+        if j%10 ==0 : print(f'\tIteration {j}/{inputs["iterations"]}')
+        
+        O_aux, P_aux = obj.copy(), probe.copy()
+
+        obj_box_matrix = cp.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=cp.complex64)
+
+        random_order = cp.random.permutation(len(diffraction_patterns))
+        
+        for counter, i in enumerate(random_order):  # loop in random order improves results!
+
+            py, px = positions[i,1],  positions[i,0]
+                        
+            obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
+            
+            measurement = diffraction_patterns[i]
+            
+            """ Exit wavefiled """
+            exitWave = obj_box_matrix[i]*probe #obj[py:py+offset[0],px:px+offset[1]]*probe
+        
+            # if counter % 600 ==0:
+            #     print(mempool.used_bytes()) 
+
+            """ Propagate + Update + Backpropagate """
+            exitWaveNew, updated_wave_at_detector = update_exit_wave_cupy(exitWave,measurement,experiment_params,epsilon=0.01)
+            
+            wavefronts[i] = exitWaveNew # save to calculate iteration error in Fourier space
+            
+            difference = exitWaveNew - exitWave
+
+            # if 0: 
+            #     """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
+            #     probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
+            
+            obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
+            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])  
+            
+            # probe = probe*cp.asarray(get_circular_mask(probe.shape[0],0.6)) # probe support
+            
+            # object_movie.append(obj) # CAREFUL! TOO MUCH MEMORY!
+            # probe_movie.append(probe)
+            
+            if inputs['position_correction_beta'] != 0:
+                new_positions = position_correction2(i,updated_wave_at_detector,measurement,obj,probe,px,py,offset,betas,experiment_params)
+                positions[i,1],  positions[i,0] = new_positions
+
+                
+        if inputs["use_mPIE"] == True: # momentum addition
+            T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,mPIE_params[6],probeVelocity,objVelocity,O_aux,P_aux,obj, probe,mPIE_params[4],mPIE_params[5])
+
+        if inputs['position_correction_beta'] != 0:
+            positions_history[j] = positions
+            beta_x, beta_y = update_beta(shifts_array[:,0],new_shifts_array[:,0], beta_x), update_beta(shifts_array[:,1],new_shifts_array[:,1], bet--a_y)
+            print("New betas: ",beta_x, beta_y)
+            shifts_array = new_shifts_array
+        
+        if 'model_obj' in inputs:
+            error_list.append(calculate_recon_error(inputs['model_obj'],obj)) # absolute error against model
+        else:
+            error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()) # error in fourier space 
+
+            
+    # cp.save('recon/object.npy',cp.asarray(object_movie))
+    # cp.save('recon/probe.npy',cp.asarray(probe_movie))
+
+    return obj.get(), probe.get(), positions.get(), error_list, time.perf_counter() - t0, positions_history
