@@ -480,16 +480,16 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
     elif norm == "LogNorm":
             colornorm=colors.LogNorm()
 
-    def update_imshow(sinogram,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
+    def update_imshow(volume,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
         
         subplot.clear()
         
         if axis == 0:
-            ax = subplot.imshow(sinogram[frame_number,:,:],cmap=cmap,norm=norm)
+            ax = subplot.imshow(volume[frame_number,:,:],cmap=cmap,norm=norm)
         elif axis == 1:
-            ax =subplot.imshow(sinogram[:,frame_number,:],cmap=cmap,norm=norm)
+            ax =subplot.imshow(volume[:,frame_number,:],cmap=cmap,norm=norm)
         elif axis == 2:
-            ax = subplot.imshow(sinogram[:,:,frame_number],cmap=cmap,norm=norm)
+            ax = subplot.imshow(volume[:,:,frame_number],cmap=cmap,norm=norm)
 
         if title != "":
             subplot.set_title(f'{title}')
@@ -514,7 +514,7 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
     selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
 
     selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
+    widgets.interactive_output(update_imshow, {'volume':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
     box = widgets.VBox([selection_slider,output])
     return box
 
@@ -526,7 +526,7 @@ def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
     import ipywidgets as widgets
     from ipywidgets import fixed
     
-    def update_imshow(sinogram,figure,ax1,ax2,frame_number,axis=0,cmap='jet',aspect_ratio=''):
+    def update_imshow(volume,figure,ax1,ax2,frame_number,axis=0,cmap='jet',aspect_ratio=''):
         
         ax1.clear()
         ax2.clear()        
@@ -537,14 +537,14 @@ def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
             cmap1, cmap2 = 'viridis', 'hsv'
 
         if axis == 0:
-            ax11 = ax1.imshow(np.abs(sinogram[frame_number,:,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(sinogram[frame_number,:,:]),cmap=cmap2)
+            ax11 = ax1.imshow(np.abs(volume[frame_number,:,:]),cmap=cmap1)
+            ax22 = ax2.imshow(np.angle(volume[frame_number,:,:]),cmap=cmap2)
         elif axis == 1:
-            ax11 = ax1.imshow(np.abs(sinogram[:,frame_number,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(sinogram[:,frame_number,:]),cmap=cmap2)
+            ax11 = ax1.imshow(np.abs(volume[:,frame_number,:]),cmap=cmap1)
+            ax22 = ax2.imshow(np.angle(volume[:,frame_number,:]),cmap=cmap2)
         elif axis == 2:
-            ax11 = ax1.imshow(np.abs(sinogram[:,:,frame_number]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(sinogram[:,:frame_number]),cmap=cmap2)
+            ax11 = ax1.imshow(np.abs(volume[:,:,frame_number]),cmap=cmap1)
+            ax22 = ax2.imshow(np.angle(volume[:,:frame_number]),cmap=cmap2)
             
         ax1.set_title(f'Magnitude')
         ax2.set_title(f'Phase') 
@@ -568,7 +568,7 @@ def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
     selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
 
     selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'sinogram':fixed(data),'figure':fixed(figure),'ax1':fixed(ax1),'ax2':fixed(ax2),'axis':fixed(axis), 'cmap':fixed(cmap),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
+    widgets.interactive_output(update_imshow, {'volume':fixed(data),'figure':fixed(figure),'ax1':fixed(ax1),'ax2':fixed(ax2),'axis':fixed(axis), 'cmap':fixed(cmap),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
     box = widgets.VBox([selection_slider,output])
     return box
 
