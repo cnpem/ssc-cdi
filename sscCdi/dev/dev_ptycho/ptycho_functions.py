@@ -693,17 +693,17 @@ def plot_probe_modes(probes):
     figure.tight_layout()
 
 def get_denominator_p(obj,reg_p):
-    power = np.abs(obj)**2
-    denominator = (1-reg_p)*power+ reg_p*np.max(power)
+    power = cp.abs(obj)**2
+    denominator = (1-reg_p)*power+ reg_p*cp.max(power)
     return denominator  
 
 def get_denominator_o(probe_modes,reg_o):
     
-    total_probe_power = np.zeros_like(np.abs(probe_modes[0]))
+    total_probe_power = cp.zeros_like(cp.abs(probe_modes[0]))
     for mode in probe_modes:
-        total_probe_power += np.abs(mode)**2    
+        total_probe_power += cp.abs(mode)**2    
         
-    denominator = (1-reg_o)*total_probe_power + reg_o*np.max(total_probe_power)
+    denominator = (1-reg_o)*total_probe_power + reg_o*cp.max(total_probe_power)
     
     return denominator  
 
@@ -721,7 +721,7 @@ def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront
     probe_modes_conj = probe_modes.conj()
     Delta_wavefront_modes =  updated_wavefront_modes - wavefront_modes
 
-    obj = obj + s_o * np.sum(probe_modes_conj*Delta_wavefront_modes,axis=0) / denominator_object # object update
+    obj = obj + s_o * cp.sum(probe_modes_conj*Delta_wavefront_modes,axis=0) / denominator_object # object update
 
     obj_conj = obj.conj()
     denominator_probe  = get_denominator_p(obj,r_p)
@@ -733,25 +733,25 @@ def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront
 
 def Fspace_update_multiprobe(wavefront_modes,measurement,epsilon=0.001):
     
-    total_wave_intensity = np.zeros_like(wavefront_modes[0])
+    total_wave_intensity = cp.zeros_like(wavefront_modes[0])
 
     for mode in wavefront_modes:
-        total_wave_intensity += np.abs(mode)**2
-    total_wave_intensity = np.sqrt(total_wave_intensity)
+        total_wave_intensity += cp.abs(mode)**2
+    total_wave_intensity = cp.sqrt(total_wave_intensity)
     
     updated_wavefront_modes = wavefront_modes
     for m, mode in enumerate(wavefront_modes): #TODO: worth updating in parallel?
-        updated_wavefront_modes[m][measurement>=0] = np.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
+        updated_wavefront_modes[m][measurement>=0] = cp.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
     
     return updated_wavefront_modes
     
 def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
     if backpropagate == False:
         for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
-            wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(mode)))
+            wavefront_modes[m] = cp.fft.fftshift(cp.fft.fft2(cp.fft.fftshift(mode)))
     else:
         for m in range(wavefront_modes.shape[0]):
-            wavefront_modes[m] = np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m])))
+            wavefront_modes[m] = cp.fft.ifftshift(cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m])))
     return wavefront_modes
 
 def update_exit_wave_multiprobe(wavefront_modes,measurement):
@@ -994,18 +994,23 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
     f_p = parameters["friction_probe"]
     m_counter_limit = parameters["momentum_counter"]
     
+    object_guess = cp.array(object_guess)
+    probe_guess = cp.array(probe_guess)
+    diffraction_patterns = cp.array(diffraction_patterns)
+    positions = cp.array(positions)
+
     offset = probe_guess.shape
-    obj = np.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
+    obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
 
     if probe_guess is None:
-        probe_modes = np.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+        probe_modes = cp.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
     else:
-        probe_modes = np.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+        probe_modes = cp.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
         probe_modes[:] = probe_guess
     
-    probe_velocity = np.zeros_like(probe_modes,dtype=complex)
-    obj_velocity   = np.zeros_like(obj,dtype=complex)
+    probe_velocity = cp.zeros_like(probe_modes,dtype=complex)
+    obj_velocity   = cp.zeros_like(obj,dtype=complex)
 
     
     momentum_counter = 0
@@ -1016,16 +1021,16 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
-        for j in np.random.permutation(len(diffraction_patterns)):  
+        for j in cp.random.permutation(len(diffraction_patterns)):  
             py, px = positions[:,1][j],  positions[:,0][j]
 
             obj_box = obj[:,py:py+offset[0],px:px+offset[1]]
-            
+
             """ Wavefront at object exit plane """
             wavefront_modes = obj_box*probe_modes
 
             """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes = update_exit_wave_multiprobe(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
+            updated_wavefront_modes, _ = update_exit_wave_multiprobe(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
             
             single_obj_box, probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
@@ -1034,12 +1039,12 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
             if use_momentum == True: # momentum addition
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj, probe_modes,f_o,f_p,momentum_type="")
 
-        error_list.append(calculate_recon_error(model_obj,obj[0])) #absolute error
+        # error_list.append(calculate_recon_error(model_obj,obj[0])) #absolute error
 
     dt = time.perf_counter() - t0
     print(f"PIE algorithm ended in {dt} seconds")
     
-    return obj, probe_modes, error_list, dt
+    return obj.get(), probe_modes.get(), error_list, dt
 
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
     t0 = time.perf_counter()
