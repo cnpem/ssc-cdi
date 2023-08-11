@@ -829,9 +829,8 @@ def update_exit_wave_multiprobe(wavefront_modes,measurement):
     updated_wavefront_modes = propagate_farfield_multiprobe(wavefront_modes_at_detector,backpropagate=True)
     return updated_wavefront_modes, wavefront_modes_at_detector
 
-def momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,O_aux,P_aux,obj,probe,mPIE_params,momentum_type=""):
+def momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,O_aux,P_aux,obj,probe,friction_object,friction_probe,m_counter_limit,momentum_type=""):
     
-    _,_,_,_,friction_object,friction_probe,m_counter_limit = mPIE_params
 
     momentum_counter += 1    
     if momentum_counter == m_counter_limit : 
@@ -1064,7 +1063,6 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     iterations = inputs["iterations"]
     experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
 
-    
     object_guess = cp.array(object_guess) # convert from numpy to cupy
     probe_guess  = cp.array(probe_guess)
     positions    = cp.array(positions)
@@ -1087,8 +1085,6 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
         sys.exit('Please select the correct amount of modes: ',inputs["n_of_modes"])
 
     wavefronts = cp.empty((len(diffraction_patterns),probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
-    GBs = wavefronts.itemsize*wavefronts.size/1024/1024/1024
-    print(GBs,'GBs')
 
     probe_velocity = cp.zeros_like(probe_modes,dtype=complex)
     obj_velocity   = cp.zeros_like(obj,dtype=complex)
@@ -1114,17 +1110,12 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             """ Propagate + Update + Backpropagate """
             updated_wavefront_modes, _ = update_exit_wave_multiprobe(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
             
-            single_obj_box, probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
+            obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
-            obj[:,py:py+offset[0],px:px+offset[1]] = single_obj_box
-            
-            if inputs["use_mPIE"] == True: # momentum addition
-                momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj, probe_modes,f_o,f_p,momentum_type="")
+            if inputs["use_mPIE"] == True: # momentum addition                                                                                      
+                momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
-        if 'model_obj' in inputs:
-            error_list.append(calculate_recon_error(inputs['model_obj'],obj)) # absolute error against model
-        else:
-            error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()) # error in fourier space 
+        error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()) # error in fourier space 
 
     dt = time.perf_counter() - t0
     print(f"PIE algorithm ended in {dt} seconds")
