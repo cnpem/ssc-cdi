@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import sys
 import time
-
+import h5py, os
 import random
+
 from skimage.registration import phase_cross_correlation
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
 
 random.seed(0)
-
 
 def plot_guess_and_model(model_obj,model_probe,obj_guess,probe_guess,positions):
     from matplotlib.patches import Rectangle
@@ -505,16 +505,85 @@ def position_correction(i, obj,previous_obj,probe,position_x,position_y, betas, 
 
     return new_position, relative_shift, illumination_mask
 
+def position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params):
+    """ Position correct of the gradient of intensities """ 
+    
+    beta_x, beta_y = betas
+    
+    
+    # Calculate intensity difference
+    updated_intensity_at_detector = np.abs(updated_wave)**2
+    intensity_diff = (updated_intensity_at_detector-measurement).flatten()
+    
+    # Calculate wavefront gradient
+    obj_dy = np.roll(obj,1,axis=0)
+    obj_dx = np.roll(obj,1,axis=1)
+    
+    obj_box     = obj[py:py+offset[0],px:px+offset[1]]
+    obj_dy_box  = obj_dy[py:py+offset[0],px:px+offset[1]]
+    obj_dx_box  = obj_dx[py:py+offset[0],px:px+offset[1]]
+    
+    wave_at_detector    = propagate_beam(obj_box*probe,    experiment_params,propagator='fourier')
+    wave_at_detector_dy = propagate_beam(obj_dy_box*probe, experiment_params,propagator='fourier')
+    wave_at_detector_dx = propagate_beam(obj_dx_box*probe, experiment_params,propagator='fourier')
+
+    obj_pxl = experiment_params[0]
+    wavefront_gradient_x = (wave_at_detector-wave_at_detector_dx)/obj_pxl
+    wavefront_gradient_y = (wave_at_detector-wave_at_detector_dy)/obj_pxl
+   
+    # Calculate intensity gradient
+    intensity_gradient_x = 2*np.real(wavefront_gradient_x*np.conj(wave_at_detector))
+    intensity_gradient_y = 2*np.real(wavefront_gradient_y*np.conj(wave_at_detector))
+    
+    
+    # Solve linear system
+    A_matrix = np.column_stack((intensity_gradient_x.flatten(),intensity_gradient_y.flatten()))
+    A_transpose = np.transpose(A_matrix)
+    relative_shift = np.linalg.pinv(A_transpose@A_matrix)@A_transpose@intensity_diff
+
+    # Update positions
+    # new_positions = np.array([px - beta_x*relative_shift[0], py - beta_y*relative_shift[1]])
+    new_positions = np.array([py - beta_y*relative_shift[1],px - beta_x*relative_shift[0]])
+    
+    if i == 0:
+        print(px, beta_x*relative_shift[1],'\t',py,beta_y*relative_shift[0],relative_shift)
+    
+    return new_positions
+
+def plot_positions_and_errors(data_folder,dataname,offset,PIE_positions=[],positions_story=[]):
+    
+    import os, json
+    
+    metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
+    distance = metadata['/entry/beamline/experiment']['distance']*1e-3
+    energy = metadata['/entry/beamline/experiment']['energy']
+    pixel_size = metadata['/entry/beamline/detector']['pimega']['pixel size']*1e-6
+    wavelength, wavevector = calculate_wavelength(energy)
+    
+    diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
+
+    n_pixels = diffraction_patterns.shape[1]
+    obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
+    
+    _,_,measured = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
+    _,_,true = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}_without_error",obj_pixel_size,offset,0)
+    
+    colors = np.linspace(0,positions.shape[0]-1,positions.shape[0])
+    fig, ax = plt.subplots(dpi=150)
+    ax.legend(["True" , "Measured", "Corrected", "Path"],loc=(1.05,0.84))    
+    ax.scatter(measured[:,1],measured[:,0],marker='o',c='red')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
+    if positions_story != []:
+        for i in range(PIE_positions.shape[0]):
+            y = positions_story[:,i,1]
+            x = positions_story[:,i,0]
+            ax.scatter(y,x,color='blue',s=2,marker=',',alpha=0.2)
+    if PIE_positions != []:
+        ax.scatter(PIE_positions[:,1],PIE_positions[:,0],marker='x',color='blue')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
+    ax.scatter(true[:,1],true[:,0],marker='*',color='green')#,c=colors,cmap='jet')
+    ax.set_ylim(ax.get_ylim()[::-1])
+    ax.grid()
 
 """ PTYCHO """
-
-import numpy as np
-import h5py, os
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-import time
-import random
-random.seed(0)
 
 def plot_results4(difpads, model_obj,probe,RAAR_obj, RAAR_probe, RAAR_error, RAAR2_obj, RAAR2_probe, RAAR2_error ,RAAR2_time,axis=False):
     colormap = 'viridis'
@@ -843,8 +912,6 @@ def update_exit_wave_cupy(wavefront,measurement,experiment_params,epsilon=0.01,p
     return updated_exit_wave, wave_at_detector
 
 
-
-
 """ MAIN LOOPS """
 
 def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
@@ -982,38 +1049,49 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
     
     return obj_matrix[0], probe_modes, error, dt
 
-def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, parameters):
+def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
     t0 = time.perf_counter()
     print("Starting multiprobe PIE algorithm...")
     
-    r_o = parameters["regularization_object"]
-    r_p = parameters["regularization_probe"]
-    s_o = parameters["step_object"]
-    s_p = parameters["step_probe"]
-    f_o = parameters["friction_object"]
-    f_p = parameters["friction_probe"]
-    m_counter_limit = parameters["momentum_counter"]
-    n_of_modes = parameters["n_of_modes"]
-    iterations = parameters["iterations"]
-    
-    object_guess = cp.array(object_guess)
-    probe_guess = cp.array(probe_guess)
-    diffraction_patterns = cp.array(diffraction_patterns)
-    positions = cp.array(positions)
+    r_o = inputs["regularization_object"]
+    r_p = inputs["regularization_probe"]
+    s_o = inputs["step_object"]
+    s_p = inputs["step_probe"]
+    f_o = inputs["friction_object"]
+    f_p = inputs["friction_probe"]
+    m_counter_limit = inputs["momentum_counter"]
+    n_of_modes = inputs["n_of_modes"]
+    iterations = inputs["iterations"]
+    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
 
-    offset = probe_guess.shape
+    
+    object_guess = cp.array(object_guess) # convert from numpy to cupy
+    probe_guess  = cp.array(probe_guess)
+    positions    = cp.array(positions)
+    diffraction_patterns = cp.array(diffraction_patterns)
+
     obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
 
-    if probe_guess is None:
-        probe_modes = cp.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
-    else:
-        probe_modes = cp.ones((n_of_modes,probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+    offset = probe_guess.shape
+
+    if inputs["n_of_modes"] > 1:
+        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+        probe_modes[0] = probe_guess # first mode is guess
+        for mode in range(1,inputs["n_of_modes"]): # remaining modes are random
+            probe_modes[mode] = cp.random.rand(*probe_guess.shape)
+    elif inputs["n_of_modes"] == 1:
+        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
         probe_modes[:] = probe_guess
-    
+    else:
+        sys.exit('Please select the correct amount of modes: ',inputs["n_of_modes"])
+
+    wavefronts = cp.empty((len(diffraction_patterns),probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+    GBs = wavefronts.itemsize*wavefronts.size/1024/1024/1024
+    print(GBs,'GBs')
+
     probe_velocity = cp.zeros_like(probe_modes,dtype=complex)
     obj_velocity   = cp.zeros_like(obj,dtype=complex)
-
     
     momentum_counter = 0
     error_list = []
@@ -1031,6 +1109,8 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             """ Wavefront at object exit plane """
             wavefront_modes = obj_box*probe_modes
 
+            wavefronts[j] = wavefront_modes[0] # save mode 0 wavefront to calculate recon error
+ 
             """ Propagate + Update + Backpropagate """
             updated_wavefront_modes, _ = update_exit_wave_multiprobe(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
             
@@ -1038,187 +1118,19 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
 
             obj[:,py:py+offset[0],px:px+offset[1]] = single_obj_box
             
-            if parameters["use_mPIE"] == True: # momentum addition
+            if inputs["use_mPIE"] == True: # momentum addition
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj, probe_modes,f_o,f_p,momentum_type="")
 
-        # error_list.append(calculate_recon_error(model_obj,obj[0])) #absolute error
+        if 'model_obj' in inputs:
+            error_list.append(calculate_recon_error(inputs['model_obj'],obj)) # absolute error against model
+        else:
+            error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()) # error in fourier space 
 
     dt = time.perf_counter() - t0
     print(f"PIE algorithm ended in {dt} seconds")
     
     return obj.get(), probe_modes.get(), error_list, dt
 
-def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
-    t0 = time.perf_counter()
-    print("Starting PIE...")
-    
-    mPIE_params = (inputs['regularization_object'],inputs['regularization_probe'],inputs['step_object'],inputs['step_probe'],inputs['friction_object'],inputs['friction_probe'],inputs['momentum_counter'])
-    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
-    
-    offset = probe_guess.shape
-    
-    obj = object_guess
-    probe = probe_guess
-    
-    wavefronts = np.empty((len(diffraction_patterns),probe.shape[0],probe.shape[1]),dtype=complex)
-
-    if inputs["use_mPIE"]:
-        probeVelocity = 0
-        objVelocity = 0
-        T_counter = 0
-
-    pre_computed_numerator = np.sum(np.abs(diffraction_patterns[get_brightest_diff_pattern(diffraction_patterns)])**2)
-
-    positions_history = np.ones((inputs["iterations"],positions.shape[0],positions.shape[1]))
-    if inputs['position_correction_beta'] != 0:
-        betas = (beta,beta)
-    
-    error_list = []
-    object_movie = [] # np.empty((inputs["iterations"]*len(diffraction_patterns),obj.shape[0],obj.shape[1]),dtype=np.complex64)
-    probe_movie = []
-    for j in range(inputs["iterations"]):
-
-        if j%50 ==0 : print(f'\tIteration {j}/{inputs["iterations"]}')
-        
-        O_aux, P_aux = obj.copy(), probe.copy()
-
-        obj_box_matrix = np.zeros((len(diffraction_patterns),offset[0],offset[1]),dtype=np.complex64)
-
-        random_order = np.random.permutation(len(diffraction_patterns))
-        
-        for counter, i in enumerate(random_order):  # loop in random order improves results!
-            py, px = positions[i,1],  positions[i,0]
-            
-            obj_box_matrix[i] = obj[py:py+offset[0],px:px+offset[1]]
-            
-            measurement = diffraction_patterns[i]
-            
-            """ Exit wavefiled """
-            exitWave = obj[py:py+offset[0],px:px+offset[1]]*probe
-
-            """ Propagate + Update + Backpropagate """
-            exitWaveNew, updated_wave = update_exit_wave(exitWave,measurement,experiment_params,epsilon=0.01)
-
-            wavefronts[i] = exitWaveNew # save to calculate iteration error in Fourier space
-            
-            difference = exitWaveNew - exitWave
-
-            if 0: 
-                """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
-                probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
-
-            obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
-            probe = PIE_update_probe(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])  
-            
-            probe = probe*get_circular_mask(probe.shape[0],0.6)
-            
-            object_movie.append(obj.copy())
-            probe_movie.append(probe.copy())
-            
-            if inputs['position_correction_beta'] != 0:
-                new_positions = position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params)
-                positions[i,1],  positions[i,0] = new_positions
-
-        if inputs["use_mPIE"] == True: # momentum addition
-            T_counter,objVelocity,probeVelocity,O_aux,P_aux,obj,probe = momentum_addition(T_counter,mPIE_params[6],probeVelocity,objVelocity,O_aux,P_aux,obj, probe,mPIE_params[4],mPIE_params[5])
-
-        if inputs['position_correction_beta'] != 0:
-            positions_history[j] = positions
-            beta_x, beta_y = update_beta(shifts_array[:,0],new_shifts_array[:,0], beta_x), update_beta(shifts_array[:,1],new_shifts_array[:,1], bet--a_y)
-            print("New betas: ",beta_x, beta_y)
-            shifts_array = new_shifts_array
-        
-        if 'model_obj' in inputs:
-            error_list.append(calculate_recon_error(inputs['model_obj'],obj)) #absolute error
-        else:
-            error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params)) 
-
-    # probe = probe.get() # get from cupy to numpy
-    # obj = obj.get()
-    
-    np.save('recon/object.npy',np.asarray(object_movie))
-    np.save('recon/probe.npy',np.asarray(probe_movie))
-
-    return obj, probe, positions, error_list, time.perf_counter() - t0, positions_history
-          
-def position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params):
-    """ Position correct of the gradient of intensities """ 
-    
-    beta_x, beta_y = betas
-    
-    
-    # Calculate intensity difference
-    updated_intensity_at_detector = np.abs(updated_wave)**2
-    intensity_diff = (updated_intensity_at_detector-measurement).flatten()
-    
-    # Calculate wavefront gradient
-    obj_dy = np.roll(obj,1,axis=0)
-    obj_dx = np.roll(obj,1,axis=1)
-    
-    obj_box     = obj[py:py+offset[0],px:px+offset[1]]
-    obj_dy_box  = obj_dy[py:py+offset[0],px:px+offset[1]]
-    obj_dx_box  = obj_dx[py:py+offset[0],px:px+offset[1]]
-    
-    wave_at_detector    = propagate_beam(obj_box*probe,    experiment_params,propagator='fourier')
-    wave_at_detector_dy = propagate_beam(obj_dy_box*probe, experiment_params,propagator='fourier')
-    wave_at_detector_dx = propagate_beam(obj_dx_box*probe, experiment_params,propagator='fourier')
-
-    obj_pxl = experiment_params[0]
-    wavefront_gradient_x = (wave_at_detector-wave_at_detector_dx)/obj_pxl
-    wavefront_gradient_y = (wave_at_detector-wave_at_detector_dy)/obj_pxl
-   
-    # Calculate intensity gradient
-    intensity_gradient_x = 2*np.real(wavefront_gradient_x*np.conj(wave_at_detector))
-    intensity_gradient_y = 2*np.real(wavefront_gradient_y*np.conj(wave_at_detector))
-    
-    
-    # Solve linear system
-    A_matrix = np.column_stack((intensity_gradient_x.flatten(),intensity_gradient_y.flatten()))
-    A_transpose = np.transpose(A_matrix)
-    relative_shift = np.linalg.pinv(A_transpose@A_matrix)@A_transpose@intensity_diff
-
-    # Update positions
-    # new_positions = np.array([px - beta_x*relative_shift[0], py - beta_y*relative_shift[1]])
-    new_positions = np.array([py - beta_y*relative_shift[1],px - beta_x*relative_shift[0]])
-    
-    if i == 0:
-        print(px, beta_x*relative_shift[1],'\t',py,beta_y*relative_shift[0],relative_shift)
-    
-    return new_positions
-
-def plot_positions_and_errors(data_folder,dataname,offset,PIE_positions=[],positions_story=[]):
-    
-    import os, json
-    
-    metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
-    distance = metadata['/entry/beamline/experiment']['distance']*1e-3
-    energy = metadata['/entry/beamline/experiment']['energy']
-    pixel_size = metadata['/entry/beamline/detector']['pimega']['pixel size']*1e-6
-    wavelength, wavevector = calculate_wavelength(energy)
-    
-    diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
-
-    n_pixels = diffraction_patterns.shape[1]
-    obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
-    
-    _,_,measured = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
-    _,_,true = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}_without_error",obj_pixel_size,offset,0)
-    
-    colors = np.linspace(0,positions.shape[0]-1,positions.shape[0])
-    fig, ax = plt.subplots(dpi=150)
-    ax.legend(["True" , "Measured", "Corrected", "Path"],loc=(1.05,0.84))    
-    ax.scatter(measured[:,1],measured[:,0],marker='o',c='red')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
-    if positions_story != []:
-        for i in range(PIE_positions.shape[0]):
-            y = positions_story[:,i,1]
-            x = positions_story[:,i,0]
-            ax.scatter(y,x,color='blue',s=2,marker=',',alpha=0.2)
-    if PIE_positions != []:
-        ax.scatter(PIE_positions[:,1],PIE_positions[:,0],marker='x',color='blue')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
-    ax.scatter(true[:,1],true[:,0],marker='*',color='green')#,c=colors,cmap='jet')
-    ax.set_ylim(ax.get_ylim()[::-1])
-    ax.grid()
-    
 def PIE_update_probe_cupy(iteration,probe,mPIE_params,difference, obj,positions, offset,centralize_probe = False ):          
 
     alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
@@ -1235,7 +1147,7 @@ def PIE_update_probe_cupy(iteration,probe,mPIE_params,difference, obj,positions,
 
     return probe
 
-def PIE_update_obj_cupy(mPIE_params,difference,probe,obj_box,positions,offset,position_idx,i_to_start_p_update=10,centralize_probe = False):
+def PIE_update_obj_cupy(mPIE_params,difference,probe,obj_box):
     
     alpha,beta,gamma_obj,gamma_prb,_,_,_ = mPIE_params
 
@@ -1252,8 +1164,6 @@ def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inpu
     experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
     
     offset = probe_guess.shape
-    
-    # mempool = cp.get_default_memory_pool()
     
     obj = cp.array(object_guess)
     probe = cp.array(probe_guess)
@@ -1313,7 +1223,7 @@ def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inpu
             #     """ Power correction not working properly! See: Further improvements to the ptychographic iterative engine: supplementary material """
             #     probe = probe_power_correction(probe,diffraction_patterns.shape, pre_computed_numerator)
             
-            obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj_cupy(mPIE_params,difference,probe.copy(),obj_box_matrix[i],positions,offset,i)
+            obj[py:py+offset[0],px:px+offset[1]] = PIE_update_obj_cupy(mPIE_params,difference,probe.copy(),obj_box_matrix[i])
             probe = PIE_update_probe_cupy(i,probe,mPIE_params,difference,obj,positions, offset, centralize_probe = inputs['centralize_probe'])  
             
             # probe = probe*cp.asarray(get_circular_mask(probe.shape[0],0.6)) # probe support
