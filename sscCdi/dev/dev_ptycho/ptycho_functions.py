@@ -982,7 +982,7 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
     
     return obj_matrix[0], probe_modes, error, dt
 
-def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, parameters, model_obj, n_of_modes = 1, object_guess=None, probe_guess=None, use_momentum = False):
+def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, parameters):
     t0 = time.perf_counter()
     print("Starting multiprobe PIE algorithm...")
     
@@ -993,6 +993,8 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
     f_o = parameters["friction_object"]
     f_p = parameters["friction_probe"]
     m_counter_limit = parameters["momentum_counter"]
+    n_of_modes = parameters["n_of_modes"]
+    iterations = parameters["iterations"]
     
     object_guess = cp.array(object_guess)
     probe_guess = cp.array(probe_guess)
@@ -1036,7 +1038,7 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
 
             obj[:,py:py+offset[0],px:px+offset[1]] = single_obj_box
             
-            if use_momentum == True: # momentum addition
+            if parameters["use_mPIE"] == True: # momentum addition
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition_multiprobe(momentum_counter,m_counter_limit,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj, probe_modes,f_o,f_p,momentum_type="")
 
         # error_list.append(calculate_recon_error(model_obj,obj[0])) #absolute error
@@ -1045,68 +1047,6 @@ def PIE_multiprobe_loop_OBSOLETE(diffraction_patterns, positions, iterations, pa
     print(f"PIE algorithm ended in {dt} seconds")
     
     return obj.get(), probe_modes.get(), error_list, dt
-
-def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
-    t0 = time.perf_counter()
-    print("Starting multiprobe PIE algorithm...")
-    
-    mPIE_params = (inputs['regularization_object'],inputs['regularization_probe'],inputs['step_object'],inputs['step_probe'],inputs['friction_object'],inputs['friction_probe'],inputs['momentum_counter'])
-    
-    probe_guess = cp.array(probe_guess)
-    diffraction_patterns = cp.array(diffraction_patterns)
-    positions = cp.array(positions)
-    
-    offset = probe_guess.shape
-    obj = cp.empty((inputs["n_of_modes"],object_guess.shape[0],object_guess.shape[1]),dtype=complex)
-    obj[:] = cp.array(object_guess) # object matrix repeats for each slice; each slice will operate with a different probe mode
-
-    if inputs["n_of_modes"] > 1:
-        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
-        probe_modes[0] = probe_guess # first mode is guess
-        for mode in range(1,inputs["n_of_modes"]+1): # remaining modes are random
-            probe_modes[mode] = cp.random.rand(*probe_guess.shape)
-    elif inputs["n_of_modes"] == 1:
-        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
-        probe_modes[:] = probe_guess
-    else:
-        sys.exit('Please select the correct amount of modes: ',inputs["n_of_modes"])
-    
-    if inputs["use_mPIE"]:
-        probe_velocity = cp.zeros_like(probe_modes,dtype=complex)
-        obj_velocity   = cp.zeros_like(obj,dtype=complex)
-        momentum_counter = 0
-
-    for i in range(inputs["iterations"]):
-
-        if i%50 == 0 : print(f'\tIteration {i}/{inputs["iterations"]}')
-        
-        temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
-        
-        random_order = cp.random.permutation(len(diffraction_patterns))
-        for counter, j in enumerate(random_order):  # loop in random order improves results!
-
-            py, px = positions[j,1],  positions[j,0]
-
-            obj_box = obj[:,py:py+offset[0],px:px+offset[1]]
-            
-            """ Wavefront at object exit plane """
-            wavefront_modes = obj_box*probe_modes
-
-            """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes, _ = update_exit_wave_multiprobe(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
-
-            obj[:,py:py+offset[0],px:px+offset[1]], probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,mPIE_params)
-
-            if inputs["use_mPIE"]:
-                momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,single_obj_box,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj, probe_modes,mPIE_params,momentum_type="")
-
-            if i%4 == 0:
-                plt.figure()
-                plt.imshow(np.angle(obj.get()[0]))
-                plt.show()
-                plt.close()
-
-    return obj.get(), probe_modes.get(), time.perf_counter() - t0
 
 def mPIE_loop(diffraction_patterns, positions,object_guess,probe_guess,inputs):
     t0 = time.perf_counter()
