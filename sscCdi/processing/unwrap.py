@@ -60,7 +60,8 @@ def plane_fit_inside_mask(img, mask, epsilon = 1e-3):
     return a,b,c
 
 def remove_phase_gradient(img, mask, loop_count_limit=5, epsilon = 1e-3):
-    """ Finds a best fit plane inside a masked region of image and subtracts. 
+    """ 
+    Finds a best fit plane inside a masked region of image and subtracts. 
     This process is repeated "loop_count_limit" times or until angular coefficients a,b are smaller than 1e-8
 
     Args:

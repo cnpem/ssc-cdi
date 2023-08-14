@@ -15,12 +15,36 @@ from sscPimega import misc as miscPimega
 from ..misc import read_hdf5
 
 def restore_pimega(diffraction_pattern,geometry,detector):
+    """ 
+    Call PIMEGA 135D or 540D restoration given a certain geometry
+
+    Args:
+        diffraction_pattern (numpy.ndarray): volume containing diffraction pattern to be restored
+        geometry (dic): PIMEGA geometry dictionary
+        detector (string): detector model used
+
+    Returns:
+        (numpy.ndarray): restored diffractions patterns
+    """
+
     if detector == '135D':
         return pi135D.backward135D(diffraction_pattern , geometry)
     elif detector == '540D':
         return pi540D.backward540D(diffraction_pattern, geometry)
 
 def restore_CUDA(input_dict,geometry,hdf5_filepaths):
+    """ 
+    Accellerated version of the restoration algorithm in GPUs. 
+    Calls CUDA codes that accompany the package. 
+
+    Args:
+        input_dict (dict): input diction
+        geometry (dict): PIMEGA geometry dictionary
+        hdf5_filepaths (list): list containing the full paths to all the desired hdf5s files to restorate
+
+    Returns:
+        (numpy.ndarray): volume of restored diffraction patterns
+    """
 
     dic = {}
     dic['path']     = hdf5_filepaths
@@ -48,6 +72,19 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     return output
 
 def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
+    """ 
+    Read diffraction data using either sscIO or h5py and calls restoration algorithms.
+    Includes preprocessing (flatfield correction, mask application, background subtraction) and post-processing (data binning, if wanted)
+
+    Args:
+        input_dict (_type_): _description_
+        geometry (_type_): _description_
+        hdf5_path (_type_): _description_
+        method (str, optional): _description_. Defaults to "IO".
+
+    Returns:
+        (numpy.ndarray): volume of restored diffraction patterns 
+    """
 
     if input_dict["detector"] == '540D':
         DP_shape = 3072
@@ -86,6 +123,16 @@ def restoration_with_processing_and_binning(DP, args):
     return DP
 
 def read_masks(input_dict):
+    """
+    Reads hdf5 containing flatfield, mask and background.
+
+    Args:
+        input_dict (dict): dictionary of inputs containing:
+            - input_dict["detector"]: detector model description: '135D' or '540D'
+            - input_dict["flatfield"]: path to flatfield hdf5 file
+            - input_dict["mask"]: path to mask of invalid pixels hdf5 file
+            - input_dict["subtraction_path"]: path to background hdf5 file
+    """
 
     if input_dict["detector"] == '135D':
         shape = (1536,1536)
@@ -103,14 +150,17 @@ def read_masks(input_dict):
         mask = np.zeros(shape)
 
     if "subtraction_path" in input_dict and input_dict["subtraction_path"] != "":
-        subtraction_mask = np.asarray(h5py.File(input_dict["subtraction_path"], 'r')['entry/data/data']).squeeze().astype(np.float32)
-        subtraction_mask = subtraction_mask * np.squeeze(flatfield) # Apply flatfield
+        background = np.asarray(h5py.File(input_dict["subtraction_path"], 'r')['entry/data/data']).squeeze().astype(np.float32)
+        background = background * np.squeeze(flatfield) # Apply flatfield
     else:
-        subtraction_mask = np.zeros(shape)
+        background = np.zeros(shape)
 
-    return flatfield, mask, subtraction_mask
+    return flatfield, mask, background
 
 def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction_mask):
+    """
+    Applies corrections to a diffraction pattern, restores it and finally crops it to a desired size.
+    """
     
     cy, cx = input_dict['DP_center']
 
@@ -144,6 +194,9 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
 
 
 def binning_G(binning,DP):
+    """
+    Binning strategy of a 2D diffraction pattern implemented by Giovanni Baraldi
+    """
 
     if binning % 2 != 0: # no binning
         sys.error(f'Please select an EVEN integer value for the binning parameters. Selected value: {binning}')
@@ -192,6 +245,9 @@ def binning_G(binning,DP):
 
 
 def binning_G_parallel(DPs,binning, processes):
+    """
+    Calls binning function in parallel for certain number of processes
+    """
 
     # def call_binning_parallel(DP):
     #     return binning_G(DP,binning) # binning strategy by G. Baraldi
@@ -219,6 +275,9 @@ def binning_G_parallel(DPs,binning, processes):
 
 
 def get_DP_center_miqueles(dbeam, project):
+    """
+    Approach by Eduardo Miqueles to get center of the diffraction pattern
+    """
     aDP = pi540D._worker_annotation_image ( np.clip( dbeam, 0, 100) )
     aDP = ndimage.gaussian_filter( aDP, sigma=0.95, order=0 )
     aDP = aDP/aDP.max()
@@ -236,6 +295,18 @@ def get_DP_center_miqueles(dbeam, project):
 
 
 def get_DP_center(difpad, refine=True, fit=False, radius=20):
+    """
+    Get central position of the difpad
+
+    Args:
+        difpad : diffraction pattern data
+        refine (bool): Choose whether to refine the initial central position estimate. Defaults to True.
+        fit (bool, optional): if true, refines using a lorentzian surface fit; else, gets the maximum. Defaults to False.
+        radius (int, optional): size of the squared region around center used to refine the center estimate. Defaults to 20.
+
+    Returns:
+        center : diffraction pattern center
+    """    
 
     def fit_2d_lorentzian(dataset, fit_guess=(1, 1, 1, 1, 1, 1)):
         """ Fit of 2d lorentzian to a matrix
@@ -348,17 +419,6 @@ def get_DP_center(difpad, refine=True, fit=False, radius=20):
 
         return center
 
-    """ Get central position of the difpad
-
-    Args:
-        difpad : diffraction pattern data
-        refine (bool): Choose whether to refine the initial central position estimate. Defaults to True.
-        fit (bool, optional): if true, refines using a lorentzian surface fit; else, gets the maximum. Defaults to False.
-        radius (int, optional): size of the squared region around center used to refine the center estimate. Defaults to 20.
-
-    Returns:
-        center : diffraction pattern center
-    """    
     from scipy.ndimage import center_of_mass
     center_estimate = center_of_mass(difpad)
     if refine:

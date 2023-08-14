@@ -189,7 +189,8 @@ def alignment_vertical_mass_fluctuation(misaligned_volume, use_phase_gradient = 
 
 
 def vertical_phase_gradient(frame):
-    """ Calculate the vertical phase gradient of a complex image using the analytical formula.
+    """
+    Calculate the vertical phase gradient of a complex image using the analytical formula.
     See equation (6) in https://doi.org/10.1364/OE.27.036637 
     """
 
@@ -199,7 +200,8 @@ def vertical_phase_gradient(frame):
     return phase_gradient_y
 
 def vertical_mass_distribution(frame):
-    """ Calculate vertical mass distrbution of image 
+    """
+    Calculate vertical mass distrbution of image 
     """
     return np.sum(frame,axis=1)
     

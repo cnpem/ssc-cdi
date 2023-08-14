@@ -1,20 +1,22 @@
 import numpy as np
+from tqdm import tqdm
 
 """ Relative imports """
 from ..misc import wavelength_from_energy
 
 def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
-    """_summary_
+    """
+    Calculate fresnel number in magnification scenario. 
 
     Args:
         energy: energy in keV
         pixel_size: object pixel size
         sample_detector_distance: sample to detector distance in meters
-        magnification (int, optional): magnification of the optical system. Defaults to 1.
+        magnification (int, optional): magnification of the optical system. If 1, no magnification is used. Defaults to 1.
         source_sample_distance (int, optional): source to sample distance in meters. Defaults to 0.
 
     Returns:
-        _type_: _description_
+        (float): Fresnel number 
     """
 
     wavelength = wavelength_from_energy(energy) # meters
@@ -23,7 +25,8 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
     return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)
 
 def Propagate(img, fresnel_number): # Probe propagation
-        """ Frunction for free space propagation of the probe in the Fraunhoffer regime
+        """
+        Function for free space propagation of the probe in the Fraunhoffer regime
 
         See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_.
         Args:
@@ -49,12 +52,11 @@ def create_propagation_video(path_to_probefile,
                              gif=False,
                              jupyter=False):
     
-    """ Propagates a probe using the fresnel number to multiple planes and create an animation of the propagation
+    """ 
+    Propagates a probe using the fresnel number to multiple planes and create an animation of the propagation
     #TODO: change this function to create propagation as a function of distance
     """
 
-
-    from tqdm import tqdm
     probe = np.load(path_to_probefile)[0] # load probe
     
     # delta = -1e-4
