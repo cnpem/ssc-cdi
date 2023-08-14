@@ -11,6 +11,18 @@ from scipy.ndimage import center_of_mass
 
 ### Cross Correlation ### 
 def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, return_common_valid_region=True, remove_null_borders = True):
+    """_summary_
+
+    Args:
+        data (_type_): _description_
+        pyramid_downsampling (int, optional): _description_. Defaults to 2.
+        fft_upsampling (int, optional): _description_. Defaults to 10.
+        return_common_valid_region (bool, optional): _description_. Defaults to True.
+        remove_null_borders (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        _type_: _description_
+    """
     
     _, total_shift = get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling)
 
