@@ -11,17 +11,17 @@ from scipy.ndimage import center_of_mass
 
 ### Cross Correlation ### 
 def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, return_common_valid_region=True, remove_null_borders = True):
-    """_summary_
+    """ Performs alignment of the variance fild of a block images by registering neighboor slices. See https://doi.org/10.1364/OE.27.036637
 
     Args:
-        data (_type_): _description_
-        pyramid_downsampling (int, optional): _description_. Defaults to 2.
-        fft_upsampling (int, optional): _description_. Defaults to 10.
-        return_common_valid_region (bool, optional): _description_. Defaults to True.
-        remove_null_borders (bool, optional): _description_. Defaults to True.
+        data (numpy array): block of images to be aligned
+        pyramid_downsampling (int, optional): not used for now. Downsamples the image to performe alignment in a lower resolution version of the image. Defaults to 2.
+        fft_upsampling (int, optional): upsampling factor to improve sub-pixel imaging registration. See https://doi.org/10.1364/OL.33.000156. Defaults to 10.
+        return_common_valid_region (bool, optional): If true, will return a zeroed border corresponding to the largest shift among all frames in each direction. Defaults to True.
+        remove_null_borders (bool, optional): Remove the null borders. Defaults to True.
 
     Returns:
-        _type_: _description_
+        aligned_volume (numpy array): aligned volume
     """
     
     _, total_shift = get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling)
@@ -44,6 +44,17 @@ def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, re
     return aligned_volume
     
 def get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling):
+    """ Calculates local variance field of images (in a block) and finds the shift between them.
+
+    Args:
+        data (numpy array): block of images to be aligned 
+        fft_upsampling (int): upsampling factor to improve sub-pixel imaging registration. See https://doi.org/10.1364/OL.33.000156. 
+        pyramid_downsampling (int, optional): not used for now. Downsamples the image to performe alignment in a lower resolution version of the image. Defaults to 2.
+
+    Returns:
+        neighbor_shifts: array of values containing the shift between neighbor images
+        total_shifts: shift of each image with respect to the first image
+    """
     
     #TODO: 
     # if pyramid_downsampling > 1:
@@ -80,12 +91,17 @@ def pyramid_downsample_volume(data,downsampling):
     
 
 def get_pyramid_complex_img(complex_img,downsampling = 2):
+    """ Calculates and return the complex image pyramid for a certain downsampling factor
+    """
+
     frame_r = tuple(pyramid_gaussian(np.real(complex_img), downscale=downsampling))[downsampling]
     frame_i = tuple(pyramid_gaussian(np.imag(complex_img), downscale=downsampling))[downsampling]
     frame = frame_r + 1j*frame_i
     return frame
 
 def shift_volume_slices(data,total_shift):
+    """ Shifts each image in the block "data" according to the values in total_shift
+    """
 
     aligned_volume = np.zeros_like(data)
     aligned_volume[0] = data[0]
@@ -97,6 +113,9 @@ def shift_volume_slices(data,total_shift):
     return aligned_volume
 
 def calculate_local_variance_field(matrix):
+    """ Calculate the loocal variance field of a complex matrix
+    
+    """
     
     gradient = np.gradient(matrix)
     del_x = gradient[1]
@@ -108,7 +127,19 @@ def calculate_local_variance_field(matrix):
 
 ### VMF ### 
 
-def alignment_vertical_mass_fluctuation(cropped_aligned_volume, use_phase_gradient = False, return_common_valid_region=True, remove_null_borders = True, plot = True):
+def alignment_vertical_mass_fluctuation(misaligned_volume, use_phase_gradient = False, return_common_valid_region=True, remove_null_borders = True, plot = True):
+    """ Performs the alignment via "Vertical Mass Fluctuation" (as presented in https://doi.org/10.1364/OE.27.036637) to refine alignment of images in the vertical direction
+
+    Args:
+        misaligned_volume (numpy array): a volume of images, usually already pre-aligned by another method
+        use_phase_gradient (bool, optional): whether to use the phase-gradient for alignment instead of the original images. Defaults to False.
+        return_common_valid_region (bool, optional): _description_. Defaults to True.
+        return_common_valid_region (bool, optional): If true, will return a zeroed border corresponding to the largest shift among all frames in each direction. Defaults to True.
+        remove_null_borders (bool, optional): Remove the null borders. Defaults to True.
+
+    Returns:
+        aligned_volume (numpy array) : aligned volume
+    """
     
     if plot:
         plt.figure()
@@ -116,8 +147,8 @@ def alignment_vertical_mass_fluctuation(cropped_aligned_volume, use_phase_gradie
 
     curves = []
     print("Calculating 1D mass distribution...")
-    for i in range(cropped_aligned_volume.shape[0]):
-        frame = cropped_aligned_volume[i]
+    for i in range(misaligned_volume.shape[0]):
+        frame = misaligned_volume[i]
         
         if use_phase_gradient:
             curve = vertical_phase_gradient(frame)
@@ -140,30 +171,36 @@ def alignment_vertical_mass_fluctuation(cropped_aligned_volume, use_phase_gradie
             plt.plot(aligned_curves[i])
 
     print('Aligning volume...')
-    aligned_volume2 = np.zeros_like(cropped_aligned_volume)
-    aligned_volume2[0] = cropped_aligned_volume[0]
-    for i in range(0,cropped_aligned_volume.shape[0]-1):
-        aligned_volume2[i+1] = scipy.ndimage.shift(cropped_aligned_volume[i+1],[total_shift[i],0])
+    aligned_volume = np.zeros_like(misaligned_volume)
+    aligned_volume[0] = misaligned_volume[0]
+    for i in range(0,misaligned_volume.shape[0]-1):
+        aligned_volume[i+1] = scipy.ndimage.shift(misaligned_volume[i+1],[total_shift[i],0])
 
     if return_common_valid_region:
-        masked_volume = np.where(aligned_volume2==0,0,1)
+        masked_volume = np.where(aligned_volume==0,0,1)
         product = np.prod(np.abs(masked_volume),axis=0)
         where_null = np.where(np.abs(product) == 0,0,1)
-        aligned_volume2[:] = np.where(where_null==1,aligned_volume2,0) 
+        aligned_volume[:] = np.where(where_null==1,aligned_volume,0) 
 
     if remove_null_borders:
-        aligned_volume2 = remove_black_borders(aligned_volume2)    
+        aligned_volume = remove_black_borders(aligned_volume)    
 
-    return aligned_volume2
+    return aligned_volume
 
 
 def vertical_phase_gradient(frame):
+    """ Calculate the vertical phase gradient of a complex image using the analytical formula.
+    See equation (6) in https://doi.org/10.1364/OE.27.036637 
+    """
+
     gradient = np.gradient(frame)
     phase_gradient_y = np.imag( frame.conj() * gradient[0] / np.abs(frame)**2  )
     phase_gradient_y = np.sum(phase_gradient_y,axis=1)
     return phase_gradient_y
 
 def vertical_mass_distribution(frame):
+    """ Calculate vertical mass distrbution of image 
+    """
     return np.sum(frame,axis=1)
     
 
@@ -191,6 +228,9 @@ def shift_2d_replace(data, dx, dy, constant=False):
 
 
 def get_gaussian_pyramid(frame,layers=2):
+    """
+    Get the gaussian pyramid of a complex image for a certain number of layers
+    """
 
     img_real = np.real(frame)
     img_imag = np.imag(frame)
@@ -206,6 +246,9 @@ def get_gaussian_pyramid(frame,layers=2):
 
 
 def remove_black_borders(volume):
+    """
+    Remove the null borders of a volume of images 
+    """
 
     not_null = np.argwhere(np.abs(volume[0]))
 
@@ -219,16 +262,18 @@ def remove_black_borders(volume):
     return volume
 
 def calculate_curve_ctr_of_mass(curve,positions):
+    """
+    Calculate the center of mass of a 2D curve
+    """
     ctr_mass = np.dot(curve,positions)/np.sum(curve)
     return ctr_mass
 
-def vertical_phase_gradient(frame):
-    gradient = np.gradient(frame)
-    phase_gradient_y = np.imag( frame.conj() * gradient[0] / np.abs(frame)**2  )
-    phase_gradient_y = np.sum(phase_gradient_y,axis=1)
-    return phase_gradient_y
 
 def overlap_curves(data):
+    """
+    Overlap 2D curves using subpixel image registration methods.
+    See https://doi.org/10.1364/OL.33.000156
+    """
 
     neighbor_shifts = np.empty((data.shape[0],1))
 

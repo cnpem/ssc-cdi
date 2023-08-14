@@ -4,6 +4,19 @@ import numpy as np
 from ..misc import wavelength_from_energy
 
 def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
+    """_summary_
+
+    Args:
+        energy: energy in keV
+        pixel_size: object pixel size
+        sample_detector_distance: sample to detector distance in meters
+        magnification (int, optional): magnification of the optical system. Defaults to 1.
+        source_sample_distance (int, optional): source to sample distance in meters. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
+
     wavelength = wavelength_from_energy(energy) # meters
     if magnification != 1:
         magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
@@ -35,6 +48,12 @@ def create_propagation_video(path_to_probefile,
                              mp4=False, 
                              gif=False,
                              jupyter=False):
+    
+    """ Propagates a probe using the fresnel number to multiple planes and create an animation of the propagation
+    #TODO: change this function to create propagation as a function of distance
+    """
+
+
     from tqdm import tqdm
     probe = np.load(path_to_probefile)[0] # load probe
     
@@ -44,9 +63,9 @@ def create_propagation_video(path_to_probefile,
     f1 = np.linspace(starting_f_value,ending_f_value,number_of_frames)
     
     # Create list of propagated probes
-    b =  [np.sqrt(np.sum([abs(Prop(a,f1[0]))**2 for a in probe],0))]
+    b =  [np.sqrt(np.sum([abs(Propagate(a,f1[0]))**2 for a in probe],0))]
     for i in range(1,number_of_frames):
-            b += [np.sqrt(np.sum([abs(Prop(a,f1[i]))**2 for a in probe],0))]
+            b += [np.sqrt(np.sum([abs(Propagate(a,f1[i]))**2 for a in probe],0))]
     
 
     image_list = []
