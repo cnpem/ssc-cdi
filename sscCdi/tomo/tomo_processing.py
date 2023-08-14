@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 import sscRaft, sscRadon
 
 from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo, open_or_create_h5_dataset
-from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel, unwrap_in_sequence
+from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel
 
 def define_paths(dic):
     """ Defines all the path required for the remaining parts of the code; adds them to the dicitionary and creates necessary folders

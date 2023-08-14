@@ -5,7 +5,27 @@ from functools import partial
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from tqdm import tqdm
 
-def plane_fit_inside_mask( img, mask, epsilon = 1e-3, regularization=True ):
+def plane_fit_inside_mask(img, mask, epsilon = 1e-3):
+    """
+    Fits a plane to the 3D points inside a binary mask region in an image.
+
+    This function computes the parameters of a plane that best fits the 3D points
+    inside a binary mask region in an image. The mask defines the region of interest,
+    and the image provides the values of each point within the mask.
+
+    Args:
+        img (numpy.ndarray): The input image containing intensity values.
+        mask (numpy.ndarray): A binary mask defining the region of interest.
+                             Points with non-zero values are considered for plane fitting.
+        epsilon (float, optional): Regularization parameter to stabilize matrix inversion.
+                                  Set to zero for no regularization. Default is 1e-3.
+
+    Returns:
+        tuple: A tuple containing the parameters of the fitted plane (a, b, c),
+               where 'a', 'b', and 'c' represent the coefficients of the plane's equation:
+               ax + by + c = z.
+    """
+
     xy = np.argwhere( mask > 0)
     n = len(xy)
     y = xy[:,0].reshape([n,1])
@@ -28,7 +48,7 @@ def plane_fit_inside_mask( img, mask, epsilon = 1e-3, regularization=True ):
     vec[2,0] = (F).sum()
     eye = np.eye(mat.shape[0])
 
-    if regularization: # with regularization
+    if epsilon > 0: # with regularization
         abc = np.dot( np.linalg.inv(mat + epsilon * eye), vec).flatten() 
     else: # without regularization
         abc = np.dot( np.linalg.inv(mat), vec).flatten()
@@ -39,7 +59,21 @@ def plane_fit_inside_mask( img, mask, epsilon = 1e-3, regularization=True ):
    
     return a,b,c
 
-def remove_phase_gradient(img, mask,loop_count_limit=5,epsilon = 1e-3, regularization=True):
+def remove_phase_gradient(img, mask, loop_count_limit=5, epsilon = 1e-3):
+    """ Finds a best fit plane inside a masked region of image and subtracts. 
+    This process is repeated "loop_count_limit" times or until angular coefficients a,b are smaller than 1e-8
+
+    Args:
+        img (numpy.ndarray): 2D image to remove a gradient
+        mask (numpy.ndarray): binary mask to indicate region of interest to extract. 
+                            Points with non-zero values are considered for plane fitting.
+        loop_count_limit (int, optional): Number of times to extract plane fit. Defaults to 5.
+        epsilon (float, optional): Regularization parameter to stabilize matrix inversion.
+                                  Set to zero for no regularization. Default is 1e-3.
+
+    Returns:
+        img (numpy.ndarray): image with subtracted phase gradient
+    """
 
     row   = img.shape[0]
     col   = img.shape[1]
@@ -48,17 +82,22 @@ def remove_phase_gradient(img, mask,loop_count_limit=5,epsilon = 1e-3, regulariz
     a = b = c = 1e9
     counter = 0
     while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter < loop_count_limit:
-        a,b,c = plane_fit_inside_mask( img, mask, epsilon, regularization )
+        a,b,c = plane_fit_inside_mask( img, mask, epsilon )
         img = img - ( a*XX + b*YY + c ) # subtract plane from whole image
         counter += 1
     
     return img
 
-def unwrap_in_parallel(sinogram):
+def unwrap_in_parallel(sinogram,processes=0):
+    """
+    Unwraps phase of sinogram slices in parallel using a certain number of processes
+    """
 
     n_frames = sinogram.shape[0]
 
-    processes = min(os.cpu_count(),32)
+    if processes == 0:
+        processes = min(os.cpu_count(),32)
+
     print(f'Using {processes} parallel processes')
     with ProcessPoolExecutor(max_workers=processes) as executor:
         unwrapped_sinogram = np.empty_like(sinogram)
@@ -68,22 +107,6 @@ def unwrap_in_parallel(sinogram):
             unwrapped_sinogram[counter,:,:] = result
 
     return unwrapped_sinogram
-
-def unwrap_in_sequence(sinogram, remove_gradient):
-    if remove_gradient == []:
-        mask = None
-    else:
-        mask = np.zeros(sinogram[0].shape)
-        mask[remove_gradient[0]:remove_gradient[1],remove_gradient[2]:remove_gradient[3]] = 1
-    
-    unwrapped_sinogram = np.empty_like(sinogram)
-    for i in range(sinogram.shape[0]):
-        if i%25==0: print(f"Unwrapping frame {i}")
-        unwrapped_sinogram[i] = unwrap_phase(sinogram[i],mask)
-
-    return unwrapped_sinogram
-
-
 
 
 
