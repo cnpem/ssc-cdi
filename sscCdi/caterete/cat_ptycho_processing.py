@@ -17,7 +17,8 @@ from ..processing.restoration import binning_G_parallel
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
 def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial"):
-    """ Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
+    """ 
+    Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
     
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
@@ -131,7 +132,8 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
 
 def define_paths(input_dict):
-    """ Defines paths of interest for the ptychographic reconstruction and adds them to dictionary variable. Creates folders of interest and instantiates hdf5 output file
+    """ 
+    Defines paths of interest for the ptychographic reconstruction and adds them to dictionary variable. Creates folders of interest and instantiates hdf5 output file
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json
@@ -189,7 +191,8 @@ def define_paths(input_dict):
 
 
 def get_datetime(input_dict):
-    """ Get custom str with acquisition name and current datetime to use as filename
+    """ 
+    Get custom str with acquisition name and current datetime to use as filename
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
@@ -205,7 +208,8 @@ def get_datetime(input_dict):
     return datetime 
 
 def create_output_directories(input_dict):
-    """ Create output directory and temporary folders in it
+    """ 
+    Create output directory and temporary folders in it
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
@@ -218,23 +222,16 @@ def create_output_directories(input_dict):
 
 
 
-def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
-    """_summary_
-
-    Args:
-        offset_topleft (_type_): _description_
-        dx (_type_): _description_
-        probe_positions (_type_): _description_
-
-    Returns:
-        probe_positions (array): _descr
+def convert_probe_positions_meters_to_pixels(offset_topleft, pixel_size, probe_positions):
+    """
+    Subtratcs minimum of position in each direction, converts from microns to pixels and then apply desired offset 
     """
 
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
 
-    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx  # convert from microns to pixels
-    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx 
+    probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / pixel_size  # convert from microns to pixels
+    probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / pixel_size 
     
     probe_positions[:, 0] += offset_topleft # shift probe positions to account for the padding
     probe_positions[:, 1] += offset_topleft 
@@ -243,7 +240,8 @@ def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions
 
 
 def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinogram_shape):
-    """ Read raw probe positions file (in microns) and convert them to pixels. Also read the rotation angle of the frame for tomography measurements.
+    """ 
+    Read raw probe positions file (in microns) and convert them to pixels. Also read the rotation angle of the frame for tomography measurements.
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
@@ -305,7 +303,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 ##### ##### ##### #####                 PROCESSING               ##### ##### ##### ##### ##### 
 
 def match_cropped_frame_dimension(sinogram,frame):
-    """ Match the new incoming frame to the same squared shape of the sinogram. Sinogram should have shape (M,N,N)!
+    """ 
+    Match the new incoming frame to the same squared shape of the sinogram. Sinogram should have shape (M,N,N)!
 
     Args:
         sinogram : sinogram of shape (M,N,N)
@@ -336,7 +335,8 @@ def match_cropped_frame_dimension(sinogram,frame):
 
 
 def make_1st_frame_squared(frame):
-    """ Crops frame of dimension (A,B) to (A,A) or (B,B), depending if A or B is smaller
+    """ 
+    Crops frame of dimension (A,B) to (A,A) or (B,B), depending if A or B is smaller
 
     Args:
         frame: 2D frame
@@ -351,7 +351,8 @@ def make_1st_frame_squared(frame):
 
 
 def crop_sinogram(input_dict,sinogram ,probe_positions):
-    """ Crop sinogram of 2D images manually or via automatic methods
+    """ 
+    Crop sinogram of 2D images manually or via automatic methods
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
@@ -397,11 +398,10 @@ def crop_sinogram(input_dict,sinogram ,probe_positions):
 
 
 def autocrop_using_scan_positions(image,input_dict,probe_positions):
-    """ Automatic crop of the field of view using the probe positions during scan
+    """ 
+    Automatic crop of the field of view using the probe positions during scan
     """
-
     probe_positions = 1e-6 * probe_positions / input_dict['object_pixel']     #scanning positions @ image domain
-
     n         = image.shape[0]
     x         = (n//2 - probe_positions [:,1]).astype(int)
     y         = (n//2 - probe_positions [:,0]).astype(int)
@@ -412,12 +412,12 @@ def autocrop_using_scan_positions(image,input_dict,probe_positions):
     ymax      = y.max() + pinholesize//2
     new = image[ ymin:ymax, xmin:xmax] 
     new = new + abs(new.min())
-
     return new
 
 
 def autocrop_miqueles_operatorT(image):
-    """ Approach to automatic cropping field of view by Eduardo Miqueles
+    """ 
+    Approach to automatic cropping field of view by Eduardo Miqueles
     """
 
     def _operator_T(u):
@@ -456,7 +456,8 @@ def autocrop_miqueles_operatorT(image):
 
 
 def auto_crop_noise_borders(complex_array):
-    """ Crop noisy borders of the reconstructed object using a local entropy map of the phase
+    """ 
+    Crop noisy borders of the reconstructed object using a local entropy map of the phase
 
     Args:
         complex_array : reconstructed object
@@ -494,22 +495,23 @@ def auto_crop_noise_borders(complex_array):
 
 
 def calculate_FRC(img, input_dict):
-    """ Calculate Fourier Ring Correlation (FRC) via sscResolution package. Saves FRC result to the output hdf5 file
+    """ 
+    Calculate Fourier Ring Correlation (FRC) via sscResolution package. Saves FRC result to the output hdf5 file
 
     img (array): image of interest for calculating the FRC
-    input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
     
     The input_dict entrance input_dict["FRC"] is the one of interest for this function. This is a list, where each item does one specific aspect of the FRC:
-    input_dict["FRC][0]: Selects which frame of the sinogram to calculate the FRC
+        input_dict["FRC][0]: Selects which frame of the sinogram to calculate the FRC
 
     The matrix inputted for the FRC must be squared. Therefore, in case it is not, it will use the following parameters to select a start pixel (start, start) and return a matrix with a certain side
-    input_dict["FRC][1]: start:(pixel_row,pixel_column) values to crop the image to squared format. starting positions at the top-left corner
-    input_dict["FRC][2]: size: size of the square side
+        input_dict["FRC][1]: start:(pixel_row,pixel_column) values to crop the image to squared format. starting positions at the top-left corner
+        input_dict["FRC][2]: size: size of the square side
 
     These are parameters for filtering the image so that it is appropriate for FRC calculation
-    input_dict["FRC][3]: padding: padding on the original image (not necessary, can be = 0);
-    input_dict["FRC][4]: sharpness: sharpness of the sigmoidal window. The higher the value, the sharper the edge;
-    input_dict["FRC][5]: radius: radius of the window from the center of the image;
+        input_dict["FRC][3]: padding: padding on the original image (not necessary, can be = 0);
+        input_dict["FRC][4]: sharpness: sharpness of the sigmoidal window. The higher the value, the sharper the edge;
+        input_dict["FRC][5]: radius: radius of the window from the center of the image;
     """
 
 
@@ -534,12 +536,12 @@ def calculate_FRC(img, input_dict):
     add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
-def save_input_dictionary(input_dict):
-    import os
+def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"):
+    """
+    Saves input_dict in a predetermied folder_path as a json file
+    """
+
     import getpass 
-    
-    
-    folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"
 
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)

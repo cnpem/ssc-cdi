@@ -19,7 +19,8 @@ from ..misc import read_hdf5, list_files_in_folder, select_specific_angles
 from ..processing.restoration import restore_IO_SharedArray
 
 def Geometry(distance,susp,fill):
-    """ Get sscPimega detector geometry for certain distance and corresponding dictionary of input params
+    """ 
+    Get sscPimega detector geometry for certain distance and corresponding dictionary of input params
 
     Args:
         distance (_type_): _description_
@@ -58,7 +59,8 @@ def flatfield_forward_restoration(input_dict: dict):
     return flat_forward
 
 def restoration_ptycho_CAT(input_dict):
-    """ Restore diffraction patterns and saves them in temporary folder
+    """ 
+    Restore diffraction patterns from CAT beamline using CUDA restoration and saves them in temporary folder
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json
@@ -134,11 +136,13 @@ def restoration_ptycho_CAT(input_dict):
         else:
             dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
         
-        dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      # np.zeros([3072, 3072])
+        dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      
+
     if os.path.isfile(input_dict["empty"]):
         dic['empty'] = read_hdf5(input_dict["empty"])[()][0, 0, :, :] 
     else:
         dic['empty'] = np.zeros_like(dic['flat'])
+
     dic['daxpy']    = [0,np.zeros([3072,3072])] 
     dic['geometry'] = geometry
 
@@ -157,9 +161,27 @@ def restoration_ptycho_CAT(input_dict):
 
 
 def restoration_CAT(input_dict,method = 'IO'):
-    
-    
-    """ Get detector geometry from distance """
+    """
+    Function to perform restoration either via CUDA or IO-SharedArray approaches and saves diffraction patterns
+
+    Args:
+        method: IO or CUDA to select restoration method
+        input_dict['data_path']: list of absolute paths to HDF5 diffractiom data patterns
+        input_dict['save_path']: path to output folder where restored diffraction pattern will be stored
+        input_dict["detector_distance"]: sample-detector distance in meters 
+        input_dict["suspect_border_pixels"]: number of pixels to ignore at the chip's border
+        input_dict['fill_blanks']: fill blank lines that appear from restoration via interpolation 
+        input_dict['detector']: detector model: 540D or 135D
+        input_dict['DP_center']: [row,column] coordinates for the DP center
+        input_dict['detector_ROI_radius']: radius
+        input_dict['using_direct_beam']: if True, will convert DP center coordinates to restored coordinates
+        input_dict['GPUs']: number of GPUs for parallel CUDA restoration
+        input_dict['flatfield']: path to flatfield HDF5 file
+        input_dict['mask']: path to bad pixel mask HDF5 file
+        input_dict['empty_path']: path to empty mask HDF5 file
+        input_dict['subtraction_path']: path to background mask HDF5 file
+    """
+
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
 
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
