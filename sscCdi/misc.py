@@ -347,8 +347,6 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
         data: metadata to be saved
         mode (str, optional): h5py.File option for selecting interaction mode. Defaults to "a".
 
-    Returns:
-        _type_: _description_
     """
     hdf5_output = h5py.File(path, mode)
     hdf5_output[group].create_dataset(name,data=data)
@@ -546,8 +544,8 @@ def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
             ax11 = ax1.imshow(np.abs(volume[:,:,frame_number]),cmap=cmap1)
             ax22 = ax2.imshow(np.angle(volume[:,:frame_number]),cmap=cmap2)
             
-        ax1.set_title(f'Magnitude')
-        ax2.set_title(f'Phase') 
+        ax11.set_title(f'Magnitude')
+        ax22.set_title(f'Phase') 
         figure.canvas.draw_idle()
 
         if aspect_ratio != '':
@@ -595,3 +593,25 @@ def plot_volume_histogram(volume,bins=100):
     ax.hist(volume.flatten(),bins=bins)
     ax.grid()
     ax.set_title(f'Max={maximum:.2f}   Min={minimum:.2f}   Mean={mean:.2f}   StdDev={stddev:.2f}')
+
+
+def convert_complex_to_RGB(ComplexImg,bias=0.01):
+        
+    def MakeRGB(Amps,Phases,bias=0): 	# Make RGB image from amplitude and phase
+        from matplotlib.colors import hsv_to_rgb
+        """ Both amplitude (value) and phase (hue) should be adjusted to range [0,1] """ 
+        HSV = np.zeros((Amps.shape[0],Amps.shape[1],3),dtype=np.float32)
+        normalizer = (1.0-bias)/Amps.max()
+        HSV[:,:,0] = Phases[:,:]
+        HSV[:,:,1] = 1
+        HSV[:,:,2] = Amps[:,:]*normalizer + bias
+        return hsv_to_rgb(HSV)
+
+    def SplitComplex(ComplexImg):
+        Phases = np.angle(ComplexImg)	# Phases in range [-pi,pi]
+        Phases = Phases*0.5/np.pi + 0.5
+        Amps = np.absolute(ComplexImg)
+        return Amps,Phases
+
+    Amps,Phases = SplitComplex(ComplexImg)
+    return MakeRGB(Amps,Phases,bias)

@@ -164,6 +164,8 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
     
     cy, cx = input_dict['DP_center']
 
+    DP = np.squeeze(DP)
+
     flat[np.isnan(flat)] = -1
     flat[flat == 0] = -1 # null points at flatfield are indication of bad points
     DP = DP * np.squeeze(flat) # apply flatfield

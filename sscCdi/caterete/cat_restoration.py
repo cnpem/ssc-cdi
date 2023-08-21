@@ -277,7 +277,8 @@ def restoration_CAT(input_dict,method = 'IO'):
         DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="IO")
 
     print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
-    print(f"Dataset size: {sys.getsizeof(DPs)/(1e6):.2f} MBs = {sys.getsizeof(DPs)/(1e9):.2f} GBs")
+    size = DPs.size*DPs.itemsize
+    print(f"Dataset size: {size/1e6:.2f} MBs = {size/1e9:.2f} GBs")
 
     if input_dict["save_path"] != '':
         if not os.path.exists(input_dict['save_path']):
