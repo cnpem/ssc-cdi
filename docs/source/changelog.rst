@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
 
 
+[0.6.26] - 2023-08-21
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for correcting DP dimension when performing restoration via IO mode
+
 [0.6.25] - 2023-08-08
 --------------------
 
