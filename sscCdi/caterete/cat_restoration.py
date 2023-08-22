@@ -274,7 +274,7 @@ def restoration_CAT(input_dict,method = 'IO'):
 
         """ Restore data """
         os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
-        DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="IO")
+        DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="h5py")
 
     print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
     size = DPs.size*DPs.itemsize
