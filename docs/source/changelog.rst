@@ -12,6 +12,12 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.27] - 2023-08-22
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for correcting file reading when performing restoration via IO mode
 
 [0.6.26] - 2023-08-21
 --------------------
