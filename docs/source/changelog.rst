@@ -12,6 +12,13 @@ Types of changes:
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
 
+[0.6.28] - 2023-08-22
+--------------------
+
+Fixed
+~~~~~
+- Fixed bug for missing save folder path when performing restoration via IO mode
+
 [0.6.27] - 2023-08-22
 --------------------
 
