@@ -334,10 +334,10 @@ def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,eps
     modes,m,n = probe.shape
     k,l = object_shape
 
-    probe_sum  = np.zeros((k,l),dtype=complex)
-    wave_sum   = np.zeros((k,l),dtype=complex)
-    probe_intensity  = np.abs(probe)**2
-    probe_conj = np.conj(probe)
+    probe_sum  = cp.zeros((k,l),dtype=complex)
+    wave_sum   = cp.zeros((k,l),dtype=complex)
+    probe_intensity  = cp.abs(probe)**2
+    probe_conj = cp.conj(probe)
 
     for mode in range(modes):
         for index, (posx, posy) in enumerate((positions)):
@@ -352,11 +352,11 @@ def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon
     
     l,m,n = probe_shape
 
-    object_sum = np.zeros((m,n),dtype=complex)
-    wave_sum = np.zeros((l,m,n),dtype=complex)
+    object_sum = cp.zeros((m,n),dtype=complex)
+    wave_sum = cp.zeros((l,m,n),dtype=complex)
     
-    obj_intensity = np.abs(obj)**2
-    obj_conj = np.conj(obj)
+    obj_intensity = cp.abs(obj)**2
+    obj_conj = cp.conj(obj)
     
     for index, (posx, posy) in enumerate(positions):
         object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
@@ -913,8 +913,7 @@ def update_exit_wave_cupy(wavefront,measurement,experiment_params,epsilon=0.01,p
 
 """ MAIN LOOPS """
 
-def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
-    print('Starting RAAR...')
+def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
     t0 = time.perf_counter()
 
     iterations = inputs['iterations']
@@ -959,20 +958,43 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs):
     
     return obj, probe, error, time.perf_counter()-t0
 
-def RAAR_loop2(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model):
+
+
+def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
     t0 = time.perf_counter()
+    
+    iterations = inputs['iterations']
+    beta       = inputs['beta']
+    epsilon    = inputs['epsilon']
+    dx         = inputs['pixel_size']
+    wavelength = inputs['wavelength']
+    distance   = inputs['distance']
+    n_of_modes = inputs["n_of_modes"]
 
-    beta, epsilon = RAAR_params
-    dx, wavelength,distance = experiment_params 
+    # Numpy to Cupy
+    diffraction_patterns = cp.array(diffraction_patterns)
+    positions = cp.array(positions)
+    obj = cp.array(obj)
+    probe = cp.array(probe)
 
+    if probe_support is None:
+        probe_support = cp.ones_like(probe)
+    else:
+        probe_support = cp.array(probe_support)
+
+    obj_matrix = cp.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
+    obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
+    
     shapey,shapex = probe.shape
-    wavefronts = np.zeros((len(positions),probe.shape[0],probe.shape[1]),dtype=complex)
-
-    for index, pos in enumerate((positions)):
-        posy, posx = pos[1], pos[0]
-        obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
-        wavefronts[index] = probe*obj_box
-
+    wavefronts = cp.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
+    
+    probe_modes = cp.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
+    probe_modes[:] = probe
+    
+    for index, (posx, posy) in enumerate(positions):
+        obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
+        wavefronts[index] = probe_modes*obj_box
+        
     error = []
     for iteration in range(0,iterations):
         """
@@ -981,51 +1003,6 @@ def RAAR_loop2(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_p
         psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
-        if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
-
-        for index in range(len(positions)): 
-            pos = positions[index]
-            posy, posx = pos[1], pos[0]
-            obj_box = obj[posy:posy + shapey , posx:posx+ shapex]
-            
-            psi_after_Pr = probe*obj_box
-            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index] # R = 2*P - I
-            psi_after_projection_Fspace = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],experiment_params,epsilon=epsilon) # Projection in Fourier space
-           
-            wavefronts[index] = beta*(psi_after_projection_Fspace + wavefronts[index]) + (1-2*beta)*psi_after_Pr  # eq 1
-
-        probe, obj = projection_Rspace_RAAR(wavefronts,obj,probe,positions,epsilon) # Projection in Real space (consistency condition)
-
-        error.append(calculate_recon_error(model,obj)) # absolute error
-    return obj, probe, error, time.perf_counter()-t0
-
-def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,experiment_params, iterations,model,n_of_modes = 1):
-    t0 = time.perf_counter()
-    print("Starting multiprobe RAAR...")
-    
-    beta, epsilon = RAAR_params
-
-    obj_matrix = np.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
-    obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
-    
-    shapey,shapex = probe.shape
-    wavefronts = np.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
-    
-    if probe is None:
-        probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
-    else:
-        probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
-        probe_modes[:] = probe
-    
-    for index, (posx, posy) in enumerate(positions):
-        obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-        wavefronts[index] = probe_modes*obj_box
-
-    DP_magnitudes = np.sqrt(diffraction_patterns)
-        
-    error = []
-    for iteration in range(0,iterations):
-        if iteration%50 ==0 : print(f'\tIteration {iteration}/{iterations}')
 
         for index, (posx, posy) in enumerate(positions):
             
@@ -1034,19 +1011,25 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,RAAR_params,ex
             psi_after_Pr = probe_modes*obj_box
             
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),DP_magnitudes[index]) # Projection in Fourier space
+            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
 
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
-        
-        error.append(calculate_recon_error(model,obj_matrix[0])) #absolute error
+
+        probe_modes = probe_modes[:]*probe_support
+
+        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
+        if iteration%10==0:
+            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
+
+        error.append(iteration_error) 
         
     dt = time.perf_counter() - t0
     print(f"RAAR algorithm ended in {dt} seconds")
     
-    return obj_matrix[0], probe_modes, error, dt
+    return obj_matrix[0].get(), probe_modes.get(), error, dt
 
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
     t0 = time.perf_counter()
@@ -1093,7 +1076,6 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     error_list = []
     for i in range(iterations):
 
-        if i%10 == 0 : print(f'\tIteration {i}/{iterations}')
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
@@ -1115,7 +1097,11 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             if inputs["use_mPIE"] == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
-        error_list.append(calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()) # error in fourier space 
+        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()
+        if i%10==0:
+            print(f'\tIteration {i}/{iterations} \tError: {iteration_error:.2e}')
+
+        error_list.append(iteration_error) # error in fourier space 
 
     dt = time.perf_counter() - t0
     print(f"PIE algorithm ended in {dt} seconds")
