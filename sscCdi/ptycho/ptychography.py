@@ -149,11 +149,8 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         """ Create mask containing probe support region
 
         Args:
-            n_of_probes (_type_): number of probes
-            half_size (_type_): half the size of one dimension of the probe array
-            radius (_type_): radius of the support region
-            center_x (_type_): center coordinate of support ball in x direction
-            center_y (_type_): center coordinate of support ball in y direction
+            input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            probe_shape (_type_): 
 
         Returns:
             probesupp: mask containing probe support
@@ -350,6 +347,17 @@ def create_circular_mask(mask_shape, radius):
 
 
 def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side = 10, cross_width_x=0):
+    """ Create cross mask
+    Args:
+        mask_shape (_type_): _description_
+        cross_width_y (int, optional): _description_. Defaults to 15.
+        border (int, optional): _description_. Defaults to 3.
+        center_square_side (int, optional): _description_. Defaults to 10.
+        cross_width_x (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        _type_: _description_
+    """
     
     if cross_width_x == 0: cross_width_x = cross_width_y
     

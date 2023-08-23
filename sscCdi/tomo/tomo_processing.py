@@ -61,6 +61,11 @@ def tomo_sort(dic, object, angles):
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def remove_frames_after_sorting(dic):
+    """ Remove unwanted sinogram frames after sorting
+
+    Args:
+        dic (dict): dictionary of inputs
+    """    
 
     sorted_object = np.load(dic["ordered_object_filepath"])
     sorted_angles = np.load(dic["ordered_angles_filepath"])
@@ -116,6 +121,7 @@ def tomo_crop(dic,object):
 
     Args:
         dic (dict): dictionary of inputs  
+        object (array): sinogram to be cropped
 
     """
     start = time.time()
@@ -131,6 +137,7 @@ def tomo_unwrap(dic,object):
 
     Args:
         dic (dict): dictionary of inputs  
+        object (array): sinogram
 
     """
     start = time.time()
@@ -148,6 +155,7 @@ def tomo_equalize(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs  
+        object (array): frames to be equalized
 
     """
     start = time.time()
@@ -162,7 +170,7 @@ def tomo_equalize3D(dic):
     """ Call equalization algorithms for tomogram frames
 
     Args:
-        dic (dict): dictionary of inputs f 
+        dic (dict): dictionary of inputs
 
     """
     start = time.time()
@@ -197,10 +205,7 @@ def equalize_frame(dic,frame):
         5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
 
     Args:
-        remove_gradient (bool): select wheter to remove phase ramp over the whole image or not
-        remove_global_offset (bool): removes global offset from the image, subtracting the minimum from all pixel values
-        remove_outlier (int): integer value indicating the number of sigma. Values above/below sigma will be considered outliers and set as zero
-        remove_avg_offset (list): coordinates of squared region (top,bottom,left, right). The mean value of such region in the frame will be subtracted from all pixels.
+        dic (dict): dictionary of inputs
         frame (array): 2D image/frame to be equalized
 
     Returns:
@@ -255,6 +260,10 @@ def equalize_frame(dic,frame):
 def equalize_frames_parallel(sinogram,dic):
     """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
 
+    Args:
+        sinogram (array): sinogram to be equalized
+        dic (dict): dictionary of inputs
+
     Returns:
         equalized_sinogram: equalized sinogram
     """
@@ -291,7 +300,7 @@ def equalize_frames_parallel(sinogram,dic):
     return equalized_sinogram
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
-    """_summary_
+    """ Filters outliers in the tomogram
 
     Args:
         equalized_tomogram (array): 3D reconstructed volume from tomographic algorithm
@@ -362,6 +371,12 @@ def tomo_alignment(dic):
     return dic
 
 def preview_angle_projection(dic):
+    """ Simulates the projection of angles to regular grid
+
+    Args:
+        dic (dict): dictionary with necessary parameters
+    """    
+
     print("Simulating projection of angles to regular grid...")
     angles  = np.load(dic["ordered_angles_filepath"])
     angles = (np.pi/180.) * angles
@@ -489,6 +504,7 @@ def tomo_recon(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs
+        sinogram (array): sinogram
 
     Returns:
         reconstruction3D (array): 3D reconstructed volume via tomography
@@ -530,6 +546,17 @@ def automatic_regularization(sino, L=0.001):
     return D
 
 def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
+    """ Save or load wiggle ctr of mass
+
+    Args:
+        path (str): path to ctr of mass
+        wiggle_cmass (list, optional): . Defaults to [[],[]].
+        save (bool, optional): boolean to save or not the ctr of mass. Defaults to True.
+
+    Returns:
+        int: flag if saved or ctr of mass
+    """    
+    
     if save:
         wiggle_cmass = np.asarray(wiggle_cmass)
         np.save(path, wiggle_cmass)
@@ -540,20 +567,40 @@ def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
         return wiggle_cmas
 
 def add_plot_suffix_to_file(path):
+    """ Add plot suffix to file
+
+    Args:
+        path (str): string with the path to file
+
+    Returns:
+        str: path with plot suffix
+    """    
+
     first_part = path.split(".")[0]
     second_part = path.split(".")[-1]
     return first_part + "_PLOT." + second_part
 
 def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
+    """ Get and save downsampled sinogram
+
+    Args:
+        sinogram (array): sinogram
+        path (str): string with the path to save  downsample sinogram
+        downsampling (int, optional): Defaults to 4.
+
+    Returns:
+        donwsampled_sinogram (array): downsampled sinogram
+    """    
+
     downsampled_sinogram = sinogram[:,::downsampling,::downsampling]
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
 def tomography(dic, sinogram):
-    """
+    """ Performs tomography
     Args:
         dic (dict): dictionary of inputs
-        use_regularly_spaced_angles (bool): boolean to select if angle steps are regular or not
+        sinogram (array): sinogram
 
     Returns:
         reconstruction3D (array): tomographic volume

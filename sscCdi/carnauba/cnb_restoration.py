@@ -9,12 +9,30 @@ from sscPimega import pi135D
 from ..processing.restoration import restore_IO_SharedArray
 
 def restoration_CNB(input_dict):
+    """Calls restoration algorithm
+
+    Args:
+        input_dict (dict): dictionary of inputs
+
+    Returns:
+        diffraction_patterns: restored diffraction patterns
+    """    
+
     hdf5_path = input_dict["data_path"]
     geometry = geometry_CNB(input_dict)
     diffraction_patterns = restore_IO_SharedArray(input_dict, geometry,hdf5_path)
     return diffraction_patterns
 
 def geometry_CNB(input_dict):
+    """Get sscPimega detector geometry for certain distance and corresponding dictionary of input params
+
+    Args:
+        input_dict (dict): dictionary of inputs
+
+    Returns:
+        geometry (dict): detector geometry
+    """    
+
     project = pi135D.dictionary135D( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
     susp = input_dict["suspect_border_pixels"]
     project['s'] = [susp,susp] 
