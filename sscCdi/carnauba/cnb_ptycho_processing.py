@@ -8,6 +8,17 @@ from ..ptycho.ptychography import call_GB_ptychography, set_object_shape, set_ob
 from ..misc import add_to_hdf5_group
 
 def cnb_ptychography(input_dict,DPs):
+    """Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
+
+    Args:
+        input_dict (dict): dictionary of inputs
+        DPs (array): diffraction patterns
+
+    Returns:
+        sinogram: numpy array containing reconstructed frames
+        probes: numpy array containing reconstructed probes
+        input_dict (dict): updated input dictionary
+    """    
 
     probe_positions = read_cnb_probe_positions(input_dict,DPs.shape)
 
@@ -25,7 +36,7 @@ def define_paths(input_dict):
     """ Defines paths of interest for the ptychographic reconstruction and adds them to dictionary variable. Creates folders of interest and instantiates hdf5 output file
 
     Args:
-        input_dict (dict): 
+        input_dict (dict): dictionary of inputs
 
     Returns:
         input_dict: updated input dictionary
@@ -61,8 +72,14 @@ def define_paths(input_dict):
     return input_dict
 
 def get_datetime(name):
-    """ Get custom str with acquisition name and current datetime to use as filename
     """
+    Get custom str with acquisition name and current datetime to use as filename
+
+    Args:
+        name (str): name of current acquisition
+    Returns:
+        datetime (str): filename with current date and time
+    """    
     from datetime import datetime
     now = datetime.now()
     dt_string = now.strftime("%y%m%d-%Hh%Mm")
@@ -70,12 +87,33 @@ def get_datetime(name):
     return datetime 
 
 def read_cnb_probe_positions(input_dict,sinogram_shape):
+    """
+    Read probe positions and convert from meters to pixels
+
+    Args:
+        input_dict (dict): dictionary of inputs
+        sinogram_shape (array): 
+
+    Returns:
+        positions_pixels (array): array with probe positions in pixels
+    """    
     positions_mm = read_position_metadata(input_dict)
     input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
     positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
     return positions_pixels
 
 def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
+    """
+    Convert probe positions from meter to pixels
+
+    Args:
+        offset_topleft (_type_): _description_
+        dx (_type_): _description_
+        probe_positions (array): probe positions in meters
+
+    Returns:
+        probe_positions: probe positions in pixels
+    """    
 
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
     probe_positions[:, 1] -= np.min(probe_positions[:, 1])
@@ -89,6 +127,15 @@ def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions
     return probe_positions
 
 def read_position_metadata(input_dict):
+    """
+    Reads positions metadata
+
+    Args:
+        input_dict (dict): dictionary of inputs
+    
+    Returns:
+        positions_mm (array): positions in meters
+    """    
 
     def ParseTriggers(trigg):
         state = False
