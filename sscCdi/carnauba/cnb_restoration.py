@@ -73,6 +73,13 @@ def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
     return DPs
 
 def linearity_batch(input_dict, DPs, acq_time):
+    """Calls linearity correction in parallel for multiple diffraction patterns
+
+    Args:
+        input_dict (dict)
+        DPs (array)
+        acq_time (float)
+    """    
     
     def _build_batch_of_DPs_(params):
 
@@ -140,6 +147,9 @@ def linearity_batch(input_dict, DPs, acq_time):
     return corrected_DPs
 
 def apply_empty_acquisition(DPs, input_dict):
+    """
+        Correction for empty field
+    """    
     print('Applying empty detector correction...')
     empty_acquisition_dir = input_dict['empty_acquisition_directory']
     empty_acquisition = np.asarray(h5py.File(empty_acquisition_dir, 'r')['/entry/data/data'])[:,0,:,:]

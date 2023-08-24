@@ -659,117 +659,16 @@ def tomography(dic, sinogram):
 
     return reconstruction3D
 
-####################### EXTRA ###########################################
-
-def clean_pwcdi_dataset(input_path, inverted_frames, bad_frames,output_path):
-    sinogram = np.load(input_path)
-
-    for frame in inverted_frames:
-        sinogram[frame] = sinogram[frame,::-1,::-1]
-    for frame in bad_frames:
-        sinogram[frame] = np.zeros_like(sinogram[0])
-
-    np.save(output_path, sinogram)
-    print("Saved data at: ",output_path)
-
-def exponential_decay_at_border(x,alpha,cut=8):
-    maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
-    func = np.where(np.abs(x) < cut ,1 - np.exp(alpha*x),0)
-    func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
-    return func
-
-def pad_sinogram_frames(padding,sinogram):
-    pad_row, pad_col = padding
-    print("\tOld shape: ",sinogram.shape)
-    sinogram = np.pad(sinogram,((0,0),(pad_row,pad_row),(pad_col,pad_col)),mode='constant')#,constant_values=((1,),(1,)))
-    print("\tNew shape: ",sinogram.shape)
-    return sinogram
-
-def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding, preview, n_frame=0):
-
-    print("Loading data from ",loadpath)
-    data = np.load(loadpath)
-    original_frame = data[n_frame]
-
-    if background_region != ():
-        figure, ax = plt.subplots(1,2,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        print("Removing background from frames based on region ",background_region)
-        top, bottom, left, right = background_region
-        mask = np.zeros_like(data[0],dtype=bool) # mask indicating where to fit plane
-        mask[top:bottom,left:right] = True
-        get_best_plane_fit_inside_mask_partial = partial(get_best_plane_fit_inside_mask,mask)
-        frames = [data[i] for i in range(data.shape[0])]
-        """ Remove gradient from bkg """
-        processes = min(os.cpu_count(),32)
-        print(f'Using {processes} parallel processes')
-        with ProcessPoolExecutor(max_workers=processes) as executor:
-            results = list(tqdm(executor.map(get_best_plane_fit_inside_mask_partial,frames),total=data.shape[0]))
-            for i, result in enumerate(results):
-                data[i] = result - np.min(result)
-        
-        ax[1].imshow(data[n_frame])
-        ax[0].set_title('Original')
-        ax[1].set_title("Background removed")
-        plt.show()                      
-                          
-    if filter_params != ():
-        print("Filtering borders")
-        cutoff, decay, null_size = filter_params
-        
-        frame = data[0]
-        if 1: # exponential decay at border
-            N = null_size
-            x = np.linspace(-N,N,frame.shape[1])
-            y = np.linspace(-N,N,frame.shape[0])
-            func_x = np.where(x>=0,exponential_decay_at_border(x,decay,cut=cutoff) , exponential_decay_at_border(x,-decay,cut=cutoff))
-            func_y = np.where(y>=0,exponential_decay_at_border(y,decay,cut=cutoff) , exponential_decay_at_border(y,-decay,cut=cutoff))
-            meshY, meshX = np.meshgrid(func_x,func_y)
-            border_attenuation_matrix = meshY*meshX
-        elif 0: #. gaussian filter
-            sigma = 2
-            x = np.linspace(-5, 5,frame.shape[1])
-            y = np.linspace(-5, 5,frame.shape[0])
-            x, y = np.meshgrid(x, y) # get 2D variables instead of 1D
-            border_attenuation_matrix = gaus2d(x, y,sx=sigma,sy=sigma)
-
-        """ Apply border filter """
-        figure, ax = plt.subplots(1,4,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        data[:] = data[:]*border_attenuation_matrix
-        ax[3].imshow(data[n_frame])
-        ax[2].imshow(border_attenuation_matrix)
-        ax[1].plot(border_attenuation_matrix[border_attenuation_matrix.shape[0]//2,:])
-        ax[1].set_aspect(100)
-        ax[0].set_title('Before')
-        ax[3].set_title("After filtering")
-        plt.show()
-        
-    if padding != ():
-        figure, ax = plt.subplots(1,2,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        data = pad_sinogram_frames(padding,data)
-        ax[1].imshow(data[n_frame])
-        ax[0].set_title('Before')
-        ax[1].set_title("After padding")
-        plt.show()
-        
-    if savepath != '': 
-        print("Saving data...")
-        np.save(savepath,data) 
-        print("Saved @ ",savepath)
-        
-    figure, ax = plt.subplots(1,2,figsize=(10,5))
-    ax[0].imshow(original_frame)
-    ax[1].imshow(data[n_frame])
-    plt.show()
-        
-def flip_frames_of_interest(sinogram,frame_list):
-    for i in frame_list:
-        sinogram[i] = sinogram[i,::-1,::-1]
-    return sinogram
+####################### PLOT ###########################################
 
 def plot_histograms(recon3D, equalized_tomogram,bins=300):
+    """ Histogram plot funcion
+
+    Args:
+        recon3D (array): unequalized tomogram
+        equalized_tomogram (array): equalized tomogram
+        bins (int, optional): histogram bin number. Defaults to 300.
+    """    
 
     recon_hist = recon3D.flatten()
     equalized_hist = equalized_tomogram.flatten()

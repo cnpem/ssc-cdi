@@ -92,7 +92,7 @@ def read_cnb_probe_positions(input_dict,sinogram_shape):
 
     Args:
         input_dict (dict): dictionary of inputs
-        sinogram_shape (array): 
+        sinogram_shape (array): tuple with sinogram size
 
     Returns:
         positions_pixels (array): array with probe positions in pixels
@@ -107,8 +107,8 @@ def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions
     Convert probe positions from meter to pixels
 
     Args:
-        offset_topleft (_type_): _description_
-        dx (_type_): _description_
+        offset_topleft (int): border offset in the corners
+        dx (float): pixel size
         probe_positions (array): probe positions in meters
 
     Returns:

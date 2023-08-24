@@ -349,14 +349,14 @@ def create_circular_mask(mask_shape, radius):
 def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side = 10, cross_width_x=0):
     """ Create cross mask
     Args:
-        mask_shape (_type_): _description_
+        mask_shape (tuple): y and x sizes of the mask
         cross_width_y (int, optional): _description_. Defaults to 15.
-        border (int, optional): _description_. Defaults to 3.
+        border (int, optional): Distance from edge of cross mask to the domain border. Defaults to 3.
         center_square_side (int, optional): _description_. Defaults to 10.
         cross_width_x (int, optional): _description_. Defaults to 0.
 
     Returns:
-        _type_: _description_
+        mask (array): cross mask
     """
     
     if cross_width_x == 0: cross_width_x = cross_width_y
