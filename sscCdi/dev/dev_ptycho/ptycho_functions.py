@@ -959,7 +959,6 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = N
     return obj, probe, error, time.perf_counter()-t0
 
 
-
 def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
     t0 = time.perf_counter()
     
@@ -1104,7 +1103,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
         error_list.append(iteration_error) # error in fourier space 
 
     dt = time.perf_counter() - t0
-    print(f"PIE algorithm ended in {dt} seconds")
+    print(f"PIE ended in {dt} seconds")
     
     return obj.get(), probe_modes.get(), error_list, dt
 
