@@ -251,17 +251,16 @@ def propagate_beam(wavefront, experiment_params,propagator='fourier'):
 
 def calculate_recon_error_Fspace(diffractions_patterns,wavefronts,experiment_params):
 
-    
-
-    n_points = diffractions_patterns.shape[1]*diffractions_patterns.shape[2]
-
-    error = 0
+    error_numerator = 0
+    error_denominator = 0
     for DP, wave in zip(diffractions_patterns,wavefronts):
-        wave_at_detector = propagate_beam(wave, experiment_params,propagator='fourier')
-        intensity = np.abs(wave_at_detector)**2
-        error += np.sum( np.sum((DP-intensity)**2) /n_points)
+        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator='fourier')
+        intensity = cp.abs(wave_at_detector)**2
+        
+        error_numerator += cp.sum(cp.abs(DP-intensity))
+        error_denominator += cp.sum(cp.abs(DP))
 
-    return error
+    return error_numerator/error_denominator 
 
 def calculate_recon_error(model,obj):
     
@@ -984,8 +983,6 @@ def RAAR_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = N
     return obj, probe, error, time.perf_counter()-t0
 
 def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
-    t0 = time.perf_counter()
-    
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
@@ -1042,16 +1039,12 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,inputs, probe_
 
         probe_modes = probe_modes[:]*probe_support
 
-        iteration_error = 0 # calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
+        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
         if iteration%10==0:
             print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
-
         error.append(iteration_error) 
         
-    dt = time.perf_counter() - t0
-    print(f"RAAR algorithm ended in {dt} seconds")
-    
-    return obj_matrix[0].get(), probe_modes.get(), error, dt
+    return obj_matrix[0].get(), probe_modes.get(), error
 
 def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inputs):
 
@@ -1152,8 +1145,7 @@ def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inpu
     return obj.get(), probe.get(), positions.get(), error_list, time.perf_counter() - t0, positions_history
 
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
-    t0 = time.perf_counter()
-    
+
     r_o = inputs["regularization_object"]
     r_p = inputs["regularization_probe"]
     s_o = inputs["step_object"]
@@ -1216,13 +1208,9 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             if inputs["use_mPIE"] == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
-        iteration_error = 0 # calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()
+        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,experiment_params).get()
         if i%10==0:
             print(f'\tIteration {i}/{iterations} \tError: {iteration_error:.2e}')
-
         error_list.append(iteration_error) # error in fourier space 
 
-    dt = time.perf_counter() - t0
-    print(f"PIE ended in {dt} seconds")
-    
-    return obj.get(), probe_modes.get(), error_list, dt
+    return obj.get(), probe_modes.get(), error_list
