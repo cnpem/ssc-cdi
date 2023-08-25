@@ -10,6 +10,12 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "hdf5_output": output file path/name
+                "GPUs": number of GPUs
+                "CPUs": number of CPUs
+                "fresnel_number": Fresnel number
+
         DPs (numpy array): array of diffraction patterns of shape (N,Y,X)
         probe_positions (numpy array): array of probe positions of shape (N,2)
         initial_obj (numpy array, optional): initial object array of shape (Y,X). Defaults to np.ones(1), which then uses input from input_dict
@@ -150,7 +156,9 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
         Args:
             input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-            probe_shape (_type_): 
+                keys:
+                    "probe_support": probe support
+            probe_shape (array): probe size 
 
         Returns:
             probesupp: mask containing probe support
@@ -227,6 +235,11 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "incoherent_modes": incoherent nodes
+                "initial_probe": initial probe
+                "output_path": path of output files
+                
         DP_shape (tuple): shape of single diffraction pattern
         DPs_avg (array): average of all diffraction data
 
@@ -292,6 +305,10 @@ def set_initial_object(input_dict,DPs, probe):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "initial_obj": initial object
+                "object_shape": object shape
+                "output_path": path for output files
         DPs (array): diffraction data used for calculating normalization factor
         probe (array): probe used for calculating normalization factor
 
@@ -385,6 +402,11 @@ def set_object_pixel_size(input_dict,DP_size):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "energy": beamline energy
+                "wavelength": 
+                "binning": 
+                "restored_pixel_size": restored pixel size
         DP_size (int): lateral size of detector array
 
     Returns:
@@ -408,6 +430,9 @@ def set_object_shape(input_dict,DP_shape,probe_positions):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "object_padding":
+                "object_shape": object size/shape
         DP_shape (tuple): shape of the diffraction patterns array
         probe_positions (numpy array): array os probe positiions in pixels 
 

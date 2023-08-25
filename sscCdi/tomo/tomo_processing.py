@@ -16,9 +16,27 @@ def define_paths(dic):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "sinogram_path": sinogram path
+                "contrast_type": contrast type
+                "output_folder": path for output files
 
     Returns:
         dic (dict): updated dictionary of inputs  
+            updated keys:
+                "filename"
+                "temp_folder"
+                "ordered_angles_filepath"
+                "projected_angles_filepath"
+                "ordered_object_filepath"
+                "cropped_sinogram_filepath"
+                "pre_aligned_sinogram_filepath"
+                "equalized_sinogram_filepath"
+                "unwrapped_sinogram_filepath"
+                "wiggle_sinogram_filepath"
+                "wiggle_cmas_filepath"
+                "reconstruction_filepath"
+                "eq_reconstruction_filepath"
     """
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
@@ -48,6 +66,9 @@ def tomo_sort(dic, object, angles):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "ordered_angles_filepath"
+                "ordered_object_filepath"
         object (ndarray): read sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
 
@@ -65,6 +86,11 @@ def remove_frames_after_sorting(dic):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "ordered_object_filepath"
+                "ordered_angles_filepath"
+                "bad_frames_after_sorting"
+                "bad_frames_after_sorting"
     """    
 
     sorted_object = np.load(dic["ordered_object_filepath"])
@@ -121,6 +147,12 @@ def tomo_crop(dic,object):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "top_crop": top distance from object to border
+                "bottom_crop": bottom distance from object to border
+                "left_crop": left distance from object to border
+                "right_crop": right distance from object to border
+                "cropped_sinogram_filepath": cropped sinogram path
         object (array): sinogram to be cropped
 
     """
@@ -136,7 +168,10 @@ def tomo_unwrap(dic,object):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
 
     Args:
-        dic (dict): dictionary of inputs  
+        dic (dict): dictionary of inputs 
+            keys:
+                "bad_frames_before_unwrap"
+                "unwrapped_sinogram_filepath"
         object (array): sinogram
 
     """
@@ -155,6 +190,9 @@ def tomo_equalize(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "bad_frames_before_equalization"
+                "equalized_sinogram_filepath"
         object (array): frames to be equalized
 
     """
@@ -171,13 +209,29 @@ def tomo_equalize3D(dic):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "reconstruction_filepath"
+                "tomo_remove_outliers"
+                "tomo_threshold"
+                "tomo_local_offset"
+                "eq_reconstruction_filepath"
 
     """
     start = time.time()
     reconstruction = np.load(dic["reconstruction_filepath"])
-    equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
+    equalized_tomogram = equalize_tomogram(
+        reconstruction,np.mean(reconstruction),
+        np.std(reconstruction),
+        remove_outliers=dic["tomo_remove_outliers"],
+        threshold=float(dic["tomo_threshold"]),
+        bkg_window=dic["tomo_local_offset"]
+    )
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
-    open_or_create_h5_dataset(dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','equalized_volume',equalized_tomogram,create_group=True)
+    open_or_create_h5_dataset(
+        dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon',
+        'equalized_volume',
+        equalized_tomogram,create_group=True
+    )
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def remove_outliers(data,sigma):
@@ -206,6 +260,14 @@ def equalize_frame(dic,frame):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "equalize_invert": boolean
+                "equalize_remove_phase_gradient": boolean
+                "equalize_ROI"
+                "equalize_remove_phase_gradient_iterations"
+                "equalize_local_offset"
+                "equalize_set_min_max"
+                "equalize_non_negative"
         frame (array): 2D image/frame to be equalized
 
     Returns:
@@ -263,6 +325,8 @@ def equalize_frames_parallel(sinogram,dic):
     Args:
         sinogram (array): sinogram to be equalized
         dic (dict): dictionary of inputs
+            keys:
+                "CPUs": number of CPUs
 
     Returns:
         equalized_sinogram: equalized sinogram
@@ -343,9 +407,22 @@ def tomo_alignment(dic):
 
     Args:
         dic (dict): dictionary of inputs
-
+            keys:
+                "ordered_angles_filepath"
+                "wiggle_sinogram_selection"
+                "bad_frames_before_wiggle"
+                "project_angles_to_regular_grid": boolean
+                "step_percentage"
+                "wiggle_cmas_filepath"
+                "wiggle_sinogram_filepath"
+            
     Returns:
         dic (dict): updated dictionary of inputs 
+            updated keys:
+                "n_of_used_angles" : if projected angles, set number of used angles
+                "n_of_original_angles"
+                "projected_angles_filepath": if projected angles, set filepath
+                "wiggle_ctr_of_mas"
     """
 
     start = time.time()
@@ -375,6 +452,10 @@ def preview_angle_projection(dic):
 
     Args:
         dic (dict): dictionary with necessary parameters
+            keys:
+                "ordered_angles_filepath"
+                "wiggle_sinogram_selection"
+                "step_percentage"
     """    
 
     print("Simulating projection of angles to regular grid...")
@@ -382,7 +463,10 @@ def preview_angle_projection(dic):
     angles = (np.pi/180.) * angles
     total_n_of_angles = angles.shape[0]
     
-    _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(np.load(dic["wiggle_sinogram_selection"]), angles,percentage=dic["step_percentage"])
+    _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(
+                                                                    np.load(dic["wiggle_sinogram_selection"]), 
+                                                                    angles,percentage=dic["step_percentage"]
+                                                                )
     n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
     selected_positive_indices = [ i for i in selected_indices if i >= 0]
     complete_array = [i for i in range(total_n_of_angles)]
@@ -468,7 +552,7 @@ def make_bad_frame_null(bad_list, sinogram):
     """ Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
 
     Args:
-        dic (dict): dictionary of inputs
+        bad_list (list): list of bad frames to be nulled
         sinogram (array): sinogram containing frames to be nulled
 
     Returns:
@@ -483,6 +567,9 @@ def wiggle(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "CPUs"
+                "wiggle_reference_frame"
         sinogram (array): sinogram containing misaligned frames
 
     Returns:
@@ -504,6 +591,8 @@ def tomo_recon(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "reconstruction_filepath"
         sinogram (array): sinogram
 
     Returns:
@@ -600,6 +689,21 @@ def tomography(dic, sinogram):
     """ Performs tomography
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "ordered_angles_filepath"
+                "using_wiggle": boolean
+                "wiggle_cmas_filepath"
+                "wiggle_ctr_of_mas"
+                "project_angles_to_regular_grid"
+                "algorithm_dic"
+                    keys:
+                        "angles"
+                        "nangles"
+                        "reconSize"
+                        "algorithm"
+                        "tomooffset"
+                        "is360"
+                "automatic_regularization"
         sinogram (array): sinogram
 
     Returns:

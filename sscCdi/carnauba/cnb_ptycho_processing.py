@@ -12,6 +12,10 @@ def cnb_ptychography(input_dict,DPs):
 
     Args:
         input_dict (dict): dictionary of inputs
+            keys:
+                "object_shape": added to the dictionary, object shape
+                "incoherent_modes": list of incoherent modes
+                "hdf5_output": output hdf5 file
         DPs (array): diffraction patterns
 
     Returns:
@@ -37,9 +41,22 @@ def define_paths(input_dict):
 
     Args:
         input_dict (dict): dictionary of inputs
-
+            keys:
+                "data_path": folders location
+                "beamline_parameters_path": location of beamline parameters
     Returns:
         input_dict: updated input dictionary
+            updated keys:
+                "versions": versions of used packages
+                "dataset_name": data set of file
+                "output_path": location of output files
+                "temporary_output": location of temporary files
+                "energy": beamline energy
+                "detector_distance": detector distance
+                "restored_pixel_size": restored pixel size
+                "detector_exposure": detector exposure
+                "datetime": string with time and date to name files
+                "hdf5_output": hdf5 output
     """
     
     #=========== Set Parameters and Folders =====================
@@ -92,6 +109,9 @@ def read_cnb_probe_positions(input_dict,sinogram_shape):
 
     Args:
         input_dict (dict): dictionary of inputs
+            keys:
+                "object_padding":
+                "object_pixel":
         sinogram_shape (array): tuple with sinogram size
 
     Returns:
@@ -132,6 +152,8 @@ def read_position_metadata(input_dict):
 
     Args:
         input_dict (dict): dictionary of inputs
+            keys:
+                "beamline_parameters_path": location of beamline parameters
     
     Returns:
         positions_mm (array): positions in meters
