@@ -16,9 +16,27 @@ def define_paths(dic):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "sinogram_path": sinogram path
+                "contrast_type": contrast type
+                "output_folder": path for output files
 
     Returns:
         dic (dict): updated dictionary of inputs  
+            updated keys:
+                "filename"
+                "temp_folder"
+                "ordered_angles_filepath"
+                "projected_angles_filepath"
+                "ordered_object_filepath"
+                "cropped_sinogram_filepath"
+                "pre_aligned_sinogram_filepath"
+                "equalized_sinogram_filepath"
+                "unwrapped_sinogram_filepath"
+                "wiggle_sinogram_filepath"
+                "wiggle_cmas_filepath"
+                "reconstruction_filepath"
+                "eq_reconstruction_filepath"
     """
 
     dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
@@ -48,6 +66,9 @@ def tomo_sort(dic, object, angles):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "ordered_angles_filepath"
+                "ordered_object_filepath"
         object (ndarray): read sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
 
@@ -61,6 +82,16 @@ def tomo_sort(dic, object, angles):
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def remove_frames_after_sorting(dic):
+    """ Remove unwanted sinogram frames after sorting
+
+    Args:
+        dic (dict): dictionary of inputs
+            keys:
+                "ordered_object_filepath"
+                "ordered_angles_filepath"
+                "bad_frames_after_sorting"
+                "bad_frames_after_sorting"
+    """    
 
     sorted_object = np.load(dic["ordered_object_filepath"])
     sorted_angles = np.load(dic["ordered_angles_filepath"])
@@ -116,6 +147,13 @@ def tomo_crop(dic,object):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "top_crop": top distance from object to border
+                "bottom_crop": bottom distance from object to border
+                "left_crop": left distance from object to border
+                "right_crop": right distance from object to border
+                "cropped_sinogram_filepath": cropped sinogram path
+        object (array): sinogram to be cropped
 
     """
     start = time.time()
@@ -130,7 +168,11 @@ def tomo_unwrap(dic,object):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
 
     Args:
-        dic (dict): dictionary of inputs  
+        dic (dict): dictionary of inputs 
+            keys:
+                "bad_frames_before_unwrap"
+                "unwrapped_sinogram_filepath"
+        object (array): sinogram
 
     """
     start = time.time()
@@ -148,6 +190,10 @@ def tomo_equalize(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs  
+            keys:
+                "bad_frames_before_equalization"
+                "equalized_sinogram_filepath"
+        object (array): frames to be equalized
 
     """
     start = time.time()
@@ -162,14 +208,30 @@ def tomo_equalize3D(dic):
     """ Call equalization algorithms for tomogram frames
 
     Args:
-        dic (dict): dictionary of inputs f 
+        dic (dict): dictionary of inputs
+            keys:
+                "reconstruction_filepath"
+                "tomo_remove_outliers"
+                "tomo_threshold"
+                "tomo_local_offset"
+                "eq_reconstruction_filepath"
 
     """
     start = time.time()
     reconstruction = np.load(dic["reconstruction_filepath"])
-    equalized_tomogram = equalize_tomogram(reconstruction,np.mean(reconstruction),np.std(reconstruction),remove_outliers=dic["tomo_remove_outliers"],threshold=float(dic["tomo_threshold"]),bkg_window=dic["tomo_local_offset"])
+    equalized_tomogram = equalize_tomogram(
+        reconstruction,np.mean(reconstruction),
+        np.std(reconstruction),
+        remove_outliers=dic["tomo_remove_outliers"],
+        threshold=float(dic["tomo_threshold"]),
+        bkg_window=dic["tomo_local_offset"]
+    )
     np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
-    open_or_create_h5_dataset(dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','equalized_volume',equalized_tomogram,create_group=True)
+    open_or_create_h5_dataset(
+        dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon',
+        'equalized_volume',
+        equalized_tomogram,create_group=True
+    )
     print(f'Time elapsed: {time.time() - start:.2f} s' )
 
 def remove_outliers(data,sigma):
@@ -197,10 +259,15 @@ def equalize_frame(dic,frame):
         5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
 
     Args:
-        remove_gradient (bool): select wheter to remove phase ramp over the whole image or not
-        remove_global_offset (bool): removes global offset from the image, subtracting the minimum from all pixel values
-        remove_outlier (int): integer value indicating the number of sigma. Values above/below sigma will be considered outliers and set as zero
-        remove_avg_offset (list): coordinates of squared region (top,bottom,left, right). The mean value of such region in the frame will be subtracted from all pixels.
+        dic (dict): dictionary of inputs
+            keys:
+                "equalize_invert": boolean
+                "equalize_remove_phase_gradient": boolean
+                "equalize_ROI"
+                "equalize_remove_phase_gradient_iterations"
+                "equalize_local_offset"
+                "equalize_set_min_max"
+                "equalize_non_negative"
         frame (array): 2D image/frame to be equalized
 
     Returns:
@@ -255,6 +322,12 @@ def equalize_frame(dic,frame):
 def equalize_frames_parallel(sinogram,dic):
     """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
 
+    Args:
+        sinogram (array): sinogram to be equalized
+        dic (dict): dictionary of inputs
+            keys:
+                "CPUs": number of CPUs
+
     Returns:
         equalized_sinogram: equalized sinogram
     """
@@ -291,7 +364,7 @@ def equalize_frames_parallel(sinogram,dic):
     return equalized_sinogram
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
-    """_summary_
+    """ Filters outliers in the tomogram
 
     Args:
         equalized_tomogram (array): 3D reconstructed volume from tomographic algorithm
@@ -334,9 +407,22 @@ def tomo_alignment(dic):
 
     Args:
         dic (dict): dictionary of inputs
-
+            keys:
+                "ordered_angles_filepath"
+                "wiggle_sinogram_selection"
+                "bad_frames_before_wiggle"
+                "project_angles_to_regular_grid": boolean
+                "step_percentage"
+                "wiggle_cmas_filepath"
+                "wiggle_sinogram_filepath"
+            
     Returns:
         dic (dict): updated dictionary of inputs 
+            updated keys:
+                "n_of_used_angles" : if projected angles, set number of used angles
+                "n_of_original_angles"
+                "projected_angles_filepath": if projected angles, set filepath
+                "wiggle_ctr_of_mas"
     """
 
     start = time.time()
@@ -362,12 +448,25 @@ def tomo_alignment(dic):
     return dic
 
 def preview_angle_projection(dic):
+    """ Simulates the projection of angles to regular grid
+
+    Args:
+        dic (dict): dictionary with necessary parameters
+            keys:
+                "ordered_angles_filepath"
+                "wiggle_sinogram_selection"
+                "step_percentage"
+    """    
+
     print("Simulating projection of angles to regular grid...")
     angles  = np.load(dic["ordered_angles_filepath"])
     angles = (np.pi/180.) * angles
     total_n_of_angles = angles.shape[0]
     
-    _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(np.load(dic["wiggle_sinogram_selection"]), angles,percentage=dic["step_percentage"])
+    _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(
+                                                                    np.load(dic["wiggle_sinogram_selection"]), 
+                                                                    angles,percentage=dic["step_percentage"]
+                                                                )
     n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
     selected_positive_indices = [ i for i in selected_indices if i >= 0]
     complete_array = [i for i in range(total_n_of_angles)]
@@ -453,7 +552,7 @@ def make_bad_frame_null(bad_list, sinogram):
     """ Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
 
     Args:
-        dic (dict): dictionary of inputs
+        bad_list (list): list of bad frames to be nulled
         sinogram (array): sinogram containing frames to be nulled
 
     Returns:
@@ -468,6 +567,9 @@ def wiggle(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "CPUs"
+                "wiggle_reference_frame"
         sinogram (array): sinogram containing misaligned frames
 
     Returns:
@@ -489,6 +591,9 @@ def tomo_recon(dic, sinogram):
 
     Args:
         dic (dict): dictionary of inputs
+            keys:
+                "reconstruction_filepath"
+        sinogram (array): sinogram
 
     Returns:
         reconstruction3D (array): 3D reconstructed volume via tomography
@@ -530,6 +635,17 @@ def automatic_regularization(sino, L=0.001):
     return D
 
 def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
+    """ Save or load wiggle ctr of mass
+
+    Args:
+        path (str): path to ctr of mass
+        wiggle_cmass (list, optional): . Defaults to [[],[]].
+        save (bool, optional): boolean to save or not the ctr of mass. Defaults to True.
+
+    Returns:
+        int: flag if saved or ctr of mass
+    """    
+    
     if save:
         wiggle_cmass = np.asarray(wiggle_cmass)
         np.save(path, wiggle_cmass)
@@ -540,20 +656,55 @@ def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
         return wiggle_cmas
 
 def add_plot_suffix_to_file(path):
+    """ Add plot suffix to file
+
+    Args:
+        path (str): string with the path to file
+
+    Returns:
+        str: path with plot suffix
+    """    
+
     first_part = path.split(".")[0]
     second_part = path.split(".")[-1]
     return first_part + "_PLOT." + second_part
 
 def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
+    """ Get and save downsampled sinogram
+
+    Args:
+        sinogram (array): sinogram
+        path (str): string with the path to save  downsample sinogram
+        downsampling (int, optional): Defaults to 4.
+
+    Returns:
+        donwsampled_sinogram (array): downsampled sinogram
+    """    
+
     downsampled_sinogram = sinogram[:,::downsampling,::downsampling]
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
 def tomography(dic, sinogram):
-    """
+    """ Performs tomography
     Args:
         dic (dict): dictionary of inputs
-        use_regularly_spaced_angles (bool): boolean to select if angle steps are regular or not
+            keys:
+                "ordered_angles_filepath"
+                "using_wiggle": boolean
+                "wiggle_cmas_filepath"
+                "wiggle_ctr_of_mas"
+                "project_angles_to_regular_grid"
+                "algorithm_dic"
+                    keys:
+                        "angles"
+                        "nangles"
+                        "reconSize"
+                        "algorithm"
+                        "tomooffset"
+                        "is360"
+                "automatic_regularization"
+        sinogram (array): sinogram
 
     Returns:
         reconstruction3D (array): tomographic volume
@@ -612,117 +763,16 @@ def tomography(dic, sinogram):
 
     return reconstruction3D
 
-####################### EXTRA ###########################################
-
-def clean_pwcdi_dataset(input_path, inverted_frames, bad_frames,output_path):
-    sinogram = np.load(input_path)
-
-    for frame in inverted_frames:
-        sinogram[frame] = sinogram[frame,::-1,::-1]
-    for frame in bad_frames:
-        sinogram[frame] = np.zeros_like(sinogram[0])
-
-    np.save(output_path, sinogram)
-    print("Saved data at: ",output_path)
-
-def exponential_decay_at_border(x,alpha,cut=8):
-    maximum = np.max(np.where(np.abs(x)<cut,0,1 - np.exp(alpha*x)))
-    func = np.where(np.abs(x) < cut ,1 - np.exp(alpha*x),0)
-    func = np.where(np.abs(x) < cut, 1 + func / np.max(np.abs(func)),0)
-    return func
-
-def pad_sinogram_frames(padding,sinogram):
-    pad_row, pad_col = padding
-    print("\tOld shape: ",sinogram.shape)
-    sinogram = np.pad(sinogram,((0,0),(pad_row,pad_row),(pad_col,pad_col)),mode='constant')#,constant_values=((1,),(1,)))
-    print("\tNew shape: ",sinogram.shape)
-    return sinogram
-
-def gradient_filter_and_pad(loadpath,savepath,background_region,filter_params, padding, preview, n_frame=0):
-
-    print("Loading data from ",loadpath)
-    data = np.load(loadpath)
-    original_frame = data[n_frame]
-
-    if background_region != ():
-        figure, ax = plt.subplots(1,2,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        print("Removing background from frames based on region ",background_region)
-        top, bottom, left, right = background_region
-        mask = np.zeros_like(data[0],dtype=bool) # mask indicating where to fit plane
-        mask[top:bottom,left:right] = True
-        get_best_plane_fit_inside_mask_partial = partial(get_best_plane_fit_inside_mask,mask)
-        frames = [data[i] for i in range(data.shape[0])]
-        """ Remove gradient from bkg """
-        processes = min(os.cpu_count(),32)
-        print(f'Using {processes} parallel processes')
-        with ProcessPoolExecutor(max_workers=processes) as executor:
-            results = list(tqdm(executor.map(get_best_plane_fit_inside_mask_partial,frames),total=data.shape[0]))
-            for i, result in enumerate(results):
-                data[i] = result - np.min(result)
-        
-        ax[1].imshow(data[n_frame])
-        ax[0].set_title('Original')
-        ax[1].set_title("Background removed")
-        plt.show()                      
-                          
-    if filter_params != ():
-        print("Filtering borders")
-        cutoff, decay, null_size = filter_params
-        
-        frame = data[0]
-        if 1: # exponential decay at border
-            N = null_size
-            x = np.linspace(-N,N,frame.shape[1])
-            y = np.linspace(-N,N,frame.shape[0])
-            func_x = np.where(x>=0,exponential_decay_at_border(x,decay,cut=cutoff) , exponential_decay_at_border(x,-decay,cut=cutoff))
-            func_y = np.where(y>=0,exponential_decay_at_border(y,decay,cut=cutoff) , exponential_decay_at_border(y,-decay,cut=cutoff))
-            meshY, meshX = np.meshgrid(func_x,func_y)
-            border_attenuation_matrix = meshY*meshX
-        elif 0: #. gaussian filter
-            sigma = 2
-            x = np.linspace(-5, 5,frame.shape[1])
-            y = np.linspace(-5, 5,frame.shape[0])
-            x, y = np.meshgrid(x, y) # get 2D variables instead of 1D
-            border_attenuation_matrix = gaus2d(x, y,sx=sigma,sy=sigma)
-
-        """ Apply border filter """
-        figure, ax = plt.subplots(1,4,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        data[:] = data[:]*border_attenuation_matrix
-        ax[3].imshow(data[n_frame])
-        ax[2].imshow(border_attenuation_matrix)
-        ax[1].plot(border_attenuation_matrix[border_attenuation_matrix.shape[0]//2,:])
-        ax[1].set_aspect(100)
-        ax[0].set_title('Before')
-        ax[3].set_title("After filtering")
-        plt.show()
-        
-    if padding != ():
-        figure, ax = plt.subplots(1,2,figsize=(10,5))
-        ax[0].imshow(data[n_frame])
-        data = pad_sinogram_frames(padding,data)
-        ax[1].imshow(data[n_frame])
-        ax[0].set_title('Before')
-        ax[1].set_title("After padding")
-        plt.show()
-        
-    if savepath != '': 
-        print("Saving data...")
-        np.save(savepath,data) 
-        print("Saved @ ",savepath)
-        
-    figure, ax = plt.subplots(1,2,figsize=(10,5))
-    ax[0].imshow(original_frame)
-    ax[1].imshow(data[n_frame])
-    plt.show()
-        
-def flip_frames_of_interest(sinogram,frame_list):
-    for i in frame_list:
-        sinogram[i] = sinogram[i,::-1,::-1]
-    return sinogram
+####################### PLOT ###########################################
 
 def plot_histograms(recon3D, equalized_tomogram,bins=300):
+    """ Histogram plot funcion
+
+    Args:
+        recon3D (array): unequalized tomogram
+        equalized_tomogram (array): equalized tomogram
+        bins (int, optional): histogram bin number. Defaults to 300.
+    """    
 
     recon_hist = recon3D.flatten()
     equalized_hist = equalized_tomogram.flatten()

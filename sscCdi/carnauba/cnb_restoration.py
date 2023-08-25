@@ -9,12 +9,34 @@ from sscPimega import pi135D
 from ..processing.restoration import restore_IO_SharedArray
 
 def restoration_CNB(input_dict):
+    """Calls restoration algorithm
+
+    Args:
+        input_dict (dict): dictionary of inputs
+            keys:
+                "data_path": file location
+
+    Returns:
+        diffraction_patterns: restored diffraction patterns
+    """    
+
     hdf5_path = input_dict["data_path"]
     geometry = geometry_CNB(input_dict)
     diffraction_patterns = restore_IO_SharedArray(input_dict, geometry,hdf5_path)
     return diffraction_patterns
 
 def geometry_CNB(input_dict):
+    """Get sscPimega detector geometry for certain distance and corresponding dictionary of input params
+
+    Args:
+        input_dict (dict): dictionary of inputs
+            keys:
+                "suspect_border_pixels": suspect border pixels for pimega restoration
+
+    Returns:
+        geometry (dict): detector geometry
+    """    
+
     project = pi135D.dictionary135D( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
     susp = input_dict["suspect_border_pixels"]
     project['s'] = [susp,susp] 
@@ -22,6 +44,14 @@ def geometry_CNB(input_dict):
     return geometry
 
 def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
+    """ Linear correction
+
+    Args:
+        input_dict (dict): dictionary of inputs
+            keys:
+                "Trajectory_Path":
+        raw_DPs (array): raw diffraction patterns
+    """    
 
     def get_acquisition_time(input_dict,p):
         try:
@@ -55,6 +85,13 @@ def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
     return DPs
 
 def linearity_batch(input_dict, DPs, acq_time):
+    """Calls linearity correction in parallel for multiple diffraction patterns
+
+    Args:
+        input_dict (dict)
+        DPs (array)
+        acq_time (float)
+    """    
     
     def _build_batch_of_DPs_(params):
 
@@ -122,6 +159,9 @@ def linearity_batch(input_dict, DPs, acq_time):
     return corrected_DPs
 
 def apply_empty_acquisition(DPs, input_dict):
+    """
+        Correction for empty field
+    """    
     print('Applying empty detector correction...')
     empty_acquisition_dir = input_dict['empty_acquisition_directory']
     empty_acquisition = np.asarray(h5py.File(empty_acquisition_dir, 'r')['/entry/data/data'])[:,0,:,:]
