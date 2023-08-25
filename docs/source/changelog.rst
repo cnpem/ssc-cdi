@@ -11,6 +11,14 @@ Types of changes:
  - *Removed* for now removed features.
  - *Fixed* for any bug fixes.
  - *Security* in case of vulnerabilities.
+ - *Documentation* added or modified documentation
+
+[0.6.29] - 2023-08-25
+--------------------
+
+Documentation
+~~~~~
+- Added missing documentation
 
 [0.6.28] - 2023-08-22
 --------------------
