@@ -13,6 +13,8 @@ def restoration_CNB(input_dict):
 
     Args:
         input_dict (dict): dictionary of inputs
+            keys:
+                "data_path": file location
 
     Returns:
         diffraction_patterns: restored diffraction patterns
@@ -28,6 +30,8 @@ def geometry_CNB(input_dict):
 
     Args:
         input_dict (dict): dictionary of inputs
+            keys:
+                "suspect_border_pixels": suspect border pixels for pimega restoration
 
     Returns:
         geometry (dict): detector geometry
@@ -40,6 +44,14 @@ def geometry_CNB(input_dict):
     return geometry
 
 def cnb_preprocessing_linear_correction(input_dict,raw_DPs):
+    """ Linear correction
+
+    Args:
+        input_dict (dict): dictionary of inputs
+            keys:
+                "Trajectory_Path":
+        raw_DPs (array): raw diffraction patterns
+    """    
 
     def get_acquisition_time(input_dict,p):
         try:
