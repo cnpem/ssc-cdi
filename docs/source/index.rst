@@ -8,30 +8,33 @@ Welcome to ssc-cdi's documentation!
 ###################################
 
 
-Sirius Scientific Computing Group codes for Coherent Diffractive Imaging reconstructions.
+Sirius Scientific Computing Group codes for Coherent Diffractive Imaging.
 
-Currently, the ssc-cdi module performs Ptycography reconstructions for the Cateretê and Carnaúba beamlines. The reconsutruction codes in CUDA were developed by Giovanni Baraldi and should be replaced in the future by newer and properly documented versions.
+The **ssc-cdi** package currently performs Ptycography and Ptycho-tomography reconstructions. These are intended mostly to serve the Cateretê and Carnaúba beamlines at SIRIUS. 
 
-**Author(s)**
-	
-    - Yuri Tonin (yuri.tonin@lnls.br) 
-    - Júlia Carvalho (julia.carvalho@lnls.br)
-    - Paola Ferraz (paola.ferraz@lnls.br) 
-    - Giovanni Baraldi 
-    - Eduardo Miqueles (eduardo.miqueles@lnls.br) 
+The ptychographic reconsutruction codes in CUDA were developed by Giovanni Baraldi (former group member). The high-level Python modules were developed by the other authors below.
+
+**Authors and acknowledgments**
+
+	Yuri R. Tonin (yuri.tonin@lnls.br)
+	Camila F. A. Lages (camila.lages@lnls.br)
+	Paola F. Cunha (paola.ferraz@lnls.br)
+	Julia C. Carvalho (julia.carvalho@lnls.br)
+	Eduardo X. Miqueles	(eduardo.miqueles@lnls.br)
+	Giovanni L. Baraldi	(former member)
 
 --------------------------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
    :numbered:
    :caption: Contents:
    
-   changelog
-   public
-   private
    install
    examples
+   public
+   private
+   changelog
 
 Indices and tables
 ==================
