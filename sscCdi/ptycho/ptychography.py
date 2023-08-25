@@ -10,6 +10,12 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "hdf5_output": output file path/name
+                "GPUs": number of GPUs
+                "CPUs": number of CPUs
+                "fresnel_number": Fresnel number
+
         DPs (numpy array): array of diffraction patterns of shape (N,Y,X)
         probe_positions (numpy array): array of probe positions of shape (N,2)
         initial_obj (numpy array, optional): initial object array of shape (Y,X). Defaults to np.ones(1), which then uses input from input_dict
@@ -149,11 +155,10 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         """ Create mask containing probe support region
 
         Args:
-            n_of_probes (_type_): number of probes
-            half_size (_type_): half the size of one dimension of the probe array
-            radius (_type_): radius of the support region
-            center_x (_type_): center coordinate of support ball in x direction
-            center_y (_type_): center coordinate of support ball in y direction
+            input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+                keys:
+                    "probe_support": probe support
+            probe_shape (array): probe size 
 
         Returns:
             probesupp: mask containing probe support
@@ -230,6 +235,11 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "incoherent_modes": incoherent nodes
+                "initial_probe": initial probe
+                "output_path": path of output files
+                
         DP_shape (tuple): shape of single diffraction pattern
         DPs_avg (array): average of all diffraction data
 
@@ -295,6 +305,10 @@ def set_initial_object(input_dict,DPs, probe):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "initial_obj": initial object
+                "object_shape": object shape
+                "output_path": path for output files
         DPs (array): diffraction data used for calculating normalization factor
         probe (array): probe used for calculating normalization factor
 
@@ -350,6 +364,17 @@ def create_circular_mask(mask_shape, radius):
 
 
 def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side = 10, cross_width_x=0):
+    """ Create cross mask
+    Args:
+        mask_shape (tuple): y and x sizes of the mask
+        cross_width_y (int, optional): _description_. Defaults to 15.
+        border (int, optional): Distance from edge of cross mask to the domain border. Defaults to 3.
+        center_square_side (int, optional): _description_. Defaults to 10.
+        cross_width_x (int, optional): _description_. Defaults to 0.
+
+    Returns:
+        mask (array): cross mask
+    """
     
     if cross_width_x == 0: cross_width_x = cross_width_y
     
@@ -377,6 +402,11 @@ def set_object_pixel_size(input_dict,DP_size):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "energy": beamline energy
+                "wavelength": 
+                "binning": 
+                "restored_pixel_size": restored pixel size
         DP_size (int): lateral size of detector array
 
     Returns:
@@ -400,6 +430,9 @@ def set_object_shape(input_dict,DP_shape,probe_positions):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "object_padding":
+                "object_shape": object size/shape
         DP_shape (tuple): shape of the diffraction patterns array
         probe_positions (numpy array): array os probe positiions in pixels 
 
