@@ -73,7 +73,7 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
-def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
+def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
     """ 
     Read diffraction data using either sscIO or h5py and calls restoration algorithms.
     Includes preprocessing (flatfield correction, mask application, background subtraction) and post-processing (data binning, if wanted)
@@ -95,11 +95,7 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path,method="IO"):
     else:
         sys.error('Please selector correct detector type: 135D or 540D')
 
-    if method == "IO":
-        os.system(f"h5clear -s {hdf5_path}")
-        raw_DPs, _ = io.read_volume(hdf5_path, 'numpy', use_MPI=True, nprocs=input_dict["CPUs"])
-    elif method == "h5py":
-        raw_DPs = read_hdf5(hdf5_path)
+    raw_DPs = read_hdf5(hdf5_path)
     
     binning = int(input_dict['binning'])
 
