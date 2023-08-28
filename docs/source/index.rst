@@ -16,12 +16,12 @@ The ptychographic reconsutruction codes in CUDA were developed by Giovanni Baral
 
 **Authors and acknowledgments**
 
-	Yuri R. Tonin (yuri.tonin@lnls.br)
-	Camila F. A. Lages (camila.lages@lnls.br)
-	Paola F. Cunha (paola.ferraz@lnls.br)
-	Julia C. Carvalho (julia.carvalho@lnls.br)
-	Eduardo X. Miqueles	(eduardo.miqueles@lnls.br)
-	Giovanni L. Baraldi	(former member)
+- Yuri R. Tonin (yuri.tonin@lnls.br)
+- Camila F. A. Lages (camila.lages@lnls.br)
+- Paola F. Cunha (paola.ferraz@lnls.br)
+- Julia C. Carvalho (julia.carvalho@lnls.br)
+- Eduardo X. Miqueles	(eduardo.miqueles@lnls.br)
+- Giovanni L. Baraldi	(former member)
 
 --------------------------
 
