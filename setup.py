@@ -20,9 +20,23 @@ import shutil
 install_requires = [
     'sysv-ipc>=0.0.0',
     'cmake_setup>=0.0.0',
-    #'sscIO'
-    #cbf
-    #sscResolution
+    'numpy',
+    'matplotlib',
+    'h5py',
+    'os',
+    'sys',
+    'time',
+    'json',
+    'scipy',
+    'scikit-image',
+    'concurrent',
+    'tqdm',
+    'subprocess',
+    'getpass',
+    'functools',
+    'uuid',
+    'multiprocessing',
+    'SharedArray',
 ]
 
 compile_cuda = 0
@@ -191,12 +205,12 @@ setup(
 
     zip_safe=False,    
 
-    author='Eduardo X. Miqueles / Yuri R. Tonin / Paola Ferraz Cunha / Julia C. Carvalho / Giovanni Baraldi', 
+    author='Eduardo X. Miqueles / Yuri R. Tonin / Camila Lages / Paola Ferraz Cunha / Julia C. Carvalho / Giovanni Baraldi', 
     author_email='eduardo.miqueles@lnls.br',
     
     description='Sirius Coherent Diffraction Imaging Package',
     keywords=['ptychography', 'tomography', 'imaging'],
-    url='http://www.',
+    url='https://gcc.lnls.br/ssc/ssc-cdi/index.html',
     download_url='',
     
     license='BSD',

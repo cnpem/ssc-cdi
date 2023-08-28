@@ -66,8 +66,10 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     dic['empty']    = np.zeros_like(dic['flat']) # OBSOLETE! empty is not used anymore;
     dic['daxpy']    = [0,np.zeros([3072,3072])] 
 
+    file_number = 11 # which file idx from hdf5_filepaths to perform restoration
+
     restored_data_info = pi540D.ioSetM_Backward540D( dic )
-    output = pi540D.ioGetM_Backward540D( dic, restored_data_info, 11) 
+    output = pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number) 
     pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
