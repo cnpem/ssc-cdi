@@ -193,6 +193,13 @@ def restoration_CAT(input_dict,method = 'IO'):
         detector_size = 3072
 
     if method == "CUDA":
+
+        if input_dict["save_path"] != '':
+            if not os.path.exists(input_dict['save_path']):
+                os.makedirs(input_dict['save_path'])
+        else:
+            sys.exit("Please enter a save path")
+
         dic = {} # dictionary for restoration function
         dic['path']     = input_dict["data_path"]
         dic['outpath']  = input_dict["save_path"]
@@ -274,7 +281,7 @@ def restoration_CAT(input_dict,method = 'IO'):
 
         """ Restore data """
         os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
-        DPs = restore_IO_SharedArray(input_dict, geometry, data_path,method="h5py")
+        DPs = restore_IO_SharedArray(input_dict, geometry, data_path)
 
     print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
     size = DPs.size*DPs.itemsize
