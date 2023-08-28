@@ -23,19 +23,9 @@ install_requires = [
     'numpy',
     'matplotlib',
     'h5py',
-    'os',
-    'sys',
-    'time',
-    'json',
     'scipy',
     'scikit-image',
-    'concurrent',
     'tqdm',
-    'subprocess',
-    'getpass',
-    'functools',
-    'uuid',
-    'multiprocessing',
     'SharedArray',
 ]
 
@@ -45,7 +35,6 @@ compile_sudo = 0
 if '--cuda' in sys.argv:
     compile_cuda = 1
     sys.argv.remove('--cuda')
-
 
 if '--sudo' in sys.argv:
     compile_sudo = 1
