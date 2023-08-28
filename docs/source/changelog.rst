@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.6.30] - 2023-08-28
+--------------------
+
+Documentation
+~~~~~
+- Updated documentation pages
+
 [0.6.29] - 2023-08-25
 --------------------
 
