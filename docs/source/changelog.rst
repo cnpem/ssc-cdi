@@ -13,6 +13,12 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.31] - 2023-08-30
+--------------------
+
+Changed
+~~~~~
+- Required installation packages and update of documentation
 
 [0.6.30] - 2023-08-28
 --------------------
