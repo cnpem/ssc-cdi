@@ -27,11 +27,6 @@ install_requires = [
     'scikit-image',
     'tqdm',
     'SharedArray',
-    'sscPtycho>=2.1.4',
-    'sscPimega>=0.8.12',
-    'sscRaft>=2.2.0',
-    'sscRadon>=1.0.0',
-    'sscResolution>=0.6',
 ]
 
 compile_cuda = 0
