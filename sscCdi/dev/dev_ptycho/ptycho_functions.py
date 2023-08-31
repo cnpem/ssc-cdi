@@ -1046,6 +1046,64 @@ def RAAR_multiprobe_loop(diffraction_patterns,positions,obj,probe,inputs, probe_
         
     return obj_matrix[0].get(), probe_modes.get(), error
 
+def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
+    iterations = inputs['iterations']
+    beta       = inputs['beta']
+    epsilon    = inputs['epsilon']
+    dx         = inputs['object_pixel']
+    wavelength = inputs['wavelength']
+    distance   = inputs['distance']
+    n_of_modes = inputs["n_of_modes"]
+
+    if probe_support is None:
+        probe_support = cp.ones_like(probe)
+    else:
+        probe_support = cp.array(probe_support)
+
+    obj_matrix = cp.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
+    obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
+    
+    shapey,shapex = probe.shape
+    wavefronts = cp.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
+    
+    probe_modes = cp.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
+    probe_modes[:] = probe
+    
+    for index, (posx, posy) in enumerate(positions):
+        obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
+        wavefronts[index] = probe_modes*obj_box
+        
+    error = []
+    for iteration in range(0,iterations):
+        """
+        RAAR update function:
+        psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
+        psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
+        psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
+        """
+
+        for index, (posx, posy) in enumerate(positions):
+            
+            obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
+            
+            psi_after_Pr = probe_modes*obj_box
+            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
+            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
+
+            wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+
+        probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
+        obj_matrix[:] = single_obj_box # update all obj slices to be the same;
+
+        probe_modes = probe_modes[:]*probe_support
+
+        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
+        if iteration%10==0:
+            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
+        error.append(iteration_error) 
+        
+    return obj_matrix[0], probe_modes, error
+
 def mPIE_loop_cupy(diffraction_patterns, positions,object_guess,probe_guess,inputs):
 
     t0 = time.perf_counter()
