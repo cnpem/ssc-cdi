@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.32] - 2023-08-31
+--------------------
+
+Added
+~~~~~
+- Added scripts for tomo and tif convertion for running with sbatch
+
 [0.6.31] - 2023-08-30
 --------------------
 
