@@ -6,6 +6,9 @@ import sys
 import time
 import h5py, os
 import random
+import tqdm
+
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from skimage.registration import phase_cross_correlation
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
@@ -148,8 +151,7 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     probe_modes[:] = probe
     
     for index, (posx, posy) in enumerate(positions):
-        obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-        wavefronts[index] = probe_modes*obj_box
+        wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
         
     error = []
     for iteration in range(0,iterations):
@@ -160,15 +162,26 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
 
-        for index, (posx, posy) in enumerate(positions):
-            
-            obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-            
-            psi_after_Pr = probe_modes*obj_box
-            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
+        def update_wavefront(wavefront,psi_after_Pr,data):
+            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
+            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),data) # Projection in Fourier space
+            wavefront = beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+            return wavefront
 
-            wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+        def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,processes):
+
+            projected_wavefronts = np.empty_like(wavefronts)
+            for index, (posx, posy) in enumerate(positions):
+                projected_wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
+
+            with ProcessPoolExecutor(max_workers=processes) as executor:
+                results = list(tqdm(executor.map(update_wavefront,wavefronts, projected_wavefronts, diffraction_patterns),total=projected_wavefronts.shape[0]))
+                for counter, result in enumerate(results):
+                    wavefronts[counter,:,:] = result
+
+            return wavefronts
+            
+        wavefronts = update_wavefronts_parallel(obj_matrix)
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
@@ -221,8 +234,8 @@ def RAAR_multiprobe(diffraction_patterns,positions,obj,probe,inputs, probe_suppo
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-            
             psi_after_Pr = probe_modes*obj_box
+
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
             psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
 
@@ -504,6 +517,19 @@ def calculate_recon_error_Fspace_cupy(diffractions_patterns,wavefronts,experimen
         
         error_numerator += cp.sum(cp.abs(DP-intensity))
         error_denominator += cp.sum(cp.abs(DP))
+
+    return error_numerator/error_denominator 
+
+def calculate_recon_error_Fspace(diffractions_patterns,wavefronts,experiment_params):
+
+    error_numerator = 0
+    error_denominator = 0
+    for DP, wave in zip(diffractions_patterns,wavefronts):
+        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator='fourier')
+        intensity = np.abs(wave_at_detector)**2
+        
+        error_numerator += np.sum(np.abs(DP-intensity))
+        error_denominator += np.sum(np.abs(DP))
 
     return error_numerator/error_denominator 
 
