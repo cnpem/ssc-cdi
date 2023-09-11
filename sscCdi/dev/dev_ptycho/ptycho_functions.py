@@ -10,6 +10,8 @@ import tqdm
 
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from functools import partial
+import multiprocessing
+import threading
 
 from skimage.registration import phase_cross_correlation
 from numpy.fft import fft2, fftshift, ifftshift, ifft2
@@ -60,6 +62,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
 
+        t1 = time.time()
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
@@ -69,7 +72,8 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
             psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
 
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-
+        t2 =time.time()
+        print(t2-t1)
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
 
@@ -157,7 +161,11 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     error = []
     for iteration in range(0,iterations):
 
-        wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
+        t1 = time.time()
+        # wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
+        wavefronts = update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta)
+        t2 = time.time()
+        print(t2-t1)
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
@@ -171,7 +179,56 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
         
     return obj_matrix[0], probe_modes, error
 
+def update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts0, diffraction_patterns0,positions,beta):
+    t1=time.time()
+    global wavefronts,projected_wavefronts,diffraction_patterns
+
+    wavefronts,diffraction_patterns = wavefronts0, diffraction_patterns0
+
+    shapey,shapex = probe_modes.shape[1], probe_modes.shape[2]
+
+    projected_wavefronts = np.empty_like(wavefronts)
+
+    for index, (posx, posy) in enumerate(positions):
+        projected_wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
+
+    indexes = [i for i in range(wavefronts.shape[0])]
+    
+    t2=time.time()
+
+    processes = []
+    for index in indexes:
+        # process = multiprocessing.Process(target=update_wavefront2,args=(index, beta))
+        process = threading.Thread(target=update_wavefront2,args=(index, beta))
+        process.start()
+        processes.append(process)
+
+    t3=time.time()
+
+    for p in processes: # wait for processes to finish
+        p.join()
+
+    t4=time.time()
+    print(t4-t2,t2-t1)
+
+    return wavefronts
+
+def update_wavefront2(index,beta):
+    """
+    RAAR update function:
+    psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
+    psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
+    psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
+    """
+    global wavefronts,projected_wavefronts,diffraction_patterns
+    # t1 = time.time()
+    psi_after_reflection_Rspace = 2*projected_wavefronts[index]-wavefronts[index]
+    psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace,diffraction_patterns[index]) # Projection in Fourier space
+    wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*projected_wavefronts[index] 
+    # t2 = time.time()
+    # print('a',t2-t1)
 def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta, processes):
+    t0 = time.time()
 
     shapey,shapex = probe_modes.shape[1], probe_modes.shape[2]
 
@@ -189,7 +246,7 @@ def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_
             wavefronts[counter,:,:] = result
         t3 = time.time()
 
-    print(t2-t1,t3-t2)
+    print(t3-t2,t2-t1,t1-t0)
 
     return wavefronts
 
@@ -396,7 +453,6 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     momentum_counter = 0
     error_list = []
     for i in range(iterations):
-
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
