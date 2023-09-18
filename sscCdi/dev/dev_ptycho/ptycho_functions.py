@@ -8,6 +8,7 @@ import h5py, os
 import random
 import tqdm
 import pyfftw
+import scipy
 
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from functools import partial
@@ -63,7 +64,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
 
-        # t1 = time.time()
+        t1 = time.time()
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
@@ -71,10 +72,10 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
             psi_after_Pr = probe_modes*obj_box
             
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
+            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace,diffraction_patterns[index]) # Projection in Fourier space
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-        # t2 =time.time()
-        # print(t2-t1)
+        t2 =time.time()
+        print(t2-t1)
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
@@ -153,7 +154,6 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     
     shapey,shapex = probe.shape
     wavefronts = np.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
-    print(wavefronts.dtype)
     
     probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
     probe_modes[:] = probe
@@ -165,8 +165,8 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     for iteration in range(0,iterations):
 
         t1 = time.time()
-        # wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
-        wavefronts = update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta)
+        wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
+        # wavefronts = update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta)
         t2 = time.time()
         print(t2-t1)
 
@@ -183,7 +183,7 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     return obj_matrix[0], probe_modes, error
 
 def update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts0, diffraction_patterns0,positions,beta):
-    # t1=time.time()
+
     global wavefronts,projected_wavefronts,diffraction_patterns
 
     wavefronts,diffraction_patterns = wavefronts0, diffraction_patterns0
@@ -197,8 +197,6 @@ def update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts0, diffractio
 
     indexes = [i for i in range(wavefronts.shape[0])]
     
-    # t2=time.time()
-
     processes = []
     for index in indexes:
         # process = multiprocessing.Process(target=update_wavefront2,args=(index, beta))
@@ -206,13 +204,8 @@ def update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts0, diffractio
         process.start()
         processes.append(process)
 
-    # t3=time.time()
-
     for p in processes: # wait for processes to finish
         p.join()
-
-    # t4=time.time()
-    # print(t4-t2,t2-t1)
 
     return wavefronts
 
@@ -224,12 +217,11 @@ def update_wavefront2(index,beta):
     psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
     """
     global wavefronts,projected_wavefronts,diffraction_patterns
-    # t1 = time.time()
+
+    
     psi_after_reflection_Rspace = 2*projected_wavefronts[index]-wavefronts[index]
     psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace,diffraction_patterns[index]) # Projection in Fourier space
     wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*projected_wavefronts[index] 
-    # t2 = time.time()
-    # print('a',t2-t1)
 
 def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta, processes):
     t0 = time.time()
@@ -243,14 +235,9 @@ def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_
         projected_wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
 
     with ThreadPoolExecutor(max_workers=processes) as executor:
-        # t1 = time.time()
         results = executor.map(update_wavefront,wavefronts, projected_wavefronts, diffraction_patterns)
-        # t2 = time.time()
         for counter, result in enumerate(results):
             wavefronts[counter,:,:] = result
-        # t3 = time.time()
-
-    # print(t3-t2,t2-t1,t1-t0)
 
     return wavefronts
 
@@ -261,13 +248,17 @@ def update_wavefront(wavefront,psi_after_Pr,data,beta=1):
     psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
     psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
     """
-    # t1 = time.time()
+    
+    wavefront = cp.asarray(wavefront)
+    psi_after_Pr = cp.asarray(psi_after_Pr)
+    data = cp.asarray(data)
+
     psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
-    psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),data) # Projection in Fourier space
+    psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace.copy(),data) # Projection in Fourier space
     wavefront = beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-    # t2 = time.time()
-    # print(t2-t1)
-    return wavefront
+
+
+    return wavefront.get()
 
 def RAAR_multiprobe(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
     iterations = inputs['iterations']
@@ -328,11 +319,9 @@ def RAAR_multiprobe(diffraction_patterns,positions,obj,probe,inputs, probe_suppo
     return obj_matrix[0], probe_modes, error
 
 def update_exit_wave_multiprobe(wavefront_modes,measurement):
-    # wavefront_modes = propagate_farfield_multiprobe(wavefront_modes)
-    wavefront_modes = propagate_farfield_multiprobe_pyfftw(wavefront_modes)
+    wavefront_modes = propagate_farfield_multiprobe(wavefront_modes)
     wavefront_modes_at_detector = Fspace_update_multiprobe(wavefront_modes,measurement)
-    # updated_wavefront_modes = propagate_farfield_multiprobe(wavefront_modes_at_detector,backpropagate=True)
-    updated_wavefront_modes = propagate_farfield_multiprobe_pyfftw(wavefront_modes_at_detector,backpropagate=True)
+    updated_wavefront_modes = propagate_farfield_multiprobe(wavefront_modes_at_detector,backpropagate=True)
     return updated_wavefront_modes, wavefront_modes_at_detector
 
 def propagate_farfield_multiprobe_pyfftw(wavefront_modes,backpropagate=False):
@@ -347,23 +336,25 @@ def propagate_farfield_multiprobe_pyfftw(wavefront_modes,backpropagate=False):
     
 def pyfftw_FT2D(data,inverse=False):
     data_aligned = pyfftw.byte_align(data,dtype = 'complex128')
-    result_aligned = pyfftw.empty_aligned(data_aligned.shape,dtype = 'complex128')
+    # result_aligned = pyfftw.empty_aligned(data_aligned.shape,dtype = 'complex128')
     if inverse == False:
-        fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1))
+        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),threads=30)
+        fft = pyfftw.interfaces.numpy_fft.fft(data_aligned)
     else:    
-        fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),direction='FFTW_BACKWARD')
-    return fft_object()
+        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),direction='FFTW_BACKWARD',threads=30)
+        fft = pyfftw.interfaces.numpy_fft.ifft(data_aligned)
+    # return fft_object()
+    return fft
 
 def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
     if backpropagate == False:
         for m, mode in enumerate(wavefront_modes): 
-            # wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(mode)))
-            wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(mode))
+            # wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(mode)) # NUMPY
+            wavefront_modes[m] = scipy.fft.fftshift(scipy.fft.fft2(mode,workers=-1)) #SCIPY
     else:
         for m in range(wavefront_modes.shape[0]):
-            # wavefront_modes[m] = np.fft.ifftshift(np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m])))
-            # wavefront_modes[m] = np.fft.ifft2(wavefront_modes[m])
-            wavefront_modes[m] = np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m]))
+            # wavefront_modes[m] = np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m]))
+            wavefront_modes[m] = scipy.fft.ifft2(scipy.fft.ifftshift(wavefront_modes[m]),workers=-1)
     return wavefront_modes
 
 def Fspace_update_multiprobe(wavefront_modes,measurement,epsilon=0.001):
