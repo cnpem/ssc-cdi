@@ -39,13 +39,15 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
     input_dict["restoration_id"] = restored_data_info
     total_number_of_angles = len(filepaths)
+    frame_index = input_dict["projections"]
 
     if strategy == "serial":
 
         start_frame = 0
         frame = 0
-        for file_number, filename in enumerate(filenames):
+        for file_number_index, filename in enumerate(filenames):
             
+            file_number = frame_index[file_number_index]
             folder_number = folder_numbers_list[file_number]
             acquisitions_folder = folder_names_list[file_number]
 
@@ -53,7 +55,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             print(f"\nReading diffraction data for angle: {frame}")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
-                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
+                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
             
