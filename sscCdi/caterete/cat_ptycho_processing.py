@@ -46,7 +46,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
         for file_number_index, filename in enumerate(filenames):
             
             if frame_index == []:
-                file_number = 0
+                file_number = file_number_index
             else:
                 file_number = frame_index[file_number_index]
             folder_number = folder_numbers_list[file_number_index]
