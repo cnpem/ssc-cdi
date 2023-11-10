@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.33] - 2023-11-10
+--------------------
+
+Fixed
+~~~~~
+- Fixed wrong file index when running ptycho for selected projections
+
 [0.6.32] - 2023-08-31
 --------------------
 
