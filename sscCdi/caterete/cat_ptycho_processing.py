@@ -87,7 +87,8 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             if file_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
                 sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                # probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                probes   = np.zeros((total_number_of_angles,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                 print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
 
                 size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
