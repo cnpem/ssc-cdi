@@ -44,6 +44,9 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     run_algorithms = True
     loop_counter = 1
     error = np.empty((0,))
+
+    corrected_positions = None
+
     while run_algorithms:  # run Ptycho:
         try:
             algorithm = input_dict['Algorithm' + str(loop_counter)]
@@ -78,6 +81,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
                                                     data      = datapack,
                                                     params    = {'device':input_dict["GPUs"]},
                                                     probef1=input_dict['fresnel_number'])
+                corrected_positions = datapack['rois']
 
             elif algorithm['Name'] == 'RAAR':
                 datapack = sscPtycho.RAAR(iter         = algorithm['Iterations'],
@@ -97,7 +101,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
     datapack['obj'] = datapack['obj'].astype(np.complex64)
     datapack['probe'] = datapack['probe'].astype(np.complex64)
 
-    return datapack['obj'], datapack['probe'], error
+    return datapack['obj'], datapack['probe'], error, corrected_positions
 
 
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):

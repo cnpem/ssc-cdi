@@ -40,6 +40,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
     input_dict["restoration_id"] = restored_data_info
     total_number_of_angles = len(filepaths)
     frame_index = input_dict["projections"]
+    corrected_positions_list = []
 
     if strategy == "serial":
 
@@ -86,9 +87,9 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             if file_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
                 input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
-                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                # probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                probes   = np.zeros((total_number_of_angles,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
+                probes                = np.zeros((total_number_of_angles,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+
                 print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
 
                 size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
@@ -105,7 +106,11 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                 angle = np.array([file_number_index,1,angle,angle*180/np.pi])
             else:
-                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+
+                if corrected_positions is not None:
+                    corrected_positions_list.append(corrected_positions[:,0,0:2])
+                
                 angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             """ Save single frame of object and probe to temporary folder"""
@@ -116,6 +121,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
             np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_error.npy"),error)
 
+            if corrected_positions is not None:
+                corrected_positions = corrected_positions[:,0,0:2]
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
+
         """ Clean restored DPs temporary data """
         if len(input_dict['projections']) == 1:
             pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
@@ -123,7 +132,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
 
-    return input_dict, sinogram, probes, probe_positions
+    return input_dict, sinogram, probes, probe_positions, corrected_positions_list
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 

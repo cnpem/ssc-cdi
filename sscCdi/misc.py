@@ -433,10 +433,15 @@ def save_volume_from_parts(input_dict):
     errors = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="error.npy")[0]
     errors = combine_volume(*errors)
 
+    corrected_positions = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="corrected_positions.npy")[0]
+    if len(corrected_positions) > 0:
+        print("Combining probe final positions into single file...")
+        corrected_positions = combine_volume(*corrected_positions)
+
     print("Deleting temporary object and probe files...")
     delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
 
-    return object, probes, angles, positions, errors
+    return object, probes, angles, positions, errors, corrected_positions
 
 def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
