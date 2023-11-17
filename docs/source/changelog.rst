@@ -13,6 +13,18 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.34] - 2023-11-17
+--------------------
+
+Fixed
+~~~~~
+- Fixed incoherent modes bug
+
+Added
+~~~~~
+- Save final positions when using position correction algorithm
+- New function to remove bad frames anywhere in tomography pipeline
+
 [0.6.33] - 2023-11-10
 --------------------
 
