@@ -106,6 +106,39 @@ def remove_frames_after_sorting(dic):
     np.save(dic["ordered_angles_filepath"], sorted_angles)
     np.save(dic["ordered_object_filepath"], sorted_object) 
 
+def remove_frames(dic, filepath_object, angles, frames):
+    """ Remove unwanted sinogram frames before sorting
+
+    Args:
+        dic (dict): dictionary of inputs
+        filepath (string): path of object
+        angles: angles array
+        frames: frames array
+        
+    Return:
+        dic (dict): updated dictionary of inputs
+            keys:
+                "object_after_remove_frames_path"
+                "angles_after_remove_frames_path"
+    """    
+
+    obj = np.load(filepath_object)
+
+    print('Original shape: ',obj.shape)
+
+    obj = np.delete(obj,frames,axis=0)
+    angles = np.delete(angles,frames,axis=0)
+
+    print('New shape: ',obj.shape)
+    
+    dic["object_after_remove_frames_path"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_object_after_removing.npy')
+    dic["angles_after_remove_frames_path"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_angles_after_removing.npy')
+
+    np.save(dic["object_after_remove_frames_path"], obj)
+    np.save(dic["angles_after_remove_frames_path"], angles)
+    
+    return dic
+
 def sort_angles(angles):
     """ Sort angles array from smallest to highest angle
 
