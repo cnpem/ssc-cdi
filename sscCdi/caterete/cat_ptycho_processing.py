@@ -123,6 +123,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             if corrected_positions is not None:
                 corrected_positions = corrected_positions[:,0,0:2]
+                corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
 
         """ Clean restored DPs temporary data """
