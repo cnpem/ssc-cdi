@@ -429,7 +429,7 @@ def set_object_pixel_size(input_dict,DP_size):
     return input_dict
 
 
-def set_object_shape(input_dict,DP_shape,probe_positions):
+def set_object_shape(input_dict, DP_shape, probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
     Args:
@@ -438,25 +438,21 @@ def set_object_shape(input_dict,DP_shape,probe_positions):
                 "object_padding":
                 "object_shape": object size/shape
         DP_shape (tuple): shape of the diffraction patterns array
-        probe_positions (numpy array): array os probe positiions in pixels 
+        probe_positions (numpy array): array os probe positiions in pixels
 
     Returns:
         input_dict (dict)): updated input dictionary containing object_shape information
     """
 
     offset_bottomright = input_dict["object_padding"]
+    DP_size_y, DP_size_x = DP_shape[1:]
 
-    DP_size_y = DP_shape[1]
-    DP_size_x = DP_shape[2]
-
-    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1])) 
+    maximum_probe_coordinate_x = int(np.max(probe_positions[:,1]))
     object_shape_x  = DP_size_x + maximum_probe_coordinate_x + offset_bottomright
 
-    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0])) 
+    maximum_probe_coordinate_y = int(np.max(probe_positions[:,0]))
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    my_shape = np.max([object_shape_y,object_shape_x])
-
-    input_dict["object_shape"] = (my_shape, my_shape)
+    input_dict["object_shape"] = (object_shape_y, object_shape_x)
 
     return input_dict
