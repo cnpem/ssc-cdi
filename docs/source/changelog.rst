@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.35] - 2023-11-17
+--------------------
+
+Fixed
+~~~~~
+- Fixed initial object does not need to be frame zero and supressed output for corrected positions from ptycho function and save volumes function
+
 [0.6.34] - 2023-11-17
 --------------------
 
