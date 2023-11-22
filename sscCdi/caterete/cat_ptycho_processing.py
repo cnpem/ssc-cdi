@@ -85,7 +85,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-            if file_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
+            if file_number_index == 0:
                 input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
                 sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
                 probes                = np.zeros((total_number_of_angles,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
@@ -133,7 +133,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
 
-    return input_dict, sinogram, probes, probe_positions, corrected_positions_list
+    return input_dict, sinogram, probes, probe_positions
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 

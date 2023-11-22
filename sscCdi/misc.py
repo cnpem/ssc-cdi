@@ -450,7 +450,7 @@ def save_volume_from_parts(input_dict):
     save_json_logfile(input_dict) 
     delete_temporary_folders(input_dict)
 
-    return object, probes, angles, positions, errors, corrected_positions
+    return object, probes, angles, positions, errors
 
 def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
