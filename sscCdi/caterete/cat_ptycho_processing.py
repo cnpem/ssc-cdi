@@ -16,7 +16,7 @@ from ..processing.restoration import binning_G_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
-def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial", run_again = False, initial_obj = False, initial_probe = False):
+def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial"):
     """ 
     Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
     
@@ -41,6 +41,11 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
     total_number_of_angles = len(filepaths)
     frame_index = input_dict["projections"]
     corrected_positions_list = []
+
+    # defining flag for multiple initial probe and/or objects from previous ptycho
+    run_again     = input_dict["mult_obj_probe"]["run_again"]
+    initial_obj   = input_dict["mult_obj_probe"]["mult_obj"]
+    initial_probe = input_dict["mult_obj_probe"]["mult_probe"]
 
     if strategy == "serial":
 
@@ -120,10 +125,16 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             if run_again:
-                if initial_obj:
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
+                print("Second ptycho run")
+                if initial_obj and initial_probe:
+                    print("Running with multiple initial objects and probes")
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
                 elif initial_probe:
+                    print("Running with multiple initial probes")
                     sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
+                elif initial_obj:
+                    print("Running with multiple initial objects")
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
                 
                 if corrected_positions is not None:
                     # corrected_positions_list.append(corrected_positions[:,0,0:2])

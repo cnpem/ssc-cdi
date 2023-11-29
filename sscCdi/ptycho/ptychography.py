@@ -38,8 +38,6 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
     if initial_probe is not None:
         datapack["probe"] = initial_probe
 
-    print("Initial probe: ",datapack["probe"].shape)
-
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"],concatenate=False)
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','probe_support',datapack["probesupp"],concatenate=False)
