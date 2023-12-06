@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.37] - 2023-12-06
+--------------------
+
+Changed
+~~~~~
+- Option to use initial probes and objects from previous ptychography
+
 [0.6.36] - 2023-11-28
 --------------------
 
