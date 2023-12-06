@@ -98,8 +98,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                     incoherent_modes = 1
                 else:
                     incoherent_modes = input_dict["incoherent_modes"]
-                # incoherent_modes = input_dict["incoherent_modes"]
-                probes                = np.zeros((total_number_of_angles,incoherent_modes,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                probes = np.zeros((total_number_of_angles,incoherent_modes,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
 
                 print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
 
@@ -137,10 +136,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                     sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
                 
                 if corrected_positions is not None:
-                    # corrected_positions_list.append(corrected_positions[:,0,0:2])
                     corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
-                
-                # angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             """ Save single frame of object and probe to temporary folder"""
 
