@@ -13,14 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
-[0.6.36] - 2023-11-17
+[0.6.36] - 2023-11-28
 --------------------
 
 Fixed
 ~~~~~
 - Add option to do not use gradient when using alignment variance field
 
-[0.6.35] - 2023-11-17
+[0.6.35] - 2023-11-22
 --------------------
 
 Fixed
