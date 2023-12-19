@@ -39,21 +39,28 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
     input_dict["restoration_id"] = restored_data_info
     total_number_of_angles = len(filepaths)
+    frame_index = input_dict["projections"]
+    corrected_positions_list = []
+
+    # defining flag for multiple initial probe and/or objects from previous ptycho
+    run_again     = input_dict["mult_obj_probe"]["run_again"]
+    initial_obj   = input_dict["mult_obj_probe"]["mult_obj"]
+    initial_probe = input_dict["mult_obj_probe"]["mult_probe"]
 
     if strategy == "serial":
 
-        start_frame = 0
-        frame = 0
-        for file_number, filename in enumerate(filenames):
+        for file_number_index, filename in enumerate(filenames):
             
-            folder_number = folder_numbers_list[file_number]
-            acquisitions_folder = folder_names_list[file_number]
+            if frame_index == []:
+                file_number = file_number_index
+            else:
+                file_number = frame_index[file_number_index]
+            folder_number = folder_numbers_list[file_number_index]
+            acquisitions_folder = folder_names_list[file_number_index]
 
-            frame = start_frame + file_number # attribute singular value to each angle
-
-            print(f"\nReading diffraction data for angle: {frame}")
+            print(f"\nReading diffraction data for angle: {file_number}")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
-                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number) # read restored DPs from temporary folder
+                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
             
@@ -83,10 +90,16 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-            if file_number == 0: # compute object size, object pixel size for the first frame and use it in all 3D ptycho
+            if file_number_index == 0:
                 input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
-                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                probes   = np.zeros((total_number_of_angles,1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
+                
+                if input_dict["incoherent_modes"] < 1:
+                    incoherent_modes = 1
+                else:
+                    incoherent_modes = input_dict["incoherent_modes"]
+                probes = np.zeros((total_number_of_angles,incoherent_modes,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+
                 print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
 
                 size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
@@ -99,25 +112,44 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             if not run_ptycho:
                 print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
                 input_dict['ignored_scans'].append((folder_number,file_number))
-                sinogram[frame, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-                probes[frame, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                angle = np.array([frame,1,angle,angle*180/np.pi])
+                sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
+                probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+                angle = np.array([file_number_index,1,angle,angle*180/np.pi])
             else:
-                sinogram[frame, :, :], probes[frame, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
-                angle = np.array([frame,0,angle,angle*180/np.pi])
+                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+
+                if corrected_positions is not None:
+                    corrected_positions_list.append(corrected_positions[:,0,0:2])
+                
+                angle = np.array([file_number_index,0,angle,angle*180/np.pi])
+
+            if run_again:
+                print("Second ptycho run")
+                if initial_obj and initial_probe:
+                    print("Running with multiple initial objects and probes")
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
+                elif initial_probe:
+                    print("Running with multiple initial probes")
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
+                elif initial_obj:
+                    print("Running with multiple initial objects")
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
+                
+                if corrected_positions is not None:
+                    corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
 
             """ Save single frame of object and probe to temporary folder"""
 
-            if input_dict['projections'] != []:
-                output_number = input_dict['projections'][0]+frame
-            else:
-                output_number = frame
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_object.npy"),sinogram[file_number_index])
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_probe.npy"),probes[file_number_index])
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_angle.npy"),angle)
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
+            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_error.npy"),error)
 
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_object.npy"),sinogram[frame])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_probe.npy"),probes[frame])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_angle.npy"),angle)
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{output_number:04d}_error.npy"),error)
+            if corrected_positions is not None:
+                corrected_positions = corrected_positions[:,0,0:2]
+                corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
+                np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
 
         """ Clean restored DPs temporary data """
         if len(input_dict['projections']) == 1:

@@ -13,6 +13,59 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.37] - 2023-12-06
+--------------------
+
+Changed
+~~~~~
+- Option to use initial probes and objects from previous ptychography
+
+[0.6.36] - 2023-11-28
+--------------------
+
+Fixed
+~~~~~
+- Add option to do not use gradient when using alignment variance field
+
+[0.6.35] - 2023-11-22
+--------------------
+
+Fixed
+~~~~~
+- Fixed initial object does not need to be frame zero and supressed output for corrected positions from ptycho function and save volumes function
+
+[0.6.34] - 2023-11-17
+--------------------
+
+Fixed
+~~~~~
+- Fixed incoherent modes bug
+
+Added
+~~~~~
+- Save final positions when using position correction algorithm
+- New function to remove bad frames anywhere in tomography pipeline
+
+[0.6.33] - 2023-11-10
+--------------------
+
+Fixed
+~~~~~
+- Fixed wrong file index when running ptycho for selected projections
+
+[0.6.32] - 2023-08-31
+--------------------
+
+Added
+~~~~~
+- Added scripts for tomo and tif convertion for running with sbatch
+
+[0.6.31] - 2023-08-30
+--------------------
+
+Changed
+~~~~~
+- Required installation packages and update of documentation
 
 [0.6.30] - 2023-08-28
 --------------------

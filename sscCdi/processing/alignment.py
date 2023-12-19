@@ -10,7 +10,7 @@ from scipy.ndimage import center_of_mass
 
 
 ### Cross Correlation ### 
-def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, return_common_valid_region=True, remove_null_borders = True):
+def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, return_common_valid_region=True, remove_null_borders = True, use_gradient = True):
     """ Performs alignment of the variance fild of a block images by registering neighboor slices. See https://doi.org/10.1364/OE.27.036637
 
     Args:
@@ -24,7 +24,7 @@ def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, re
         aligned_volume (numpy array): aligned volume
     """
     
-    _, total_shift = get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling)
+    _, total_shift = get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling, use_gradient)
 
     #TODO: 
     # if pyramid_downsampling > 1:
@@ -43,7 +43,7 @@ def alignment_variance_field(data, pyramid_downsampling=2, fft_upsampling=10, re
         
     return aligned_volume
     
-def get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling):
+def get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling, use_gradient):
     """ Calculates local variance field of images (in a block) and finds the shift between them.
 
     Args:
@@ -66,8 +66,12 @@ def get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling):
     for i in range(0,data.shape[0]-1):
         if i%50==0: print(f"Finding shift between slices #{i}/{data.shape[0]}")
 
-        local_variance1 = calculate_local_variance_field(data[i])
-        local_variance2 = calculate_local_variance_field(data[i+1])
+        if use_gradient:
+            local_variance1 = calculate_local_variance_field(data[i])
+            local_variance2 = calculate_local_variance_field(data[i+1])
+        else:
+            local_variance1 = data[i]
+            local_variance2 = data[i+1]
         
         shift, error, diffphase = phase_cross_correlation(local_variance1, local_variance2, upsample_factor=fft_upsampling)
 
@@ -113,7 +117,7 @@ def shift_volume_slices(data,total_shift):
     return aligned_volume
 
 def calculate_local_variance_field(matrix):
-    """ Calculate the loocal variance field of a complex matrix
+    """ Calculate the local variance field of a complex matrix
     
     """
     
