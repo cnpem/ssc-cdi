@@ -413,28 +413,42 @@ def combine_volume(*args):
 
 def save_volume_from_parts(input_dict):
     
-    print("Combining objects into single file...")
+    print("Combining and saving objects into single file...")
     objects = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="object.npy")[0]
     object = combine_volume(*objects)
+    save_variable(input_dict, object,name='object')
 
-    print("Combining probes into single file...")
+    print("Combining and saving probes into single file...")
     probes = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="probe.npy")[0]
     probes = combine_volume(*probes)
+    save_variable(input_dict,probes,name='probe')
 
-    print("Combining angles into single file...")
+    print("Combining and saving angles into single file...")
     angles = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="angle.npy")[0]
     angles = combine_volume(*angles)
+    save_variable(input_dict,angles,name='angles')
 
-    print("Combining probe positions into single file...")
+    print("Combining and saving probe positions into single file...")
     positions = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="positions.npy")[0]
     positions = combine_volume(*positions)
+    save_variable(input_dict,positions,name='positions')
 
-    print("Combining errors into single file...")
+    print("Combining and saving errors into single file...")
     errors = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="error.npy")[0]
     errors = combine_volume(*errors)
+    save_variable(input_dict,errors,name='error',group='log')
+
+    corrected_positions = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="corrected_positions.npy")[0]
+    if len(corrected_positions) > 0:
+        print("Combining and saving probe final positions into single file...")
+        corrected_positions = combine_volume(*corrected_positions)
+        save_variable(input_dict,corrected_positions,name='corrected_positions')
 
     print("Deleting temporary object and probe files...")
     delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
+
+    save_json_logfile(input_dict) 
+    delete_temporary_folders(input_dict)
 
     return object, probes, angles, positions, errors
 
