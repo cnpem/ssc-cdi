@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.38] - 2024-01-05
+--------------------
+
+Fixed
+~~~~~
+- Optimized combine and save final file routines
+
 [0.6.37] - 2023-12-06
 --------------------
 
