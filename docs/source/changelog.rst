@@ -13,6 +13,34 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.38] - 2024-01-05
+--------------------
+
+Fixed
+~~~~~
+- Optimized combine and save final file routines
+
+[0.6.37] - 2023-12-06
+--------------------
+
+Changed
+~~~~~
+- Option to use initial probes and objects from previous ptychography
+
+[0.6.36] - 2023-11-28
+--------------------
+
+Fixed
+~~~~~
+- Add option to do not use gradient when using alignment variance field
+
+[0.6.35] - 2023-11-22
+--------------------
+
+Fixed
+~~~~~
+- Fixed initial object does not need to be frame zero and supressed output for corrected positions from ptycho function and save volumes function
+
 [0.6.34] - 2023-11-17
 --------------------
 

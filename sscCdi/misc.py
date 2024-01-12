@@ -402,13 +402,22 @@ def concatenate_array_to_h5_dataset(path,group,dataset,data,concatenate = True):
     
     h5file.close()
         
-def combine_volume(*args):
+# def combine_volume(*args):
+#     shape = np.load(args[0]).shape
+#     volume = np.empty((0,*shape),dtype=np.float32)
+#     for arg in args:
+#         data = np.load(arg)
+#         data = np.expand_dims(data,axis=0)
+#         volume = np.concatenate((volume,data),axis=0)
+#     return volume
+    
+def combine_volume(*args):                                                                                      
     shape = np.load(args[0]).shape
-    volume = np.empty((0,*shape),dtype=np.float32)
-    for arg in args:
-        data = np.load(arg)
-        data = np.expand_dims(data,axis=0)
-        volume = np.concatenate((volume,data),axis=0)
+    data_0 = np.load(args[0])
+    volume = np.empty((len(args),*shape),dtype=data_0.dtype) 
+    for i, arg in enumerate(args):                                                                                            
+        data = np.load(arg)                                                                                     
+        volume[i, ...] = data                                                                                   
     return volume
 
 def save_volume_from_parts(input_dict):
@@ -450,7 +459,7 @@ def save_volume_from_parts(input_dict):
     save_json_logfile(input_dict) 
     delete_temporary_folders(input_dict)
 
-    return object, probes, angles, positions, errors, corrected_positions
+    return object, probes, angles, positions, errors
 
 def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
