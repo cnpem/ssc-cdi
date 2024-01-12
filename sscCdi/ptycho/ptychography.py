@@ -5,7 +5,7 @@ import sys, os, h5py
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 
-def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1), initial_probe=np.ones(1)):
+def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
 
     Args:
@@ -30,10 +30,12 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=np.ones(1)
 
     datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions)
     
-    if initial_obj!=np.ones(1):
+    # if initial_obj!=np.ones(1):
+    if initial_obj is not None:
         datapack["obj"] = initial_obj
     
-    if initial_probe!=np.ones(1):
+    # if initial_probe!=np.ones(1):
+    if initial_probe is not None:
         datapack["probe"] = initial_probe
 
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
