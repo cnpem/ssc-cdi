@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.6.39] - 2024-01-16
+--------------------
+
+Changed
+~~~~~
+- Rectangular final object
+
 [0.6.38] - 2024-01-05
 --------------------
 
