@@ -401,15 +401,6 @@ def concatenate_array_to_h5_dataset(path,group,dataset,data,concatenate = True):
         h5file[group].create_dataset(dataset,data=new_data) # add new array to h5 file
     
     h5file.close()
-        
-# def combine_volume(*args):
-#     shape = np.load(args[0]).shape
-#     volume = np.empty((0,*shape),dtype=np.float32)
-#     for arg in args:
-#         data = np.load(arg)
-#         data = np.expand_dims(data,axis=0)
-#         volume = np.concatenate((volume,data),axis=0)
-#     return volume
     
 def combine_volume(*args):                                                                                      
     shape = np.load(args[0]).shape
