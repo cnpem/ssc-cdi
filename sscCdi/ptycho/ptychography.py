@@ -1,54 +1,85 @@
 
 
 import numpy as np
+import cupy as cp
 import sys, os, h5py
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 
+def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+
+    if 'algorithms' in input_dict:
+        obj, probe, error, positions = call_GCC_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+    else:
+        obj, probe, error, positions = call_GB_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+
+    return obj, probe, error, positions
+
 def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+    """ Ptychography algorithms in Python by GCC
 
-    inputs = {}
+    Args:
+        input_dict (_type_): _description_
+        DPs (_type_): _description_
+        positions (_type_): _description_
+        initial_obj (_type_, optional): _description_. Defaults to None.
+        initial_probe (_type_, optional): _description_. Defaults to None.
 
-    inputs['iterations'] = input_dict['algorithms'][{input_dict['algo_counter']}]['Iterations'] 
+    Returns:
+        _type_: _description_
+    """
 
-    inputs["n_of_modes"] = input_dict['incoherent_modes']
-
-    inputs['object_pixel'] = input_dict['object_pixel']
-    inputs['wavelength'] = input_dict['wavelength']
-    inputs['distance'] = input_dict['detector_distance']
-    inputs["position_rotation"] = input_dict["position_rotation"]
-    inputs["object_padding"] = input_dict["object_padding"]
-    
-    
-    inputs['regularization_object'] = input_dict['algorithms'][{input_dict['algo_counter']}]['regularization_object'] 
-    inputs['regularization_probe']  = input_dict['algorithms'][{input_dict['algo_counter']}]['regularization_probe'] 
-    inputs['step_object']= input_dict['algorithms'][{input_dict['algo_counter']}]['step_object'] 
-    inputs['step_probe'] = input_dict['algorithms'][{input_dict['algo_counter']}]['step_probe'] 
-
-    # POSITION CORRECTION. TO BE DONE.
-    inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
-    inputs['beta'] = 1 # position correction beta value
-    inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
-
-    # inputs['centralize_probe'] = False # not implemented 
+    if initial_probe == None:
+        probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
+    if initial_obj == None:
+        obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
+        obj = np.expand_dims(obj,axis=0)
 
     positions = positions.astype(np.int32)
     positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
+    
+    error = np.empty((0,))
 
-    if inputs["algorithm"] == 'ePIE_python':
+    inputs = {}
+    for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
-        inputs['use_mPIE'] = False # friction and momentum counter only relevant if this is True
-        inputs['friction_object'] = input_dict['algorithms'][{input_dict['algo_counter']}]['mPIE_friction_obj'] 
-        inputs['friction_probe'] = input_dict['algorithms'][{input_dict['algo_counter']}]['mPIE_friction_probe'] 
-        inputs['momentum_counter'] = input_dict['algorithms'][{input_dict['algo_counter']}]['mPIE_momentum_counter'] 
+        inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
+        inputs["n_of_modes"] = input_dict['incoherent_modes']
+        inputs['object_pixel'] = input_dict['object_pixel']
+        inputs['wavelength'] = input_dict['wavelength']
+        inputs['distance'] = input_dict['detector_distance']
+        inputs["position_rotation"] = input_dict["position_rotation"]
+        inputs["object_padding"] = input_dict["object_padding"]
+        inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
+        inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
+        inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
+        inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
+        # POSITION CORRECTION. TO BE DONE.
+        inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
+        inputs['beta'] = 1 # position correction beta value
+        inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
+        # inputs['centralize_probe'] = False # not implemented 
 
-        obj, probe, error = PIE_multiprobe_loop(DPs, positions,initial_obj,initial_probe, inputs)
-    elif inputs["algorithm"] == 'RAAR_python':
-        obj, probe, error = RAAR_multiprobe_parallel(DPs, positions,initial_obj,initial_probe,inputs,probe_support=None,processes=96)
-    else:
-        sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
 
-    return obj, probe, error, positions
+        if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
+            inputs['use_mPIE'] = False # friction and momentum counter only relevant if this is True
+            inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
+            inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
+            inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
+            obj, probe, algo_error = PIE_multiprobe_loop(DPs, positions,obj[0],probe[0], inputs)
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            obj, probe, algo_error = RAAR_multiprobe_parallel(DPs, positions,obj[0],probe[0],inputs,probe_support=None,processes=96)
+            obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
+        else:
+            sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
+
+        error = np.concatenate((error,algo_error),axis=0)
+
+
+    return obj, probe, error, None
 
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
@@ -672,11 +703,11 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     error = []
     for iteration in range(0,iterations):
 
-        t1 = time.time()
+        # t1 = time.time()
         wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
         # wavefronts = update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta)
-        t2 = time.time()
-        print(t2-t1)
+        # t2 = time.time()
+        # print(t2-t1)
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
@@ -684,8 +715,7 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
         probe_modes = probe_modes[:]*probe_support
 
         iteration_error = 0 # calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance))
-        if iteration%10==0:
-            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
+        print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
         error.append(iteration_error) 
         
     return obj_matrix[0], probe_modes, error
