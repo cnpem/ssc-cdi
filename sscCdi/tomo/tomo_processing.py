@@ -175,7 +175,7 @@ def reorder_slices_low_to_high_angle(object, rois):
 
 ######################### CROP #################################################
 
-def tomo_crop(dic,object):
+def tomo_crop(dic,object,save=True):
     """ Crops sinogram according to cropping parameters in dic
 
     Args:
@@ -192,8 +192,10 @@ def tomo_crop(dic,object):
     start = time.time()
     object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
     print(f"Cropped sinogram shape: {object.shape}")
-    np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
+    if save:
+        np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
     print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return object
 
 ######################### UNWRAP #################################################
 
