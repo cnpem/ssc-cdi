@@ -30,7 +30,7 @@ def ema_ptychography(input_dict,DPs):
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-    sinogram[0, :, :], probes[0, :, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+    sinogram[0, :, :], probes[0, :, :, :], error, _ = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
 
@@ -66,17 +66,18 @@ def define_paths(input_dict):
 
  
     input_dict["dataset_name"] = input_dict['data_path'].rsplit('/',1)[1].rsplit('.')[0]
-    input_dict["output_path"] = input_dict["beamline_parameters_path"].rsplit('/',1)[0]
+    # input_dict["output_path"] = input_dict["beamline_parameters_path"].rsplit('/',1)[0]
     print("\tOutput path:", input_dict["output_path"])
 
     input_dict["output_path"]  = os.path.join(input_dict["output_path"])
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
 
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
-    input_dict["energy"]               = data['beamline_parameters']['4CM Energy'][()]*1e-3 # keV
-    input_dict["detector_distance"]    = data['beamline_parameters']['Distance PiMega'][()]*1e-3 # convert to meters
-    input_dict["restored_pixel_size"]  = data['beamline_parameters']['PiMega Pixel Size'][()]*1e-6 # convert to microns
-    input_dict["detector_exposure"]    = data['general_info']['Acquisition time'][()] # seconds
+    
+    input_dict["energy"]               = data['entry/info_exp/Energy(KeV)'][()] # keV
+    input_dict["detector_distance"]    = data['entry/info_exp/dist(mm)'][()]*1e-3 # convert to meters
+    input_dict["restored_pixel_size"]  = data['entry/info_exp/pixel(um)'][()]*1e-6 # convert to meters 
+
     data.close()
 
     input_dict["datetime"] = get_datetime(input_dict["dataset_name"])
@@ -120,6 +121,7 @@ def read_ema_probe_positions(input_dict,sinogram_shape):
     positions_mm = read_position_metadata(input_dict)
     input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
     positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
+
     return positions_pixels
 
 def convert_probe_positions_meters_to_pixels(offset_topleft, dx, probe_positions):
@@ -159,48 +161,22 @@ def read_position_metadata(input_dict):
         positions_mm (array): positions in meters
     """    
 
-    def ParseTriggers(trigg):
-        state = False
-        highedge = []
-        lowedge = []
-
-        for k in range(trigg.size):
-            if trigg[k] == True and state == False:
-                highedge.append(k)
-                state = True
-            elif trigg[k] == False and state == True:
-                lowedge.append(k)
-                state = False
-
-        return highedge, lowedge
-
-    print('\nReading experiment parameters...')
-
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
 
-    highedge,lowedge = ParseTriggers(np.asarray(data['CRIO/Triggers']) > 0.5) #returns lists
+    # getting probe positions
+    bora_tx = data['entry/motors/bora-Tx'][()]
+    bora_tz = data['entry/motors/bora-Tz'][()]
 
-    encoder_posx = np.asarray(data['/CRIO/Encoder Piezo Horizontal']) - 0.06 * np.asarray(data['/CRIO/Capacitive Sensor Rz HFM'])
-    encoder_posy = np.asarray(data['/CRIO/Encoder Piezo Vertical']) - 0.15 * np.asarray(data['/CRIO/Capacitive Sensor Rx VFM'])
-    
-    data.close()
+    scans = len(bora_tz)
+    tz_patches = int(scans/len(bora_tx))
 
-    posx = []
-    posy = []
+    x_positions = np.zeros(scans)
+    x_positions[0:tz_patches]     = bora_tx[0]
+    x_positions[tz_patches:scans] = bora_tx[1]
 
-    for k in range(len(highedge)):
-        s = np.s_[highedge[k]:lowedge[k]]
-        posx.append( encoder_posx[s][0::30] )
-        posy.append( encoder_posy[s][0::30] )
+    x_positions = np.asarray(x_positions).astype(np.float32)
+    y_positions = np.asarray(bora_tz).astype(np.float32)
 
-    posx = np.asarray(posx).astype(np.float32)
-    posy = np.asarray(posy).astype(np.float32)
+    initial_positions = np.asarray([y_positions,x_positions]).swapaxes(0,-1).swapaxes(0,1).T
 
-    posx -= posx.mean()
-    posy -= posy.mean()
-
-    positions_mm = np.asarray([posy,posx]).swapaxes(0,-1).swapaxes(0,1)
-    positions_mm = positions_mm.mean(1)[:,None]
-    positions_mm = np.reshape(positions_mm, (positions_mm.shape[0], 2))
-
-    return positions_mm
+    return initial_positions*input_dict["positions_unit_conversion"]
