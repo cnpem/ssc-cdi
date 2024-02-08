@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.0] - 2024-02-08
+--------------------
+
+Added
+~~~~~
+- Python implementation of ePie and RAAR algorithms in cupy
+- EMA beamline pipeline implementation
+
 [0.6.39] - 2024-01-16
 --------------------
 
