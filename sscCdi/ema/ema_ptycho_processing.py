@@ -171,8 +171,11 @@ def read_position_metadata(input_dict):
     tz_patches = int(scans/len(bora_tx))
 
     x_positions = np.zeros(scans)
-    x_positions[0:tz_patches]     = bora_tx[0]
-    x_positions[tz_patches:scans] = bora_tx[1]
+
+    for i in range(len(bora_tx)):
+        global_index_final = (i+1)*tz_patches
+        global_index_init  = global_index_final - tz_patches
+        x_positions[global_index_init:global_index_final] = bora_tx[i]
 
     x_positions = np.asarray(x_positions).astype(np.float32)
     y_positions = np.asarray(bora_tz).astype(np.float32)

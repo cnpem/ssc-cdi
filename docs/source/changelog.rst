@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.1] - 2024-02-09
+--------------------
+
+Fixed
+~~~~~
+- Reading probe positions bug fixed
+
 [0.7.0] - 2024-02-08
 --------------------
 
