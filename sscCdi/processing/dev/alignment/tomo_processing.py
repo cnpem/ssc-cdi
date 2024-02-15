@@ -8,7 +8,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 import sscRaft, sscRadon
 
-# from sscCdi import *
+from sscCdi import *
 
 def define_paths(dic):
     """ Defines all the path required for the remaining parts of the code; adds them to the dicitionary and creates necessary folders
