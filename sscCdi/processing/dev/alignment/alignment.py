@@ -8,7 +8,7 @@ from skimage.registration import phase_cross_correlation
 from skimage.transform import pyramid_reduce
 from scipy.ndimage import center_of_mass
 
-import sscCdi
+# import sscCdi
 
 ### Cross Correlation ### 
 def alignment_variance_field(data, downscaling_factor=0, fft_upsampling=10, return_common_valid_region=True, remove_null_borders = True, use_gradient = True,downscaling_method='skip_pixels'):
