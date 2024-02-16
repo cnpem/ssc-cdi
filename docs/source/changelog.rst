@@ -13,6 +13,35 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.1] - 2024-02-09
+--------------------
+
+Fixed
+~~~~~
+- Reading probe positions bug fixed
+
+[0.7.0] - 2024-02-08
+--------------------
+
+Added
+~~~~~
+- Python implementation of ePie and RAAR algorithms in cupy
+- EMA beamline pipeline implementation
+
+[0.6.39] - 2024-01-16
+--------------------
+
+Changed
+~~~~~
+- Rectangular final object
+
+[0.6.38] - 2024-01-05
+--------------------
+
+Fixed
+~~~~~
+- Optimized combine and save final file routines
+
 [0.6.37] - 2023-12-06
 --------------------
 

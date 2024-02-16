@@ -14,3 +14,4 @@ from .ptycho import *
 from .tomo import *
 from .misc import *
 from .jupyter import *
+from .ema import *

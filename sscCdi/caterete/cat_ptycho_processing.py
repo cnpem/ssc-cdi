@@ -10,7 +10,7 @@ from sscPimega import pi540D
 
 """ sscCdi relative imports"""
 from ..misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
-from ..ptycho.ptychography import call_GB_ptychography
+from ..ptycho.ptychography import call_GB_ptychography, call_ptychography
 from ..ptycho import set_object_pixel_size, set_object_shape
 from ..processing.restoration import binning_G_parallel
 
@@ -116,7 +116,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
                 angle = np.array([file_number_index,1,angle,angle*180/np.pi])
             else:
-                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
                 if corrected_positions is not None:
                     corrected_positions_list.append(corrected_positions[:,0,0:2])
@@ -127,13 +127,13 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 print("Second ptycho run")
                 if initial_obj and initial_probe:
                     print("Running with multiple initial objects and probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
                 elif initial_probe:
                     print("Running with multiple initial probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
                 elif initial_obj:
                     print("Running with multiple initial objects")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_GB_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
+                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
                 
                 if corrected_positions is not None:
                     corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
