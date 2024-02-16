@@ -5,7 +5,7 @@ stages:
 build_dgx:
     stage: build
     script:
-        - module load python3 
+        - module load python3 cuda/11.2
         - python3 setup.py bdist_wheel --cuda
         - python3 -m pip install -U sysv-ipc
         - python3 -m pip install cmake-setup
@@ -21,9 +21,9 @@ build_dgx:
 deploy_dgx:
     stage: deploy
     script:
-        - python3 -m pip install keyring==12.0.0 keyrings.alt
-        - python3 -m pip install twine==2.0.0 passlib
-        - twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
+        - python3 -m pip install --upgrade keyring==12.0.0 keyrings.alt
+        - python3 -m pip install --upgrade twine==2.0.0 passlib
+        - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
     tags:
         - x86_64
         - cuda11
@@ -49,8 +49,8 @@ build_power:
 deploy_power:
     stage: deploy
     script:
-        - python3 -m pip install keyring==12.0.0 keyrings.alt
-        - python3 -m pip install twine==2.0.0 passlib
+        - python3 -m pip install --upgrade keyring==12.0.0 keyrings.alt
+        - python3 -m pip install --upgrade twine==2.0.0 passlib
         - python3 -m twine upload ./dist/*.whl --repository-url="$GCC_PYPI_HOST"
     tags:
         - ppc64le
