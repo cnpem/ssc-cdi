@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.7.11] - 2024-02-19
+
+Changed
+~~~~~
+- Added upgrades to CAT tomography pipeline.
+- The alignment functions (Cross corerlation and Vertical mass fluctuation) were removed from ssc-cdi and transferred to ssc-raft.
+
 [0.7.1] - 2024-02-09
 --------------------
 
