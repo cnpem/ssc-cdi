@@ -61,7 +61,7 @@ def define_paths(dic):
 
 ####################### SORTING ###################################
 
-def tomo_sort(dic, object, angles):
+def tomo_sort(dic, object, angles,save=True):
     """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
@@ -77,10 +77,15 @@ def tomo_sort(dic, object, angles):
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
 
-    np.save(dic["ordered_angles_filepath"], sorted_angles)
-    np.save(dic["ordered_object_filepath"], sorted_object) 
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    if save:
+        np.save(dic["ordered_angles_filepath"], sorted_angles)
+        print('Saved sorted angles at: ',dic["ordered_angles_filepath"])
+        np.save(dic["ordered_object_filepath"], sorted_object) 
+        print('Saved sorted object at: ',dic["ordered_object_filepath"])
 
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return sorted_object, sorted_angles
+    
 def remove_frames_after_sorting(dic):
     """ Remove unwanted sinogram frames after sorting
 
@@ -175,7 +180,7 @@ def reorder_slices_low_to_high_angle(object, rois):
 
 ######################### CROP #################################################
 
-def tomo_crop(dic,object):
+def tomo_crop(dic,object,save=True):
     """ Crops sinogram according to cropping parameters in dic
 
     Args:
@@ -188,16 +193,22 @@ def tomo_crop(dic,object):
                 "cropped_sinogram_filepath": cropped sinogram path
         object (array): sinogram to be cropped
 
+    Returns: cropped_object 
+
     """
+    
     start = time.time()
     object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
     print(f"Cropped sinogram shape: {object.shape}")
-    np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
+    if save:
+        np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
+        print('Saved cropped object at: ',dic["cropped_sinogram_filepath"])
     print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return object
 
 ######################### UNWRAP #################################################
 
-def tomo_unwrap(dic,object):
+def tomo_unwrap(dic,object,save=True):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
 
     Args:
@@ -213,12 +224,16 @@ def tomo_unwrap(dic,object):
     object = make_bad_frame_null(dic["bad_frames_before_unwrap"],object)
 
     object = unwrap_in_parallel(object)
-    np.save(dic["unwrapped_sinogram_filepath"],object)  
+    if save:
+        np.save(dic["unwrapped_sinogram_filepath"],object) 
+        print('Saved unwrapped object at: ',dic["unwrapped_sinogram_filepath"])
+ 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return object
 
 ######################### EQUALIZATION #################################################
 
-def tomo_equalize(dic, sinogram):
+def tomo_equalize(dic, sinogram,save=True):
     """ Calls equalization algorithms in multiple processes for sinogram frames
 
     Args:
@@ -234,10 +249,14 @@ def tomo_equalize(dic, sinogram):
     sinogram = make_bad_frame_null(dic["bad_frames_before_equalization"],sinogram)
 
     equalized_sinogram = equalize_frames_parallel(sinogram,dic)
-    np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    if save:
+        np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
+        print('Saved equalized object at: ',dic["equalized_sinogram_filepath"])
 
-def tomo_equalize3D(dic):
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return equalized_sinogram
+
+def tomo_equalize3D(dic,reconstruction,save=True):
     """ Call equalization algorithms for tomogram frames
 
     Args:
@@ -251,7 +270,7 @@ def tomo_equalize3D(dic):
 
     """
     start = time.time()
-    reconstruction = np.load(dic["reconstruction_filepath"])
+
     equalized_tomogram = equalize_tomogram(
         reconstruction,np.mean(reconstruction),
         np.std(reconstruction),
@@ -259,13 +278,14 @@ def tomo_equalize3D(dic):
         threshold=float(dic["tomo_threshold"]),
         bkg_window=dic["tomo_local_offset"]
     )
-    np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
-    open_or_create_h5_dataset(
-        dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon',
-        'equalized_volume',
-        equalized_tomogram,create_group=True
-    )
+
+    if save:
+        np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
+        print('Saved equalized object at: ',dic["eq_reconstruction_filepath"])
+
+    open_or_create_h5_dataset(  dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon',  'equalized_volume',  equalized_tomogram,create_group=True  )
     print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return equalized_tomogram
 
 def remove_outliers(data,sigma):
     """ Remove all values above/below +sigma/-sigma sigma values. 1 sigma = 1 standard deviation
@@ -435,7 +455,7 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
 ####################### ALIGNMENT ###########################################
 
-def tomo_alignment(dic):
+def tomo_alignment(dic,object,angles,save=True):
     """ Calls alignment algorithms for aligning the object along the sinogram frames
 
     Args:
@@ -460,9 +480,7 @@ def tomo_alignment(dic):
 
     start = time.time()
 
-    angles  = np.load(dic["ordered_angles_filepath"])*np.pi/180
-    object = np.load(dic["wiggle_sinogram_selection"]) 
-
+    angles = angles*np.pi/180
     object = make_bad_frame_null(dic["bad_frames_before_wiggle"],object)
 
     if dic['project_angles_to_regular_grid']:
@@ -474,11 +492,15 @@ def tomo_alignment(dic):
 
     tomoP, wiggle_cmas = wiggle(dic, object)
     dic["wiggle_ctr_of_mas"] = wiggle_cmas
-    np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
-    np.save(dic["wiggle_sinogram_filepath"],tomoP)
+    
+    if save:
+        np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
+        np.save(dic["wiggle_sinogram_filepath"],tomoP)
+        print('Saved aligned object at: ',dic["wiggle_sinogram_filepath"])
+
 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return dic
+    return dic, tomoP, wiggle_cmas
 
 def preview_angle_projection(dic):
     """ Simulates the projection of angles to regular grid
@@ -619,7 +641,7 @@ def wiggle(dic, sinogram):
 
 ####################### TOMOGRAPHY ###########################################
 
-def tomo_recon(dic, sinogram):
+def tomo_recon(dic, sinogram,save=True):
     """ Calls tomographic algorithms from sscRaft
 
     Args:
@@ -634,9 +656,12 @@ def tomo_recon(dic, sinogram):
     """
     
     start = time.time()
-    reconstruction3D = tomography(dic, sinogram)
-    np.save(dic["reconstruction_filepath"],reconstruction3D)
-    open_or_create_h5_dataset(dic["reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','volume',reconstruction3D,create_group=True)
+    reconstruction3D = tomography(dic, sinogram,save)
+    if save:
+        np.save(dic["reconstruction_filepath"],reconstruction3D)
+        open_or_create_h5_dataset(dic["reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','volume',reconstruction3D,create_group=True)
+        print('Saved reconstructed object at: ',dic["wiggle_sinogram_filepath"])
+
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
     return reconstruction3D
 
@@ -718,7 +743,7 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
-def tomography(dic, sinogram):
+def tomography(dic, sinogram,save=True):
     """ Performs tomography
     Args:
         dic (dict): dictionary of inputs
@@ -790,9 +815,9 @@ def tomography(dic, sinogram):
 
     print('\t Tomography done!')
 
-    print('Saving tomography logfile...')
-    save_json_logfile_tomo(dic)
-    print('\tSaved!')
+    if save:
+        print('Saving tomography logfile...')
+        save_json_logfile_tomo(dic)
 
     return reconstruction3D
 
@@ -806,7 +831,6 @@ def plot_histograms(recon3D, equalized_tomogram,bins=300):
         equalized_tomogram (array): equalized tomogram
         bins (int, optional): histogram bin number. Defaults to 300.
     """    
-
     recon_hist = recon3D.flatten()
     equalized_hist = equalized_tomogram.flatten()
 

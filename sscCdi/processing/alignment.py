@@ -58,7 +58,7 @@ def get_shifts_of_local_variance(data,fft_upsampling,pyramid_downsampling, use_g
     
     #TODO: 
     # if pyramid_downsampling > 1:
-        # data = pyramid_downsample_volume(data,pyramid_downsampling) 
+        # data = tuple(pyramid_gaussian(image, downscale=2,max_layer=pyramid_downsampling,order=3))[pyramid_downsampling]
     
     neighbor_shifts = np.empty((data.shape[0],2))
     
