@@ -4,8 +4,8 @@ import h5py, os
 import sscCdi, sscPimega, sscResolution, sscRaft, sscRadon
 
 """ sscCdi relative imports"""
-from ..ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size
-from ..misc import add_to_hdf5_group
+from ..ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size, call_ptychography
+from ..misc import add_to_hdf5_group, wavelength_from_energy
 
 def ema_ptychography(input_dict,DPs):
     """Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
@@ -30,7 +30,7 @@ def ema_ptychography(input_dict,DPs):
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-    sinogram[0, :, :], probes[0, :, :, :], error, _ = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+    sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
 
@@ -75,7 +75,7 @@ def define_paths(input_dict):
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
     
     input_dict["energy"]               = data['entry/info_exp/Energy(KeV)'][()] # keV
-    input_dict["detector_distance"]    = data['entry/info_exp/dist(mm)'][()]*1e-3 # convert to meters
+    # input_dict["detector_distance"]    = data['entry/info_exp/dist(mm)'][()]*1e-3 # convert to meters
     input_dict["restored_pixel_size"]  = data['entry/info_exp/pixel(um)'][()]*1e-6 # convert to meters 
 
     data.close()
@@ -183,3 +183,32 @@ def read_position_metadata(input_dict):
     initial_positions = np.asarray([y_positions,x_positions]).swapaxes(0,-1).swapaxes(0,1).T
 
     return initial_positions*input_dict["positions_unit_conversion"]
+
+def crop_data(input_dict, diffraction_patterns):
+    
+    dp_center = input_dict["DP_center"]
+    dp_radius = input_dict["DP_radius"]
+    dp_shape  = diffraction_patterns[0,:,:].shape
+
+    print(f"Center: {dp_center}")
+    print(f"Given radius: {dp_radius}")
+    print(f"Original shape : {dp_shape}")
+
+    # cheking radius
+    x_size_edge_left  = dp_center[0]
+    x_size_edge_right = dp_shape[0] - dp_center[0]
+
+    y_size_edge_left  = dp_center[1]
+    y_size_edge_right = dp_shape[1] - dp_center[1]
+
+    min_edge = min([x_size_edge_left, x_size_edge_right, y_size_edge_left, y_size_edge_right])
+    if(dp_radius > min_edge):
+        print(f"Given radius is greater than supported radius, new radius: {min_edge}")
+        dp_radius = min_edge
+
+    diffraction_patterns_cropped = diffraction_patterns[:,dp_center[0]-dp_radius:dp_center[0]+dp_radius,dp_center[1]-dp_radius:dp_center[1]+dp_radius]
+
+    return diffraction_patterns_cropped
+
+
+
