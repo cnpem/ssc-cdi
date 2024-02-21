@@ -13,6 +13,12 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.13] - 2024-02-21
+
+Removed
+~~~~~
+- Remove dev alignment files
+
 [0.7.12] - 2024-02-21
 
 Changed
