@@ -6,7 +6,7 @@ from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 
-import sscRaft, sscRadon
+import sscRaft
 
 from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo, open_or_create_h5_dataset
 from ..processing.unwrap import remove_phase_gradient, unwrap_in_parallel
@@ -490,9 +490,12 @@ def tomo_alignment(dic,object,angles,save=True):
 
     dic['n_of_original_angles'] = angles.shape # save to output log
 
+    minimum = np.min(object)
+    object = object - minimum # make minimum equal to 0
     tomoP, wiggle_cmas = wiggle(dic, object)
     dic["wiggle_ctr_of_mas"] = wiggle_cmas
-    
+    tomoP = tomoP + minimum # recover original values prior to alignment
+
     if save:
         np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
         np.save(dic["wiggle_sinogram_filepath"],tomoP)
@@ -502,7 +505,7 @@ def tomo_alignment(dic,object,angles,save=True):
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return dic, tomoP, wiggle_cmas
 
-def preview_angle_projection(dic):
+def preview_angle_projection(dic,sinogram,angles):
     """ Simulates the projection of angles to regular grid
 
     Args:
@@ -514,12 +517,11 @@ def preview_angle_projection(dic):
     """    
 
     print("Simulating projection of angles to regular grid...")
-    angles  = np.load(dic["ordered_angles_filepath"])
     angles = (np.pi/180.) * angles
     total_n_of_angles = angles.shape[0]
     
     _, selected_indices, n_of_padding_frames, projected_angles = angle_grid_organize(
-                                                                    np.load(dic["wiggle_sinogram_selection"]), 
+                                                                    sinogram, 
                                                                     angles,percentage=dic["step_percentage"]
                                                                 )
     n_of_negative_idxs = len([ i for i in selected_indices if i < 0])
@@ -631,13 +633,43 @@ def wiggle(dic, sinogram):
         aligned_sinogram: updated sinogram after alignment
         wiggle_cmas: center of mass coordinates to be used for final alignment, after 3D tomographic reconstruction by slices
     """
-    temp_tomogram, shift_vertical = sscRadon.radon.get_wiggle( sinogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
-    temp_tomogram, shift_vertical = sscRadon.radon.get_wiggle( temp_tomogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
+    temp_tomogram, shift_vertical = sscRaft.get_wiggle( sinogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
     print('\tFinished vertical wiggle. Starting horizontal wiggle...')
-    aligned_sinogram, shift_horizontal, wiggle_cmas_temp = sscRadon.radon.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
+    aligned_sinogram, shift_horizontal, wiggle_cmas_temp = sscRaft.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
     wiggle_cmas = [[],[]]
     wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
     return aligned_sinogram, wiggle_cmas
+
+def remove_null_frames_for_visualization(wiggle_sinogram):
+    null_matrix = np.zeros_like(wiggle_sinogram[0])
+    indices = []
+    for i in range(wiggle_sinogram.shape[0]):
+        if wiggle_sinogram[i].all() == null_matrix.all():
+            indices.append(i)
+    wiggle_sinogram = np.delete(wiggle_sinogram,indices,axis=0)
+    return wiggle_sinogram
+
+def vignetting(shape,alpha=36,m=36):
+
+    N = 0.99 # controls thickness of null border
+    x = np.linspace(-N,N,shape[1])
+    y = np.linspace(-N,N,shape[0])
+    X, Y = np.meshgrid(x,y)
+
+    vignet = np.exp(-alpha*(X)**m)*np.exp(-alpha*(Y)**m)
+    vignet[vignet<1e-10] = 0
+    return vignet
+
+def gaussian2D(shape,center,sigma):
+
+    x = np.linspace(0,shape[1]-1,shape[1]) - shape[1]//2
+    y = np.linspace(0,shape[0]-1,shape[0]) - shape[0]//2
+    X, Y = np.meshgrid(x,y)
+
+    # Evaluate the Gaussian function at each point in the domain
+    Z = np.exp(-((X - center[1])**2  / (2 * sigma[1]**2))) * np.exp(-((Y - center[0])**2  / (2 * sigma[0]**2)))
+    
+    return Z
 
 ####################### TOMOGRAPHY ###########################################
 
@@ -782,9 +814,9 @@ def tomography(dic, sinogram,save=True):
 
     if dic['project_angles_to_regular_grid'] == True:
         angles_filepath = angles_filepath[:-4]+'_projected.npy'
-        dic['algorithm_dic']['angles'] = np.load(angles_filepath)*np.pi/180
+        dic['algorithm_dic']['angles[rad]'] = np.load(angles_filepath)*np.pi/180
     else:
-        dic['algorithm_dic']['angles'] = np.load(angles_filepath)[:,1]*np.pi/180 
+        dic['algorithm_dic']['angles[rad]'] = np.load(angles_filepath)[:,1]*np.pi/180 
 
     """ Automatic Regularization """
     if dic['automatic_regularization'] != 0:
@@ -811,7 +843,7 @@ def tomography(dic, sinogram,save=True):
      
     if dic['using_wiggle']: 
         print("\tApplying wiggle center-of-mass correction to 3D reconstructed slices...")
-        reconstruction3D = sscRadon.radon.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), dic["CPUs"])
+        reconstruction3D = sscRaft.set_wiggle(reconstruction3D, 0, -np.array(wiggle_cmas[1]), -np.array(wiggle_cmas[0]), dic["CPUs"])
 
     print('\t Tomography done!')
 
