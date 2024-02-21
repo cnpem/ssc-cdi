@@ -13,6 +13,11 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.12] - 2024-02-21
+
+Changed
+~~~~~
+- Added EMA crop routine
 
 [0.7.11] - 2024-02-19
 
