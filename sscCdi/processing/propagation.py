@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 from tqdm import tqdm
 
 """ Relative imports """
@@ -46,6 +47,8 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
 
 def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_detector_distance, source_to_sample_distance = 0):
 
+    np = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
+    
     K = 2*np.pi/wavelength # wavenumber
     z2 = sample_to_detector_distance
     z1 = source_to_sample_distance
@@ -62,7 +65,7 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
     ny, nx = wavefront.shape
     fx = np.fft.fftshift(np.fft.fftfreq(nx,d = pixel_size))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
     fy = np.fft.fftshift(np.fft.fftfreq(ny,d = pixel_size))#*2*np.pi
-    FY, FX = np.meshgrid(fy,fx)
+    FX, FY = np.meshgrid(fx,fy)
     # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
     kernel = np.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
 

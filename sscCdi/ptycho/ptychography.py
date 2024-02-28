@@ -5,6 +5,7 @@ import cupy as cp
 import sys, os, h5py
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
+from ..processing.propagation import fresnel_propagator_cone_beam
 
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
 
@@ -561,7 +562,7 @@ random.seed(0)
 
 """ RAAR + probe decomposition   """
 
-def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
+def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_support = None,fresnel_regime = False):
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
@@ -569,6 +570,11 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
     wavelength = inputs['wavelength']
     distance   = inputs['distance']
     n_of_modes = inputs["n_of_modes"]
+    
+    if fresnel_regime == True:
+        pass
+    else:
+        inputs['source_distance'] = None
 
     # Numpy to Cupy
     diffraction_patterns = cp.array(diffraction_patterns)
@@ -603,7 +609,6 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
         psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
         """
 
-        t1 = time.time()
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
@@ -611,10 +616,8 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_
             psi_after_Pr = probe_modes*obj_box
             
             psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace,diffraction_patterns[index]) # Projection in Fourier space
+            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace,diffraction_patterns[index],inputs) # Projection in Fourier space
             wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-        t2 =time.time()
-        print(t2-t1)
 
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
@@ -682,7 +685,7 @@ def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, pr
     wavelength = inputs['wavelength']
     distance   = inputs['distance']
     n_of_modes = inputs["n_of_modes"]
-
+    
     if probe_support is None:
         probe_support = np.ones_like(probe)
     else:
@@ -1088,19 +1091,29 @@ def momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,O_
 
 """ GENERAL """
 
-def update_exit_wave_multiprobe_cupy(wavefront_modes,measurement):
-    wavefront_modes = propagate_farfield_multiprobe_cupy(wavefront_modes)
+def update_exit_wave_multiprobe_cupy(wavefront_modes,measurement,inputs):
+    wavefront_modes = propagate_multiprobe_cupy(wavefront_modes,inputs)
     wavefront_modes_at_detector = Fspace_update_multiprobe_cupy(wavefront_modes,measurement)
-    updated_wavefront_modes = propagate_farfield_multiprobe_cupy(wavefront_modes_at_detector,backpropagate=True)
+    updated_wavefront_modes = propagate_multiprobe_cupy(wavefront_modes_at_detector,inputs,backpropagate=True)
     return updated_wavefront_modes, wavefront_modes_at_detector
 
-def propagate_farfield_multiprobe_cupy(wavefront_modes,backpropagate=False):
-    if backpropagate == False:
-        for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
-            wavefront_modes[m] = cp.fft.fftshift(cp.fft.fft2(mode))
+def propagate_multiprobe_cupy(wavefront_modes,inputs = {},backpropagate=False):
+
+    if inputs["source_distance"] is None:
+        if backpropagate == False:
+            for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
+                wavefront_modes[m] = cp.fft.fftshift(cp.fft.fft2(mode))
+        else:
+            for m in range(wavefront_modes.shape[0]):
+                wavefront_modes[m] = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m]))
     else:
-        for m in range(wavefront_modes.shape[0]):
-            wavefront_modes[m] = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m]))
+        if backpropagate == False:
+            factor = 1
+        else:
+            factor = -1
+        for m, mode in enumerate(wavefront_modes): 
+            wavefront_modes[m] = fresnel_propagator_cone_beam(mode,inputs["wavelength"],inputs["detector_pixel_size"],factor*inputs["distance"],inputs["source_distance"])
+    
     return wavefront_modes
 
 def Fspace_update_multiprobe_cupy(wavefront_modes,measurement,epsilon=0.001):

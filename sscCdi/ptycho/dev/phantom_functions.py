@@ -12,22 +12,23 @@ from PIL import Image
 import sscPhantom
 
 from sscCdi.caterete.cat_ptycho_processing import convert_probe_positions_meters_to_pixels
-from ptycho_functions import get_circular_mask, get_positions_array, apply_invalid_regions, apply_random_shifts_to_positions
+
+from ptycho_functions import *
 
 def get_simulated_data(probe_steps_xy,random_positions=True,use_bad_points=False, add_position_errors=False,object_offset = 50,dimension = 100):
 
     """ Create Probe """
     # dimension = 100 # Must be < than object!
     mask = get_circular_mask(dimension,0.5)
-    probe = np.load('data/probe80.npy')*mask
+    probe = np.load('/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/data/simulation_data/probe80.npy')*mask
 
     positionsX,positionsY = get_positions_array(probe_steps_xy,probe.shape,random_positions)
 
     """ Create object """
     # phase = np.array( np.load('data/star_phase.npy')) # Load Imagem
     # magnitude = np.array( np.load('data/star.npy')) # Load Imagem
-    phase = np.array( np.load('data/gravel128.npy')) # Load Imagem
-    magnitude = np.array( np.load('data/camera128.npy')) # Load Imagem
+    phase = np.array( np.load('/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/data/simulation_data/gravel128.npy')) # Load Imagem
+    magnitude = np.array( np.load('/ibira/lnls/labs/tepui/home/yuri.tonin/00000000/data/simulation_data/camera128.npy')) # Load Imagem
     
     phase = np.pi*phase/np.max(phase)
     magnitude = magnitude/np.max(magnitude)
