@@ -24,24 +24,56 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
         magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
     return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)
 
-def Propagate(img, fresnel_number): # Probe propagation
-        """
-        Function for free space propagation of the probe in the Fraunhoffer regime
+# def Propagate(img, fresnel_number): # Probe propagation
+#         """
+#         Function for free space propagation of the probe in the Fraunhoffer regime
 
-        See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_.
-        Args:
-                img (array): probe
-                fresnel_number (float): Fresnel number
+#         See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_.
+#         Args:
+#                 img (array): probe
+#                 fresnel_number (float): Fresnel number
 
-        Returns:
-                [type]: [description]
-        """    
-        hs = img.shape[-1] // 2
-        ar = np.arange(-hs, hs) / float(2 * hs)
-        xx, yy = np.meshgrid(ar, ar)
-        g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
+#         Returns:
+#                 [type]: [description]
+#         """    
+#         hs = img.shape[-1] // 2
+#         ar = np.arange(-hs, hs) / float(2 * hs)
+#         xx, yy = np.meshgrid(ar, ar)
+#         g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
 
-        return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
+#         return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
+
+
+def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_detector_distance, source_to_sample_distance = 0):
+
+    K = 2*np.pi/wavelength # wavenumber
+    z2 = sample_to_detector_distance
+    z1 = source_to_sample_distance
+    
+    if z1 != 0:
+        M = 1 + (z2/z1)
+    else:
+        M = 1
+    
+    gamma_M = 1 - 1/M
+        
+    FT = np.fft.fftshift(np.fft.fft2(wavefront))
+
+    ny, nx = wavefront.shape
+    fx = np.fft.fftshift(np.fft.fftfreq(nx,d = pixel_size))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
+    fy = np.fft.fftshift(np.fft.fftfreq(ny,d = pixel_size))#*2*np.pi
+    FY, FX = np.meshgrid(fy,fx)
+    # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
+    kernel = np.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
+
+    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))*np.exp(1j*K*z2/M)
+
+    if z1 != 0:
+        y, x = np.indices(wavefront.shape)
+        wave_cone = wave_parallel * (1/M) * np.exp(1j*gamma_M*K*z2) * np.exp(1j*gamma_M*K*(x**2+y**2)/(2*z2))
+        return wave_cone
+    else:
+        return wave_parallel
 
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
