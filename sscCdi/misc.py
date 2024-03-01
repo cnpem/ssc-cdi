@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
 
+
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
 
@@ -462,7 +463,7 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
     data (ndarray): real valued data
     axis (int): slice direction
     """
-    
+
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
@@ -470,38 +471,57 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
 
     import ipywidgets as widgets
     from ipywidgets import fixed
-    
-    if type == '':
-        pass
-    elif type == 'real':
-        data = np.real(data)
-    elif type == 'imag':
-        data = np.imag(data)
-    elif type == 'amplitude':
-        data = np.abs(data)
-    elif type == 'phase':
-        data = np.angle(data)
 
-    if norm == None:
-        colornorm = None
-    elif norm == "normalize":
-        if limits == ():
-            colornorm=colors.Normalize(vmin=data.min(), vmax=data.max())
+    def get_vol_slice(volume, axis, frame):
+        selection = [slice(None)]*3
+        selection[axis] = frame
+        frame_data = volume[(*selection,)]
+        if type == '':
+            pass
+        elif type == 'real':
+            frame_data = np.real(frame_data)
+        elif type == 'imag':
+            frame_data = np.imag(frame_data)
+        elif type == 'amplitude':
+            frame_data = np.abs(frame_data)
+        elif type == 'phase':
+            frame_data = np.angle(frame_data)
+        return frame_data
+
+    def get_colornorm(frame, limits, norm):
+        if norm == None:
+            return None
+        elif norm == "normalize":
+            if limits:
+                return colors.Normalize(vmin=limits[0], vmax=limits[1])
+            else:
+                return colors.Normalize(vmin=frame.min(), vmax=frame.max())
+        elif norm == "LogNorm":
+            return colors.LogNorm()
         else:
-            colornorm=colors.Normalize(vmin=limits[0], vmax=limits[1])
-    elif norm == "LogNorm":
-            colornorm=colors.LogNorm()
+            raise ValueError("Invalid norm value: {}".format(norm))
 
-    def update_imshow(volume,figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
-        
+
+    output = widgets.Output()
+    with output:
+        volume_slice = get_vol_slice(data, axis=0, frame=0)
+        figure, ax = plt.subplots(dpi=100)
+        ax.imshow(volume_slice, cmap='gray')
+        figure.canvas.draw_idle()
+        figure.canvas.header_visible = False
+        colorbar = plt.colorbar(
+            matplotlib.cm.ScalarMappable(
+                norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)),
+                cmap=cmap))
+        plt.show()
+
+
+    def update_imshow(figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
         subplot.clear()
-        
-        if axis == 0:
-            ax = subplot.imshow(volume[frame_number,:,:],cmap=cmap,norm=norm)
-        elif axis == 1:
-            ax =subplot.imshow(volume[:,frame_number,:],cmap=cmap,norm=norm)
-        elif axis == 2:
-            ax = subplot.imshow(volume[:,:,frame_number],cmap=cmap,norm=norm)
+
+        volume_slice = get_vol_slice(data, axis, frame_number)
+        colornorm = get_colornorm(volume_slice, limits, norm)
+        im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm)
 
         if title != "":
             subplot.set_title(f'{title}')
@@ -510,24 +530,16 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
         if aspect_ratio != '':
             subplot.set_aspect(aspect_ratio)
 
-        colorbar.update_normal(ax)
-        
-    output = widgets.Output()
-    
-    with output:
-        figure, ax = plt.subplots(dpi=100)
-        ax.imshow(data[0,:,:],cmap='gray')
-        figure.canvas.draw_idle()
-        figure.canvas.header_visible = False
-        colorbar = plt.colorbar(matplotlib.cm.ScalarMappable(norm=colors.SymLogNorm(1,vmin=np.min(data),vmax=np.max(data)),cmap=cmap))
-        plt.show()   
+        colorbar.update_normal(im)
+
 
     slider_layout = widgets.Layout(width='25%')
     selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
 
     selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'volume':fixed(data),'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(colornorm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
+    widgets.interactive_output(update_imshow, {'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(norm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})
     box = widgets.VBox([selection_slider,output])
+
     return box
 
 def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
