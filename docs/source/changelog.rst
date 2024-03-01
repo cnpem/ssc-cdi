@@ -13,6 +13,16 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.14] - 2024-03-01
+
+Removed
+~~~~~
+- Removed CI/CD for power architecture
+
+Added
+~~~~~
+- Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.
+
 [0.7.13] - 2024-02-21
 
 Removed
