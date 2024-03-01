@@ -1108,11 +1108,18 @@ def propagate_multiprobe_cupy(wavefront_modes,inputs = {},backpropagate=False):
                 wavefront_modes[m] = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m]))
     else:
         if backpropagate == False:
-            factor = 1
+            z2 = 1*inputs["distance"]
+            z1 = inputs["source_distance"]
         else:
-            factor = -1
+            if inputs["source_distance"] !=0:
+                z2 = -1*inputs["distance"]
+                z1 = -inputs["source_distance"]
+            else:
+                z2 = -1*inputs["distance"]
+                z1 = inputs["source_distance"] # should be 0 here
+
         for m, mode in enumerate(wavefront_modes): 
-            wavefront_modes[m] = fresnel_propagator_cone_beam(mode,inputs["wavelength"],inputs["detector_pixel_size"],factor*inputs["distance"],inputs["source_distance"])
+            wavefront_modes[m] = fresnel_propagator_cone_beam(mode,inputs["wavelength"],inputs["detector_pixel_size"],z2,z1)
     
     return wavefront_modes
 
