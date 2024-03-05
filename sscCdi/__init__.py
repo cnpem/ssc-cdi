@@ -7,7 +7,9 @@ except:
     pass
 
 import atexit
-from sscPtycho.lib.ssccommons_wrapper import log_event, log_start, log_stop
+from sscPtycho.lib.ssccommons_wrapper import (
+    log_event, log_start, log_stop, event_start, event_stop
+)
 log_start(project="sscCdi",
           version=__version__,
           level="error",

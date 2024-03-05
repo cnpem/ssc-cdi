@@ -6,13 +6,20 @@ import sys, os, h5py
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 from ..processing.propagation import fresnel_propagator_cone_beam
-
+from .. import event_start, event_stop, log_event
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
 
+    import pdb; pdb.set_trace()
+    event_start("Call Ptychography", {
+        **input_dict,
+        'positions': positions
+    })
     if 'algorithms' in input_dict:
         obj, probe, error, positions = call_GCC_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
         obj, probe, error, positions = call_GB_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+
+    event_stop()
 
     return obj, probe, error, positions
 
@@ -184,6 +191,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
     return datapack['obj'], datapack['probe'], error, corrected_positions
 
 
+@log_event
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     """ Adjust probe initial data to be accepted by Giovanni's algorithm
 
@@ -344,6 +352,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
         return probe
 
+    event_start("set initial probe")
     print('Creating initial probe...')
 
     if isinstance(input_dict['initial_probe'],list): # if no path to file given
@@ -379,7 +388,9 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     probe = probe.astype(np.complex64)
 
     if probe.shape[0] <= 1:
-        probe = set_modes(probe, input_dict) # add incoherent modes 
+        probe = set_modes(probe, input_dict) # add incoherent modes
+
+    event_stop() # set initial probe
 
     return probe
 
@@ -400,6 +411,7 @@ def set_initial_object(input_dict,DPs, probe):
         _type_: _description_
     """
 
+    event_start("set initial object")
     print('Creating initial object...')
 
     if isinstance(input_dict['initial_obj'],list):
@@ -424,11 +436,14 @@ def set_initial_object(input_dict,DPs, probe):
     else:
         sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
 
-    return obj.astype(np.complex64)
+    complex_obj = obj.astype(np.complex64)
 
+    event_stop() # set initial object
+
+    return complex_obj
 
 def create_circular_mask(mask_shape, radius):
-    """" Create circular mask 
+    """" Create circular mask
 
     Args:
         mask_shape (tuple): Y,X shape of the mask
@@ -479,7 +494,7 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
     # center square
     mask[center_row-center_square_side:center_row+center_square_side,center_col-center_square_side:center_col+center_square_side] = 1
     
-    return mask 
+    return mask
 
 def set_object_pixel_size(input_dict,DP_size):
     """ Get size of object pixel given energy, distance and detector pixel size
