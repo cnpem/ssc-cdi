@@ -14,6 +14,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
         **input_dict,
         'positions': positions
     })
+    
     if 'algorithms' in input_dict:
         obj, probe, error, positions = call_GCC_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
