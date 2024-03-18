@@ -1,12 +1,19 @@
-
-
 import numpy as np
 import cupy as cp
 import sys, os, h5py
+import matplotlib.pyplot as plt
+import random
+import pyfftw
+import scipy
+from skimage.registration import phase_cross_correlation
+
 import sscPtycho
 from ..misc import estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, wavelength_from_energy
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .. import event_start, event_stop, log_event
+
+random.seed(0)
+
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
 
     import pdb; pdb.set_trace()
@@ -27,15 +34,6 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     """ Ptychography algorithms in Python by GCC
 
-    Args:
-        input_dict (_type_): _description_
-        DPs (_type_): _description_
-        positions (_type_): _description_
-        initial_obj (_type_, optional): _description_. Defaults to None.
-        initial_probe (_type_, optional): _description_. Defaults to None.
-
-    Returns:
-        _type_: _description_
     """
 
     if initial_probe == None:
@@ -53,16 +51,11 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
         inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
-        inputs["n_of_modes"] = input_dict['incoherent_modes']
-        inputs['object_pixel'] = input_dict['object_pixel']
-        inputs['wavelength'] = input_dict['wavelength']
-        inputs['distance'] = input_dict['detector_distance']
-        inputs["position_rotation"] = input_dict["position_rotation"]
-        inputs["object_padding"] = input_dict["object_padding"]
         inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
         inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
         inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
         inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
+
         # POSITION CORRECTION. TO BE DONE.
         inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
         inputs['beta'] = 1 # position correction beta value
@@ -72,7 +65,6 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
-            inputs['use_mPIE'] = False # friction and momentum counter only relevant if this is True
             inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
             inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
             inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
@@ -80,7 +72,7 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            obj, probe, algo_error = RAAR_multiprobe_parallel(DPs, positions,obj[0],probe[0],inputs,probe_support=None,processes=96)
+            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,positions,obj,probe,inputs, probe_support = None)
             obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
         else:
             sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
@@ -88,8 +80,7 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
         error = np.concatenate((error,algo_error),axis=0)
 
 
-    return obj, probe, error, None
-
+    return obj, probe, error, positions
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
@@ -190,7 +181,6 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
     datapack['probe'] = datapack['probe'].astype(np.complex64)
 
     return datapack['obj'], datapack['probe'], error, corrected_positions
-
 
 @log_event
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
@@ -322,7 +312,6 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
     return datapack, sigmask
 
-
 def set_initial_probe(input_dict,DP_shape,DPs_avg):
     """ Get initial probe with multiple modes, with format required by Giovanni's code
 
@@ -395,7 +384,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     return probe
 
-
 def set_initial_object(input_dict,DPs, probe):
     """ Get initial object from file at input dictionary or define a constant or random matrix for it
 
@@ -462,7 +450,6 @@ def create_circular_mask(mask_shape, radius):
     Xmesh, Ymesh = np.meshgrid(x_array, y_array)
     return np.where((Xmesh - center_col//2) ** 2 + (Ymesh - center_row//2) ** 2 <= radius ** 2, 1, 0)
 
-
 def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side = 10, cross_width_x=0):
     """ Create cross mask
     Args:
@@ -524,7 +511,6 @@ def set_object_pixel_size(input_dict,DP_size):
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return input_dict
 
-
 def set_object_shape(input_dict, DP_shape, probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
@@ -554,46 +540,26 @@ def set_object_shape(input_dict, DP_shape, probe_positions):
     return input_dict
 
 
-import numpy as np
-import cupy as cp
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
-import sys
-import time
-import h5py, os
-import random
-import tqdm
-import pyfftw
-import scipy
-
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from functools import partial
-import multiprocessing
-import threading
-
-from skimage.registration import phase_cross_correlation
-from numpy.fft import fft2, fftshift, ifftshift, ifft2
-
-random.seed(0)
 
 """ RAAR + probe decomposition   """
 
-def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs, probe_support = None,fresnel_regime = False):
+def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
     dx         = inputs['object_pixel']
     wavelength = inputs['wavelength']
     distance   = inputs['distance']
-    n_of_modes = inputs["n_of_modes"]
-    
+    n_of_modes = inputs["incoherent_modes"]
+    fresnel_regime = inputs["fresnel_regime"]
+    probe_support = inputs["probe_support"] 
+
     if fresnel_regime == True:
         pass
     else:
         inputs['source_distance'] = None
 
-    # Numpy to Cupy
-    diffraction_patterns = cp.array(diffraction_patterns)
+    diffraction_patterns = cp.array(diffraction_patterns) 
     positions = cp.array(positions)
     obj = cp.array(obj)
     probe = cp.array(probe)
@@ -691,286 +657,6 @@ def RAAR_multiprobe_update_probe_cupy(wavefronts, obj, probe_shape,positions, ep
     return probes
 
 
-""" parallel RAAR + probe decompositon """
-
-def RAAR_multiprobe_parallel(diffraction_patterns,positions,obj,probe,inputs, probe_support = None, processes=32):
-    iterations = inputs['iterations']
-    beta       = inputs['beta']
-    epsilon    = inputs['epsilon']
-    dx         = inputs['object_pixel']
-    wavelength = inputs['wavelength']
-    distance   = inputs['distance']
-    n_of_modes = inputs["n_of_modes"]
-    
-    if probe_support is None:
-        probe_support = np.ones_like(probe)
-    else:
-        probe_support = np.array(probe_support)
-
-    obj_matrix = np.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
-    obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
-    
-    shapey,shapex = probe.shape
-    wavefronts = np.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
-    
-    probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
-    probe_modes[:] = probe
-    
-    for index, (posx, posy) in enumerate(positions):
-        wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-        
-    error = []
-    for iteration in range(0,iterations):
-
-        # t1 = time.time()
-        wavefronts = update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta,processes)
-        # wavefronts = update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta)
-        # t2 = time.time()
-        # print(t2-t1)
-
-        probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
-        obj_matrix[:] = single_obj_box # update all obj slices to be the same;
-
-        probe_modes = probe_modes[:]*probe_support
-
-        iteration_error = 0 # calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance))
-        print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
-        error.append(iteration_error) 
-        
-    return obj_matrix[0], probe_modes, error
-
-def update_wavefronts_parallel2(obj_matrix, probe_modes, wavefronts0, diffraction_patterns0,positions,beta):
-
-    global wavefronts,projected_wavefronts,diffraction_patterns
-
-    wavefronts,diffraction_patterns = wavefronts0, diffraction_patterns0
-
-    shapey,shapex = probe_modes.shape[1], probe_modes.shape[2]
-
-    projected_wavefronts = np.empty_like(wavefronts)
-
-    for index, (posx, posy) in enumerate(positions):
-        projected_wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-
-    indexes = [i for i in range(wavefronts.shape[0])]
-    
-    processes = []
-    for index in indexes:
-        # process = multiprocessing.Process(target=update_wavefront2,args=(index, beta))
-        process = threading.Thread(target=update_wavefront2,args=(index, beta))
-        process.start()
-        processes.append(process)
-
-    for p in processes: # wait for processes to finish
-        p.join()
-
-    return wavefronts
-
-def update_wavefront2(index,beta):
-    """
-    RAAR update function:
-    psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
-    psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
-    psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
-    """
-    global wavefronts,projected_wavefronts,diffraction_patterns
-
-    
-    psi_after_reflection_Rspace = 2*projected_wavefronts[index]-wavefronts[index]
-    psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace,diffraction_patterns[index]) # Projection in Fourier space
-    wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*projected_wavefronts[index] 
-
-def update_wavefronts_parallel(obj_matrix, probe_modes, wavefronts, diffraction_patterns,positions,beta, processes):
-    t0 = time.time()
-
-    shapey,shapex = probe_modes.shape[1], probe_modes.shape[2]
-
-    # update_wavefront_partial = partial(update_wavefront,beta)
-
-    projected_wavefronts = np.empty_like(wavefronts)
-    for index, (posx, posy) in enumerate(positions):
-        projected_wavefronts[index] = probe_modes*obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-
-    with ThreadPoolExecutor(max_workers=processes) as executor:
-        results = executor.map(update_wavefront,wavefronts, projected_wavefronts, diffraction_patterns)
-        for counter, result in enumerate(results):
-            wavefronts[counter,:,:] = result
-
-    return wavefronts
-
-def update_wavefront(wavefront,psi_after_Pr,data,beta=1):
-    """
-    RAAR update function:
-    psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
-    psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
-    psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
-    """
-    
-    wavefront = cp.asarray(wavefront)
-    psi_after_Pr = cp.asarray(psi_after_Pr)
-    data = cp.asarray(data)
-
-    psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
-    psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace.copy(),data) # Projection in Fourier space
-    wavefront = beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-
-
-    return wavefront.get()
-
-def RAAR_multiprobe(diffraction_patterns,positions,obj,probe,inputs, probe_support = None):
-    iterations = inputs['iterations']
-    beta       = inputs['beta']
-    epsilon    = inputs['epsilon']
-    dx         = inputs['object_pixel']
-    wavelength = inputs['wavelength']
-    distance   = inputs['distance']
-    n_of_modes = inputs["n_of_modes"]
-
-    if probe_support is None:
-        probe_support = np.ones_like(probe)
-    else:
-        probe_support = np.array(probe_support)
-
-    obj_matrix = np.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
-    obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
-    
-    shapey,shapex = probe.shape
-    wavefronts = np.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
-    
-    probe_modes = np.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
-    probe_modes[:] = probe
-    
-    for index, (posx, posy) in enumerate(positions):
-        obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-        wavefronts[index] = probe_modes*obj_box
-        
-    error = []
-    for iteration in range(0,iterations):
-        """
-        RAAR update function:
-        psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
-        psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi 
-        psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
-        """
-
-        for index, (posx, posy) in enumerate(positions):
-            
-            obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-            psi_after_Pr = probe_modes*obj_box
-
-            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe(psi_after_reflection_Rspace.copy(),diffraction_patterns[index]) # Projection in Fourier space
-
-            wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
-
-        probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
-        obj_matrix[:] = single_obj_box # update all obj slices to be the same;
-
-        probe_modes = probe_modes[:]*probe_support
-
-        iteration_error = calculate_recon_error_Fspace(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
-        if iteration%10==0:
-            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
-        error.append(iteration_error) 
-        
-    return obj_matrix[0], probe_modes, error
-
-def update_exit_wave_multiprobe(wavefront_modes,measurement):
-    wavefront_modes = propagate_farfield_multiprobe(wavefront_modes)
-    wavefront_modes_at_detector = Fspace_update_multiprobe(wavefront_modes,measurement)
-    updated_wavefront_modes = propagate_farfield_multiprobe(wavefront_modes_at_detector,backpropagate=True)
-    return updated_wavefront_modes, wavefront_modes_at_detector
-
-def propagate_farfield_multiprobe_pyfftw(wavefront_modes,backpropagate=False):
-    
-    if backpropagate == False:
-        for m, mode in enumerate(wavefront_modes): 
-            wavefront_modes[m] = np.fft.fftshift(pyfftw_FT2D(mode))
-    else:
-        for m in range(wavefront_modes.shape[0]):
-            wavefront_modes[m] = pyfftw_FT2D(np.fft.ifftshift(wavefront_modes[m]),inverse=True)
-    return wavefront_modes
-    
-def pyfftw_FT2D(data,inverse=False):
-    data_aligned = pyfftw.byte_align(data,dtype = 'complex128')
-    # result_aligned = pyfftw.empty_aligned(data_aligned.shape,dtype = 'complex128')
-    if inverse == False:
-        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),threads=30)
-        fft = pyfftw.interfaces.numpy_fft.fft(data_aligned)
-    else:    
-        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),direction='FFTW_BACKWARD',threads=30)
-        fft = pyfftw.interfaces.numpy_fft.ifft(data_aligned)
-    # return fft_object()
-    return fft
-
-def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
-    if backpropagate == False:
-        for m, mode in enumerate(wavefront_modes): 
-            # wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(mode)) # NUMPY
-            wavefront_modes[m] = scipy.fft.fftshift(scipy.fft.fft2(mode,workers=-1)) #SCIPY
-    else:
-        for m in range(wavefront_modes.shape[0]):
-            # wavefront_modes[m] = np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m]))
-            wavefront_modes[m] = scipy.fft.ifft2(scipy.fft.ifftshift(wavefront_modes[m]),workers=-1)
-    return wavefront_modes
-
-def Fspace_update_multiprobe(wavefront_modes,measurement,epsilon=0.001):
-    
-    total_wave_intensity = np.zeros_like(wavefront_modes[0])
-
-    for mode in wavefront_modes:
-        total_wave_intensity += np.abs(mode)**2
-    total_wave_intensity = np.sqrt(total_wave_intensity)
-    
-    updated_wavefront_modes = wavefront_modes
-    for m, mode in enumerate(wavefront_modes): 
-        updated_wavefront_modes[m][measurement>=0] = np.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
-    
-    return updated_wavefront_modes
-
-def projection_Rspace_multiprobe_RAAR(wavefronts,obj,probes,positions,epsilon):
-    probes = RAAR_multiprobe_update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
-    obj   = RAAR_multiprobe_update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
-    return probes, obj
-
-def RAAR_multiprobe_update_object(wavefronts, probe, object_shape, positions,epsilon):
-
-    modes,m,n = probe.shape
-    k,l = object_shape
-
-    probe_sum  = np.zeros((k,l),dtype=complex)
-    wave_sum   = np.zeros((k,l),dtype=complex)
-    probe_intensity  = np.abs(probe)**2
-    probe_conj = np.conj(probe)
-
-    for mode in range(modes):
-        for index, (posx, posy) in enumerate((positions)):
-            probe_sum[posy:posy + m , posx:posx+n] += probe_intensity[mode]
-            wave_sum[posy:posy + m , posx:posx+n]  += probe_conj[mode]*wavefronts[index,mode] 
-
-    obj = wave_sum/(probe_sum + epsilon)
-
-    return obj
-
-def RAAR_multiprobe_update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
-    
-    l,m,n = probe_shape
-
-    object_sum = np.zeros((m,n),dtype=complex)
-    wave_sum = np.zeros((l,m,n),dtype=complex)
-    
-    obj_intensity = np.abs(obj)**2
-    obj_conj = np.conj(obj)
-    
-    for index, (posx, posy) in enumerate(positions):
-        object_sum += obj_intensity[posy:posy + m , posx:posx+n] 
-        for mode in range(l):
-            wave_sum[mode] += obj_conj[posy:posy + m , posx:posx+n]*wavefronts[index,mode]
-
-    probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
-
-    return probes
-
 
 """  mPIE + probe decomposition   """
 
@@ -983,7 +669,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     f_o = inputs["friction_object"]
     f_p = inputs["friction_probe"]
     m_counter_limit = inputs["momentum_counter"]
-    n_of_modes = inputs["n_of_modes"]
+    n_of_modes = inputs["incoherent_modes"]
     iterations = inputs["iterations"]
     experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
 
@@ -997,16 +683,16 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
 
     offset = probe_guess.shape
 
-    if inputs["n_of_modes"] > 1:
-        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+    if inputs["incoherent_modes"] > 1:
+        probe_modes = cp.empty((inputs["incoherent_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
         probe_modes[0] = probe_guess # first mode is guess
-        for mode in range(1,inputs["n_of_modes"]): # remaining modes are random
+        for mode in range(1,inputs["incoherent_modes"]): # remaining modes are random
             probe_modes[mode] = cp.random.rand(*probe_guess.shape)
-    elif inputs["n_of_modes"] == 1:
-        probe_modes = cp.empty((inputs["n_of_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
+    elif inputs["incoherent_modes"] == 1:
+        probe_modes = cp.empty((inputs["incoherent_modes"],probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
         probe_modes[:] = probe_guess
     else:
-        sys.exit('Please select the correct amount of modes: ',inputs["n_of_modes"])
+        sys.exit('Please select the correct amount of modes: ',inputs["incoherent_modes"])
 
     wavefronts = cp.empty((len(diffraction_patterns),probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
 
@@ -1030,7 +716,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             wavefronts[j] = wavefront_modes[0] # save mode 0 wavefront to calculate recon error
  
             """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes, _ = update_exit_wave_multiprobe_cupy(wavefront_modes.copy(),diffraction_patterns[j]) #copy so it doesn't work as a pointer!
+            updated_wavefront_modes, _ = update_exit_wave_multiprobe_cupy(wavefront_modes.copy(),diffraction_patterns[j],inputs) #copy so it doesn't work as a pointer!
             
             obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
@@ -1105,6 +791,8 @@ def momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,O_
     
     return momentum_counter,obj_velocity,probe_velocity,O_aux,P_aux,obj,probe
 
+
+
 """ GENERAL """
 
 def update_exit_wave_multiprobe_cupy(wavefront_modes,measurement,inputs):
@@ -1115,7 +803,7 @@ def update_exit_wave_multiprobe_cupy(wavefront_modes,measurement,inputs):
 
 def propagate_multiprobe_cupy(wavefront_modes,inputs = {},backpropagate=False):
 
-    if inputs["source_distance"] is None:
+    if inputs["fresnel_regime"] == False:
         if backpropagate == False:
             for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
                 wavefront_modes[m] = cp.fft.fftshift(cp.fft.fft2(mode))
@@ -1124,14 +812,14 @@ def propagate_multiprobe_cupy(wavefront_modes,inputs = {},backpropagate=False):
                 wavefront_modes[m] = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m]))
     else:
         if backpropagate == False:
-            z2 = 1*inputs["distance"]
+            z2 = 1*inputs["detector_distance"]
             z1 = inputs["source_distance"]
         else:
             if inputs["source_distance"] !=0:
-                z2 = -1*inputs["distance"]
+                z2 = -1*inputs["detector_distance"]
                 z1 = -inputs["source_distance"]
             else:
-                z2 = -1*inputs["distance"]
+                z2 = -1*inputs["detector_distance"]
                 z1 = inputs["source_distance"] # should be 0 here
 
         for m, mode in enumerate(wavefront_modes): 
@@ -1221,6 +909,40 @@ def propagate_beam_cupy(wavefront, experiment_params,propagator='fourier'):
         a = cp.exp(-1j*cp.pi*( distance*wavelength/dx**2)*w)
         output = cp.fft.ifftshift(cp.fft.ifft2(cp.fft.ifftshift(F*a)))
     return output
+
+def propagate_farfield_multiprobe_pyfftw(wavefront_modes,backpropagate=False):
+    
+    if backpropagate == False:
+        for m, mode in enumerate(wavefront_modes): 
+            wavefront_modes[m] = np.fft.fftshift(pyfftw_FT2D(mode))
+    else:
+        for m in range(wavefront_modes.shape[0]):
+            wavefront_modes[m] = pyfftw_FT2D(np.fft.ifftshift(wavefront_modes[m]),inverse=True)
+    return wavefront_modes
+    
+def pyfftw_FT2D(data,inverse=False):
+    data_aligned = pyfftw.byte_align(data,dtype = 'complex128')
+    # result_aligned = pyfftw.empty_aligned(data_aligned.shape,dtype = 'complex128')
+    if inverse == False:
+        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),threads=30)
+        fft = pyfftw.interfaces.numpy_fft.fft(data_aligned)
+    else:    
+        # fft_object = pyfftw.FFTW(data_aligned, result_aligned, axes=(0,1),direction='FFTW_BACKWARD',threads=30)
+        fft = pyfftw.interfaces.numpy_fft.ifft(data_aligned)
+    # return fft_object()
+    return fft
+
+def propagate_farfield_multiprobe(wavefront_modes,backpropagate=False):
+    if backpropagate == False:
+        for m, mode in enumerate(wavefront_modes): 
+            # wavefront_modes[m] = np.fft.fftshift(np.fft.fft2(mode)) # NUMPY
+            wavefront_modes[m] = scipy.fft.fftshift(scipy.fft.fft2(mode,workers=-1)) #SCIPY
+    else:
+        for m in range(wavefront_modes.shape[0]):
+            # wavefront_modes[m] = np.fft.ifft2(np.fft.ifftshift(wavefront_modes[m]))
+            wavefront_modes[m] = scipy.fft.ifft2(scipy.fft.ifftshift(wavefront_modes[m]),workers=-1)
+    return wavefront_modes
+
 
 
 """ DEV: Position Correction """
