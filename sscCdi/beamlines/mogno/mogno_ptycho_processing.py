@@ -9,33 +9,19 @@ from ..misc import add_to_hdf5_group, wavelength_from_energy
 
 def mogno_ptychography(input_dict,DPs):
 
-    probe_positions = read_mogno_probe_positions(input_dict,DPs.shape)
+    # probe_positions = read_mogno_probe_positions(input_dict,DPs.shape)
 
-    input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
+    # input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
 
-    sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
-    probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+    # sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
+    # probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     
-    sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
+    # sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
+    # add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
 
     return sinogram, probes, input_dict
 
-def get_datetime(name):
-    """
-    Get custom str with acquisition name and current datetime to use as filename
-
-    Args:
-        name (str): name of current acquisition
-    Returns:
-        datetime (str): filename with current date and time
-    """    
-    from datetime import datetime
-    now = datetime.now()
-    dt_string = now.strftime("%y%m%d-%Hh%Mm")
-    datetime = dt_string + "_" + name.split('.')[0]
-    return datetime 
 
 def read_mogno_probe_positions(input_dict,sinogram_shape):
     """
