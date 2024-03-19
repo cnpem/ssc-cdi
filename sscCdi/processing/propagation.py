@@ -25,25 +25,6 @@ def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnific
         magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
     return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)
 
-# def Propagate(img, fresnel_number): # Probe propagation
-#         """
-#         Function for free space propagation of the probe in the Fraunhoffer regime
-
-#         See paper `Memory and CPU efficient computation of the Fresnel free-space propagator in Fourier optics simulations <https://opg.optica.org/oe/fulltext.cfm?uri=oe-27-20-28750&id=420820>`_.
-#         Args:
-#                 img (array): probe
-#                 fresnel_number (float): Fresnel number
-
-#         Returns:
-#                 [type]: [description]
-#         """    
-#         hs = img.shape[-1] // 2
-#         ar = np.arange(-hs, hs) / float(2 * hs)
-#         xx, yy = np.meshgrid(ar, ar)
-#         g = np.exp(-1j * np.pi / fresnel_number * (xx ** 2 + yy ** 2))
-
-#         return np.fft.ifft2(np.fft.fft2(img) * np.fft.fftshift(g))
-
 
 def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_detector_distance, source_to_sample_distance = 0):
 
