@@ -1,4 +1,4 @@
-import os, sys, time, ast
+import os, sys, time, ast, h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -8,143 +8,51 @@ from concurrent.futures import ProcessPoolExecutor
 
 import sscRaft
 
-from ..misc import save_json_logfile, create_directory_if_doesnt_exist, save_json_logfile_tomo, open_or_create_h5_dataset
+from ..misc import save_json_logfile_tomo, open_or_create_h5_dataset
 from .unwrap import remove_phase_gradient, unwrap_in_parallel
-
-def define_paths(dic):
-    """ Defines all the path required for the remaining parts of the code; adds them to the dicitionary and creates necessary folders
-
-    Args:
-        dic (dict): dictionary of inputs  
-            keys:
-                "sinogram_path": sinogram path
-                "contrast_type": contrast type
-                "output_folder": path for output files
-
-    Returns:
-        dic (dict): updated dictionary of inputs  
-            updated keys:
-                "filename"
-                "temp_folder"
-                "ordered_angles_filepath"
-                "projected_angles_filepath"
-                "ordered_object_filepath"
-                "cropped_sinogram_filepath"
-                "pre_aligned_sinogram_filepath"
-                "equalized_sinogram_filepath"
-                "unwrapped_sinogram_filepath"
-                "wiggle_sinogram_filepath"
-                "wiggle_cmas_filepath"
-                "reconstruction_filepath"
-                "eq_reconstruction_filepath"
-    """
-
-    dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
-    dic["filename"]    = os.path.join(dic["sinogram_path"].rsplit('/',1)[1].split('.')[0]+'_'+dic["contrast_type"])
-    dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
-    dic["ordered_angles_filepath"]       = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.npy')
-    dic["projected_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.npy')
-    dic["ordered_object_filepath"]       = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_object.npy')
-    dic["cropped_sinogram_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_cropped_sinogram.npy')
-    dic["pre_aligned_sinogram_filepath"] = os.path.join(dic["temp_folder"],f'{dic["filename"]}_prealigned_sinogram.npy')
-    dic["equalized_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_equalized_sinogram.npy')
-    dic["unwrapped_sinogram_filepath"]   = os.path.join(dic["temp_folder"],f'{dic["filename"]}_unwrapped_sinogram.npy')
-    dic["wiggle_sinogram_filepath"]      = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_sinogram.npy')
-    dic["wiggle_cmas_filepath"]          = os.path.join(dic["temp_folder"],f'{dic["filename"]}_wiggle_ctr_mass.npy')
-    dic["reconstruction_filepath"]       = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo.npy')
-    dic["eq_reconstruction_filepath"]    = os.path.join(dic["output_folder"],f'{dic["filename"]}_tomo_equalized.npy')
-
-    create_directory_if_doesnt_exist(dic["output_folder"])
-    create_directory_if_doesnt_exist(dic["temp_folder"])
-
-    return dic
-
-
 
 ####################### SORTING ###################################
 
-def tomo_sort(dic, object, angles,save=True):
+def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
     """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
-        dic (dict): dictionary of inputs  
-            keys:
-                "ordered_angles_filepath"
-                "ordered_object_filepath"
         object (ndarray): read sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
-
     """
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
 
-    if save:
-        np.save(dic["ordered_angles_filepath"], sorted_angles)
-        print('Saved sorted angles at: ',dic["ordered_angles_filepath"])
-        np.save(dic["ordered_object_filepath"], sorted_object) 
-        print('Saved sorted object at: ',dic["ordered_object_filepath"])
+    if angles_savepath != '':
+        print('Saving sorted angles...')
+        open_or_create_h5_dataset(angles_savepath,'entry','data',sorted_angles,create_group=True)
+        print('Saved sorted angles at: ', angles_savepath)
+    if object_savepath != '':
+        print('Saving sorted sinogram...')
+        open_or_create_h5_dataset(object_savepath,'entry','data',sorted_object,create_group=True)
+        print('Saved sorted object at: ',object_savepath)
 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return sorted_object, sorted_angles
     
-def remove_frames_after_sorting(dic):
+def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,ordered_object_filepath= '', ordered_angles_filepath= ''):
     """ Remove unwanted sinogram frames after sorting
-
-    Args:
-        dic (dict): dictionary of inputs
-            keys:
-                "ordered_object_filepath"
-                "ordered_angles_filepath"
-                "bad_frames_after_sorting"
-                "bad_frames_after_sorting"
     """    
 
-    sorted_object = np.load(dic["ordered_object_filepath"])
-    sorted_angles = np.load(dic["ordered_angles_filepath"])
+    print('Original shape: ',sinogram.shape)
 
-    print('Original shape: ',sorted_object.shape)
+    new_object = np.delete(sinogram,list_of_bad_frames,axis=0)
+    new_angles = np.delete(angles,list_of_bad_frames,axis=0)
 
-    sorted_object = np.delete(sorted_object,dic["bad_frames_after_sorting"],axis=0)
-    sorted_angles = np.delete(sorted_angles,dic["bad_frames_after_sorting"],axis=0)
+    print('New shape: ',new_object.shape)
 
-    print('New shape: ',sorted_object.shape)
+    if ordered_object_filepath != '':
+        open_or_create_h5_dataset(ordered_object_filepath,'entry','data',new_angles,create_group=True)
+    if ordered_angles_filepath != '':
+        open_or_create_h5_dataset(ordered_angles_filepath,'entry','data',new_object,create_group=True)
 
-    np.save(dic["ordered_angles_filepath"], sorted_angles)
-    np.save(dic["ordered_object_filepath"], sorted_object) 
-
-def remove_frames(dic, filepath_object, angles, frames):
-    """ Remove unwanted sinogram frames before sorting
-
-    Args:
-        dic (dict): dictionary of inputs
-        filepath (string): path of object
-        angles: angles array
-        frames: frames array
-        
-    Return:
-        dic (dict): updated dictionary of inputs
-            keys:
-                "object_after_remove_frames_path"
-                "angles_after_remove_frames_path"
-    """    
-
-    obj = np.load(filepath_object)
-
-    print('Original shape: ',obj.shape)
-
-    obj = np.delete(obj,frames,axis=0)
-    angles = np.delete(angles,frames,axis=0)
-
-    print('New shape: ',obj.shape)
-    
-    dic["object_after_remove_frames_path"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_object_after_removing.npy')
-    dic["angles_after_remove_frames_path"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_angles_after_removing.npy')
-
-    np.save(dic["object_after_remove_frames_path"], obj)
-    np.save(dic["angles_after_remove_frames_path"], angles)
-    
-    return dic
+    return new_object, new_angles
 
 def sort_angles(angles):
     """ Sort angles array from smallest to highest angle
@@ -182,60 +90,45 @@ def reorder_slices_low_to_high_angle(object, rois):
 
 ######################### CROP #################################################
 
-def tomo_crop(dic,object,save=True):
+def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepath='',crop_mode=0):
     """ Crops sinogram according to cropping parameters in dic
-
-    Args:
-        dic (dict): dictionary of inputs  
-            keys:
-                "top_crop": top distance from object to border
-                "bottom_crop": bottom distance from object to border
-                "left_crop": left distance from object to border
-                "right_crop": right distance from object to border
-                "cropped_sinogram_filepath": cropped sinogram path
-        object (array): sinogram to be cropped
-
-    Returns: cropped_object 
-
     """
     
     start = time.time()
-    object = object[:,dic["top_crop"]:-dic["bottom_crop"],dic["left_crop"]:-dic["right_crop"]] # Crop frame
-    print(f"Cropped sinogram shape: {object.shape}")
-    if save:
-        np.save(dic["cropped_sinogram_filepath"],object) # save shaken and padded sorted sinogram
-        print('Saved cropped object at: ',dic["cropped_sinogram_filepath"])
+    if crop_mode == 0:
+        volume = volume[:,top_crop:-bottom_crop,left_crop:-right_crop] # Crop frame
+    elif crop_mode == 1:
+        volume = volume[:,top_crop:bottom_crop,left_crop:right_crop] # Crop frame
+    else:
+        sys.exit('Please select crop_mode 0 or 1')
+
+    print(f"Cropped sinogram shape: {volume.shape}")
+    if cropped_savepath != '':
+        print('Saving cropped volume...')
+        open_or_create_h5_dataset(cropped_savepath,'entry','data',volume,create_group=True)
+        print('Saved cropped volume at: ',cropped_savepath)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return object
+    return volume
 
 ######################### UNWRAP #################################################
 
-def tomo_unwrap(dic,object,save=True):
+def unwrap_sinogram(sinogram,unwrapped_savepath=''):
     """ Calls unwrapping algorithms in multiple processes for the sinogram frames
-
-    Args:
-        dic (dict): dictionary of inputs 
-            keys:
-                "bad_frames_before_unwrap"
-                "unwrapped_sinogram_filepath"
-        object (array): sinogram
-
     """
     start = time.time()
 
-    object = make_bad_frame_null(dic["bad_frames_before_unwrap"],object)
-
-    object = unwrap_in_parallel(object)
-    if save:
-        np.save(dic["unwrapped_sinogram_filepath"],object) 
-        print('Saved unwrapped object at: ',dic["unwrapped_sinogram_filepath"])
+    sinogram = unwrap_in_parallel(sinogram)
+    if unwrapped_savepath != '':
+        print('Saving unwrapped volume..')
+        open_or_create_h5_dataset(unwrapped_savepath,'entry','data',sinogram,create_group=True)
+        print('Saved unwrapped sinogram at: ',unwrapped_savepath)
  
     print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return object
+    return sinogram
 
 ######################### EQUALIZATION #################################################
 
-def tomo_equalize(dic, sinogram,save=True):
+def equalize_sinogram(dic, sinogram,save=True):
     """ Calls equalization algorithms in multiple processes for sinogram frames
 
     Args:
@@ -248,11 +141,10 @@ def tomo_equalize(dic, sinogram,save=True):
     """
     start = time.time()
 
-    sinogram = make_bad_frame_null(dic["bad_frames_before_equalization"],sinogram)
-
     equalized_sinogram = equalize_frames_parallel(sinogram,dic)
     if save:
-        np.save(dic["equalized_sinogram_filepath"] ,equalized_sinogram)
+        print('Saving equalized sinogran...')
+        open_or_create_h5_dataset(dic["equalized_sinogram_filepath"],'entry','data',equalized_sinogram,create_group=True)
         print('Saved equalized object at: ',dic["equalized_sinogram_filepath"])
 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
@@ -282,10 +174,10 @@ def tomo_equalize3D(dic,reconstruction,save=True):
     )
 
     if save:
-        np.save(dic["eq_reconstruction_filepath"],equalized_tomogram)
+        open_or_create_h5_dataset(dic["eq_reconstruction_filepath"],'entry','data',equalized_tomogram,create_group=True)
         print('Saved equalized object at: ',dic["eq_reconstruction_filepath"])
 
-    open_or_create_h5_dataset(  dic["eq_reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon',  'equalized_volume',  equalized_tomogram,create_group=True  )
+    open_or_create_h5_dataset( dic["eq_reconstruction_filepath"],'entry', 'data',  equalized_tomogram,create_group=True)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return equalized_tomogram
 
@@ -457,7 +349,7 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
 ####################### ALIGNMENT ###########################################
 
-def tomo_alignment(dic,object,angles,save=True):
+def wiggle_sinogram_alignment(dic,object,angles,save=True):
     """ Calls alignment algorithms for aligning the object along the sinogram frames
 
     Args:
@@ -488,7 +380,7 @@ def tomo_alignment(dic,object,angles,save=True):
     if dic['project_angles_to_regular_grid']:
         object, _, _, projected_angles = angle_grid_organize(object, angles,percentage=dic["step_percentage"])
         dic['n_of_used_angles']     = projected_angles.shape 
-        np.save(dic["projected_angles_filepath"],projected_angles)
+        open_or_create_h5_dataset(dic["projected_angles_filepath"],'entry','data',projected_angles,create_group=True)
 
     dic['n_of_original_angles'] = angles.shape # save to output log
 
@@ -499,8 +391,9 @@ def tomo_alignment(dic,object,angles,save=True):
     tomoP = tomoP + minimum # recover original values prior to alignment
 
     if save:
-        np.save(dic["wiggle_cmas_filepath"],wiggle_cmas)
-        np.save(dic["wiggle_sinogram_filepath"],tomoP)
+        print('Saving wiggle aligned sinogram...')
+        open_or_create_h5_dataset(dic["wiggle_cmas_filepath"],'entry','data',wiggle_cmas,create_group=True)
+        open_or_create_h5_dataset(dic["wiggle_sinogram_filepath"],'entry','data',tomoP,create_group=True)
         print('Saved aligned object at: ',dic["wiggle_sinogram_filepath"])
 
 
@@ -675,7 +568,7 @@ def gaussian2D(shape,center,sigma):
 
 ####################### TOMOGRAPHY ###########################################
 
-def tomo_recon(dic, sinogram,save=True):
+def tomography(dic, sinogram,save=True):
     """ Calls tomographic algorithms from sscRaft
 
     Args:
@@ -690,10 +583,10 @@ def tomo_recon(dic, sinogram,save=True):
     """
     
     start = time.time()
-    reconstruction3D = tomography(dic, sinogram,save)
+    reconstruction3D = call_sscRaft(dic, sinogram,save)
     if save:
         np.save(dic["reconstruction_filepath"],reconstruction3D)
-        open_or_create_h5_dataset(dic["reconstruction_filepath"].split('.npy')[0]+'.hdf5','recon','volume',reconstruction3D,create_group=True)
+        open_or_create_h5_dataset(dic["reconstruction_filepath"],'recon','volume',reconstruction3D,create_group=True)
         print('Saved reconstructed object at: ',dic["wiggle_sinogram_filepath"])
 
     print(f'Time elapsed: Tomography: {time.time() - start} s' )
@@ -777,7 +670,7 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
-def tomography(dic, sinogram,save=True):
+def call_sscRaft(dic, sinogram,save=True):
     """ Performs tomography
     Args:
         dic (dict): dictionary of inputs
@@ -805,7 +698,7 @@ def tomography(dic, sinogram,save=True):
     angles_filepath = dic["ordered_angles_filepath"]
     
     if dic['using_wiggle']:
-        wiggle_cmas_path         = dic["wiggle_cmas_filepath"]
+        wiggle_cmas_path  = dic["wiggle_cmas_filepath"]
         try:
             wiggle_cmas = dic["wiggle_ctr_of_mas"]
         except:
@@ -815,10 +708,12 @@ def tomography(dic, sinogram,save=True):
             wiggle_cmas = save_or_load_wiggle_ctr_mass(wiggle_cmas_path,save=False)
 
     if dic['project_angles_to_regular_grid'] == True:
-        angles_filepath = angles_filepath[:-4]+'_projected.npy'
-        dic['algorithm_dic']['angles[rad]'] = np.load(angles_filepath)*np.pi/180
+        angles_filepath = angles_filepath[:-3]+'_projected.h5'
+        angles = h5py.File(angles_filepath,'r')['entry/data'][()]
+        dic['algorithm_dic']['angles[rad]'] = angles*np.pi/180
     else:
-        dic['algorithm_dic']['angles[rad]'] = np.load(angles_filepath)[:,1]*np.pi/180 
+        angles = h5py.File(angles_filepath,'r')['entry/data'][()]
+        dic['algorithm_dic']['angles[rad]'] = angles[:,1]*np.pi/180 
 
     """ Automatic Regularization """
     if dic['automatic_regularization'] != 0:
