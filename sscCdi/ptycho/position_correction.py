@@ -1,3 +1,5 @@
+import numpy as np
+
 """ DEV: Position Correction """
 
 def update_beta(positions1,positions2, beta):

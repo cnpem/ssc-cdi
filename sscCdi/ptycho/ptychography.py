@@ -1,31 +1,20 @@
 import numpy as np
-import cupy as cp
 import sys, os, h5py
 import random
 
 import sscPtycho
 from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_from_energy
-from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
-from .. import event_start, event_stop, log_event
 
 random.seed(0)
 
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
 
-    import pdb; pdb.set_trace()
-    event_start("Call Ptychography", {
-        **input_dict,
-        'positions': positions
-    })
-    
     if 'algorithms' in input_dict:
         obj, probe, error, positions = call_GCC_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
         obj, probe, error, positions = call_GB_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
-
-    event_stop()
 
     return obj, probe, error, positions
 
@@ -340,7 +329,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
         return probe
 
-    event_start("set initial probe")
     print('Creating initial probe...')
 
     if isinstance(input_dict['initial_probe'],list): # if no path to file given
@@ -378,8 +366,6 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
     if probe.shape[0] <= 1:
         probe = set_modes(probe, input_dict) # add incoherent modes
 
-    event_stop() # set initial probe
-
     return probe
 
 def set_initial_object(input_dict,DPs, probe):
@@ -398,7 +384,6 @@ def set_initial_object(input_dict,DPs, probe):
         _type_: _description_
     """
 
-    event_start("set initial object")
     print('Creating initial object...')
 
     if isinstance(input_dict['initial_obj'],list):
@@ -425,7 +410,6 @@ def set_initial_object(input_dict,DPs, probe):
 
     complex_obj = obj.astype(np.complex64)
 
-    event_stop() # set initial object
 
     return complex_obj
 
