@@ -1,9 +1,13 @@
 import numpy as np
+import cupy as cp
 import sys, os, h5py
 import random
 
 import sscPtycho
 from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_from_energy
+from ..processing.propagation import fresnel_propagator_cone_beam
+from .pie import PIE_multiprobe_loop
+from .raar import RAAR_multiprobe_cupy
 from .. import event_start, event_stop, log_event
 
 random.seed(0)
@@ -532,5 +536,8 @@ def set_object_shape(input_dict, DP_shape, probe_positions):
     input_dict["object_shape"] = (object_shape_y, object_shape_x)
 
     return input_dict
+
+
+
 
 

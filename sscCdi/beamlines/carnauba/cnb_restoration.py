@@ -6,7 +6,7 @@ import uuid
 
 from sscPimega import pi135D
 
-from ..processing.restoration import restore_IO_SharedArray
+from ...processing.restoration import restore_IO_SharedArray
 
 def restoration_CNB(input_dict):
     """Calls restoration algorithm

@@ -17,11 +17,9 @@ log_start(project="sscCdi",
 atexit.register(log_stop)
 
 from .cditypes import *
-from .caterete import *
-from .carnauba import *
 from .processing import *
 from .ptycho import *
 from .tomo import *
 from .misc import *
 from .jupyter import *
-from .ema import *
+from .beamlines import *
