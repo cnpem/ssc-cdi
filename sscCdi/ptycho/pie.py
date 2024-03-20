@@ -1,6 +1,6 @@
 import sys
 import cupy as cp
-from .ptychography import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
+from .common import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
 
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
 

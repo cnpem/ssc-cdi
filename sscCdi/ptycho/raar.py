@@ -1,5 +1,5 @@
 import cupy as cp
-from .ptychography import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
+from .common import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
 
 
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
@@ -8,7 +8,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     epsilon    = inputs['epsilon']
     dx         = inputs['object_pixel']
     wavelength = inputs['wavelength']
-    distance   = inputs['distance']
+    distance   = inputs['detector_distance']
     n_of_modes = inputs["incoherent_modes"]
     fresnel_regime = inputs["fresnel_regime"]
     probe_support  = inputs["probe_support"] 

@@ -9,14 +9,14 @@ from sscIO import io
 from sscPimega import pi540D, opt540D
 from sscPimega import misc as miscPimega
 
-from ..jupyter import slide_and_play
+from ...jupyter import slide_and_play
 
 """ Sirius Scientific Computing Imports """
 from sscPimega import pi540D, opt540D
 
 """ sscCdi relative imports"""
-from ..misc import read_hdf5, list_files_in_folder, select_specific_angles
-from ..processing.restoration import restore_IO_SharedArray
+from ...misc import read_hdf5, list_files_in_folder, select_specific_angles
+from ...processing.restoration import restore_IO_SharedArray
 
 def Geometry(distance,susp,fill):
     """ 
