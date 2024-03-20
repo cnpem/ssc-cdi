@@ -63,3 +63,4 @@ def select_contrast(dic, data):
     else:
         sys.exit("Please select the correct contrast type: magnitude or phase")
     return obj
+
