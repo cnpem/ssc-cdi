@@ -632,3 +632,9 @@ def convert_complex_to_RGB(ComplexImg,bias=0.01):
 
     Amps,Phases = SplitComplex(ComplexImg)
     return MakeRGB(Amps,Phases,bias)
+
+
+def save_as_hdf5(filepath,data,tag='data'):
+    with h5py.File(filepath,'a') as h5file:
+        h5file.create_dataset(tag,data=data, dtype=data.dtype)
+        print('File created at',filepath)

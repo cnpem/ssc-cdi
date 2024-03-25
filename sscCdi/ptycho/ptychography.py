@@ -169,7 +169,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
 
     return datapack['obj'], datapack['probe'], error, corrected_positions
 
-@log_event
+
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     """ Adjust probe initial data to be accepted by Giovanni's algorithm
 

@@ -515,7 +515,7 @@ def make_bad_frame_null(bad_list, sinogram):
     return sinogram
 
 def wiggle(dic, sinogram):
-    """ Calls sscRadon wiggle algorithm in both direction and return the aligned sinogram as well as the center-of_mass coordinates for alignment after 3D tomographic recon by slices.
+    """ Calls wiggle algorithm in both direction and return the aligned sinogram as well as the center-of_mass coordinates for alignment after 3D tomographic recon by slices.
 
     Args:
         dic (dict): dictionary of inputs

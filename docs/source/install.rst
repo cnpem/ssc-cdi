@@ -15,7 +15,6 @@ Furthermore, sscCdi makes us of other **ssc** packages. Make sure to have all of
     - sscPimega v0.8.12
     - sscResolution v0.6
     - sscRaft v2.2.0
-    - sscRadon v1.0.0
 
 
 Install via pip

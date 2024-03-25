@@ -13,11 +13,10 @@
 High-level level functionality is written in Python, whereas some of the low-level algorithm may be accelerated by C or CUDA codes. These are usually called by the high-level python code. 
 
 ## Requirements
-	- sscPtycho v2.1.4
-    - sscPimega v0.8.12
-    - sscResolution v0.6
-    - sscRaft v2.2.0
-    - sscRadon v1.0.0
+	- sscPtycho
+    - sscPimega
+    - sscResolution
+    - sscRaft
 
 ## Installation
 
