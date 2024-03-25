@@ -4,7 +4,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 """ Sirius Scientific Computing Imports """
-import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
+import sscCdi, sscPimega, sscRaft, sscResolution
 from sscPimega import pi540D
 
 
@@ -178,7 +178,7 @@ def define_paths(input_dict):
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
-    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
+    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__}"
 
     beamline_outputs_path = os.path.join(input_dict['data_folder'].rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
