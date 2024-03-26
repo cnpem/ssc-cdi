@@ -1,7 +1,7 @@
 import numpy as np
 import h5py, os
 
-import sscCdi, sscPimega, sscResolution, sscRaft, sscRadon
+import sscCdi
 
 """ sscCdi relative imports"""
 
@@ -63,7 +63,7 @@ def define_paths(input_dict):
     #=========== Set Parameters and Folders =====================
     print('\tData path: ',input_dict['data_path'] )
  
-    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
+    input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
  
     input_dict["dataset_name"] = input_dict['data_path'].rsplit('/',1)[1].rsplit('.')[0]
