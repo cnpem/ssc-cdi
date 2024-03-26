@@ -28,7 +28,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     else:
         probe_support = cp.array(probe_support)
 
-    obj_matrix = cp.ones((n_of_modes,obj.shape[0],obj.shape[1]),dtype=complex) 
+    obj_matrix = cp.ones((n_of_modes,obj.shape[-2],obj.shape[-1]),dtype=complex) 
     obj_matrix[:] = obj # create matrix of repeated object to facilitate slice-wise product with probe modes
     
     shapey,shapex = probe.shape
