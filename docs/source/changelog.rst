@@ -14,6 +14,11 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.8.10] - 2024-03-26
+
+Documentation
+~~~~~
+- Releasing new major version due to reestructuring of package from version 0.7.15
 
 
 [0.7.17] - 2024-03-26
