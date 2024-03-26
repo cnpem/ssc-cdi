@@ -3,11 +3,6 @@ import h5py
 import numpy as np
 from scipy.ndimage import gaussian_filter
 
-""" Sirius Scientific Computing Imports """
-import sscCdi, sscPimega, sscRaft, sscResolution
-from sscPimega import pi540D
-
-
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
 from ...ptycho.ptychography import call_GB_ptychography, call_ptychography, set_object_pixel_size, set_object_shape
@@ -59,9 +54,9 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             print(f"\nReading diffraction data for angle: {file_number}")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
-                DPs = pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
+                DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
-                DPs = pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+                DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
             
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
 
@@ -152,9 +147,9 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
         """ Clean restored DPs temporary data """
         if len(input_dict['projections']) == 1:
-            pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
+            sscPimega.pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
         else:
-            pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
+            sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
 
 
     return input_dict, sinogram, probes, probe_positions
@@ -178,7 +173,7 @@ def define_paths(input_dict):
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
-    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__}"
+    input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
     beamline_outputs_path = os.path.join(input_dict['data_folder'].rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)

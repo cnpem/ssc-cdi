@@ -14,9 +14,6 @@ High-level level functionality is written in Python, whereas some of the low-lev
 
 ## Requirements
 	- sscPtycho
-    - sscPimega
-    - sscResolution
-    - sscRaft
 
 ## Installation
 

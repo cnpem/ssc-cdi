@@ -1,5 +1,5 @@
 {
-   "versions": "sscCdi=0.4.16,sscPimega=0.5.3,sscResolution=1.2.3,sscRaft=2.0.1,sscRadon=1.0.0",
+   "versions": "sscCdi=0.4.16",
    "processing_steps": {
       "read": false,
       "sort": false,

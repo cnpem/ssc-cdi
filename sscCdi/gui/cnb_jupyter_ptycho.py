@@ -9,7 +9,6 @@ from scipy.optimize import curve_fit
 import ipywidgets as widgets 
 from ipywidgets import fixed
 
-import sscPimega, sscResolution
 
 from .ptycho_fresnel import propagate_beam, fit_2Dgaussian, fit_2Dsinc
 from ... import  create_propagation_video_f1

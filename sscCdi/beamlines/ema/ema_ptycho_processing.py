@@ -1,7 +1,6 @@
 import numpy as np
 import h5py, os
 
-import sscCdi, sscPimega, sscResolution
 
 """ sscCdi relative imports"""
 from ...ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size, call_ptychography
@@ -62,7 +61,8 @@ def define_paths(input_dict):
     #=========== Set Parameters and Folders =====================
     print('\tData path: ',input_dict['data_path'] )
  
-    input_dict["versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__}"
+    import sscCdi
+    input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
  
     input_dict["dataset_name"] = input_dict['data_path'].rsplit('/',1)[1].rsplit('.')[0]
