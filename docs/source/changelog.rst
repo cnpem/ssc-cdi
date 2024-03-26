@@ -13,6 +13,21 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.15] - 2024-03-26
+
+Changed
+~~~~~
+- Restructured package modules, separating beamline specific code into the beamline modules
+
+Removed
+~~~~~
+- Removed dependencies of ssc packages that are pipeline specific. The only dependency that remains in from sscPtycho, which shall be incorporated into sscCdi into the future. 
+
+Added
+~~~~~
+- Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.
+
+
 [0.7.14] - 2024-03-01
 
 Removed
