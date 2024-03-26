@@ -13,6 +13,16 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+
+
+[0.7.17] - 2024-03-26
+
+Fixed
+~~~~~
+- Fixed missing imports of CNB pipeline after refactoring in version 0.7.15
+
+
 [0.7.16] - 2024-03-26
 
 Fixed
