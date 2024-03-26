@@ -5,7 +5,7 @@ from scipy.ndimage import gaussian_filter
 
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
-from ...ptycho.ptychography import call_GB_ptychography, call_ptychography, set_object_pixel_size, set_object_shape
+from ...ptycho.ptychography import call_ptychography, set_object_pixel_size, set_object_shape
 from ...processing.restoration import binning_G_parallel
 
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
@@ -30,6 +30,8 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
         probe: numpy array containing reconstructed probes
         probe_positions: numpy array containing probe positions in pixels
     """
+
+    import sscPimega
 
     input_dict["restoration_id"] = restored_data_info
     total_number_of_angles = len(filepaths)
@@ -173,6 +175,7 @@ def define_paths(input_dict):
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
  
+    import sscCdi
     input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
     beamline_outputs_path = os.path.join(input_dict['data_folder'].rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
@@ -494,6 +497,8 @@ def auto_crop_noise_borders(complex_array):
     import skimage.filters
     from skimage.morphology import disk
 
+
+
     img = np.angle(complex_array)  # get phase to perform cropping analysis
 
     img_gradient = skimage.filters.scharr(img)
@@ -540,6 +545,7 @@ def calculate_FRC(img, input_dict):
         input_dict["FRC][5]: radius: radius of the window from the center of the image;
     """
 
+    import sscResolution
 
     start, size = input_dict["FRC"][1], input_dict["FRC"][2]
 
