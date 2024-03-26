@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.7.16] - 2024-03-26
+
+Fixed
+~~~~~
+- Fixed ePIE and RAAR python wrappers for correct algorithm call with new Fresnel propagator
+- Fixed missing imports after refactoring in version 0.7.15
+
 [0.7.15] - 2024-03-26
 
 Changed

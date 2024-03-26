@@ -15,7 +15,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     iterations = inputs["iterations"]
     experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
     fresnel_regime = inputs["fresnel_regime"]
-    probe_support  = inputs["probe_support"] 
+    probe_support  = inputs["probe_support"] #TODO
 
     if fresnel_regime == True:
         pass

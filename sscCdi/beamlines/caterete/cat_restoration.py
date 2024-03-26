@@ -5,14 +5,7 @@ import json
 import h5py
 import sys
 
-from sscIO import io
-from sscPimega import pi540D, opt540D
-from sscPimega import misc as miscPimega
-
 from ...jupyter import slide_and_play
-
-""" Sirius Scientific Computing Imports """
-from sscPimega import pi540D, opt540D
 
 """ sscCdi relative imports"""
 from ...misc import read_hdf5, list_files_in_folder, select_specific_angles
@@ -31,6 +24,8 @@ def Geometry(distance,susp,fill):
         geo: detector geometry variable
         params (dict): input additional parameters for restoration
     """
+    from sscPimega import pi540D, opt540D
+
     params = {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp }
     project = pi540D.dictionary540D( distance, params ) 
     geo = pi540D.geometry540D( project )
@@ -46,7 +41,8 @@ def flatfield_forward_restoration(input_dict: dict):
     Returns:
         flat_forward (nunpy array): array with new flat
     """
-    
+    from sscPimega import pi540D, opt540D
+
     flat_backward = np.load(input_dict["flatfield"])
     geometry, project = Geometry(
         input_dict["detector_distance"]*1000,
@@ -73,7 +69,8 @@ def restoration_ptycho_CAT(input_dict):
         folders_name: list containing the folders with the required projections
         folders_number: list containig the number of the folders with the required projections
     """
-    
+    from sscPimega import pi540D, opt540D
+
     if input_dict["detector"] == "540D": 
         detector_size = 3072
 
@@ -181,6 +178,7 @@ def restoration_CAT(input_dict,method = 'IO'):
         input_dict['empty_path']: path to empty mask HDF5 file
         input_dict['subtraction_path']: path to background mask HDF5 file
     """
+    from sscPimega import pi540D, opt540D
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
 

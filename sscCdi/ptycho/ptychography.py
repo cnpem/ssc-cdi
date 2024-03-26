@@ -19,7 +19,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     return obj, probe, error, positions
 
 def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
-    """ Ptychography algorithms in Python by GCC
+    """ Wrapper for ptychography algorithms in Python by GCC.
 
     """
 
@@ -33,11 +33,12 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
     positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
     
     error = np.empty((0,))
-
-    inputs = {}
+    
+    inputs = input_dict
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
         inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
+        inputs['distance'] = input_dict["detector_distance"]
         inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
         inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
         inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
@@ -49,7 +50,6 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
         inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
         # inputs['centralize_probe'] = False # not implemented 
 
-
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
             inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
@@ -59,7 +59,8 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,positions,obj,probe,inputs, probe_support = None)
+            inputs['probe_support'] = None # TODO: implement probe support properly
+            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,positions,obj[0],probe[0],inputs)
             obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
         else:
             sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
@@ -67,7 +68,7 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
         error = np.concatenate((error,algo_error),axis=0)
 
 
-    return obj, probe, error, positions
+    return obj, probe, error, None
 
 def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
