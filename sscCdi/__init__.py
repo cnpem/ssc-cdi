@@ -19,7 +19,6 @@ atexit.register(log_stop)
 from .cditypes import *
 from .processing import *
 from .ptycho import *
-from .tomo import *
 from .misc import *
 from .jupyter import *
 from .beamlines import *
