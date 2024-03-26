@@ -4,8 +4,6 @@ import SharedArray as sa
 import multiprocessing
 import uuid
 
-from sscPimega import pi135D
-
 from ...processing.restoration import restore_IO_SharedArray
 
 def restoration_CNB(input_dict):
@@ -36,6 +34,7 @@ def geometry_CNB(input_dict):
     Returns:
         geometry (dict): detector geometry
     """    
+    from sscPimega import pi135D
 
     project = pi135D.dictionary135D( -1,  {'geo':'planar','opt':True,'mode':'real', 'hexa': range(6)} ) 
     susp = input_dict["suspect_border_pixels"]

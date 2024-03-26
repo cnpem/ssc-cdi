@@ -1,7 +1,6 @@
 import numpy as np
 import h5py, os
 
-import sscCdi
 
 """ sscCdi relative imports"""
 
@@ -62,6 +61,7 @@ def define_paths(input_dict):
     
     #=========== Set Parameters and Folders =====================
     print('\tData path: ',input_dict['data_path'] )
+    import sscCdi
  
     input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
