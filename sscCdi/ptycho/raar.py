@@ -65,7 +65,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
 
         probe_modes = probe_modes[:]*probe_support
 
-        iteration_error = calculate_recon_error_Fspace_cupy(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
+        iteration_error = calculate_recon_error_Fspace_cupy(diffraction_patterns,wavefronts,(dx,wavelength,distance),fresnel_regime=fresnel_regime).get()
         if iteration%1==0:
             print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
         error.append(iteration_error) 

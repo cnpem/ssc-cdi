@@ -52,12 +52,17 @@ def Fspace_update_multiprobe_cupy(wavefront_modes,measurement,epsilon=0.001):
     
     return updated_wavefront_modes
 
-def calculate_recon_error_Fspace_cupy(diffractions_patterns,wavefronts,experiment_params):
+def calculate_recon_error_Fspace_cupy(diffractions_patterns,wavefronts,experiment_params,fresnel_regime=False):
+
+    if fresnel_regime:
+        propagator = 'fresnel'
+    else:
+        propagator = 'fourier'
 
     error_numerator = 0
     error_denominator = 0
     for DP, wave in zip(diffractions_patterns,wavefronts):
-        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator='fourier')
+        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator=propagator)
         intensity = cp.abs(wave_at_detector)**2
         
         error_numerator += cp.sum(cp.abs(DP-intensity))
@@ -104,7 +109,7 @@ def propagate_beam_cupy(wavefront, experiment_params,propagator='fourier'):
     
     elif propagator == 'fresnel':
     
-        ysize, xsize = wavefront.shape
+        ysize, xsize = wavefront[0].shape
         x_array = cp.linspace(-xsize/2,xsize/2-1,xsize)
         y_array = cp.linspace(-ysize/2,ysize/2-1,ysize)
 
