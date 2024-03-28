@@ -50,7 +50,7 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
     # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
     kernel = np.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
 
-    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))*np.exp(1j*K*z2/M)
+    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))#*np.exp(1j*K*z2/M)
 
     if z1 != 0:
         y, x = np.indices(wavefront.shape)
