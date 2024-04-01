@@ -39,8 +39,6 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
     else:
         M = 1
     
-    gamma_M = 1 - 1/M
-        
     FT = np.fft.fftshift(np.fft.fft2(wavefront))
 
     ny, nx = wavefront.shape
@@ -50,13 +48,14 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
     # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
     kernel = np.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
 
-    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))#*np.exp(1j*K*z2/M)
+    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))*np.exp(1j*K*z2/M)
 
     if z1 != 0:
-        y, x = np.indices(wavefront.shape)
-        y = (y - y.shape[0]//2)*pixel_size/M
-        x = (x - x.shape[1]//2)*pixel_size/M
-        wave_cone = wave_parallel * (1/M) #* np.exp(1j*gamma_M*K*z2) * np.exp(1j*gamma_M*K*(x**2+y**2)/(2*z2))
+        # gamma_M = 1 - 1/M
+        # y, x = np.indices(wavefront.shape)
+        # y = (y - y.shape[0]//2)*pixel_size/M
+        # x = (x - x.shape[1]//2)*pixel_size/M
+        wave_cone = wave_parallel * (1/M) #* np.exp(1j*gamma_M*K*z2) * np.exp(1j*gamma_M*K*(x**2+y**2)/(2*z2)) # Need to check the commented phase terms, which are part of the full form for the Fresnel Scaling theorem (i.e. without calculating absolute value)
         return wave_cone
     else:
         return wave_parallel
