@@ -52,17 +52,12 @@ def Fspace_update_multiprobe_cupy(wavefront_modes,measurement,epsilon=0.001):
     
     return updated_wavefront_modes
 
-def calculate_recon_error_Fspace_cupy(diffractions_patterns,wavefronts,experiment_params,fresnel_regime=False):
-
-    if fresnel_regime:
-        propagator = 'fresnel'
-    else:
-        propagator = 'fourier'
+def get_magnitude_error(diffractions_patterns,wavefronts,inputs):
 
     error_numerator = 0
     error_denominator = 0
     for DP, wave in zip(diffractions_patterns,wavefronts):
-        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator=propagator)
+        wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
         intensity = cp.abs(wave_at_detector)**2
         
         error_numerator += cp.sum(cp.abs(DP-intensity))
@@ -70,58 +65,5 @@ def calculate_recon_error_Fspace_cupy(diffractions_patterns,wavefronts,experimen
 
     return error_numerator/error_denominator 
 
-def calculate_recon_error_Fspace(diffractions_patterns,wavefronts,experiment_params):
 
-    error_numerator = 0
-    error_denominator = 0
-    for DP, wave in zip(diffractions_patterns,wavefronts):
-        wave_at_detector = propagate_beam_cupy(wave, experiment_params,propagator='fourier')
-        intensity = np.abs(wave_at_detector)**2
-        
-        error_numerator += np.sum(np.abs(DP-intensity))
-        error_denominator += np.sum(np.abs(DP))
 
-    return error_numerator/error_denominator 
-
-def propagate_beam_cupy(wavefront, experiment_params,propagator='fourier'):
-    
-
-    """ Propagate a wavefront using fresnel ou fourier propagator
-
-    Args:
-        wavefront : the wavefront to propagate
-        dx : pixel spacing of the wavefront input
-        wavelength : wavelength of the illumination
-        distance : distance to propagate
-        propagator (str, optional): 'fresenel' or 'fourier'. Defaults to 'fresnel'.
-
-    Returns:
-        output: propagated wavefront
-    """    
-    
-    dx, wavelength,distance = experiment_params 
-    
-    if propagator == 'fourier':
-        if distance > 0:
-            output = cp.fft.fftshift(cp.fft.fft2(wavefront))
-        else:
-            output = cp.fft.ifft2(cp.fft.ifftshift(wavefront))
-    
-    elif propagator == 'fresnel':
-    
-        ysize, xsize = wavefront[0].shape
-        x_array = cp.linspace(-xsize/2,xsize/2-1,xsize)
-        y_array = cp.linspace(-ysize/2,ysize/2-1,ysize)
-
-        fx = x_array/(xsize)
-        fy = y_array/(ysize)
-
-        FX,FY = cp.meshgrid(fx,fy)
-        # Calculate approx phase distribution for each plane wave component
-        w = FX**2 + FY**2 
-        # Compute FFT
-        F = cp.fft.fftshift(cp.fft.fft2(cp.fft.fftshift(wavefront)))
-        # multiply by phase-shift and inverse transform 
-        a = cp.exp(-1j*cp.pi*( distance*wavelength/dx**2)*w)
-        output = cp.fft.ifftshift(cp.fft.ifft2(cp.fft.ifftshift(F*a)))
-    return output
