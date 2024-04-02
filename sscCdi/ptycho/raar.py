@@ -66,8 +66,10 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         probe_modes = probe_modes[:]*probe_support
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts[:,0,:,:],inputs) # should we insert more modes to calculate error?
-        if iteration%1==0:
-            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
+
+        print('\r', end='')
+        print(f'\tIteration {iteration+1}/{iterations} \tError: {iteration_error:.2e}',end='')
+
         error[iteration] = iteration_error
         
     return obj_matrix[0].get(), probe_modes.get(), error.get()
