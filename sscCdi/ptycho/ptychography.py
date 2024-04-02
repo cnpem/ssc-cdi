@@ -108,62 +108,72 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
     concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','probe_support',datapack["probesupp"],concatenate=False)
 
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
-    run_algorithms = True
     loop_counter = 1
     error = np.empty((0,))
 
     corrected_positions = None
 
-    while run_algorithms:  # run Ptycho:
+    while True:  # run Ptycho:
         try:
-            algorithm = input_dict['Algorithm' + str(loop_counter)]
+            algorithm: dict = input_dict['Algorithm' + str(loop_counter)]
             algo_name = algorithm["Name"]
             n_of_iterations = algorithm['Iterations']
             print(f"\tCalling {n_of_iterations} iterations of {algo_name} algorithm...")
         except:
-            run_algorithms = False
+            break
 
-        if run_algorithms:
-            if algorithm['Name'] == 'GL':
-                datapack = sscPtycho.GL(iter      = algorithm['Iterations'], 
-                                        objbeta   = algorithm['ObjBeta'],
-                                        probebeta = algorithm['ProbeBeta'],
-                                        batch     = algorithm['Batch'],
-                                        epsilon   = algorithm['Epsilon'],
-                                        tvmu      = algorithm['TV'],
-                                        sigmask   = sigmask,
-                                        data      = datapack,
-                                        params    = {'device':input_dict["GPUs"]},
-                                        probef1=input_dict['fresnel_number'])
+        if algorithm['Name'] == 'GL':
+            datapack = sscPtycho.GL(iter      = algorithm['Iterations'],
+                                    objbeta   = algorithm['ObjBeta'],
+                                    probebeta = algorithm['ProbeBeta'],
+                                    batch     = algorithm['Batch'],
+                                    epsilon   = algorithm['Epsilon'],
+                                    tvmu      = algorithm['TV'],
+                                    sigmask   = sigmask,
+                                    data      = datapack,
+                                    params    = {'device':input_dict["GPUs"]},
+                                    probef1=input_dict['fresnel_number'])
 
-            elif algorithm['Name'] == 'positioncorrection':
-                datapack['bkg'] = None
-                datapack = sscPtycho.PosCorrection(iter       = algorithm['Iterations'],
-                                                    objbeta   = algorithm['ObjBeta'],
-                                                    probebeta = algorithm['ProbeBeta'], 
-                                                    batch     = algorithm['Batch'],
-                                                    epsilon   = algorithm['Epsilon'], 
-                                                    tvmu      = algorithm['TV'], 
-                                                    sigmask   = sigmask,
-                                                    data      = datapack,
-                                                    params    = {'device':input_dict["GPUs"]},
-                                                    probef1=input_dict['fresnel_number'])
-                corrected_positions = datapack['rois']
+        elif algorithm['Name'] == 'positioncorrection':
+            datapack['bkg'] = None
+            datapack = sscPtycho.PosCorrection(iter       = algorithm['Iterations'],
+                                                objbeta   = algorithm['ObjBeta'],
+                                                probebeta = algorithm['ProbeBeta'],
+                                                batch     = algorithm['Batch'],
+                                                epsilon   = algorithm['Epsilon'],
+                                                tvmu      = algorithm['TV'],
+                                                sigmask   = sigmask,
+                                                data      = datapack,
+                                                params    = {'device':input_dict["GPUs"]},
+                                                probef1=input_dict['fresnel_number'])
+            corrected_positions = datapack['rois']
 
-            elif algorithm['Name'] == 'RAAR':
-                datapack = sscPtycho.RAAR(iter         = algorithm['Iterations'],
-                                           beta        = algorithm['Beta'],
-                                           probecycles = algorithm['ProbeCycles'],
-                                           batch       = algorithm['Batch'],
-                                           epsilon     = algorithm['Epsilon'], 
-                                           tvmu        = algorithm['TV'],
-                                           sigmask     = sigmask,
-                                           data        = datapack,
-                                           params      = {'device':input_dict["GPUs"]}, 
-                                           probef1=input_dict['fresnel_number']) 
+        elif algorithm['Name'] == 'RAAR':
+            datapack = sscPtycho.RAAR(iter         = algorithm['Iterations'],
+                                       beta        = algorithm['Beta'],
+                                       probecycles = algorithm['ProbeCycles'],
+                                       batch       = algorithm['Batch'],
+                                       epsilon     = algorithm['Epsilon'],
+                                       tvmu        = algorithm['TV'],
+                                       sigmask     = sigmask,
+                                       data        = datapack,
+                                       params      = {'device':input_dict["GPUs"]},
+                                       probef1=input_dict['fresnel_number'])
 
-            loop_counter += 1
-            error = np.concatenate((error,datapack["error"]),axis=0)
+        elif algorithm['Name'] == 'PIE':
+            datapack = sscPtycho.PIE(iterations = algorithm['Iterations'],
+                                     step_obj = algorithm['step_obj'],
+                                     step_probe = algorithm['step_probe'],
+                                     reg_obj = algorithm['reg_obj'],
+                                     reg_probe = algorithm['reg_probe'],
+                                     rois = datapack['rois'],
+                                     difpads = datapack['difpads'],
+                                     obj = datapack['obj'],
+                                     probe = datapack['probe'],
+                                     params = { 'device': input_dict["GPUs"] })
+
+        loop_counter += 1
+        error = np.concatenate((error,datapack["error"]),axis=0)
 
     datapack['obj'] = datapack['obj'].astype(np.complex64)
     datapack['probe'] = datapack['probe'].astype(np.complex64)

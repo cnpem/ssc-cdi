@@ -54,7 +54,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
-        for j in cp.random.permutation(len(diffraction_patterns)):  
+        for j in cp.random.permutation(len(diffraction_patterns)):
             py, px = positions[:,1][j],  positions[:,0][j]
 
             obj_box = obj[:,py:py+offset[0],px:px+offset[1]]
@@ -101,6 +101,7 @@ def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront
         
         return denominator  
 
+    import pdb; pdb.set_trace()
     # r_o,r_p,s_o,s_p,_,_,_ = mPIE_params
 
     # Pre-calculating to avoid repeated operations
