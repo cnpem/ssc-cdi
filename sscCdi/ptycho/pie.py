@@ -73,8 +73,10 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
-        if i%1==0:
-            print(f'\tIteration {i}/{iterations} \tError: {iteration_error:.2e}')
+
+        print('\r', end='')
+        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
+
         error[i] = iteration_error
 
     return obj.get(), probe_modes.get(), error.get()
