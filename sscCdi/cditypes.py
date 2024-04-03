@@ -23,8 +23,6 @@ ext = '.so'
 
 
 def load_library(lib, ext):
-    import pdb
-    pdb.set_trace()
     _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lib + ext
     try:
         lib = ctypes.CDLL(_path)
