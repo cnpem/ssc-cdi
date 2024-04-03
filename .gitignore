@@ -1,3 +1,5 @@
+*.whl
+*.so
 docs/*
 !docs/doxyconf
 !docs/io.log
