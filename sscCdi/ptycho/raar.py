@@ -1,5 +1,5 @@
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
+from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error
 
 
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
@@ -41,7 +41,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe_modes*obj_box
         
-    error = []
+    error = cp.zeros((iterations,1))
     for iteration in range(0,iterations):
         """
         RAAR update function:
@@ -65,12 +65,14 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
 
         probe_modes = probe_modes[:]*probe_support
 
-        iteration_error = calculate_recon_error_Fspace_cupy(diffraction_patterns,wavefronts,(dx,wavelength,distance)).get()
-        if iteration%1==0:
-            print(f'\tIteration {iteration}/{iterations} \tError: {iteration_error:.2e}')
-        error.append(iteration_error) 
+        iteration_error = get_magnitude_error(diffraction_patterns,wavefronts[:,0,:,:],inputs) # should we insert more modes to calculate error?
+
+        print('\r', end='')
+        print(f'\tIteration {iteration+1}/{iterations} \tError: {iteration_error:.2e}',end='')
+
+        error[iteration] = iteration_error
         
-    return obj_matrix[0].get(), probe_modes.get(), error
+    return obj_matrix[0].get(), probe_modes.get(), error.get()
 
 def projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj,probes,positions,epsilon):
     probes = RAAR_multiprobe_update_probe_cupy(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
