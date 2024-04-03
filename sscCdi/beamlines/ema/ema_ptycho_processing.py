@@ -64,7 +64,6 @@ def define_paths(input_dict):
     import sscCdi
     input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
- 
     input_dict["dataset_name"] = input_dict['data_path'].rsplit('/',1)[1].rsplit('.')[0]
     # input_dict["output_path"] = input_dict["beamline_parameters_path"].rsplit('/',1)[0]
     print("\tOutput path:", input_dict["output_path"])
