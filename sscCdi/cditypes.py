@@ -358,10 +358,14 @@ def PIE(obj: np.ndarray,
     sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
     sigmaskptr = sigmask.ctypes.data_as(c_void_p)
 
+    time0 = time()
+
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez, difpadsptr,
                    dsizex, roisptr, numrois, sigmaskptr, iterations, devicesptr,
                    ndevices, rfactorptr, step_obj, step_probe, reg_obj,
                    reg_probe)
+
+    print(f"\tDone in: {time()-time0:.2f} seconds")
 
     return {
         'obj': obj,
