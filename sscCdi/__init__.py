@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 
+from ._version import __version__
+
 try:
-    import pkg_resources
-    __version__ = pkg_resources.require("sscCdi")[0].version
+    from .cditypes import *
 except:
-    pass
+    import logging
+    logging.error("Could not load cuda libraries")
 
 import atexit
-from sscPtycho.lib.ssccommons_wrapper import (
+from .lib.ssccommons_wrapper import (
     log_event, log_start, log_stop, event_start, event_stop
 )
 log_start(project="sscCdi",

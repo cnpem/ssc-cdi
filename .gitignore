@@ -7,6 +7,7 @@ docs/*
 **/__pycache__/
 dist/*
 build/*
+_skbuild/*
 sscCdi.egg-info/*
 .**
 ._**

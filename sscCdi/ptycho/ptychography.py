@@ -2,7 +2,8 @@ import numpy as np
 import sys, os, h5py
 import random
 
-import sscPtycho
+from ..cditypes import GL, PosCorrection, PIE, RAAR
+
 from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_from_energy
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
@@ -123,7 +124,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
             break
 
         if algorithm['Name'] == 'GL':
-            datapack = sscPtycho.GL(iter      = algorithm['Iterations'],
+            datapack = GL(iter      = algorithm['Iterations'],
                                     objbeta   = algorithm['ObjBeta'],
                                     probebeta = algorithm['ProbeBeta'],
                                     batch     = algorithm['Batch'],
@@ -136,7 +137,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
 
         elif algorithm['Name'] == 'positioncorrection':
             datapack['bkg'] = None
-            datapack = sscPtycho.PosCorrection(iter       = algorithm['Iterations'],
+            datapack = PosCorrection(iter       = algorithm['Iterations'],
                                                 objbeta   = algorithm['ObjBeta'],
                                                 probebeta = algorithm['ProbeBeta'],
                                                 batch     = algorithm['Batch'],
@@ -149,7 +150,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
             corrected_positions = datapack['rois']
 
         elif algorithm['Name'] == 'RAAR':
-            datapack = sscPtycho.RAAR(iter         = algorithm['Iterations'],
+            datapack = RAAR(iter         = algorithm['Iterations'],
                                        beta        = algorithm['Beta'],
                                        probecycles = algorithm['ProbeCycles'],
                                        batch       = algorithm['Batch'],
@@ -161,7 +162,7 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
                                        probef1=input_dict['fresnel_number'])
 
         elif algorithm['Name'] == 'PIE':
-            datapack = sscPtycho.PIE(iterations = algorithm['Iterations'],
+            datapack = PIE(iterations = algorithm['Iterations'],
                                      step_obj = algorithm['step_obj'],
                                      step_probe = algorithm['step_probe'],
                                      reg_obj = algorithm['reg_obj'],
