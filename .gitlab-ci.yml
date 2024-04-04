@@ -10,7 +10,7 @@ build_dgx:
     stage: build
     image: gccdockers/python-builder
     script:
-        - python3 setup.py bdist_wheel
+        - python3 -m pip wheel .
     tags:
         - x86_64
         - cuda11
