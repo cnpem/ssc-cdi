@@ -7,6 +7,8 @@ import sys
 
 from ...jupyter import slide_and_play
 
+from ... import log_event
+
 """ sscCdi relative imports"""
 from ...misc import read_hdf5, list_files_in_folder, select_specific_angles
 from ...processing.restoration import restore_IO_SharedArray
@@ -157,6 +159,7 @@ def restoration_ptycho_CAT(input_dict):
     return dic, restored_data_info, filepaths, filenames, folders_name, folders_number
 
 
+@log_event
 def restoration_CAT(input_dict,method = 'IO'):
     """
     Function to perform restoration either via CUDA or IO-SharedArray approaches and saves diffraction patterns
