@@ -8,8 +8,11 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
 
+from .. import log_event
+
 random.seed(0)
 
+@log_event
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
 
     if 'algorithms' in input_dict:

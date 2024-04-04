@@ -2,6 +2,9 @@ import sys
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error
 
+from .. import log_event, event_start, event_stop
+
+@log_event
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
 
     r_o = inputs["regularization_object"]
