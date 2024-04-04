@@ -8,8 +8,11 @@ from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_
 from ...ptycho.ptychography import call_ptychography, set_object_pixel_size, set_object_shape
 from ...processing.restoration import binning_G_parallel
 
+from ... import event_start, event_stop, log_event
+
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
+@log_event
 def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial"):
     """ 
     Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
@@ -45,8 +48,9 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
     if strategy == "serial":
 
+        event_start("Read and reconstruct", {"num_of_files": len(filenames)})
+
         for file_number_index, filename in enumerate(filenames):
-            
             if frame_index == []:
                 file_number = file_number_index
             else:
@@ -55,12 +59,13 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             acquisitions_folder = folder_names_list[file_number_index]
 
             print(f"\nReading diffraction data for angle: {file_number}")
+            event_start("Read restored data")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
                 DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
-            
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
+            event_stop() # read restored data
 
             if np.abs(input_dict["binning"]) > 1:
                 print('Binning data...')
@@ -76,20 +81,24 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                     DPs = DPs[:,:,0:-1]
 
             if 'save_restored_data' in input_dict:
+                event_start("Save numpy file restored data")
                 print(f"Saving restored diffraction patterns...")
                 if input_dict['save_restored_data'] == True:
                     np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
+                event_stop() # save restored data
 
             print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
-            
+
+            event_start("Ptycho preprocessing")
+
             """ Read positions """
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
             if file_number_index == 0:
                 input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
-                sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) 
-                
+                sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64)
+
                 if input_dict["incoherent_modes"] < 1:
                     incoherent_modes = 1
                 else:
@@ -103,6 +112,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
 
             run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
+            event_stop()
 
             """ Call Ptychography """
             if not run_ptycho:
@@ -116,7 +126,6 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
                 if corrected_positions is not None:
                     corrected_positions_list.append(corrected_positions[:,0,0:2])
-                
                 angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             if run_again:
@@ -130,11 +139,12 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 elif initial_obj:
                     print("Running with multiple initial objects")
                     sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
-                
                 if corrected_positions is not None:
                     corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
 
             """ Save single frame of object and probe to temporary folder"""
+
+            event_start("Save numpy ptychography files")
 
             np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_object.npy"),sinogram[file_number_index])
             np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_probe.npy"),probes[file_number_index])
@@ -147,12 +157,17 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
                 np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
 
+            event_stop() # save numpy ptychography files
+
+        event_stop() # read and reconstruct
+
+        event_start("clean restoration data")
         """ Clean restored DPs temporary data """
         if len(input_dict['projections']) == 1:
             sscPimega.pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
         else:
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
-
+        event_stop() # clean restoration data
 
     return input_dict, sinogram, probes, probe_positions
 

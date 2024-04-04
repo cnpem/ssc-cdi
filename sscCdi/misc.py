@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
 
+from . import log_event
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -448,6 +449,7 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
+@log_event
 def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
     """
 
@@ -638,9 +640,6 @@ def save_as_hdf5(filepath,data,tag='data'):
     with h5py.File(filepath,'a') as h5file:
         h5file.create_dataset(tag,data=data, dtype=data.dtype)
         print('File created at',filepath)
-
-
-
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
                              ending_f_value=9e-4,
@@ -689,4 +688,4 @@ def create_propagation_video(path_to_probefile,
         if gif:
             clip.write_gif('propagation.gif', fps=frame_rate)
 
-    return image_list, f1        
+    return image_list, f1 
