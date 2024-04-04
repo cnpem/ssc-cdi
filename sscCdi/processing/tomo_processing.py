@@ -11,8 +11,11 @@ import sscRaft
 from ..misc import save_json_logfile_tomo, open_or_create_h5_dataset
 from .unwrap import remove_phase_gradient, unwrap_in_parallel
 
+from ... import log_event
+
 ####################### SORTING ###################################
 
+@log_event
 def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
     """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
 
@@ -35,7 +38,8 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return sorted_object, sorted_angles
-    
+
+@log_event
 def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,ordered_object_filepath= '', ordered_angles_filepath= ''):
     """ Remove unwanted sinogram frames after sorting
     """    

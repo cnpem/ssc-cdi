@@ -1,7 +1,9 @@
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
 
+from .. import log_event
 
+@log_event
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     iterations = inputs['iterations']
     beta       = inputs['beta']
