@@ -13,6 +13,17 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.9.1] - 2024-04-04
+
+Added
+~~~~~
+- New nearfield ptychography pipeline for Mogno
+
+Fixed
+~~~~~
+- CI/CD bug fixes
+
 [0.9.0] - 2024-04-03
 
 Added
