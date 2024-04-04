@@ -13,6 +13,17 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.0] - 2024-04-03
+
+Added
+~~~~~
+- C++/CUDA codes from sscPtycho were migrated to sscCdi
+- CUDA implementation of ePIE algorithm (single GPU only)
+
+Changed
+~~~~~
+- Bug fixes for Fresnel Ptychography python codes
+
 
 [0.8.10] - 2024-03-26
 
