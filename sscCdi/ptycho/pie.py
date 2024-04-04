@@ -1,6 +1,6 @@
 import sys
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, calculate_recon_error_Fspace_cupy
+from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error
 
 from .. import log_event, event_start, event_stop
 
@@ -16,7 +16,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     m_counter_limit = inputs["momentum_counter"]
     n_of_modes = inputs["incoherent_modes"]
     iterations = inputs["iterations"]
-    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['distance'])
+    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['detector_distance'])
     fresnel_regime = inputs["fresnel_regime"]
     probe_support  = inputs["probe_support"] #TODO
 
@@ -52,7 +52,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     obj_velocity   = cp.zeros_like(obj,dtype=complex)
     
     momentum_counter = 0
-    error_list = []
+    error = cp.zeros((iterations,1))
     for i in range(iterations):
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
@@ -75,12 +75,14 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             if inputs["use_mPIE"] == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
-        iteration_error = calculate_recon_error_Fspace_cupy(diffraction_patterns,wavefronts,experiment_params).get()
-        if i%10==0:
-            print(f'\tIteration {i}/{iterations} \tError: {iteration_error:.2e}')
-        error_list.append(iteration_error) # error in fourier space 
+        iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
 
-    return obj.get(), probe_modes.get(), error_list
+        print('\r', end='')
+        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
+
+        error[i] = iteration_error
+
+    return obj.get(), probe_modes.get(), error.get()
 
 def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p):
 
