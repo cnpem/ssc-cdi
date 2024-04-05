@@ -3,7 +3,7 @@ RUNDIR=	sscCdi sscCdi/caterete/ sscCdi/carnauba/ cuda/ example/
 all: install
 
 dist:
-	python3 -m pip wheel .
+	python3 -m build .
 
 install:
 	python3 setup.py install --user
