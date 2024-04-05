@@ -13,10 +13,11 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
-[0.9.0] - 2024-04-03
+[0.9.0] - 2024-04-05
 
 Added
 ~~~~~
+- Mogno beamline pipeline implementation
 - C++/CUDA codes from sscPtycho were migrated to sscCdi
 - CUDA implementation of ePIE algorithm (single GPU only)
 
