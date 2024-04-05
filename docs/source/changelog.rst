@@ -17,7 +17,7 @@ Types of changes:
 
 Added
 ~~~~~
-- Mogno beamline pipeline implementation
+- New nearfield ptychography pipeline for Mogno
 - C++/CUDA codes from sscPtycho were migrated to sscCdi
 - CUDA implementation of ePIE algorithm (single GPU only)
 
