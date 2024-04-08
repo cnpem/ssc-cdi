@@ -36,8 +36,12 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     shapey,shapex = probe.shape
     wavefronts = cp.ones((len(positions),n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex) # wavefronts contain the wavefront for each probe mode, and for all probe positions
     
-    probe_modes = cp.ones((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
-    probe_modes[:] = probe
+    probe_modes = cp.empty((n_of_modes,probe.shape[0],probe.shape[1]),dtype=complex)
+    for i in range(0,probe_modes.shape[0]):
+        if i == 0:
+            probe_modes[i] = probe
+        else:
+            probe_modes[:] = cp.random.rand(*probe.shape)
     
     for index, (posx, posy) in enumerate(positions):
         obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]

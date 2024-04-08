@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.9.1] - 2024-04-08
+
+Fixed
+~~~~~
+- Fixed initial guess for probe modes for RAAR_python. Secondary modes are random arrays between 0 and 1.
+
 [0.9.0] - 2024-04-05
 
 Added
