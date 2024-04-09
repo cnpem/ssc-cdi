@@ -143,7 +143,7 @@ def get_positions(scan_step,size_x,size_y):
     return y_pos,x_pos, y_pos_error,x_pos_error
 
 def set_object_size(x_pos,y_pos,obj_pxl_size,probe_size, gap = 10):
-    return (np.int(gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))//obj_pxl_size),np.int(gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))//obj_pxl_size))
+    return (int(gap + probe_size[0]+(np.max(y_pos)-np.min(y_pos))//obj_pxl_size),int(gap+probe_size[1]+(np.max(x_pos)-np.min(x_pos))//obj_pxl_size))
 
 
 def calculate_diffraction_pattern(idx,obj,probe,wavelength,distance,obj_pxl):
@@ -265,7 +265,7 @@ def create_positions_file(frame,probe,probe_steps_xy,obj_pxl,filename,path,posit
     save_positions_file_CAT_standard(x_meters,y_meters,path,filename,x_meters_original, y_meters_original)
 
 def set_object_size_pxls(x_pos,y_pos,probe_size,border):
-    shape = (np.int(probe_size[0]+(np.max(y_pos)-np.min(y_pos))),np.int(probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
+    shape = (int(probe_size[0]+(np.max(y_pos)-np.min(y_pos))),int(probe_size[1]+(np.max(x_pos)-np.min(x_pos))))
     return shape
 
 def set_object_frame(y_pxls, x_pxls,frame,probe,object_offset,path,save=True):
@@ -301,7 +301,7 @@ def convert_probe_positions_meters_to_pixels(dx, probe_positions, offset_topleft
     probe_positions[:, 0] = 1E-6 * probe_positions[:, 0] / dx + offset_topleft #shift probe positions to account for the padding
     probe_positions[:, 1] = 1E-6 * probe_positions[:, 1] / dx + offset_topleft #shift probe positions to account for the padding
 
-    return np.round(probe_positions).astype(np.int32), offset_bottomright
+    return np.round(probe_positions).astype(int32), offset_bottomright
 
 def get_xy_positions(probe_positions):
     # Get unique X and Y probe posiitons from the file

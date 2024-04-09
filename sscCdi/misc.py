@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
 
+from . import log_event
 
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
@@ -355,15 +356,6 @@ def add_to_hdf5_group(path,group,name,data,mode="a"):
 
 def open_or_create_h5_dataset(path,group,dataset,data,create_group=False):
     """ Open hdf5 file and checks if certain dataset exists. If not, creates it.
-
-    Args:
-        path (_type_): _description_
-        group (_type_): _description_
-        dataset (_type_): _description_
-        data (_type_): _description_
-
-    Returns:
-        _type_: _description_
     """
 
     group_dataset = group+"/"+dataset
@@ -457,6 +449,7 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
+@log_event
 def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
     """
 
@@ -641,3 +634,58 @@ def convert_complex_to_RGB(ComplexImg,bias=0.01):
 
     Amps,Phases = SplitComplex(ComplexImg)
     return MakeRGB(Amps,Phases,bias)
+
+
+def save_as_hdf5(filepath,data,tag='data'):
+    with h5py.File(filepath,'a') as h5file:
+        h5file.create_dataset(tag,data=data, dtype=data.dtype)
+        print('File created at',filepath)
+def create_propagation_video(path_to_probefile,
+                             starting_f_value=1e-3,
+                             ending_f_value=9e-4,
+                             number_of_frames=100,
+                             frame_rate=10,
+                             mp4=False, 
+                             gif=False,
+                             jupyter=False):
+    
+    """ 
+    Propagates a probe using the fresnel number to multiple planes and create an animation of the propagation
+    #TODO: change this function to create propagation as a function of distance
+    """
+
+    probe = np.load(path_to_probefile)[0] # load probe
+    
+    # delta = -1e-4
+    # f1 = [starting_f_value + delta*i for i in range(0,number_of_frames)]
+    
+    f1 = np.linspace(starting_f_value,ending_f_value,number_of_frames)
+    
+    # Create list of propagated probes
+    b =  [np.sqrt(np.sum([abs(Propagate(a,f1[0]))**2 for a in probe],0))]
+    for i in range(1,number_of_frames):
+            b += [np.sqrt(np.sum([abs(Propagate(a,f1[i]))**2 for a in probe],0))]
+    
+
+    image_list = []
+    for j, probe in enumerate(tqdm(b)):
+            if jupyter == False:
+                animation_fig, subplot = plt.subplots(dpi=300)
+                img = subplot.imshow(probe,cmap='jet')#,animated=True)
+                subplot.set_xticks([])
+                subplot.set_yticks([])
+                subplot.set_title(f'f#={f1[j]:.3e}')
+            if jupyter == False:
+                image_list.append(mplfig_to_npimage(animation_fig))
+            else:    
+                image_list.append(probe)
+            if jupyter == False: plt.close()
+
+    if mp4 or gif:  
+        clip = ImageSequenceClip(image_list, fps=frame_rate)
+        if mp4:
+            clip.write_videofile("propagation.mp4",fps=frame_rate)
+        if gif:
+            clip.write_gif('propagation.gif', fps=frame_rate)
+
+    return image_list, f1 

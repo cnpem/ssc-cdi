@@ -1,0 +1,48 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>=60.0",
+    "scikit-build>=0.17",
+    "cmake>=3.18",
+    "cython",
+    "wheel",
+]
+
+
+[project]
+dynamic = ["version"]
+name = "sscCdi"
+license = { file = "LICENSE" }
+classifiers=[
+    'Development Status :: 4 - Beta', 'License :: OSI Approved :: BSD License',
+    'Intended Audience :: Science/Research', 'Intended Audience :: Education', 'Intended Audience :: Developers',
+    'Natural Language :: English', 'Operating System :: OS Independent', 'Programming Language :: Python',
+    'Programming Language :: Python :: 3.0', 'Programming Language :: C', 'Programming Language :: C++'
+]
+authors = [
+  {name = "Giovanni Baraldi"}
+]
+maintainers = [
+  {name = "Paola Ferraz", email = "paola.ferraz@lnls.br"},
+  {name = "Eduardo X. Miqueles", email = "eduardo.miqueles@lnls.br"},
+  {name = "Alan Peixinho", email = "alan.peixinho@lnls.br"},
+  {name = "Camila Lages", email = "camila.lages@lnls.br"},
+  {name = "Yuri Tonin", email = "yuri.tonin@lnls.br"}
+]
+description = "Sirius Coherent Diffraction Imaging Package"
+keywords = ["Ptychography", "Tomography", "Imaging"]
+dependencies = [
+    'numpy',
+    'matplotlib',
+    'h5py',
+    'scipy',
+    'scikit-image',
+    'tqdm',
+    'SharedArray'
+]
+
+[tool.setuptools]
+platforms = ["Linux"]
+
+[tool.setuptools.dynamic]
+version = {attr = "sscCdi._version.__version__"}

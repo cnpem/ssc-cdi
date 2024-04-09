@@ -7,7 +7,6 @@ from functools import partial
 import ipywidgets as widgets 
 from ipywidgets import fixed
 
-import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
 
 from .ptycho_fresnel import create_propagation_video
 from .ptycho_processing import masks_application
@@ -51,7 +50,8 @@ if os.path.exists(json_filepath):
     with open(json_filepath) as json_file:
         global_dict = json.load(json_file)
 
-global_dict["00_versions"] = f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}"
+import sscCdi
+global_dict["00_versions"] = f"sscCdi={sscCdi.__version__}"
 
 ############################################ Global Layout ###########################################################################
 

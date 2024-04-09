@@ -1,7 +1,7 @@
 import sys, json
 
 """ Sirius Scientific Computing Imports """
-from sscCdi.tomo.tomo_processing import tomo_sort, tomo_crop, tomo_unwrap, tomo_equalize, tomo_alignment, tomo_recon, tomo_equalize3D
+from sscCdi.processing.tomo_processing import tomo_sort, tomo_crop, tomo_unwrap, tomo_equalize, tomo_alignment, tomo_recon, tomo_equalize3D
 from sscCdi.caterete.cat_tomo_processing import read_data
 
 dic = json.load(open(sys.argv[1])) # input dictionary

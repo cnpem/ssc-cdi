@@ -13,6 +13,62 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.9.1] - 2024-04-08
+
+Fixed
+~~~~~
+- Fixed initial guess for probe modes for RAAR_python. Secondary modes are random arrays between 0 and 1.
+
+[0.9.0] - 2024-04-05
+
+Added
+~~~~~
+- New nearfield ptychography pipeline for Mogno
+- C++/CUDA codes from sscPtycho were migrated to sscCdi
+- CUDA implementation of ePIE algorithm (single GPU only)
+
+Changed
+~~~~~
+- Bug fixes for Fresnel Ptychography python codes
+
+
+[0.8.10] - 2024-03-26
+
+Documentation
+~~~~~
+- Releasing new major version due to reestructuring of package from version 0.7.15
+
+
+[0.7.17] - 2024-03-26
+
+Fixed
+~~~~~
+- Fixed missing imports of CNB pipeline after refactoring in version 0.7.15
+
+
+[0.7.16] - 2024-03-26
+
+Fixed
+~~~~~
+- Fixed ePIE and RAAR python wrappers for correct algorithm call with new Fresnel propagator
+- Fixed missing imports after refactoring in version 0.7.15
+
+[0.7.15] - 2024-03-26
+
+Changed
+~~~~~
+- Restructured package modules, separating beamline specific code into the beamline modules
+
+Removed
+~~~~~
+- Removed dependencies of ssc packages that are pipeline specific. The only dependency that remains in from sscPtycho, which shall be incorporated into sscCdi into the future. 
+
+Added
+~~~~~
+- Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.
+
+
 [0.7.14] - 2024-03-01
 
 Removed
