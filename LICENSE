@@ -1,3 +1,12 @@
+
+The sscCdi package is used solely for research and academic purposes and employs ptychography.
+It's important to note that Phase Focus Limited, UK, holds a range of international patents related to ptychography,
+which are detailed here: https://www.phasefocus.com/patents
+Any implementations of ptychography within this software are covered by patents owned by Phase Focus Limited. 
+If you have any intentions of commercially exploiting technologies that use these patents,
+please contact Phase Focus Limited to discuss obtaining a commercial-use license at this link: https://www.phasefocus.com/licence
+
+
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
@@ -30,7 +39,7 @@ with which the Combined Work was made is also called the "Linked
 Version".
 
   The "Minimal Corresponding Source" for a Combined Work means the
-Corresponding Source for the Combined Work, excluding any source code
+Corresponding Source for the Combined Work, excluding any source code  
 for portions of the Combined Work that, considered in isolation, are
 based on the Application, and not on the Linked Version.
 

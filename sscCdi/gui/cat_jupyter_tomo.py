@@ -12,9 +12,6 @@ import asyncio
 from functools import partial
 import subprocess
 
-import sscCdi, sscPimega, sscRaft, sscRadon, sscResolution
-
-from sscRadon import radon
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
 from .tomo_processing import equalize_tomogram, save_or_load_wiggle_ctr_mass, get_and_save_downsampled_sinogram, add_plot_suffix_to_file
@@ -34,8 +31,9 @@ else: # paths for GCC tests
 
 """ Standard dictionary definition """
 global global_dict
+import sscCdi
 global_dict = {
-               "00_versions": f"sscCdi={sscCdi.__version__},sscPimega={sscPimega.__version__},sscResolution={sscResolution.__version__},sscRaft={sscRaft.__version__},sscRadon={sscRadon.__version__}",
+               "00_versions": f"sscCdi={sscCdi.__version__}",
                "jupyter_folder":"/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/", # FIXED PATH FOR BEAMLINE
 
                "ibira_data_path": "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/00000000/data/ptycho3d/",
@@ -807,10 +805,10 @@ def wiggle_tab():
 
         print("Starting wiggle...")
         global wiggled_sinogram
-        temp_tomogram, shiftv = radon.get_wiggle( sinogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
-        temp_tomogram, shiftv = radon.get_wiggle( temp_tomogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
+        temp_tomogram, shiftv = sscRaft.get_wiggle( sinogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
+        temp_tomogram, shiftv = sscRaft.get_wiggle( temp_tomogram, "vertical", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
         print('Finished vertical wiggle. Starting horizontal wiggle...')
-        wiggled_sinogram, shifth, wiggle_cmas_temp = radon.get_wiggle( temp_tomogram, "horizontal", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
+        wiggled_sinogram, shifth, wiggle_cmas_temp = sscRaft.get_wiggle( temp_tomogram, "horizontal", global_dict["CPUs"], global_dict["wiggle_reference_frame"] )
         wiggle_cmas = [[],[]]
         wiggle_cmas[1], wiggle_cmas[0] =  wiggle_cmas_temp[:,1].tolist(), wiggle_cmas_temp[:,0].tolist()
         global_dict["wiggle_ctr_of_mas"] = wiggle_cmas

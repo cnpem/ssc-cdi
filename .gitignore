@@ -1,3 +1,5 @@
+*.whl
+*.so
 docs/*
 !docs/doxyconf
 !docs/io.log
@@ -7,6 +9,7 @@ docs/*
 **/__pycache__/
 dist/*
 build/*
+_skbuild/*
 sscCdi.egg-info/*
 .**
 ._**
