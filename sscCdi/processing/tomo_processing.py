@@ -299,9 +299,9 @@ def equalize_frames_parallel(sinogram,dic):
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
-        results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        results = list(tqdm(executor.map(equalize_frame_partial,sinogram),total=n_frames))
         for counter, result in enumerate(results):
-            minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
+            # minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
             equalized_sinogram[counter,:,:] = result
 
     minimum1, maximum1, mean1, std1 = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)

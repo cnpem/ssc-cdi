@@ -450,10 +450,8 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
 @log_event
-def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
+def deploy_visualizer(data,axis=0,type='',title='',cmap='gray',aspect_ratio='',norm="normalize",limits=()):
     """
-
-    data (ndarray): real valued data
     axis (int): slice direction
     """
 
@@ -473,11 +471,11 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
             pass
         elif type == 'real':
             frame_data = np.real(frame_data)
-        elif type == 'imag':
+        elif type == 'imag' or type == 'imaginary':
             frame_data = np.imag(frame_data)
-        elif type == 'amplitude':
+        elif type == 'amplitude' or type == 'magnitude' or type == 'abs' or type == 'absorption':
             frame_data = np.abs(frame_data)
-        elif type == 'phase':
+        elif type == 'phase' or type == 'angle':
             frame_data = np.angle(frame_data)
         return frame_data
 
@@ -499,13 +497,12 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
     with output:
         volume_slice = get_vol_slice(data, axis=0, frame=0)
         figure, ax = plt.subplots(dpi=100)
-        ax.imshow(volume_slice, cmap='gray')
+        ax.imshow(volume_slice, cmap=cmap)
         figure.canvas.draw_idle()
         figure.canvas.header_visible = False
         colorbar = plt.colorbar(
             matplotlib.cm.ScalarMappable(
-                norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)),
-                cmap=cmap))
+                norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)), cmap=cmap))
         plt.show()
 
 
