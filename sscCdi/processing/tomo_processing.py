@@ -5,6 +5,7 @@ from tqdm import tqdm
 from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+import scipy
 
 import sscRaft
 
@@ -339,7 +340,7 @@ def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Me
     
     return img, plane, (a,b,c)
     
-def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2)):
+def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2),processes=10):
 
     equalize_scipy_optimization_partial = partial(equalize_scipy_optimization, mask,initial_guess=initial_guess,method=method,max_iter = max_iter,stop_criteria=stop_criteria)
     n_frames = sinogram.shape[0]
