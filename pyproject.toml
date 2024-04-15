@@ -38,6 +38,7 @@ dependencies = [
     'scipy',
     'scikit-image',
     'tqdm',
+    'ipywidgets',
     'SharedArray'
 ]
 
