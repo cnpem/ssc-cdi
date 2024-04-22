@@ -7,7 +7,17 @@ from ..misc import save_json_logfile_tomo, open_or_create_h5_dataset
 ####################### MISC ###################################
 
 def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,ordered_object_filepath= '', ordered_angles_filepath= ''):
-    """ Remove unwanted sinogram frames after sorting
+    """ Remove wanted frames from volume of images and from the respective list of angle values
+
+    Args:
+        sinogram: 3d array of images. First index selects the frame.
+        angles: array of corresponding rotation angle values to the sinogram frames. There must be 1 angle for each sinogram frame.
+        list_of_bad_frames: list of values containing the frames to be removed
+        ordered_object_filepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
+        ordered_angles_filepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
+
+    Returns:
+        _type_: _description_
     """    
 
     print('Original shape: ',sinogram.shape)
@@ -57,12 +67,19 @@ def remove_outliers(data,sigma):
 ####################### SORTING ###################################
 
 def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
-    """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
+    """ Sorting script to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
-        object (ndarray): read sinogram to be sorted
+        object (ndarray): 3d sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
-    """
+        object_savepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
+        angles_savepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
+
+    Returns:
+        sorted_object
+        sorted_angles
+    """    
+    
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
@@ -118,8 +135,20 @@ def reorder_slices_low_to_high_angle(object, angles,print=False):
 ######################### CROP #################################################
 
 def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepath='',crop_mode=0):
-    """ Crops sinogram according to cropping parameters in dic
-    """
+    """ Crops images in a volume in the Y,X directions.
+
+    Args:
+        volume (ndarray): 3d array of shape (N,Y,X), N being the slice number
+        top_crop (int): number of pixels on top
+        bottom_crop (int): number of pixels on botto,
+        left_crop (int): number of pixels on left
+        right_crop (int): number of pixels on right
+        cropped_savepath (str, optional): Path to hdf5 file in which new volume will be saved. Defaults to ''.
+        crop_mode (int, optional): Crop mode == 0 means each crop will be like [:,top_crop:-bottom_crop,left_crop:-right_crop]. Mode ==1 means [:,top_crop:bottom_crop,left_crop:right_crop]. Defaults to 0.
+
+    Returns:
+        cropped volume 
+    """    
     
     start = time.time()
     if crop_mode == 0:
@@ -140,7 +169,7 @@ def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepat
 ######################### EQUALIZATION #################################################
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
-    """ Filters outliers in the tomogram
+    """ Filter outliers in the reconstructed tomographic volume
 
     Args:
         equalized_tomogram (array): 3D reconstructed volume from tomographic algorithm
@@ -211,7 +240,7 @@ def tomo_equalize3D(dic,reconstruction,save=True):
 ####################### ALIGNMENT: PREPARE DATA FOR WIGGLE (sscRaft) ###########################################
 
 def wiggle_sinogram_alignment(dic,object,angles,save=True):
-    """ Calls alignment algorithms for aligning the object along the sinogram frames
+    """ Calls sscRaf "Wiggle" algorithm for sinogram alignment
 
     Args:
         dic (dict): dictionary of inputs
@@ -294,7 +323,8 @@ def preview_angle_projection(dic,sinogram,angles):
     print('Projected Angles         :', projected_angles.shape[0])
 
 def angle_grid_organize( original_frames, angles, percentage = 100 ):
-    """ Given non-regular steps between rotation angles, this function projects angles to regular grid and pad it to run from 0 to 180 degrees. 
+    """ Given non-regular steps between rotation angles, this function projects angles to a regular grid, inserting null frames for those angles in the grid that were not measure. 
+    It also pads with null frames to run from 0 to 180 degrees, i.e. fills in missing wedge with null angles.
     
     Args:
         original_frames (array): sinogram
@@ -421,18 +451,6 @@ def gaussian2D(shape,center,sigma):
 ####################### TOMOGRAPHY ###########################################
 
 def tomography(dic, sinogram,save=True):
-    """ Calls tomographic algorithms from sscRaft
-
-    Args:
-        dic (dict): dictionary of inputs
-            keys:
-                "reconstruction_filepath"
-        sinogram (array): sinogram
-
-    Returns:
-        reconstruction3D (array): 3D reconstructed volume via tomography
-
-    """
     
     start = time.time()
     reconstruction3D = call_sscRaft(dic, sinogram,save)
@@ -523,35 +541,12 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     return downsampled_sinogram
 
 def call_sscRaft(dic, sinogram,save=True):
-    """ Performs tomography
-    Args:
-        dic (dict): dictionary of inputs
-            keys:
-                "ordered_angles_filepath"
-                "using_wiggle": boolean
-                "wiggle_cmas_filepath"
-                "wiggle_ctr_of_mas"
-                "project_angles_to_regular_grid"
-                "algorithm_dic"
-                    keys:
-                        "angles"
-                        "nangles"
-                        "reconSize"
-                        "algorithm"
-                        "tomooffset"
-                        "is360"
-                "automatic_regularization"
-        sinogram (array): sinogram
-
-    Returns:
-        reconstruction3D (array): tomographic volume
-    """
 
     import sscRaft
 
     angles_filepath = dic["ordered_angles_filepath"]
     
-    if dic['using_wiggle']:
+    if dic['using_wiggle']: # if using wiggle, need to correct center of mass after reconstruction
         wiggle_cmas_path  = dic["wiggle_cmas_filepath"]
         try:
             wiggle_cmas = dic["wiggle_ctr_of_mas"]

@@ -10,15 +10,37 @@ from ..misc import open_or_create_h5_dataset
 
 ######################### UNWRAP #################################################
 
-def unwrap_in_parallel(sinogram,processes=0):
-    """
-    Unwraps phase of sinogram slices in parallel using a certain number of processes
-    """
+
+def unwrap_sinogram(sinogram,unwrapped_savepath=''):
+    start = time.time()
+
+    sinogram = unwrap_in_parallel(sinogram)
+    if unwrapped_savepath != '':
+        print('Saving unwrapped volume..')
+        open_or_create_h5_dataset(unwrapped_savepath,'entry','data',sinogram,create_group=True)
+        print('Saved unwrapped sinogram at: ',unwrapped_savepath)
+ 
+    print(f'Time elapsed: {time.time() - start:.2f} s' )
+    return sinogram
+
+def unwrap_in_parallel(sinogram,processes=1):
+    """Unwraps phase each sinogram slice in parallel, using a chosen number of processes
+
+    Args:
+        sinogram : 3d array
+        processes (int, optional): Number of cpu processes. Defaults to 1.
+
+    Returns:
+        unwrapped sinogram 
+    """    
 
     n_frames = sinogram.shape[0]
 
-    if processes == 0:
-        processes = min(os.cpu_count(),32)
+    try:
+        processes = int(os.getenv('SLURM_CPUS_ON_NODE'))
+        print(f'Using {processes} CPUs')
+    except:
+        print(f'Could not read CPUs from SLURM. Using {processes} CPUs')
 
     print(f'Using {processes} parallel processes')
     with ProcessPoolExecutor(max_workers=processes) as executor:
@@ -30,20 +52,6 @@ def unwrap_in_parallel(sinogram,processes=0):
 
     return unwrapped_sinogram
 
-
-def unwrap_sinogram(sinogram,unwrapped_savepath=''):
-    """ Calls unwrapping algorithms in multiple processes for the sinogram frames
-    """
-    start = time.time()
-
-    sinogram = unwrap_in_parallel(sinogram)
-    if unwrapped_savepath != '':
-        print('Saving unwrapped volume..')
-        open_or_create_h5_dataset(unwrapped_savepath,'entry','data',sinogram,create_group=True)
-        print('Saved unwrapped sinogram at: ',unwrapped_savepath)
- 
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
-    return sinogram
 
 def plane_fit_inside_mask(img, mask, epsilon = 1e-3):
     """
@@ -99,18 +107,18 @@ def plane_fit_inside_mask(img, mask, epsilon = 1e-3):
    
     return a,b,c
 
-def remove_phase_gradient(img, mask, loop_count_limit=5, epsilon = 1e-3):
+def remove_phase_gradient(img, mask, loop_count_limit=5, epsilon = 1e-3,threshold = 1e-8):
     """ 
-    Finds a best fit plane inside a masked region of image and subtracts. 
-    This process is repeated "loop_count_limit" times or until angular coefficients a,b are smaller than 1e-8
+    Finds a best fit plane inside a masked region of image and subtracts the fitted plane from the whole image. 
+    This process is repeated "loop_count_limit" times or until angular coefficients a,b are smaller than "threshold"
 
     Args:
         img (numpy.ndarray): 2D image to remove a gradient
         mask (numpy.ndarray): binary mask to indicate region of interest to extract. 
                             Points with non-zero values are considered for plane fitting.
         loop_count_limit (int, optional): Number of times to extract plane fit. Defaults to 5.
-        epsilon (float, optional): Regularization parameter to stabilize matrix inversion.
-                                  Set to zero for no regularization. Default is 1e-3.
+        epsilon (float, optional): Regularization parameter to stabilize matrix inversion. Set to zero for no regularization. Default is 1e-3.
+        threshold (float,optional): threshold value to stop loop
 
     Returns:
         img (numpy.ndarray): image with subtracted phase gradient
@@ -122,26 +130,17 @@ def remove_phase_gradient(img, mask, loop_count_limit=5, epsilon = 1e-3):
 
     a = b = c = 1e9
     counter = 0
-    while np.abs(a) > 1e-8 or np.abs(b) > 1e-8 or counter < loop_count_limit:
+    while np.abs(a) > threshold or np.abs(b) > threshold or counter < loop_count_limit:
         a,b,c = plane_fit_inside_mask( img, mask, epsilon )
         img = img - ( a*XX + b*YY + c ) # subtract plane from whole image
         counter += 1
     
     return img
 
-######################### EQUALIZATION #################################################
+######################### EQUALIZATION #########################
 
 def equalize_sinogram(dic, sinogram,save=True):
-    """ Calls equalization algorithms in multiple processes for sinogram frames
 
-    Args:
-        dic (dict): dictionary of inputs  
-            keys:
-                "bad_frames_before_equalization"
-                "equalized_sinogram_filepath"
-        object (array): frames to be equalized
-
-    """
     start = time.time()
 
     equalized_sinogram = equalize_frames_parallel(sinogram,dic)
@@ -225,13 +224,11 @@ def equalize_frame(dic,frame):
     return frame
 
 def equalize_frames_parallel(sinogram,dic):
-    """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
+    """ Calls function equalize_frame for each frame of the sinogram, in parallel, for removal of phase ramp and other actions
 
     Args:
         sinogram (array): sinogram to be equalized
-        dic (dict): dictionary of inputs
-            keys:
-                "CPUs": number of CPUs
+        dic (dict): dictionary of inputs. See "equalize_frame" function
 
     Returns:
         equalized_sinogram: equalized sinogram
@@ -251,8 +248,11 @@ def equalize_frames_parallel(sinogram,dic):
 
     n_frames = sinogram.shape[0]
 
-    processes = dic["CPUs"]
-    print(f'Using {processes} parallel processes')
+    try:
+        processes = int(os.getenv('SLURM_CPUS_ON_NODE'))
+        print(f'Using {processes} CPUs')
+    except:
+        print(f'Could not read CPUs from SLURM. Using {processes} CPUs')
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
@@ -268,7 +268,17 @@ def equalize_frames_parallel(sinogram,dic):
 
     return equalized_sinogram
 
-def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2)):
+def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Mead',max_iter = 1):
+    """ Another approach to equalize frames (i.e. phase ramp removal). It allows to use a mask of 1s and 0s, where only the regions
+    containing 1s are used to fit the obtain the best plane-fit and subtract it from the original image
+
+    Args:
+        mask (array): 2d mask array
+        img (array): 2d image array from which you wish to subtract a phase ramp 
+        initial_guess (tuple, optional): Initial guess for the a,b,c parameters of the plane a*x+b*y+c. Defaults to (1,1,1).
+        method (str, optional): Optimization method from scipy.optimize.minimize. Defaults to 'Nelder-Mead'.
+        max_iter (int, optional): Number of iterations it will try to iterate and find the best plane-fit. Defaults to 1.
+    """    
     
     def equalization_cost_function(params,img,mask,x,y):
         a, b, c = params
@@ -296,9 +306,15 @@ def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Me
     
     return img, plane, (a,b,c)
     
-def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2),processes=10):
+def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,processes=1):
 
-    equalize_scipy_optimization_partial = partial(equalize_scipy_optimization, mask,initial_guess=initial_guess,method=method,max_iter = max_iter,stop_criteria=stop_criteria)
+    try:
+        processes = int(os.getenv('SLURM_CPUS_ON_NODE'))
+        print(f'Using {processes} CPUs')
+    except:
+        print(f'Could not read CPUs from SLURM. Using {processes} CPUs')
+
+    equalize_scipy_optimization_partial = partial(equalize_scipy_optimization, mask,initial_guess=initial_guess,method=method,max_iter = max_iter)
     n_frames = sinogram.shape[0]
     equalized_sinogram = np.empty_like(sinogram)
     with ProcessPoolExecutor(max_workers=processes) as executor:
