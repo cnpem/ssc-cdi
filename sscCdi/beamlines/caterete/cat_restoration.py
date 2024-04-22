@@ -5,7 +5,7 @@ import json
 import h5py
 import sys
 
-from ...jupyter import slide_and_play
+from ..jupyter import slide_and_play
 
 from ... import log_event
 

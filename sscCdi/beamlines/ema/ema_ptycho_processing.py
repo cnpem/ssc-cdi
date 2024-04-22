@@ -4,7 +4,7 @@ import h5py, os
 
 """ sscCdi relative imports"""
 from ...ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size, call_ptychography
-from ...misc import add_to_hdf5_group, wavelength_from_energy
+from ...misc import add_to_hdf5_group, wavelength_meters_from_energy_keV
 
 def ema_ptychography(input_dict,DPs):
     """Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
