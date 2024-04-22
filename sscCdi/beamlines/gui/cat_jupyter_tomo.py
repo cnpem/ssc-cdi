@@ -15,7 +15,7 @@ import subprocess
 from .unwrap import unwrap_in_parallel
 from .tomo_processing import angle_mesh_organize, tomography, apply_chull_parallel, sort_frames_by_angle, reorder_slices_low_to_high_angle, equalize_frames_parallel
 from .tomo_processing import equalize_tomogram, save_or_load_wiggle_ctr_mass, get_and_save_downsampled_sinogram, add_plot_suffix_to_file
-from ..jupyter-gui.jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
+from ..gui_jupyter-gui.jupyter import call_and_read_terminal, monitor_job_execution, call_cmd_terminal, VideoControl, Button, Input, update_imshow
 
 global sinogram
 sinogram = np.random.random((2,2,2)) # dummy sinogram
