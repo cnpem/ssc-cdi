@@ -375,7 +375,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     
     print(f'Energy = {input_dict["energy"]} keV --> Wavelength = {input_dict["wavelength"]*1e9}nm')
     print(f'Pixel size: {input_dict["restored_pixel_size"]*1e6:.2f}um')
-    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Fresnel number: {input_dict['fresnel_number']}')
+    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Fresnel number: {input_dict["fresnel_number"]}')
 
     probe_positions = append_ones(probe_positions)
 

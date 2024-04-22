@@ -4,7 +4,7 @@ import h5py, os
 
 """ sscCdi relative imports"""
 
-from ...ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size
+from ...ptycho.ptychography import call_CUDA_ptychography, set_object_shape, set_object_pixel_size
 from ...misc import add_to_hdf5_group
 
 def cnb_ptychography(input_dict,DPs):
@@ -30,7 +30,7 @@ def cnb_ptychography(input_dict,DPs):
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-    sinogram[0, :, :], probes[0, :, :, :], error = call_GB_ptychography(input_dict,DPs,probe_positions) # run ptycho
+    sinogram[0, :, :], probes[0, :, :, :], error = call_CUDA_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
 
