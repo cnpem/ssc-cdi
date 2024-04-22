@@ -5,6 +5,7 @@ import random
 from ..cditypes import GL, PosCorrection, PIE, RAAR
 
 from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_meters_from_energy_keV
+from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
 
@@ -14,15 +15,112 @@ random.seed(0)
 
 @log_event
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+    """ Call Ptychography algorithms. Options are:
+
+        - RAAR_PYTHON: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
+        - ePIE_PYTHON: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
+        - RAAR_CUDA:   Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
+        - AP_CUDA:     Alternate Projections. Multi GPU, CUDA implementation
+        - AP_PC_CUDA:  Alternate Projections with Position Correction via Annealing method. Multi GPU, CUDA implementation
+        - ePIE_CUDA:   Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
+
+    Args:
+        DPs (ndarray): diffraction data with shape (N,Y,X). N is the number of diffraction patterns.
+        positions (array): positions array with shape (N,2)
+        initial_obj (ndarray, optional): Initial guess for object. Shape to be determined from DPs and positions. If None, will use the input in "input_dict" to determine the initial object. Defaults to None.
+        initial_probe (ndarray, optional): Initial guess for probe of shape (M,Y,X), where M is the number of probe modes. If None, will use the input in "input_dict" to determine the initial probe. Defaults to None.
+        input_dict (dict): dictionary of input required for Ptychography. Example below are:
+           
+            input_dict = {
+                'CPUs': 32,  # number of cpus to use for parallel execution    
+                
+                'GPUs': [0], # list of numbers (e.g. [0,1,2]) containg the number of the GPU
+                
+                'position_rotation': 0, # angle in radians. Rotation angle between detector and probe transverse coordinates
+                
+                'object_padding': 50, # pixels. Number of pixels to add around the object matrix
+                
+                'incoherent_modes': 0, # int. Number of incoherent modes to use
+                
+                'probe_support': [ "circular", 300,0,0 ], # support to be applied to the probe matrix after probe update. Options are:
+                                                          # - ["circular",radius_pxls,center_y, center_x]; (0,0) is the center of the image
+                                                          # - [ "cross", cross_width, border_padding, center_width ]; all values in pixels
+
+                'distance_sample_focus': 0, # float. Distance in meters between sample and focus or pinhole. This distance is used to propagated the probe prior to application of the probe support. 
+                
+                "initial_obj": ["random"], # 2d array. Initial guess for the object. Options are:
+                                           # - path to .npy, 
+                                           # - path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                                           # - ["random"], random matrix with values between
+                                           # - ["constant"], constant matrix of 1s
+
+                "initial_probe": ["inverse"], # 2d array. Initial guess for the probe. Options are:
+                                              # - path to .npy, 
+                                              # - path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                                              # - ["random"], random matrix with values between
+                                              # - ["constant"], constant matrix of 1s
+                                              # - ["inverse"], matrix of the Inverse Fourier Transform of the mean of DPs.
+                                              # - ["circular",radius,distance], circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method.
+
+                'Algorithm1': {'Batch': 64,
+                                'Beta': 0.995,
+                                'Epsilon': 0.01,
+                                'Iterations': 70,
+                                'Name': 'RAAR',
+                                'ProbeCycles': 4,
+                                'TV': 0},
+
+                'Algorithm2': {'Batch': 64,
+                                'Epsilon': 0.01,
+                                'Iterations': 50,
+                                'Name': 'GL',
+                                'ObjBeta': 0.97,
+                                'ProbeBeta': 0.95,
+                                'TV': 0.0001},
+
+                'Algorithm2': {'Batch': 64,
+                                'Epsilon': 0.01,
+                                'Iterations': 50,
+                                'Name': 'positioncorrection',
+                                'ObjBeta': 0.97,
+                                'ProbeBeta': 0.95,
+                                'TV': 0.0001},
+                    
+                'Algorithm3': { 'Name': 'PIE',
+                                'Iterations': 100,
+                                'step_obj': 0.5,    # step size for object update
+                                'step_probe': 1,    # step size for probe update
+                                'reg_obj': 0.25,    # regularization for object update
+                                'reg_probe': 0.5,   # regularization for probe update
+                                'Batch':1}
+            }
+
+    Returns:
+        obj: object matrix 
+        probe: probe matrix
+        error: error metric along iterations
+        positions: final positions of the scan (which may be corrected if AP_PC_CUDA is used)
+    """    
+
+    check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
     if 'algorithms' in input_dict:
-        obj, probe, error, positions = call_GCC_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+        obj, probe, error, positions = call_python_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
-        obj, probe, error, positions = call_GB_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+        obj, probe, error, positions = call_CUDA_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
     return obj, probe, error, positions
 
-def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+def check_shape_of_inputs(DPs,positions,initial_probe):
+
+    if DPs.shape[0] != positions.shape[0]:
+        raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
+
+    if DPs[0].shape[1] != initial_probe.shape[1] or DPs[0].shape[2] != initial_probe.shape[2]:
+        raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
+
+
+def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     """ 
     Wrapper for ptychography algorithms in Python by GCC.
     """
@@ -73,26 +171,8 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
 
     return obj, probe, error, None
 
-def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
+def call_CUDA_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography CUDA codes developed by Giovanni Baraldi
-
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-            keys:
-                "hdf5_output": output file path/name
-                "GPUs": number of GPUs
-                "CPUs": number of CPUs
-                "fresnel_number": Fresnel number
-
-        DPs (numpy array): array of diffraction patterns of shape (N,Y,X)
-        probe_positions (numpy array): array of probe positions of shape (N,2)
-        initial_obj (numpy array, optional): initial object array of shape (Y,X). Defaults to np.ones(1), which then uses input from input_dict
-        initial_probe (numpy array, optional): _description_. Defaults to np.ones(1), which then uses input from input_dict.
-
-    Returns:
-        object: object of shape (Y,X)
-        probe: probe of shape (1,M,DY,DX)
-        error: array of ptychography errors along iterations
     """
 
 
@@ -182,7 +262,6 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
     datapack['probe'] = datapack['probe'].astype(np.complex64)
 
     return datapack['obj'], datapack['probe'], error, corrected_positions
-
 
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     """ Adjust probe initial data to be accepted by Giovanni's algorithm
@@ -289,10 +368,14 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         probe_positions2[:,1] = probe_positions[:,0]
         return probe_positions2
     
-
-    half_size = DPs.shape[-1] // 2
-
-    print('Fresnel number:', input_dict['fresnel_number'])
+    if input_dict["distance_sample_focus"] == 0:
+        input_dict['fresnel_number'] = 0
+    else:
+        input_dict['fresnel_number'] = input_dict["restored_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
+    
+    print(f'Energy = {input_dict["energy"]} keV --> Wavelength = {input_dict["wavelength"]*1e9}nm')
+    print(f'Pixel size: {input_dict["restored_pixel_size"]*1e6:.2f}um')
+    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Fresnel number: {input_dict['fresnel_number']}')
 
     probe_positions = append_ones(probe_positions)
 
@@ -351,7 +434,11 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
         if type == 'circular':
             probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
-            probe = probe + 1j*probe
+            probe = probe*np(1j*probe)
+            if input_dict['initial_probe'][2] != 0: # propagate probe 
+                probe = fresnel_propagator_cone_beam(probe, input_dict['wavelength'],input_dict['object_pixel'], input_dict["distance_sample_focus"])
+            else:
+                pass
         elif type == 'cross':
             probe = create_cross_mask(DP_shape,input_dict['initial_probe'][1],input_dict['initial_probe'][2],input_dict['initial_probe'][3])
         elif type == 'constant':
@@ -480,29 +567,32 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
     
     return mask
 
+def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels,binning=1):
+    return wavelength * detector_distance / (binning*detector_pixel_size * n_of_pixels)
+
 def set_object_pixel_size(input_dict,DP_size):
-    """ Get size of object pixel given energy, distance and detector pixel size
+    """ Get size of object pixel given the energy, distance and detector pixel size
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
             keys:
-                "energy": beamline energy
-                "wavelength": 
-                "binning": 
-                "restored_pixel_size": restored pixel size
-        DP_size (int): lateral size of detector array
+                "energy": beamline energy in keV
+                "detetor_distance": distance in meters
+                "binning": binning factor, if diffraction patterns were binned
+                "restored_pixel_size": detector pixel size in meters
+        DP_size (int): lateral size of detector array in pixels
 
     Returns:
-        input_dict: update input dictionary containing size of object pixel
+        input_dict: update input dictionary containing size of object pixel and wavelength
     """
 
     wavelength = wavelength_meters_from_energy_keV(input_dict["energy"])
     input_dict["wavelength"] = wavelength
     
-    object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict["binning"]*input_dict['restored_pixel_size'] * DP_size)
+    object_pixel_size = calculate_object_pixel_size(wavelength,input_dict['detector_distance'], input_dict['restored_pixel_size'],DP_size,binning=input_dict["binning"])
     input_dict["object_pixel"] = object_pixel_size # in meters
-
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
+
     PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return input_dict
@@ -513,7 +603,7 @@ def set_object_shape(input_dict, DP_shape, probe_positions):
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
             keys:
-                "object_padding":
+                "object_padding": number of pixels to pad in the border of the object array.
                 "object_shape": object size/shape
         DP_shape (tuple): shape of the diffraction patterns array
         probe_positions (numpy array): array os probe positiions in pixels

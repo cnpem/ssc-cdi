@@ -296,17 +296,10 @@ def estimate_memory_usage(*args):
     Gibytes = bytes/1024/1024/1024
     return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
 
-def get_RGB_wheel():
-    import matplotlib
-    V, H = np.mgrid[0:1:100j, 0:1:300j]
-    S = np.ones_like(V)
-    HSV = np.dstack((H,S,V))
-    RGB = matplotlib.colors.hsv_to_rgb(HSV)
-    return RGB, H, S, V
+
     
 def save_plots(complex_array,title='',path=''):
 
-    from sscMisc import convert_complex_to_RGB
     complex_array = np.squeeze(complex_array)
 
     data_rgb = convert_complex_to_RGB(complex_array)
@@ -615,6 +608,12 @@ def plot_volume_histogram(volume,bins=100):
 
 
 def convert_complex_to_RGB(ComplexImg,bias=0.01):
+    """ Convert complex image into RGB image with amplitude encoded by intensity and phase encoded by color
+
+    Args:
+        ComplexImg (array): 2d complex array
+        bias (float, optional): _description_. Defaults to 0.01.
+    """    
         
     def MakeRGB(Amps,Phases,bias=0): 	# Make RGB image from amplitude and phase
         from matplotlib.colors import hsv_to_rgb
@@ -635,6 +634,13 @@ def convert_complex_to_RGB(ComplexImg,bias=0.01):
     Amps,Phases = SplitComplex(ComplexImg)
     return MakeRGB(Amps,Phases,bias)
 
+def get_RGB_wheel():
+    import matplotlib
+    V, H = np.mgrid[0:1:100j, 0:1:300j]
+    S = np.ones_like(V)
+    HSV = np.dstack((H,S,V))
+    RGB = matplotlib.colors.hsv_to_rgb(HSV)
+    return RGB, H, S, V
 
 def save_as_hdf5(filepath,data,tag='data'):
     with h5py.File(filepath,'a') as h5file:
