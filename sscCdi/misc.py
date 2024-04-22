@@ -245,7 +245,7 @@ def export_json(params,output_path):
     json.dump(export,out_file)
     return 0
 
-def wavelength_from_energy(energy_keV):
+def wavelength_meters_from_energy_keV(energy_keV):
     """ Calculate wavelenth from energy
 
     Args:
@@ -640,6 +640,7 @@ def save_as_hdf5(filepath,data,tag='data'):
     with h5py.File(filepath,'a') as h5file:
         h5file.create_dataset(tag,data=data, dtype=data.dtype)
         print('File created at',filepath)
+
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
                              ending_f_value=9e-4,

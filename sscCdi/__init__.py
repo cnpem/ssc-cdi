@@ -22,5 +22,5 @@ from .cditypes import *
 from .processing import *
 from .ptycho import *
 from .misc import *
-from .jupyter import *
+from .beamlines.jupyter import *
 from .beamlines import *

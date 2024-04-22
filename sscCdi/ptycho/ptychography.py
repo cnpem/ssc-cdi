@@ -4,7 +4,7 @@ import random
 
 from ..cditypes import GL, PosCorrection, PIE, RAAR
 
-from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_from_energy
+from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_meters_from_energy_keV
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
 
@@ -23,8 +23,8 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     return obj, probe, error, positions
 
 def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
-    """ Wrapper for ptychography algorithms in Python by GCC.
-
+    """ 
+    Wrapper for ptychography algorithms in Python by GCC.
     """
 
     if initial_probe == None:
@@ -70,7 +70,6 @@ def call_GCC_ptychography(input_dict,DPs, positions, initial_obj=None, initial_p
             sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
 
         error = np.concatenate((error,algo_error),axis=0)
-
 
     return obj, probe, error, None
 
@@ -497,7 +496,7 @@ def set_object_pixel_size(input_dict,DP_size):
         input_dict: update input dictionary containing size of object pixel
     """
 
-    wavelength = wavelength_from_energy(input_dict["energy"])
+    wavelength = wavelength_meters_from_energy_keV(input_dict["energy"])
     input_dict["wavelength"] = wavelength
     
     object_pixel_size = wavelength * input_dict['detector_distance'] / (input_dict["binning"]*input_dict['restored_pixel_size'] * DP_size)
