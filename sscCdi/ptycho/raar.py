@@ -1,11 +1,16 @@
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
-from ..processing.propagation import fresnel_propagator_cone_beam
-
 from .. import log_event
 
 @log_event
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
+
+    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
+    diffraction_patterns = cp.array(diffraction_patterns) 
+    positions = cp.array(positions)
+    obj = cp.array(obj)
+    probe = cp.array(probe)
+
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
@@ -20,11 +25,6 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         pass
     else:
         inputs['source_distance'] = None
-
-    diffraction_patterns = cp.array(diffraction_patterns) 
-    positions = cp.array(positions)
-    obj = cp.array(obj)
-    probe = cp.array(probe)
 
     if probe_support is None:
         probe_support = cp.ones_like(probe)

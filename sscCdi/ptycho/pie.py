@@ -7,6 +7,8 @@ from .. import log_event, event_start, event_stop
 @log_event
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
 
+    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
+
     r_o = inputs["regularization_object"]
     r_p = inputs["regularization_probe"]
     s_o = inputs["step_object"]
