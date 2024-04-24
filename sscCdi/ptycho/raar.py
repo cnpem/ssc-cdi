@@ -71,7 +71,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
 
-        probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel,distance_focus_sample)
+        probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts[:,0,:,:],inputs) # should we insert more modes to calculate error?
 
@@ -79,7 +79,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         print(f'\tIteration {iteration+1}/{iterations} \tError: {iteration_error:.2e}',end='')
 
         error[iteration] = iteration_error
-        
+    print('\n')    
     return obj_matrix[0].get(), probe_modes.get(), error.get()
 
 def projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj,probes,positions,epsilon):
