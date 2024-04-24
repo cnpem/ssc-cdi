@@ -26,13 +26,13 @@ def cnb_ptychography(input_dict,DPs):
 
     probe_positions = read_cnb_probe_positions(input_dict,DPs.shape)
 
-    input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
+    input_dict["object_shape"] = set_object_shape(input_dict["object_padding"],DPs.shape,probe_positions) # add object shape to input_dict
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     sinogram[0, :, :], probes[0, :, :, :], error = call_CUDA_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
 
     return sinogram, probes, input_dict
 
@@ -53,7 +53,7 @@ def define_paths(input_dict):
                 "temporary_output": location of temporary files
                 "energy": beamline energy
                 "detector_distance": detector distance
-                "restored_pixel_size": restored pixel size
+                "detector_pixel_size": restored pixel size
                 "detector_exposure": detector exposure
                 "datetime": string with time and date to name files
                 "hdf5_output": hdf5 output
@@ -76,16 +76,12 @@ def define_paths(input_dict):
     data = h5py.File(input_dict["beamline_parameters_path"],'r')
     input_dict["energy"]               = data['beamline_parameters']['4CM Energy'][()]*1e-3 # keV
     input_dict["detector_distance"]    = data['beamline_parameters']['Distance PiMega'][()]*1e-3 # convert to meters
-    input_dict["restored_pixel_size"]  = data['beamline_parameters']['PiMega Pixel Size'][()]*1e-6 # convert to microns
+    input_dict["detector_pixel_size"]  = data['beamline_parameters']['PiMega Pixel Size'][()]*1e-6 # convert to microns
     input_dict["detector_exposure"]    = data['general_info']['Acquisition time'][()] # seconds
     data.close()
 
     input_dict["datetime"] = get_datetime(input_dict["dataset_name"])
     input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file
-
-    hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
-    hdf5_output.create_group("recon")
-    hdf5_output.create_group("log")
 
     return input_dict
 

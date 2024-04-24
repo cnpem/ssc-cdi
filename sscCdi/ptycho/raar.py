@@ -1,5 +1,6 @@
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
+
 from .. import log_event
 
 @log_event
@@ -16,7 +17,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     epsilon    = inputs['epsilon']
     obj_pixel  = inputs['object_pixel']
     wavelength = inputs['wavelength']
-    distance_focus_sample  = inputs['sample_focus_distance']
+    distance_focus_sample  = inputs['distance_sample_focus']
     n_of_modes = inputs["incoherent_modes"]
     fresnel_regime = inputs["fresnel_regime"]
     probe_support  = inputs["probe_support"] 

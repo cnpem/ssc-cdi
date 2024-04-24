@@ -21,9 +21,9 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     obj_pixel = inputs['object_pixel']
     wavelength = inputs['wavelength']
     detector_distance = inputs['detector_distance']
-    distance_focus_sample  = inputs['sample_focus_distance']
+    distance_focus_sample  = inputs['distance_sample_focus']
     fresnel_regime = inputs["fresnel_regime"]
-    probe_support  = inputs["probe_support"] #TODO
+    probe_support  = inputs["probe_support"] 
 
     if fresnel_regime == True:
         pass
@@ -34,6 +34,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     probe_guess  = cp.array(probe_guess)
     positions    = cp.array(positions)
     diffraction_patterns = cp.array(diffraction_patterns)
+    probe_support = cp.array(probe_support)
 
     obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
@@ -84,8 +85,8 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
 
-        print('\r', end='')
-        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
+        # print('\r', end='')
+        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}',end='\r')
 
         error[i] = iteration_error
 
@@ -113,7 +114,6 @@ def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront
         
         return denominator  
 
-    import pdb; pdb.set_trace()
     # r_o,r_p,s_o,s_p,_,_,_ = mPIE_params
 
     # Pre-calculating to avoid repeated operations

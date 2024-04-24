@@ -104,6 +104,24 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
+    print(f'Pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
+    
+    print(f'Energy = {input_dict["energy"]} keV')
+    
+    if "wavenlegnth" not in input_dict:
+        input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
+        print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
+    
+    if "object_pixel" not in input_dict:
+        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1],binning=input_dict["binning"]) # in meters
+        print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+    
+    if "object_shape" not in input_dict:
+        input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
+        print(f"Object shape: {input_dict['object_shape']}")
+    
+    create_output_h5_file(input_dict)
+
     if 'algorithms' in input_dict:
         obj, probe, error, positions = call_python_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
@@ -116,9 +134,43 @@ def check_shape_of_inputs(DPs,positions,initial_probe):
     if DPs.shape[0] != positions.shape[0]:
         raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
 
-    if DPs[0].shape[1] != initial_probe.shape[1] or DPs[0].shape[2] != initial_probe.shape[2]:
-        raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
+    if initial_probe is not None:
+        if DPs[0].shape[1] != initial_probe.shape[1] or DPs[0].shape[2] != initial_probe.shape[2]:
+            raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
 
+def create_output_h5_file(input_dict):
+
+    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
+
+        h5file.create_group("recon")
+        h5file.create_group("metadata")
+
+        h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
+        h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
+        h5file["metadata"].create_dataset('distance_sample_focus',data=input_dict['distance_sample_focus']) 
+        h5file["metadata"].create_dataset('detector_pixel_microns',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('object_pixel_meters',data=input_dict['object_pixel']) 
+        h5file["metadata"].create_dataset('cpus',data=input_dict['CPUs']) 
+        h5file["metadata"].create_dataset('binning',data=input_dict['binning']) 
+        h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
+        h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
+        h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
+        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+
+        # lists, tuples, arrays
+        h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
+        h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
+        # h5file["metadata"].create_dataset('probe_support',data=input_dict['probe_support']) # TODO: fix this to be a dictionary?
+        h5file["metadata"].create_dataset('initial_obj',data=input_dict['initial_obj']) 
+        h5file["metadata"].create_dataset('initial_probe',data=input_dict['initial_probe'])
+    
+        for key in input_dict['algorithms']:
+            h5file.create_group(f'metadata/algorithms/{key}')
+            for subkey in input_dict['algorithms'][key]:
+                h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+
+    h5file.close()
 
 def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     """ 
@@ -131,10 +183,16 @@ def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initia
         obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
         obj = np.expand_dims(obj,axis=0)
 
+    if 'probe_support' in input_dict:
+        input_dict["probe_support"] = get_probe_support(input_dict,probe.shape)
+    else:
+        input_dict["probe_support"] = np.ones_like(DPs[0])
+        
+
     positions = positions.astype(np.int32)
     positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
     
-    error = np.empty((0,))
+    error = np.empty((0,1))
     
     inputs = input_dict
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
@@ -157,6 +215,7 @@ def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initia
             inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
             inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
             inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
+            inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
             obj, probe, algo_error = PIE_multiprobe_loop(DPs, positions,obj[0],probe[0], inputs)
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
@@ -172,9 +231,8 @@ def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initia
     return obj, probe, error, None
 
 def call_CUDA_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
-    """ Call Ptychography CUDA codes developed by Giovanni Baraldi
+    """ Call Ptychography CUDA codes
     """
-
 
     datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions)
     
@@ -314,42 +372,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         sigmask[DPs[0] < 0] = 0
         return sigmask
 
-    def get_probe_support(input_dict,probe_shape):
-        """ Create mask containing probe support region
 
-        Args:
-            input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-                keys:
-                    "probe_support": probe support
-            probe_shape (array): probe size 
-
-        Returns:
-            probesupp: mask containing probe support
-        """
-
-        
-        print('Setting probe support...')
-
-        probe = np.zeros(probe_shape)
-        
-        if input_dict["probe_support"][0] == "circular":
-            radius, center_x, center_y = input_dict["probe_support"][1], input_dict["probe_support"][2], input_dict["probe_support"][3]
-
-            half_size = probe_shape[-1]//2
-
-            ar = np.arange(-half_size, half_size)
-            xx, yy = np.meshgrid(ar, ar)
-            support = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2
-
-            probe[:] = support # all frames and all modes with same support
-
-        elif input_dict["probe_support"][0] == "cross":
-            cross_width_y, border, center_square_side = input_dict['probe_support'][1],input_dict['probe_support'][2],input_dict['probe_support'][3]
-            probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
-        else: 
-            sys.exit('Please select the correct probe support: circular or cross')
-
-        return probe
 
     def append_ones(probe_positions):
         """ Adjust shape and column order of positions array to be accepted by Giovanni's code
@@ -371,11 +394,11 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
     if input_dict["distance_sample_focus"] == 0:
         input_dict['fresnel_number'] = 0
     else:
-        input_dict['fresnel_number'] = input_dict["restored_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
+        input_dict['fresnel_number'] = input_dict["detector_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
     
-    print(f'Energy = {input_dict["energy"]} keV --> Wavelength = {input_dict["wavelength"]*1e9}nm')
-    print(f'Pixel size: {input_dict["restored_pixel_size"]*1e6:.2f}um')
-    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Fresnel number: {input_dict["fresnel_number"]}')
+
+    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm')
+    print(f'Fresnel number: {input_dict["fresnel_number"]}')
 
     probe_positions = append_ones(probe_positions)
 
@@ -422,7 +445,7 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
             for i in range(add):
                 probe[i + mode] = probe[i + mode - 1] * np.random.rand(*probe[0].shape)
 
-        print("\tProbe shape ({0},{1}) with {2} incoherent mode(s)".format(probe.shape[-2], probe.shape[-1], probe.shape[0]))
+        print("Probe shape ({0},{1}) with {2} incoherent mode(s)".format(probe.shape[-2], probe.shape[-1], probe.shape[0]))
 
         return probe
 
@@ -514,6 +537,43 @@ def set_initial_object(input_dict,DPs, probe):
 
     return complex_obj
 
+def get_probe_support(input_dict,probe_shape):
+    """ Create mask containing probe support region
+
+    Args:
+        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
+            keys:
+                "probe_support": probe support
+        probe_shape (array): probe size 
+
+    Returns:
+        probesupp: mask containing probe support
+    """
+
+    
+    print('Setting probe support...')
+
+    probe = np.zeros(probe_shape)
+    
+    if input_dict["probe_support"][0] == "circular":
+        radius, center_x, center_y = input_dict["probe_support"][1], input_dict["probe_support"][2], input_dict["probe_support"][3]
+
+        half_size = probe_shape[-1]//2
+
+        ar = np.arange(-half_size, half_size)
+        xx, yy = np.meshgrid(ar, ar)
+        support = (xx + center_x) ** 2 + (yy + center_y) ** 2 < radius ** 2
+
+        probe[:] = support # all frames and all modes with same support
+
+    elif input_dict["probe_support"][0] == "cross":
+        cross_width_y, border, center_square_side = input_dict['probe_support'][1],input_dict['probe_support'][2],input_dict['probe_support'][3]
+        probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
+    else: 
+        sys.exit('Please select the correct probe support: circular or cross')
+
+    return probe
+
 def create_circular_mask(mask_shape, radius):
     """" Create circular mask
 
@@ -579,25 +639,22 @@ def set_object_pixel_size(input_dict,DP_size):
                 "energy": beamline energy in keV
                 "detetor_distance": distance in meters
                 "binning": binning factor, if diffraction patterns were binned
-                "restored_pixel_size": detector pixel size in meters
+                "detector_pixel_size": detector pixel size in meters
         DP_size (int): lateral size of detector array in pixels
 
     Returns:
         input_dict: update input dictionary containing size of object pixel and wavelength
     """
-
-    wavelength = wavelength_meters_from_energy_keV(input_dict["energy"])
-    input_dict["wavelength"] = wavelength
     
-    object_pixel_size = calculate_object_pixel_size(wavelength,input_dict['detector_distance'], input_dict['restored_pixel_size'],DP_size,binning=input_dict["binning"])
+    object_pixel_size = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DP_size,binning=input_dict["binning"])
     input_dict["object_pixel"] = object_pixel_size # in meters
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
 
-    PA_thickness = 4*object_pixel_size**2/(0.61*wavelength)
+    PA_thickness = 4*object_pixel_size**2/(0.61*input_dict['wavelength'])
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return input_dict
 
-def set_object_shape(input_dict, DP_shape, probe_positions):
+def set_object_shape(object_padding, DP_shape, probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
     Args:
@@ -612,7 +669,7 @@ def set_object_shape(input_dict, DP_shape, probe_positions):
         input_dict (dict)): updated input dictionary containing object_shape information
     """
 
-    offset_bottomright = input_dict["object_padding"]
+    offset_bottomright = object_padding
     DP_size_y, DP_size_x = DP_shape[1:]
 
     maximum_probe_coordinate_x = int(np.max(probe_positions[:,1]))
@@ -621,9 +678,7 @@ def set_object_shape(input_dict, DP_shape, probe_positions):
     maximum_probe_coordinate_y = int(np.max(probe_positions[:,0]))
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
-    input_dict["object_shape"] = (object_shape_y, object_shape_x)
-
-    return input_dict
+    return (object_shape_y, object_shape_x)
 
 
 
