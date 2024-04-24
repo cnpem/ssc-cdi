@@ -156,7 +156,7 @@ def save_json_logfile(input_dict):
     file.write(json_string)
     file.close()
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
+    add_to_hdf5_group(input_dict["hdf5_output"],'metadata','logfile',filepath)
 
 def save_json_logfile_tomo(input_dict):
     """Save a copy of the json input file with datetime at the filename
@@ -422,7 +422,7 @@ def save_volume_from_parts(input_dict):
     print("Combining and saving errors into single file...")
     errors = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="error.npy")[0]
     errors = combine_volume(*errors)
-    save_variable(input_dict,errors,name='error',group='log')
+    save_variable(input_dict,errors,name='error',group='metada')
 
     corrected_positions = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="corrected_positions.npy")[0]
     if len(corrected_positions) > 0:
