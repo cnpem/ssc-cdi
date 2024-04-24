@@ -26,7 +26,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     Args:
         DPs (ndarray): diffraction data with shape (N,Y,X). N is the number of diffraction patterns.
-        positions (array): positions array with shape (N,2)
+        positions (array): positions array with shape (N,2) with (x,y) position pairs in each line.
         initial_obj (ndarray, optional): Initial guess for object. Shape to be determined from DPs and positions. If None, will use the input in "input_dict" to determine the initial object. Defaults to None.
         initial_probe (ndarray, optional): Initial guess for probe of shape (M,Y,X), where M is the number of probe modes. If None, will use the input in "input_dict" to determine the initial probe. Defaults to None.
         input_dict (dict): dictionary of input required for Ptychography. Example below are:

@@ -39,7 +39,7 @@ def miqueles_colormap(img):
 
     return cmap, colors, bounds, norm
 
-def plotshow_cmap2(image,title=None,figsize=(20,20),savepath=None,show=False):
+def plotshow_miqueles(image,title=None,figsize=(20,20),savepath=None,show=False):
     """ Function to plot and save figures using Miquele's colormap
 
     Args:
