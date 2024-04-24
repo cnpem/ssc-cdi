@@ -161,11 +161,20 @@ def create_output_h5_file(input_dict):
         # lists, tuples, arrays
         h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
         h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
-        # h5file["metadata"].create_dataset('probe_support',data=input_dict['probe_support']) # TODO: fix this to be a dictionary?
-        h5file["metadata"].create_dataset('initial_obj',data=input_dict['initial_obj']) 
-        h5file["metadata"].create_dataset('initial_probe',data=input_dict['initial_probe'])
-    
-        for key in input_dict['algorithms']:
+        
+        h5file.create_group(f'metadata/probe_support')
+        for key in input_dict['probe_support']: # save input probe
+            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
+
+        h5file.create_group(f'metadata/initial_obj')
+        for key in input_dict['initial_obj']: # save input probe
+            h5file[f'metadata/initial_obj'].create_dataset(key,data=input_dict['initial_obj'][key])
+
+        h5file.create_group(f'metadata/initial_probe')
+        for key in input_dict['initial_probe']: # save input probe
+            h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
+        
+        for key in input_dict['algorithms']: # save algorithms used
             h5file.create_group(f'metadata/algorithms/{key}')
             for subkey in input_dict['algorithms'][key]:
                 h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
@@ -178,7 +187,7 @@ def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initia
     """
 
     if initial_probe == None:
-        probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
+        probe = set_initial_probe(input_dict, DPs ) # probe initial guess
     if initial_obj == None:
         obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
         obj = np.expand_dims(obj,axis=0)
@@ -220,7 +229,6 @@ def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initia
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            inputs['probe_support'] = None # TODO: implement probe support properly
             obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,positions,obj[0],probe[0],inputs)
             obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
         else:
@@ -402,7 +410,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
     probe_positions = append_ones(probe_positions)
 
-    probe = set_initial_probe(input_dict, (DPs.shape[1], DPs.shape[2]), np.average(DPs, 0)[None] ) # probe initial guess
+    probe = set_initial_probe(input_dict, DPs) # probe initial guess.
     
     probe_support = get_probe_support(input_dict, probe.shape)
     
@@ -419,22 +427,10 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
 
     return datapack, sigmask
 
-def set_initial_probe(input_dict,DP_shape,DPs_avg):
-    """ Get initial probe with multiple modes, with format required by Giovanni's code
+def set_initial_probe(input_dict,DPs):
+    print('Creating initial probe...')
 
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-            keys:
-                "incoherent_modes": incoherent nodes
-                "initial_probe": initial probe
-                "output_path": path of output files
-                
-        DP_shape (tuple): shape of single diffraction pattern
-        DPs_avg (array): average of all diffraction data
-
-    Returns:
-        probe: initial probe array 
-    """
+    DP_shape = (DPs.shape[1], DPs.shape[2])
 
     def set_modes(probe, input_dict):
         mode = probe.shape[0]
@@ -449,41 +445,44 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
         return probe
 
-    print('Creating initial probe...')
 
-    if isinstance(input_dict['initial_probe'],list): # if no path to file given
+    type_of_initial_guess = detect_variable_type_of_guess(input_dict['initial_probe']["probe"])
+
+    if type_of_initial_guess == 'standard':
         
-        type = input_dict['initial_probe'][0]
-
-        if type == 'circular':
-            probe = create_circular_mask(DP_shape,input_dict['initial_probe'][1])
+        if input_dict['initial_probe']['probe'] == 'circular':
+            probe = create_circular_mask(DP_shape,input_dict['initial_probe']["radius"])
             probe = probe*np(1j*probe)
             if input_dict['initial_probe'][2] != 0: # propagate probe 
                 probe = fresnel_propagator_cone_beam(probe, input_dict['wavelength'],input_dict['object_pixel'], input_dict["distance_sample_focus"])
             else:
                 pass
-        elif type == 'cross':
-            probe = create_cross_mask(DP_shape,input_dict['initial_probe'][1],input_dict['initial_probe'][2],input_dict['initial_probe'][3])
-        elif type == 'constant':
+        elif input_dict['initial_probe']['probe'] == 'cross':
+            cross_width_y, border, center_square_side = input_dict['initial_probe']["cross_width"],input_dict['initial_probe']["border_padding"],input_dict['initial_probe'][center_width]
+            probe = create_cross_mask(DP_shape,cross_width_y, border, center_square_side)
+        elif input_dict['initial_probe']['probe'] == 'constant':
             probe = np.ones(DP_shape)
-        elif type == 'random':
+        elif input_dict['initial_probe']['probe'] == 'random':
             probe = np.random.rand(*DP_shape)
-        elif type == 'inverse':
+        elif input_dict['initial_probe']['probe'] == 'inverse' or input_dict['initial_probe']['probe'] == 'ift':
+            DPs_avg =  np.average(DPs, 0)[None] 
             ft = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(DPs_avg)))
             probe = np.sqrt(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         else:
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
-    elif isinstance(input_dict['initial_probe'],str):
-        if os.path.splitext(input_dict['initial_probe'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_probe'])[1] == '.h5':
-            probe = h5py.File(input_dict['initial_probe'],'r')['recon/probe'][()]
-        elif os.path.splitext(input_dict['initial_probe'])[1] == '.npy':
-            probe = np.load(input_dict['initial_probe']) # load guess from file
-        probe = probe[0]
-    elif isinstance(input_dict['initial_probe'],int):
-        probe = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_probe.npy"))
+    elif type_of_initial_guess == 'path':
+        path = input_dict['initial_probe']["probe"]        
+        if os.path.splitext(path)[1] == '.hdf5' or os.path.splitext(path)[1] == '.h5':
+            probe = h5py.File(path,'r')['recon/probe'][()]
+        elif os.path.splitext(path)[1] == '.npy':
+            probe = np.load(path) # load guess from file
+    
+    elif type_of_initial_guess == 'array':
+        probe = input_dict['initial_probe']['probe']
+    
     else:
-        sys.exit("Please select an appropriate path or type for probe initial guess: circular, squared, cross, constant")
+        raise ValueError(f"Select an appropriate initial guess for the probe:{input_dict['initial_probe']}")
 
     probe = probe.astype(np.complex64)
 
@@ -492,45 +491,42 @@ def set_initial_probe(input_dict,DP_shape,DPs_avg):
 
     return probe
 
+def detect_variable_type_of_guess(variable):
+    if isinstance(variable, str):
+        if os.path.isfile(variable):
+            return "path"
+        else:
+            return "standard"
+    elif isinstance(variable, np.ndarray):
+        return "array"
+    else:
+        raise ValueError("Your input for the initial guess is wrong.")
+
 def set_initial_object(input_dict,DPs, probe):
-    """ Get initial object from file at input dictionary or define a constant or random matrix for it
-
-    Args:
-        input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-            keys:
-                "initial_obj": initial object
-                "object_shape": object shape
-                "output_path": path for output files
-        DPs (array): diffraction data used for calculating normalization factor
-        probe (array): probe used for calculating normalization factor
-
-    Returns:
-        _type_: _description_
-    """
-
     print('Creating initial object...')
 
-    if isinstance(input_dict['initial_obj'],list):
-        type = input_dict['initial_obj'][0]
-        if type == 'constant':
+    type_of_initial_guess = detect_variable_type_of_guess(input_dict['initial_obj']["obj"])
+
+    if type_of_initial_guess == 'standard':
+        if input_dict['initial_obj']['obj'] == 'constant':
             obj = np.ones(input_dict["object_shape"])
-        elif type == 'random':
+        elif input_dict['initial_obj']['obj'] == 'random':
             normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
             obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
-        elif type == 'complex_random':
+        elif input_dict['initial_obj']['obj'] == 'complex_random':
             obj =  1 * (np.random.rand(*input_dict["object_shape"]) + 1j*np.random.rand(*input_dict["object_shape"]))
-        elif type == 'initialize':
+        elif input_dict['initial_obj']['obj'] == 'initialize':
             pass #TODO: implement method from https://doi.org/10.1364/OE.465397
-    elif isinstance(input_dict['initial_obj'],str): 
-        if os.path.splitext(input_dict['initial_obj'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_obj'])[1] == '.h5':
-            obj = h5py.File(input_dict['initial_obj'],'r')['recon/object'][0] # select first frame of object
-        elif os.path.splitext(input_dict['initial_obj'])[1] == '.npy':
-            obj = np.load(input_dict['initial_obj'])
+    elif type_of_initial_guess == 'path':
+        if os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.h5':
+            obj = h5py.File(input_dict['initial_obj']['obj'],'r')['recon/object'][0] # select first frame of object
+        elif os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.npy':
+            obj = np.load(input_dict['initial_obj']['obj'])
         obj = np.squeeze(obj)
-    elif isinstance(input_dict['initial_obj'],int):
-        obj = np.load(os.path.join(input_dict["output_path"],input_dict["output_path"].rsplit('/',2)[1]+"_object.npy"))
+    elif type_of_initial_guess == 'array':
+        obj = input_dict['initial_obj']['obj']
     else:
-        sys.exit("Please select an appropriate path or type for object initial guess: autocorrelation, constant, random")
+        raise ValueError(f"Select an appropriate initial guess for the object:{input_dict['initial_obj']}")
 
     complex_obj = obj.astype(np.complex64)
 
@@ -555,8 +551,8 @@ def get_probe_support(input_dict,probe_shape):
 
     probe = np.zeros(probe_shape)
     
-    if input_dict["probe_support"][0] == "circular":
-        radius, center_x, center_y = input_dict["probe_support"][1], input_dict["probe_support"][2], input_dict["probe_support"][3]
+    if input_dict["probe_support"]["type"] == "circular":
+        radius, center_x, center_y = input_dict["probe_support"]["radius"], input_dict["probe_support"]["center_y"], input_dict["probe_support"]["center_x"]
 
         half_size = probe_shape[-1]//2
 
@@ -566,11 +562,15 @@ def get_probe_support(input_dict,probe_shape):
 
         probe[:] = support # all frames and all modes with same support
 
-    elif input_dict["probe_support"][0] == "cross":
-        cross_width_y, border, center_square_side = input_dict['probe_support'][1],input_dict['probe_support'][2],input_dict['probe_support'][3]
+    elif input_dict["probe_support"]["type"] == "cross":
+        cross_width_y, border, center_square_side = input_dict['probe_support']["cross_width"],input_dict['probe_support']["border_padding"],input_dict['probe_support']['center_width']
         probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
+
+    elif input_dict["probe_support"]["type"] == "array":
+        probe = input_dict["probe_support"]["type"]["data"]
+
     else: 
-        sys.exit('Please select the correct probe support: circular or cross')
+        raise ValueError(f"Select an appropriate probe support:{input_dict['probe_support']}")
 
     return probe
 
