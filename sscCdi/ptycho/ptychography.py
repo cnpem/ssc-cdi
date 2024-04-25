@@ -122,7 +122,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     
     create_output_h5_file(input_dict)
 
-    if 'algorithms' in input_dict:
+    if 'Algorithm1' not in input_dict:
         obj, probe, error, positions = call_python_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
     else:
         obj, probe, error, positions = call_CUDA_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
