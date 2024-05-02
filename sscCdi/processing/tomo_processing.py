@@ -5,6 +5,7 @@ from tqdm import tqdm
 from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+import scipy
 
 import sscRaft
 
@@ -301,7 +302,7 @@ def equalize_frames_parallel(sinogram,dic):
         equalized_sinogram = np.empty_like(sinogram)
         results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
         for counter, result in enumerate(results):
-            minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
+            # minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
             equalized_sinogram[counter,:,:] = result
 
     minimum1, maximum1, mean1, std1 = np.min(equalized_sinogram), np.max(equalized_sinogram), np.mean(equalized_sinogram), np.std(equalized_sinogram)
@@ -309,6 +310,46 @@ def equalize_frames_parallel(sinogram,dic):
     print(f'Old {minimum:.2f}, {mean-3*std:.2f}, {mean:.2f}, {mean+3*std:.2f},{maximum:.2f}')
     print(f'New: {minimum1:.2f}, {mean1-3*std1:.2f},{mean1:.2f}, {mean1+3*std1:.2f},{maximum1:.2f}')
 
+    return equalized_sinogram
+
+def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2)):
+    
+    def equalization_cost_function(params,img,mask,x,y):
+        a, b, c = params
+        return np.linalg.norm(mask*(img- (a*x+b*y+c)))**2
+    
+    if img.shape != mask.shape:
+        sys.exit('Image and Mask do not have the same shape')
+
+    y, x = np.indices(img.shape)
+    
+    for i in range(0,max_iter):
+    
+        result = scipy.optimize.minimize(equalization_cost_function, initial_guess, args=(img,mask,x,y),method=method)
+
+        success = result.success
+        if success == False:
+            print('Convergence failed. Scipy.minimize message: ',result.message)
+        else:
+            # print('Minization done')
+            pass
+
+        a,b,c = result.x
+        plane = a*x+b*y+c
+        img = img - plane
+    
+    return img, plane, (a,b,c)
+    
+def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2),processes=10):
+
+    equalize_scipy_optimization_partial = partial(equalize_scipy_optimization, mask,initial_guess=initial_guess,method=method,max_iter = max_iter,stop_criteria=stop_criteria)
+    n_frames = sinogram.shape[0]
+    equalized_sinogram = np.empty_like(sinogram)
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        results = list(tqdm(executor.map(equalize_scipy_optimization_partial,sinogram),total=n_frames,desc='Equalizing frames'))
+        for counter, result in tqdm(enumerate(results),desc="Populating result matrix"):
+            equalized_sinogram[counter,:,:] = result[0]
+            
     return equalized_sinogram
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
@@ -750,6 +791,17 @@ def call_sscRaft(dic, sinogram,save=True):
         save_json_logfile_tomo(dic)
 
     return reconstruction3D
+
+
+def phase_derivative_hilbert_transform(sinogram,pixel_size=1):
+    """
+    Calculate phase derivative to use it with backprojection (no filter!) 
+    Pixel size in meters
+    """
+    g = np.exp(1j*sinogram) 
+    grad_sinogram = np.angle(g * np.conj(np.roll(g,shift=1,axis=-1)))/pixel_size
+    hilbert = np.imag(scipy.signal.hilbert(grad_sinogram,axis=-1)/(2*np.pi))
+    return hilbert
 
 ####################### PLOT ###########################################
 
