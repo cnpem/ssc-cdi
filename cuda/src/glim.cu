@@ -70,12 +70,11 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
   }
 }
 
-void GLimRun(GLim& glim, int iterations, float tvmu, float epsilon) {
+void GLimRun(GLim& glim, int iterations, float epsilon) {
   ssc_info("Starting GL.");
 
   ssc_event_start("GLim Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("tvmu", tvmu),
             ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)glim.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)glim.ptycho->difpadshape.y),
@@ -154,7 +153,7 @@ void GLimRun(GLim& glim, int iterations, float tvmu, float epsilon) {
         ptycho.object->WeightedLerpSync(
                 *ptycho.object_acc, *ptycho.object_div,
                 1.0f, ptycho.objbeta,
-                objmomentum, epsilon, tvmu);
+                objmomentum, epsilon);
 
     if (ptycho.objectsupport != nullptr) {
         for (int g = 0; g < ngpus; g++) {

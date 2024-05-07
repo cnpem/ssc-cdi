@@ -168,8 +168,8 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity, float stepsize, float m
             }
     }
 
-    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_acc, *raar.ptycho->object_div, 1.0f, 0.0f, velocity,
-                                          epsilon, 0);
+    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_acc, *raar.ptycho->object_div,
+            1.0f, 0.0f, velocity, epsilon);
 }
 
 /**
@@ -199,12 +199,11 @@ void init_wavefront(RAAR& raar) {
 /**
  * RAAR iteration loop.
  * */
-void RAARRun(RAAR& raar, int iterations, float tvmu, float epsilon) {
+void RAARRun(RAAR& raar, int iterations, float epsilon) {
     ssc_info("Starting RAAR iteration.");
 
     ssc_event_start("RAAR Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("tvmu", tvmu),
             ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)raar.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)raar.ptycho->difpadshape.y),
@@ -285,7 +284,7 @@ void RAARRun(RAAR& raar, int iterations, float tvmu, float epsilon) {
 
         ssc_debug("Syncing OBJ");
         objmomentum.SetGPUToZero();
-        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), 1.0f, 0.0f, objmomentum, epsilon, tvmu); // exchanging information here?
+        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), 1.0f, 0.0f, objmomentum, epsilon); // exchanging information here?
 
         ssc_debug("Applying probe");
         probemomentum.SetGPUToZero();

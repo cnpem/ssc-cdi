@@ -196,12 +196,11 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 }
 
 
-void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float epsilon) {
+void PosCorrectionRun(PosCorrection& poscorr, int iterations, float epsilon) {
   ssc_debug("Starting PosCorrectionRun.");
 
   ssc_event_start("Position Correction Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("tvmu", tvmu),
             ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)poscorr.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)poscorr.ptycho->difpadshape.y),
@@ -282,7 +281,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
         ptycho.object->WeightedLerpSync(
                 *ptycho.object_acc, *ptycho.object_div,
                 1.0f, ptycho.objbeta,
-                objmomentum, epsilon, tvmu);
+                objmomentum, epsilon);
 
     if (ptycho.objectsupport != nullptr)
       for (int g = 0; g < ptycho.gpus.size(); g++) {
@@ -309,7 +308,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
 extern "C"
 {
 void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
+	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
 	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
 {
 	ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
@@ -327,7 +326,7 @@ void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osi
 	pk->ptycho->objbeta = objbeta;
 	pk->ptycho->probebeta = probebeta;
 
-	PosCorrectionRun(*pk, numiter,tvmu,epsilon);
+	PosCorrectionRun(*pk, numiter, epsilon);
     DestroyPosCorrection(pk);
     }
 	ssc_info("End PosCorrection.");
