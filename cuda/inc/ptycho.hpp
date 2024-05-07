@@ -159,7 +159,7 @@ RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim
 
 void DestroyRAAR(RAAR*& raar);
 
-void RAARRun(RAAR& raar, int iter, float tvmu, float epsilon);
+void RAARRun(RAAR& raar, int iter, float epsilon);
 
 void RAARProjectProbe(RAAR& raar, int section);
 
@@ -192,7 +192,7 @@ struct GLim {
     const bool isGradPm = true;
 };
 
-void GLimRun(GLim& glim, int iter, float tvmu, float epsilon);
+void GLimRun(GLim& glim, int iter, float epsilon);
 
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
