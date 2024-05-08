@@ -165,18 +165,6 @@ def read_position_metadata(input_dict):
     # getting probe positions
     bora_tx = data['entry/motors/bora-Tx'][()]
     bora_tz = data['entry/motors/bora-Tz'][()]
-
-    # scans = len(bora_tz)
-    # tz_patches = int(scans/len(bora_tx))
-
-    # x_positions = np.zeros(scans)
-
-    # for i in range(len(bora_tx)):
-    #     global_index_final = (i+1)*tz_patches
-    #     global_index_init  = global_index_final - tz_patches
-    #     x_positions[global_index_init:global_index_final] = bora_tx[i]
-
-    # x_positions = np.asarray(x_positions).astype(np.float32)
     
     x_positions = np.asarray(bora_tx).astype(np.float32)
     y_positions = np.asarray(bora_tz).astype(np.float32)
