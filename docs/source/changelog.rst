@@ -14,6 +14,12 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.9.3] - 2024-05-08
+
+Changed
+~~~~~
+- Changed the routine for reading probe positions in EMA pipeline
+
 [0.9.2] - 2024-05-02
 
 Added
