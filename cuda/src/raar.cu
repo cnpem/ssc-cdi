@@ -106,12 +106,12 @@ __global__ void KRAAR_ObjPs(const GArray<complex> object, const GArray<complex> 
 RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim3 &probeshape, complex *object,
                  const dim3 &objshape, ROI *rois, int numrois, int batchsize, float *rfact,
                  const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp, float *sigmask,
-                 int geometricsteps, float *background, float probef1) {
+                 int geometricsteps, float *background, float probef1, float epsilon) {
     RAAR *raar = new RAAR();
 
     raar->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1);
+                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, epsilon);
 
 
     const size_t wavefront_size = raar->ptycho->probe->size
@@ -169,7 +169,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity, float stepsize, float m
     }
 
     raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_acc, *raar.ptycho->object_div,
-            1.0f, 0.0f, velocity, epsilon);
+            raar.ptycho->objstep, momentum, velocity, epsilon);
 }
 
 /**
@@ -204,7 +204,6 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
 
     ssc_event_start("RAAR Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)raar.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)raar.ptycho->difpadshape.y),
             ssc_param_int("difpadshape.z", (int)raar.ptycho->difpadshape.z)
@@ -219,10 +218,10 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
         exit(-1); // termina o programa. Melhor seria subir o erro e python decidir o que fazer.
     }
 
-    cImage objmomentum(raar.ptycho->object->Shape()); // imagem complex com mesmo shape de object
-    cImage probemomentum(raar.ptycho->probe->Shape());
-    objmomentum.SetGPUToZero();
-    probemomentum.SetGPUToZero();
+    cImage objvelocity(raar.ptycho->object->Shape()); // imagem complex com mesmo shape de object
+    cImage probevelocity(raar.ptycho->probe->Shape());
+    objvelocity.SetGPUToZero();
+    probevelocity.SetGPUToZero();
 
     auto time0 = ssc_time();
 
@@ -267,7 +266,7 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
 
                     ROI* ptr_roi = raar.ptycho->rois[batch_idx]->Ptr(gpu_idx);
 
-                    k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.ptycho->objbeta);
+                    k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.ptycho->objmomentum);
 
                     project_reciprocal_space(*raar.ptycho,
                             cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGradPm); // propagate, apply measured intensity and unpropagate
@@ -275,7 +274,7 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
                     //normalize inverse cufft output
                     *current_exit_wave /= float(probeshape.x * probeshape.y);
 
-                    k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *current_measurement, ptr_roi, raar.ptycho->objbeta);
+                    k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *current_measurement, ptr_roi, raar.ptycho->objmomentum);
 
                 }
             }
@@ -283,17 +282,17 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
 
 
         ssc_debug("Syncing OBJ");
-        objmomentum.SetGPUToZero();
-        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), 1.0f, 0.0f, objmomentum, epsilon); // exchanging information here?
+        objvelocity.SetGPUToZero();
+        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg); // exchanging information here?
 
         ssc_debug("Applying probe");
-        probemomentum.SetGPUToZero();
+        probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            for (int itt = 0; itt < (int)raar.ptycho->probebeta; itt++) {
-                RAARApplyProbeUpdate(raar, probemomentum, 1.0f, 0.0f, epsilon); // updates in real space
-                RAARApplyObjectUpdate(raar, objmomentum, 1.0f, 0.0f, epsilon);
-            }
+            RAARApplyProbeUpdate(raar, probevelocity,
+                    raar.ptycho->probestep, raar.ptycho->probemomentum, raar.ptycho->probereg); // updates in real space
+            RAARApplyObjectUpdate(raar, objvelocity,
+                    raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
         }
 
         raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumCPU()); // calculating error?

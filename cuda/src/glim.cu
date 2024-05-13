@@ -75,7 +75,6 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
 
   ssc_event_start("GLim Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)glim.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)glim.ptycho->difpadshape.y),
             ssc_param_int("difpadshape.z", (int)glim.ptycho->difpadshape.z)
@@ -86,11 +85,10 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
   auto time0 = ssc_time();
 
   ptycho.object->Set(0);
-  cImage objmomentum(ptycho.object->Shape());
-  cImage probemomentum(ptycho.probe->Shape());
-  objmomentum.SetGPUToZero();
-  probemomentum.SetGPUToZero();
-
+  cImage objvelocity(ptycho.object->Shape());
+  cImage probevelocity(ptycho.probe->Shape());
+  objvelocity.SetGPUToZero();
+  probevelocity.SetGPUToZero();
 
   const dim3 difpadshape = ptycho.difpadshape;
   const size_t ngpus = ptycho_num_gpus(ptycho);
@@ -98,7 +96,7 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
   for (int iter = 0; iter < iterations; iter++) {
     ssc_event_start("GLim iter", { ssc_param_int("iter", iter) });
 
-    const bool bIterProbe = (ptycho.probebeta >= 0);  // & (iter > iterations/20);
+    const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
     ptycho.rfactors->SetGPUToZero();
     ptycho.object_acc->SetGPUToZero();
     ptycho.object_div->SetGPUToZero();
@@ -106,8 +104,8 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
     ptycho.probe_div->SetGPUToZero();
 
     if (iter < 2) {
-      objmomentum.SetGPUToZero();
-      probemomentum.SetGPUToZero();
+      objvelocity.SetGPUToZero();
+      probevelocity.SetGPUToZero();
     }
 
     const size_t num_batches = ptycho_num_batches(ptycho);
@@ -149,11 +147,11 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
     }
 
     ssc_debug("Syncing OBJ and setting RF");
-    if (ptycho.objbeta >= 0)
+    if (ptycho.objmomentum >= 0)
         ptycho.object->WeightedLerpSync(
                 *ptycho.object_acc, *ptycho.object_div,
-                1.0f, ptycho.objbeta,
-                objmomentum, epsilon);
+                ptycho.objstep, ptycho.objmomentum,
+                objvelocity, ptycho.objreg);
 
     if (ptycho.objectsupport != nullptr) {
         for (int g = 0; g < ngpus; g++) {
@@ -164,7 +162,7 @@ void GLimRun(GLim& glim, int iterations, float epsilon) {
       }
     }
 
-    ApplyProbeUpdate(ptycho, probemomentum, 1.0f, ptycho.probebeta, epsilon);
+    ApplyProbeUpdate(ptycho, probevelocity, ptycho.probestep, ptycho.probemomentum, ptycho.probereg);
 
     ptycho.cpurfact[iter] = sqrtf(ptycho.rfactors->SumCPU());
 

@@ -69,12 +69,12 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, epsilon);
 
-            gl->ptycho->objbeta = objbeta;
-            gl->ptycho->probebeta = probebeta;
+            gl->ptycho->objmomentum = objbeta;
+            gl->ptycho->probemomentum = probebeta;
 
-            GLimRun(*gl, numiter, epsilon);
+            GLimRun(*gl, numiter);
 
             DestroyGLim(gl);
         }
@@ -139,12 +139,12 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, epsilon);
 
-            raar->ptycho->objbeta = objbeta; // why is this not already inside CreateRAAR?
-            raar->ptycho->probebeta = probebeta;
+            raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
+            raar->ptycho->probemomentum = probebeta;
 
-            RAARRun(*raar, numiter, epsilon); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
+            RAARRun(*raar, numiter); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
 
             DestroyRAAR(raar);
 

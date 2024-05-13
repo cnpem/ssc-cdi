@@ -302,7 +302,7 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
 POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
             complex* _object, const dim3& objshape, ROI* _rois, int numrois, int batchsize,
             float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
-            int numobjsupp, float* _sigmask, int geometricsteps, float* background, float probef1) {
+            int numobjsupp, float* _sigmask, int geometricsteps, float* background, float probef1, float epsilon) {
 
     POptAlgorithm* ptycho = new POptAlgorithm;
      ptycho->gpus = gpus;
@@ -312,6 +312,8 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
 
             ptycho->probef1 = probef1;
             EnablePeerToPeer(ptycho->gpus);
+
+            ptycho->probereg = ptycho->objreg = epsilon;
 
             ptycho->difpadshape.x = difshape.x;
             ptycho->difpadshape.y = difshape.y;
