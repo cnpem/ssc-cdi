@@ -135,7 +135,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1);
+                                   float probef1, float epsilon);
 
 
 template <typename dtype>
