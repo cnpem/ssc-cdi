@@ -80,12 +80,12 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1) {
+                                   float probef1, float epsilon) {
     PosCorrection* poscorr = new PosCorrection;
     poscorr->errorcounter = new rMImage(5, 1, batchsize, true, gpus);
     poscorr->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1);
+                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, epsilon);
     return poscorr;
 }
 
@@ -196,7 +196,7 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 }
 
 
-void PosCorrectionRun(PosCorrection& poscorr, int iterations, float epsilon) {
+void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
   ssc_debug("Starting PosCorrectionRun.");
 
   ssc_event_start("Position Correction Run", {
@@ -320,12 +320,12 @@ void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osi
         IndexRois((ROI*)cpurois, numrois);
 
     PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, epsilon);
 
 	pk->ptycho->objmomentum = objbeta;
 	pk->ptycho->probemomentum = probebeta;
 
-	PosCorrectionRun(*pk, numiter, epsilon);
+	PosCorrectionRun(*pk, numiter);
     DestroyPosCorrection(pk);
     }
 	ssc_info("End PosCorrection.");
