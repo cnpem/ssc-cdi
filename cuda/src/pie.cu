@@ -30,10 +30,8 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             gpus,
             objsupp, probesupp, numobjsupp,
             sigmask, geometricsteps,
-            background, probef1);
+            background, probef1,  reg_obj, reg_probe);
 
-    pie->reg_obj = reg_obj;
-    pie->reg_probe = reg_probe;
     pie->step_obj = step_object;
     pie->step_probe = step_probe;
 
@@ -217,7 +215,7 @@ void PieRun(Pie& pie, int iterations) {
             const float probe_abs2_max = probe->maxAbs2();
             k_pie_update_object<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
-                    pie.reg_obj, pie.reg_probe,
+                    pie.ptycho->objreg, pie.ptycho->probereg,
                     pie.step_obj, pie.step_probe,
                     probe_abs2_max, rois);
 
@@ -228,7 +226,7 @@ void PieRun(Pie& pie, int iterations) {
 
             k_pie_update_probe<<<blk, thr>>>(obj_box, *obj, *probe,
                     *wavefront, wavefront_prev,
-                    pie.reg_obj, pie.reg_probe,
+                    pie.ptycho->objreg, pie.ptycho->probereg,
                     pie.step_obj, pie.step_probe,
                     obj_abs2_max, rois);
 

@@ -106,13 +106,15 @@ __global__ void KRAAR_ObjPs(const GArray<complex> object, const GArray<complex> 
 RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim3 &probeshape, complex *object,
                  const dim3 &objshape, ROI *rois, int numrois, int batchsize, float *rfact,
                  const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp, float *sigmask,
-                 int geometricsteps, float *background, float probef1, float epsilon) {
+                 int geometricsteps, float *background, float probef1, float reg_obj, float reg_probe) {
     RAAR *raar = new RAAR();
 
     raar->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, epsilon);
+                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, reg_obj, reg_probe);
 
+    raar->ptycho->objstep = 0.1f;
+    raar->ptycho->probestep = 0.1f;
 
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
@@ -199,7 +201,7 @@ void init_wavefront(RAAR& raar) {
 /**
  * RAAR iteration loop.
  * */
-void RAARRun(RAAR& raar, int iterations, float epsilon) {
+void RAARRun(RAAR& raar, int iterations) {
     ssc_info("Starting RAAR iteration.");
 
     ssc_event_start("RAAR Run", {
@@ -266,7 +268,7 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
 
                     ROI* ptr_roi = raar.ptycho->rois[batch_idx]->Ptr(gpu_idx);
 
-                    k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.ptycho->objmomentum);
+                    k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.beta);
 
                     project_reciprocal_space(*raar.ptycho,
                             cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGradPm); // propagate, apply measured intensity and unpropagate
@@ -274,7 +276,7 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
                     //normalize inverse cufft output
                     *current_exit_wave /= float(probeshape.x * probeshape.y);
 
-                    k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *current_measurement, ptr_roi, raar.ptycho->objmomentum);
+                    k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *current_measurement, ptr_roi, raar.beta);
 
                 }
             }
@@ -289,10 +291,12 @@ void RAARRun(RAAR& raar, int iterations, float epsilon) {
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
+            //for(int itt=0; itt<3; ++itt) {
             RAARApplyProbeUpdate(raar, probevelocity,
                     raar.ptycho->probestep, raar.ptycho->probemomentum, raar.ptycho->probereg); // updates in real space
             RAARApplyObjectUpdate(raar, objvelocity,
                     raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
+            //}
         }
 
         raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumCPU()); // calculating error?

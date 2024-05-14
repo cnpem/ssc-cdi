@@ -70,7 +70,7 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
   }
 }
 
-void GLimRun(GLim& glim, int iterations, float epsilon) {
+void GLimRun(GLim& glim, int iterations) {
   ssc_info("Starting GL.");
 
   ssc_event_start("GLim Run", {
@@ -187,11 +187,11 @@ void GLimProjectProbe(GLim& glim, int section) {
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1, float epsilon) {
+                 int geometricsteps, float* background, float probef1, float reg_obj, float reg_probe) {
     GLim* glim = new GLim;
     glim->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, epsilon);
+                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, reg_obj, reg_probe);
 
     return glim;
 }
