@@ -135,7 +135,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1, float epsilon);
+                                   float probef1, float reg_obj, float reg_probe);
 
 
 template <typename dtype>
@@ -154,6 +154,7 @@ struct RAAR {
     std::vector<hcMImage*> phistack;  //!< Stack of current exitwave estimates. can become very huge
     const bool isGradPm = false;
     complex* wavefront = nullptr;
+    float beta = 0.9f;
 };
 
 /**
@@ -162,7 +163,7 @@ struct RAAR {
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1, float epsilon);
+                 int geometricsteps, float* background, float probef1, float reg_obj, float reg_probe);
 
 void DestroyRAAR(RAAR*& raar);
 
@@ -204,7 +205,7 @@ void GLimRun(GLim& glim, int iter);
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1, float epsilon);
+                 int geometricsteps, float* background, float probef1, float reg_obj, float reg_probe);
 
 void DestroyGLim(GLim*& glim);
 
@@ -215,8 +216,6 @@ struct Pie {
     const bool isGradPm = false;
     float step_obj = 0.0f;
     float step_probe = 0.0f;
-    float reg_obj = 0.0;
-    float reg_probe = 0.0;
 };
 
 Pie* CreatePie(float* difpads, const dim3& difshape,

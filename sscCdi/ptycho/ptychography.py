@@ -117,21 +117,24 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
 
     corrected_positions = None
 
+    import pdb; pdb.set_trace()
+
     while True:  # run Ptycho:
         try:
             algorithm: dict = input_dict['Algorithm' + str(loop_counter)]
             algo_name = algorithm["Name"]
-            n_of_iterations = algorithm['Iterations']
+            n_of_iterations = algorithm['iterations']
             print(f"\tCalling {n_of_iterations} iterations of {algo_name} algorithm...")
         except:
             break
 
         if algorithm['Name'] == 'GL':
-            datapack = GL(iter      = algorithm['Iterations'],
-                                    objbeta   = algorithm['ObjBeta'],
-                                    probebeta = algorithm['ProbeBeta'],
-                                    batch     = algorithm['Batch'],
-                                    epsilon   = algorithm['Epsilon'],
+            datapack = GL(iter      = algorithm['iterations'],
+                                    objbeta   = algorithm['momentum_obj'],
+                                    probebeta = algorithm['momentum_probe'],
+                                    batch     = algorithm['batch'],
+                                    reg_obj   = algorithm['reg_obj'],
+                                    reg_probe = algorithm['reg_probe'],
                                     sigmask   = sigmask,
                                     data      = datapack,
                                     params    = {'device':input_dict["GPUs"]},
@@ -139,11 +142,12 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
 
         elif algorithm['Name'] == 'positioncorrection':
             datapack['bkg'] = None
-            datapack = PosCorrection(iter       = algorithm['Iterations'],
-                                                objbeta   = algorithm['ObjBeta'],
-                                                probebeta = algorithm['ProbeBeta'],
-                                                batch     = algorithm['Batch'],
-                                                epsilon   = algorithm['Epsilon'],
+            datapack = PosCorrection(iter       = algorithm['iterations'],
+                                                objbeta   = algorithm.get('momentum_obj', 0.0),
+                                                probebeta = algorithm.get('momentum_probe', 0.0),
+                                                batch     = algorithm['batch'],
+                                                reg_obj   = algorithm['reg_obj'],
+                                                reg_probe = algorithm['reg_probe'],
                                                 sigmask   = sigmask,
                                                 data      = datapack,
                                                 params    = {'device':input_dict["GPUs"]},
@@ -151,18 +155,23 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
             corrected_positions = datapack['rois']
 
         elif algorithm['Name'] == 'RAAR':
-            datapack = RAAR(iter         = algorithm['Iterations'],
-                                       beta        = algorithm['Beta'],
-                                       probecycles = algorithm['ProbeCycles'],
-                                       batch       = algorithm['Batch'],
-                                       epsilon     = algorithm['Epsilon'],
+            datapack = RAAR(iterations         = algorithm['iterations'],
+                                       probebeta = algorithm['momentum_probe'],
+                                       objbeta = algorithm['momentum_obj'],
+                                       beta = algorithm['beta'],
+                                       batch       = algorithm['batch'],
+                                       reg_obj   = algorithm['reg_obj'],
+                                       reg_probe = algorithm['reg_probe'],
                                        sigmask     = sigmask,
-                                       data        = datapack,
+                                       rois = datapack['rois'],
+                                       difpads = datapack['difpads'],
+                                       obj        = datapack['obj'],
+                                       probe = datapack['probe'],
                                        params      = {'device':input_dict["GPUs"]},
                                        probef1=input_dict['fresnel_number'])
 
         elif algorithm['Name'] == 'PIE':
-            datapack = PIE(iterations = algorithm['Iterations'],
+            datapack = PIE(iterations = algorithm['iterations'],
                                      step_obj = algorithm['step_obj'],
                                      step_probe = algorithm['step_probe'],
                                      reg_obj = algorithm['reg_obj'],
