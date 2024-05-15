@@ -135,7 +135,8 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1, float reg_obj, float reg_probe);
+                                   float probef1,
+                                   float step_obj, float step_probe, float reg_obj, float reg_probe);
 
 
 template <typename dtype>
@@ -163,7 +164,9 @@ struct RAAR {
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1, float reg_obj, float reg_probe);
+                 int geometricsteps, float* background, float probef1,
+                 float step_obj, float step_probe,
+                 float reg_obj, float reg_probe);
 
 void DestroyRAAR(RAAR*& raar);
 
@@ -205,7 +208,9 @@ void GLimRun(GLim& glim, int iter);
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1, float reg_obj, float reg_probe);
+                 int geometricsteps, float* background, float probef1,
+                 float step_obj, float step_probe,
+                 float reg_obj, float reg_probe);
 
 void DestroyGLim(GLim*& glim);
 
@@ -214,8 +219,6 @@ void GLimProjectProbe(GLim& glim, int section);
 struct Pie {
     POptAlgorithm* ptycho;
     const bool isGradPm = false;
-    float step_obj = 0.0f;
-    float step_probe = 0.0f;
 };
 
 Pie* CreatePie(float* difpads, const dim3& difshape,

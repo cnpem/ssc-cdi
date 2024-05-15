@@ -117,8 +117,6 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
 
     corrected_positions = None
 
-    import pdb; pdb.set_trace()
-
     while True:  # run Ptycho:
         try:
             algorithm: dict = input_dict['Algorithm' + str(loop_counter)]
@@ -133,6 +131,8 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
                           objbeta=algorithm['momentum_obj'],
                           probebeta=algorithm['momentum_probe'],
                           batch=algorithm['batch'],
+                          step_obj=algorithm['step_obj'],
+                          step_probe=algorithm['step_probe'],
                           reg_obj=algorithm['reg_obj'],
                           reg_probe=algorithm['reg_probe'],
                           sigmask=sigmask,
@@ -150,6 +150,8 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
                 objbeta=algorithm.get('momentum_obj', 0.0),
                 probebeta=algorithm.get('momentum_probe', 0.0),
                 batch=algorithm['batch'],
+                step_obj=algorithm['step_obj'],
+                step_probe=algorithm['step_probe'],
                 reg_obj=algorithm['reg_obj'],
                 reg_probe=algorithm['reg_probe'],
                 sigmask=sigmask,
@@ -167,6 +169,8 @@ def call_GB_ptychography(input_dict,DPs, probe_positions, initial_obj=None, init
                             objbeta=algorithm['momentum_obj'],
                             beta=algorithm['beta'],
                             batch=algorithm['batch'],
+                            step_obj=algorithm['step_obj'],
+                            step_probe=algorithm['step_probe'],
                             reg_obj=algorithm['reg_obj'],
                             reg_probe=algorithm['reg_probe'],
                             sigmask=sigmask,
