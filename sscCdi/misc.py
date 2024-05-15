@@ -635,11 +635,22 @@ def convert_complex_to_RGB(ComplexImg,bias=0.01):
     Amps,Phases = SplitComplex(ComplexImg)
     return MakeRGB(Amps,Phases,bias)
 
+def create_image_from_text(text):
+    from matplotlib.backends.backend_agg import FigureCanvas
+    fig = plt.Figure(figsize=(2.56, 2.56), dpi=200)
+    canvas = FigureCanvas(fig)
+    ax = fig.subplots()
+    t = ax.text(0.5, 0.5, text, fontsize=30, fontweight='heavy', ha='center', va='center')
+    ax.axis('off')
+    canvas.draw()
+    img = 1- np.array(canvas.renderer.buffer_rgba())[:, :, 0]/255
+    return img
 
 def save_as_hdf5(filepath,data,tag='data'):
     with h5py.File(filepath,'a') as h5file:
         h5file.create_dataset(tag,data=data, dtype=data.dtype)
         print('File created at',filepath)
+
 def create_propagation_video(path_to_probefile,
                              starting_f_value=1e-3,
                              ending_f_value=9e-4,
