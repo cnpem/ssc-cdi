@@ -403,7 +403,6 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions):
         input_dict['fresnel_number'] = 0
     else:
         input_dict['fresnel_number'] = input_dict["detector_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
-    
 
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm')
     print(f'Fresnel number: {input_dict["fresnel_number"]}')
