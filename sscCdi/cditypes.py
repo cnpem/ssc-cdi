@@ -42,7 +42,8 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float, c_float,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float
     ]
     libcdi.glcall.restype = None
@@ -50,7 +51,8 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float, c_float,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float, c_float
     ]
     libcdi.raarcall.restype = None
@@ -58,7 +60,8 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float, c_float,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float
     ]
     libcdi.poscorrcall.restype = None
@@ -184,6 +187,8 @@ def PIE(obj: np.ndarray,
     probeptr, (psizez, _, psizex) = ctypes_array(probe)
 
     difpadsptr, (*_, dsizex) = ctypes_array(difpads)
+
+    rois = sanitize_rois(rois, obj, difpads, probe)
     roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
@@ -201,8 +206,8 @@ def PIE(obj: np.ndarray,
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez,
                    difpadsptr, dsizex, roisptr, numrois, sigmaskptr,
                    c_int(iterations), devicesptr, ndevices, rfactorptr,
-                   c_float(step_obj), c_float(step_probe), c_float(reg_obj),
-                   c_float(reg_probe))
+                   c_float(step_obj), c_float(step_probe),
+                   c_float(reg_obj), c_float(reg_probe))
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
@@ -230,6 +235,8 @@ def RAAR(obj: np.ndarray,
          objsupp: Optional[np.ndarray] = None,
          probesupp: Optional[np.ndarray] = None,
          sigmask: Optional[np.ndarray] = None,
+         step_obj: float = 0.5,
+         step_probe: float = 0.5,
          reg_obj: float = 1e-3,
          reg_probe: float = 1e-3,
          bkg: Optional[np.ndarray] = None,
@@ -325,7 +332,9 @@ def RAAR(obj: np.ndarray,
                     c_int(iterations), ndevices, devicesptr, rfactorptr,
                     c_float(objbeta), c_float(probebeta), nummodes,
                     objsuppptr, probesuppptr, numobjsupport, sigmaskptr,
-                    c_int(flyscansteps), c_float(reg_obj), c_float(reg_probe),
+                    c_int(flyscansteps),
+                    c_float(step_obj), c_float(step_probe),
+                    c_float(reg_obj), c_float(reg_probe),
                     bkgptr, c_float(probef1), c_float(beta))
 
     return {
@@ -351,6 +360,8 @@ def GL(obj: np.ndarray,
        objsupp: Optional[np.ndarray] = None,
        probesupp: Optional[np.ndarray] = None,
        sigmask: Optional[np.ndarray] = None,
+       step_obj: float = 0.5,
+       step_probe: float = 0.5,
        reg_obj: float = 1e-3,
        reg_probe: float = 1e-3,
        bkg: Optional[np.ndarray] = None,
@@ -433,6 +444,7 @@ def GL(obj: np.ndarray,
                   c_int(iterations), ndevices, devicesptr, rfactorptr,
                   c_float(objbeta), c_float(probebeta), nummodes, objsuppptr,
                   probesuppptr, numobjsupport, sigmaskptr, c_int(flyscansteps),
+                  c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe), bkgptr,
                   c_float(probef1))
 
@@ -459,6 +471,8 @@ def PosCorrection(obj: np.ndarray,
                   objsupp: Optional[np.ndarray] = None,
                   probesupp: Optional[np.ndarray] = None,
                   sigmask: Optional[np.ndarray] = None,
+                  step_obj: float = 0.5,
+                  step_probe: float = 0.5,
                   reg_obj: float = 1e-3,
                   reg_probe: float = 1e-3,
                   bkg: Optional[np.ndarray] = None,
@@ -541,8 +555,10 @@ def PosCorrection(obj: np.ndarray,
                        c_int(iterations), ndevices, devicesptr, rfactorptr,
                        c_float(objbeta), c_float(probebeta), nummodes,
                        objsuppptr, probesuppptr, numobjsupport, sigmaskptr,
-                       c_int(flyscansteps), c_float(reg_obj),
-                       c_float(reg_probe), bkgptr, c_float(probef1))
+                       c_int(flyscansteps),
+                       c_float(step_obj), c_float(step_probe),
+                       c_float(reg_obj),c_float(reg_probe),
+                       bkgptr, c_float(probef1))
 
     return {
         'obj': obj,

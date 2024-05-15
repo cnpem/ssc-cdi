@@ -80,12 +80,16 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1, float reg_obj, float reg_probe) {
+                                   float probef1,
+                                   float step_obj, float step_probe,
+                                   float reg_obj, float reg_probe) {
     PosCorrection* poscorr = new PosCorrection;
     poscorr->errorcounter = new rMImage(5, 1, batchsize, true, gpus);
     poscorr->ptycho =
-        CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1, reg_obj, reg_probe);
+        CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
+                object, objshape, rois, numrois, batchsize, rfact,
+                gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1,
+                step_obj, step_probe, reg_obj, reg_probe);
     return poscorr;
 }
 
@@ -314,7 +318,9 @@ extern "C"
 {
 void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
 	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float reg_obj,float reg_probe, float* background, float probef1)
+	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps,
+    float step_obj, float step_probe, float reg_obj, float reg_probe,
+    float* background, float probef1)
 {
 	ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
             psizex, osizex, numrois, bsize, numiter));
@@ -326,7 +332,7 @@ void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osi
         IndexRois((ROI*)cpurois, numrois);
 
     PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, reg_obj, reg_probe);
+    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
 	pk->ptycho->objmomentum = objbeta;
 	pk->ptycho->probemomentum = probebeta;
