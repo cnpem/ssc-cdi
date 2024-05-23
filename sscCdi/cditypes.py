@@ -39,7 +39,7 @@ try:
     libcdi.glcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, c_float, ctypes.c_void_p,
+        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float,
         ctypes.c_void_p, c_float
     ]
@@ -47,7 +47,7 @@ try:
     libcdi.raarcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, c_float, ctypes.c_void_p,
+        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float,
         ctypes.c_void_p, c_float
     ]
@@ -55,7 +55,7 @@ try:
     libcdi.poscorrcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, c_float, ctypes.c_void_p,
+        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_float,
         ctypes.c_void_p, c_float
     ]
@@ -75,7 +75,7 @@ except Exception as e:
 
 
 def MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta, _funcc,
-             regularization, objsupp, probesupp, sigmask, epsilon, bkg, probef1,
+             objsupp, probesupp, sigmask, epsilon, bkg, probef1,
              data, params):
 
     if obj is None:
@@ -128,11 +128,6 @@ def MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta, _funcc,
             probebeta = data['probebeta']
         except:
             probebeta = 0.9
-    if regularization is None:
-        try:
-            regularization = data['regularization']
-        except:
-            regularization = -1
     if epsilon is None:
         try:
             epsilon = data['epsilon']
@@ -255,7 +250,7 @@ def MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta, _funcc,
     _funcc(objptr, probeptr, difpadsptr, psizex, osizex, osizey, dsizex,
            roisptr, numrois, batch, iter, numdev,
            devicesptr, rfactorptr, objbeta, probebeta, nummodes,
-           c_float(regularization), objsuppptr, probesuppptr, numobjsupport,
+           objsuppptr, probesuppptr, numobjsupport,
            sigmaskptr, flyscansteps, epsilon, bkgptr, probef1)
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
@@ -385,7 +380,6 @@ def RAAR(obj=None,
          beta=None,
          probecycles=None,
          batch=None,
-         tvmu=None,
          objsupp=None,
          probesupp=None,
          sigmask=None,
@@ -404,7 +398,6 @@ def RAAR(obj=None,
             iter (int, optional): Number of iterations. Defaults to 100.
             beta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             batch (int, optional): Size . Defaults to 16.
-            tvmu (float, optional): Regularization parameter for total variation. Defaults to None.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
@@ -433,7 +426,6 @@ def RAAR(obj=None,
 
                 * ``data['batch']`` (int, optional): Size . Defaults to 16.
 
-                * ``data['tvmu']`` (float, optional): Regularization parameter for total variation. Defaults to None.
 
                 * ``data['objsupp']`` (int ndarray, optional): Object support. Defaults to None.
 
@@ -483,7 +475,7 @@ def RAAR(obj=None,
         except:
             params['probecycles'] = 3
     return MAKENICE(obj, probe, difpads, rois, iter, batch, beta, probecycles,
-                    libcdi.raarcall, tvmu, objsupp, probesupp, sigmask, epsilon,
+                    libcdi.raarcall, objsupp, probesupp, sigmask, epsilon,
                     bkg, probef1, data, params)
     #return MAKENICE(obj,probe,difpads,rois,iter,batch,objbeta,probebeta,psiccdll.Raar,-1)
 
@@ -496,7 +488,6 @@ def GL(obj=None,
        objbeta=None,
        probebeta=None,
        batch=None,
-       tvmu=None,
        objsupp=None,
        probesupp=None,
        sigmask=None,
@@ -516,7 +507,6 @@ def GL(obj=None,
             objbeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             probebeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.9.
             batch (int, optional): Size . Defaults to 16.
-            tvmu (float, optional): Regularization parameter for total variation. Defaults to None.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
@@ -547,7 +537,6 @@ def GL(obj=None,
 
                 *``data['batch']`` (int, optional): Size . Defaults to 16.
 
-                *``data['tvmu']`` (float, optional): Regularization parameter for total variation. Defaults to None.
 
                 *``data['objsupp']`` (int ndarray, optional): Object support. Defaults to None.
 
@@ -588,7 +577,7 @@ def GL(obj=None,
         """
 
     return MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta,
-                    libcdi.glcall, tvmu, objsupp, probesupp, sigmask, epsilon,
+                    libcdi.glcall, objsupp, probesupp, sigmask, epsilon,
                     bkg, probef1, data, params)
 
 
@@ -600,7 +589,6 @@ def GlobalPSF(obj=None,
               objbeta=None,
               probebeta=None,
               batch=None,
-              tvmu=None,
               objsupp=None,
               probesupp=None,
               sigmask=None,
@@ -620,7 +608,6 @@ def GlobalPSF(obj=None,
             objbeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             probebeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.9.
             batch (int, optional): Size . Defaults to 16.
-            tvmu (float, optional): Regularization parameter for total variation. Defaults to None.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
@@ -651,7 +638,6 @@ def GlobalPSF(obj=None,
 
                 *``data['batch']`` (int, optional): Size . Defaults to 16.
 
-                *``data['tvmu']`` (float, optional): Regularization parameter for total variation. Defaults to None.
 
                 *``data['objsupp']`` (int ndarray, optional): Object support. Defaults to None.
 
@@ -691,7 +677,7 @@ def GlobalPSF(obj=None,
 
         """
     return MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta,
-                    libcdi.psfcall, tvmu, objsupp, probesupp, sigmask, epsilon,
+                    libcdi.psfcall, objsupp, probesupp, sigmask, epsilon,
                     bkg, probef1, data, params)
 
 
@@ -703,7 +689,6 @@ def PosCorrection(obj=None,
                   objbeta=None,
                   probebeta=None,
                   batch=None,
-                  tvmu=None,
                   objsupp=None,
                   probesupp=None,
                   sigmask=None,
@@ -723,7 +708,6 @@ def PosCorrection(obj=None,
             objbeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             probebeta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.9.
             batch (int, optional): Size . Defaults to 16.
-            tvmu (float, optional): Regularization parameter for total variation. Defaults to None.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
@@ -754,7 +738,6 @@ def PosCorrection(obj=None,
 
                 *``data['batch']`` (int, optional): Size . Defaults to 16.
 
-                *``data['tvmu']`` (float, optional): Regularization parameter for total variation. Defaults to None.
 
                 *``data['objsupp']`` (int ndarray, optional): Object support. Defaults to None.
 
@@ -794,5 +777,5 @@ def PosCorrection(obj=None,
 
         """
     return MAKENICE(obj, probe, difpads, rois, iter, batch, objbeta, probebeta,
-                    libcdi.poscorrcall, tvmu, objsupp, probesupp, sigmask,
+                    libcdi.poscorrcall, objsupp, probesupp, sigmask,
                     epsilon, bkg, probef1, data, params)

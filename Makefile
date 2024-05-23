@@ -3,10 +3,10 @@ RUNDIR=	sscCdi sscCdi/caterete/ sscCdi/carnauba/ cuda/ example/
 all: install
 
 dist:
-	python3 -m build .
+	python3 -m build --wheel .
 
 install:
-	python3 setup.py install --user
+	python3 -m pip install . --user
 
 clean:
 	rm -fr _skbuild/ *.egg-info/ dist/	*~
