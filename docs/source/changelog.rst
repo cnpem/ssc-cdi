@@ -13,6 +13,25 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.4] - 2024-05-16
+
+Added
+~~~~~
+- Prototype for using probe from previous ptycho run in new one to improve reconstruction
+
+[0.9.3] - 2024-05-08
+
+Changed
+~~~~~
+- Changed the routine for reading probe positions in EMA pipeline
+
+[0.9.2] - 2024-05-02
+
+Added
+~~~~~
+- Alternative method for equalization using non-continuos mask
+- Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
+
 
 [0.9.1] - 2024-04-08
 

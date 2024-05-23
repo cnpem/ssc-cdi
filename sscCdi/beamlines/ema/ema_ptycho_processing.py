@@ -23,6 +23,9 @@ def ema_ptychography(input_dict,DPs):
         input_dict (dict): updated input dictionary
     """    
 
+    # defining flag for initial probe from previous ptycho
+    initial_probe = input_dict["probe_from_previous"]
+
     probe_positions = read_ema_probe_positions(input_dict,DPs.shape)
 
     input_dict["object_shape"] = set_object_shape(input_dict["object_padding"],DPs.shape,probe_positions) # add object shape to input_dict
@@ -31,7 +34,15 @@ def ema_ptychography(input_dict,DPs):
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
+<<<<<<< HEAD
     add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
+=======
+    if initial_probe:
+        print("Second ptycho run")
+        sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[0, :, :, :])
+
+    add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
+>>>>>>> master
 
     return sinogram, probes, input_dict
 
@@ -165,18 +176,8 @@ def read_position_metadata(input_dict):
     # getting probe positions
     bora_tx = data['entry/motors/bora-Tx'][()]
     bora_tz = data['entry/motors/bora-Tz'][()]
-
-    scans = len(bora_tz)
-    tz_patches = int(scans/len(bora_tx))
-
-    x_positions = np.zeros(scans)
-
-    for i in range(len(bora_tx)):
-        global_index_final = (i+1)*tz_patches
-        global_index_init  = global_index_final - tz_patches
-        x_positions[global_index_init:global_index_final] = bora_tx[i]
-
-    x_positions = np.asarray(x_positions).astype(np.float32)
+    
+    x_positions = np.asarray(bora_tx).astype(np.float32)
     y_positions = np.asarray(bora_tz).astype(np.float32)
 
     initial_positions = np.asarray([y_positions,x_positions]).swapaxes(0,-1).swapaxes(0,1).T
