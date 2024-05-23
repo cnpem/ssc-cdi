@@ -5,6 +5,7 @@ from tqdm import tqdm
 from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
 import scipy
 
 import sscRaft
@@ -351,6 +352,49 @@ def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),met
             equalized_sinogram[counter,:,:] = result[0]
             
     return equalized_sinogram
+
+
+
+def equalize_parallel_gradient_descent(volume, X, Y, iterations, mask=None, step_a=1e-5, step_b=1e-5, step_c=1e-5, init_a=0, init_b=0, init_c=0):
+
+    if mask is None:
+        mask = np.ones_like(X)
+
+    def calculate_gradients(data,X,Y,W,a,b,c):
+        gradA = -2*np.sum(W*X*(W*data-(a*X+b*Y+c)))
+        gradB = -2*np.sum(W*Y*(W*data-(a*X+b*Y+c)))
+        gradC = -2*np.sum(W*(W*data-(a*X+b*Y+c)))
+        return gradA, gradB, gradC
+
+    def gradient_descent_iteration(a,b,c,gradA, gradB, gradC,step_a,step_b, step_c):
+        a = a - step_a * gradA
+        b = b - step_b * gradB
+        c = c - step_c * gradC
+        return a, b, c
+
+
+    def process_slice(slice, X, Y, mask, iterations, step_a, step_b, step_c, init_a, init_b, init_c):
+        a, b, c = init_a, init_b, init_c
+        for j in range(iterations):
+            gradA, gradB, gradC = calculate_gradients(slice, X, Y, mask, a, b, c)
+            a, b, c = gradient_descent_iteration(a, b, c, gradA, gradB, gradC, step_a, step_b, step_c)
+        return a, b, c
+
+
+    result = np.empty((volume.shape[0], 3))
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(process_slice, volume[i], X, Y, mask, iterations, step_a, step_b, step_c, init_a, init_b, init_c)
+            for i in range(volume.shape[0])
+        ]
+        
+        for i, future in enumerate(concurrent.futures.as_completed(futures)):
+            result[i] = future.result()
+            print(f'Slice {i} completed', end='\r')
+
+    return result
+
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
     """ Filters outliers in the tomogram
