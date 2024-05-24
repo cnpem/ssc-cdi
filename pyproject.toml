@@ -5,6 +5,7 @@ requires = [
     "scikit-build>=0.17",
     "cmake>=3.18",
     "cython",
+    "ninja",
     "wheel",
 ]
 
