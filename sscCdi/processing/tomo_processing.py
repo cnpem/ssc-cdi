@@ -435,6 +435,40 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
 ####################### ALIGNMENT ###########################################
 
+def adjust_rotation_axis(sinogram, angles, dic,slice_to_reconstruct,displacements=[0,10]):
+
+    displacements = np.linspace(displacements[0],displacements[1],displacements[1]-displacements[0]+1,dtype=int)
+    print("The horizontal position will be displaced for the following values: ",displacements)
+    
+    dic["algorithm_dic"] = { # if FBP: filtered back-projection
+    'algorithm': "FBP",
+    'gpu': [0],
+    'filter': 'lorentz', # 'gaussian','lorentz','cosine','rectangle'
+    'angles':angles[:,1],
+    'paganin regularization': 0, # 0 <= regularization <= 1; use for smoothening
+    }
+
+    biggest_side = np.max(sinogram[0].shape)
+    tomos = np.empty((len(displacements),biggest_side,biggest_side))
+
+    for i, dx in enumerate(displacements):
+        shifted_sino = np.roll(sinogram[:,slice_to_reconstruct,:],shift=dx,axis=1)
+        tomo = sscRaft.fbp(shifted_sino, dic["algorithm_dic"])
+        tomos[i] = tomo
+
+
+    from ..misc import deploy_visualizer
+    deploy_visualizer(tomos,type='real',title='',cmap='gray',axis=0)
+    
+    user_value = input("Choose a displacement index to use (should be an integer):")
+    
+    chosen_dx = displacements[user_value]
+    sinogram_adjusted_axis = np.roll(sinogram,shift=chosen_dx,axis=2)
+    
+    return sinogram_adjusted_axis, tomos
+
+
+
 def wiggle_sinogram_alignment(dic,object,angles,save=True):
     """ Calls alignment algorithms for aligning the object along the sinogram frames
 
@@ -783,6 +817,11 @@ def call_sscRaft(dic, sinogram,save=True):
 
     angles_filepath = dic["ordered_angles_filepath"]
     
+    if 'using_wiggle' not in dic:
+        dic['using_wiggle'] = False
+    if  'project_angles_to_regular_grid' not in dic:
+        dic['project_angles_to_regular_grid'] = False
+
     if dic['using_wiggle']:
         wiggle_cmas_path  = dic["wiggle_cmas_filepath"]
         try:
@@ -802,6 +841,7 @@ def call_sscRaft(dic, sinogram,save=True):
         dic['algorithm_dic']['angles[rad]'] = angles[:,1]*np.pi/180 
 
     """ Automatic Regularization """
+    if 'automatic_regularization' not in dic:  dic['automatic_regularization'] = 0
     if dic['automatic_regularization'] != 0:
         print('\tStarting automatic regularization frame by frame...')
         for k in range(sinogram.shape[1]):
