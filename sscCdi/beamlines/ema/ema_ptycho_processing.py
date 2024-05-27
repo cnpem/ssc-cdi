@@ -34,15 +34,12 @@ def ema_ptychography(input_dict,DPs):
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
-<<<<<<< HEAD
     add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
-=======
     if initial_probe:
         print("Second ptycho run")
         sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[0, :, :, :])
 
     add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
->>>>>>> master
 
     return sinogram, probes, input_dict
 
