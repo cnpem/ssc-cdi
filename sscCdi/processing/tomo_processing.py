@@ -435,7 +435,15 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
 ####################### ALIGNMENT ###########################################
 
-def adjust_rotation_axis(sinogram, angles, dic,slice_to_reconstruct,displacements=[0,10]):
+def adjust_rotation_axis(sinogram, angles,displacements=[0,10]):
+
+    fig, ax = plt.subplots(1,2,dpi=150)
+    ax[0].imshow(np.abs(sinogram.sum(0)))
+    ax[1].imshow(np.angle(sinogram.sum(0)))
+    fig.suptitle('Sum of projections')
+    plt.show()
+    
+    slice_to_reconstruct = int(input("Choose a slice in the vertical direction to reconstruct (should be an integer):"))
 
     displacements = np.linspace(displacements[0],displacements[1],displacements[1]-displacements[0]+1,dtype=int)
     print("The horizontal position will be displaced for the following values: ",displacements)
@@ -444,28 +452,30 @@ def adjust_rotation_axis(sinogram, angles, dic,slice_to_reconstruct,displacement
     'algorithm': "FBP",
     'gpu': [0],
     'filter': 'lorentz', # 'gaussian','lorentz','cosine','rectangle'
-    'angles':angles[:,1],
+    'angles':angles[:,1]*np.pi/180,
     'paganin regularization': 0, # 0 <= regularization <= 1; use for smoothening
     }
 
     biggest_side = np.max(sinogram[0].shape)
     tomos = np.empty((len(displacements),biggest_side,biggest_side))
 
+    
     for i, dx in enumerate(displacements):
         shifted_sino = np.roll(sinogram[:,slice_to_reconstruct,:],shift=dx,axis=1)
         tomo = sscRaft.fbp(shifted_sino, dic["algorithm_dic"])
         tomos[i] = tomo
 
 
-    from ..misc import deploy_visualizer
-    deploy_visualizer(tomos,type='real',title='',cmap='gray',axis=0)
-    
-    user_value = input("Choose a displacement index to use (should be an integer):")
+    return tomos,displacements
+
+def apply_axis_adjustment(sinogram,displacements):
+
+    user_value = int(input("Choose a displacement index to use (should be an integer):"))
     
     chosen_dx = displacements[user_value]
     sinogram_adjusted_axis = np.roll(sinogram,shift=chosen_dx,axis=2)
     
-    return sinogram_adjusted_axis, tomos
+    return sinogram_adjusted_axis
 
 
 
