@@ -452,7 +452,7 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
 @log_event
-def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',norm="normalize",limits=()):
+def slice_visualizer(data,axis=0,type='',title='',cmap='viridis',aspect_ratio='auto',norm="normalize",vmin=None,vmax=None):
     """
 
     data (ndarray): real valued data
@@ -477,18 +477,18 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
             frame_data = np.real(frame_data)
         elif type == 'imag':
             frame_data = np.imag(frame_data)
-        elif type == 'amplitude':
+        elif type == 'amplitude' or type =='abs':
             frame_data = np.abs(frame_data)
-        elif type == 'phase':
+        elif type == 'phase' or type == 'angle':
             frame_data = np.angle(frame_data)
         return frame_data
 
-    def get_colornorm(frame, limits, norm):
+    def get_colornorm(frame, vmin,vmax, norm):
         if norm == None:
             return None
         elif norm == "normalize":
-            if limits:
-                return colors.Normalize(vmin=limits[0], vmax=limits[1])
+            if vmin is not None or vmax is not None:
+                return colors.Normalize(vmin=vmin, vmax=vmax)
             else:
                 return colors.Normalize(vmin=frame.min(), vmax=frame.max())
         elif norm == "LogNorm":
@@ -504,10 +504,7 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
         ax.imshow(volume_slice, cmap='gray')
         figure.canvas.draw_idle()
         figure.canvas.header_visible = False
-        colorbar = plt.colorbar(
-            matplotlib.cm.ScalarMappable(
-                norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)),
-                cmap=cmap))
+        colorbar = plt.colorbar( matplotlib.cm.ScalarMappable( norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)), cmap=cmap))
         plt.show()
 
 
@@ -515,7 +512,7 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
         subplot.clear()
 
         volume_slice = get_vol_slice(data, axis, frame_number)
-        colornorm = get_colornorm(volume_slice, limits, norm)
+        colornorm = get_colornorm(volume_slice, vmin,vmax, norm)
         im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm)
 
         if title != "":
@@ -878,7 +875,6 @@ from matplotlib.widgets import RectangleSelector
 from IPython.display import display
 
 def draw_rectangles(array):
-
     class MultiRectangleDrawer:
         def __init__(self, array):
             self.array = array
@@ -886,19 +882,24 @@ def draw_rectangles(array):
             self.fig, self.ax = plt.subplots()
             self.ax.imshow(self.array, cmap='gray')
             self.rect_selector = RectangleSelector(
-                self.ax, self.on_select, interactive=True,
-                props=dict(facecolor='red', edgecolor='black', alpha=0.5, fill=True)
+                self.ax, self.on_select, drawtype='box',
+                useblit=True, button=[1],  # only respond to left mouse button
+                minspanx=5, minspany=5, spancoords='pixels',
+                interactive=False, props=dict(facecolor='red', edgecolor='black', alpha=0.5, fill=True)
             )
+            self.rectangles = []
 
         def on_select(self, eclick, erelease):
             x1, y1 = int(eclick.xdata), int(eclick.ydata)
             x2, y2 = int(erelease.xdata), int(erelease.ydata)
-            self.mask[y1:y2, x1:x2] = 1
-            width, height = x2 - x1, y2 - y1
-            rect = Rectangle((x1, y1), width, height, fill=False, edgecolor='red', linewidth=2)
-            self.ax.add_patch(rect)
-            self.fig.canvas.draw()
-            print(f"Rectangle from ({x1}, {y1}) to ({x2}, {y2})")
+            if x1 != x2 and y1 != y2:  # Ensure a valid rectangle
+                self.mask[min(y1,y2):max(y1,y2), min(x1,x2):max(x1,x2)] = 1
+                width, height = abs(x2 - x1), abs(y2 - y1)
+                rect = Rectangle((min(x1,x2), min(y1,y2)), width, height, fill=False, edgecolor='red', linewidth=2)
+                self.ax.add_patch(rect)
+                self.rectangles.append(rect)
+                self.fig.canvas.draw_idle()
+                print(f"Rectangle from ({x1}, {y1}) to ({x2}, {y2})")
 
         def show(self):
             display(self.fig)
@@ -906,7 +907,3 @@ def draw_rectangles(array):
     drawer = MultiRectangleDrawer(array)
     # drawer.show()
     return drawer.mask
-
-# Example usage
-array = np.random.rand(100, 100)  # Example array
-mask = draw_rectangles(array)
