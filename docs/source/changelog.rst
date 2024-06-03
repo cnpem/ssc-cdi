@@ -13,6 +13,38 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.5] - 2024-05-29
+
+Added
+~~~~~
+- Added simple interactive function in misc for selecting equalization mask
+- Added equalization by gradient descent method
+
+Changed
+~~~~~
+- Refactored tomo processing functions, mostly changing the calls from a dic input to a direct input call
+
+
+
+[0.9.4] - 2024-05-16
+
+Added
+~~~~~
+- Prototype for using probe from previous ptycho run in new one to improve reconstruction
+
+[0.9.3] - 2024-05-08
+
+Changed
+~~~~~
+- Changed the routine for reading probe positions in EMA pipeline
+
+[0.9.2] - 2024-05-02
+
+Added
+~~~~~
+- Alternative method for equalization using non-continuos mask
+- Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
+
 
 [0.9.2] - 2024-05-02
 

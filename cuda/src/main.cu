@@ -58,7 +58,7 @@ extern "C" {
 extern "C"
 {
     void glcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
+            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
     {
         ssc_info(format("Starting GL - p: {} o: {} r: {} b: {} n: {}",
@@ -74,7 +74,7 @@ extern "C"
             gl->ptycho->objbeta = objbeta;
             gl->ptycho->probebeta = probebeta;
 
-            GLimRun(*gl, numiter,tvmu,epsilon);
+            GLimRun(*gl, numiter, epsilon);
 
             DestroyGLim(gl);
         }
@@ -128,7 +128,7 @@ extern "C"
     }
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
+            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
     {
         ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
@@ -144,7 +144,7 @@ extern "C"
             raar->ptycho->objbeta = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probebeta = probebeta;
 
-            RAARRun(*raar, numiter, tvmu, epsilon); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
+            RAARRun(*raar, numiter, epsilon); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
 
             DestroyRAAR(raar);
 
