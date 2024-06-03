@@ -5,6 +5,7 @@ from tqdm import tqdm
 from skimage.io import imsave
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
 import scipy
 
 import sscRaft
@@ -38,7 +39,7 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return sorted_object, sorted_angles
 
-def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,ordered_object_filepath= '', ordered_angles_filepath= ''):
+def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,updated_object_filepath= '', updated_angles_filepath= ''):
     """ Remove unwanted sinogram frames after sorting
     """    
 
@@ -49,10 +50,10 @@ def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,ordered_objec
 
     print('New shape: ',new_object.shape)
 
-    if ordered_object_filepath != '':
-        open_or_create_h5_dataset(ordered_object_filepath,'entry','data',new_angles,create_group=True)
-    if ordered_angles_filepath != '':
-        open_or_create_h5_dataset(ordered_angles_filepath,'entry','data',new_object,create_group=True)
+    if updated_object_filepath != '':
+        open_or_create_h5_dataset(updated_object_filepath,'entry','data',new_angles,create_group=True)
+    if updated_angles_filepath != '':
+        open_or_create_h5_dataset(updated_angles_filepath,'entry','data',new_object,create_group=True)
 
     return new_object, new_angles
 
@@ -130,29 +131,20 @@ def unwrap_sinogram(sinogram,unwrapped_savepath=''):
 
 ######################### EQUALIZATION #################################################
 
-def equalize_sinogram(dic, sinogram,save=True):
-    """ Calls equalization algorithms in multiple processes for sinogram frames
-
-    Args:
-        dic (dict): dictionary of inputs  
-            keys:
-                "bad_frames_before_equalization"
-                "equalized_sinogram_filepath"
-        object (array): frames to be equalized
-
-    """
+def equalize_sinogram(sinogram,invert=False,remove_phase_gradient=True,roi=[],cpus=1,iterations=1,min_max=(),remove_negative_values=False,remove_offset=False,savepath=''):
     start = time.time()
 
-    equalized_sinogram = equalize_frames_parallel(sinogram,dic)
-    if save:
+    equalized_sinogram = equalize_frames_parallel(sinogram,invert=invert,remove_phase_gradient=remove_phase_gradient,roi=roi,cpus=cpus,iterations=iterations,min_max=min_max,remove_negative_values=remove_negative_values,remove_offset=remove_offset)
+
+    if savepath != '':
         print('Saving equalized sinogran...')
-        open_or_create_h5_dataset(dic["equalized_sinogram_filepath"],'entry','data',equalized_sinogram,create_group=True)
-        print('Saved equalized object at: ',dic["equalized_sinogram_filepath"])
+        open_or_create_h5_dataset(savepath,'entry','data',equalized_sinogram,create_group=True)
+        print('Saved equalized object at: ',savepath)
 
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return equalized_sinogram
 
-def tomo_equalize3D(dic,reconstruction,save=True):
+def tomo_equalize3D(tomo,remove_outliers=3,threshold=20,local_offset=[],mask=[],savepath=''):
     """ Call equalization algorithms for tomogram frames
 
     Args:
@@ -167,19 +159,25 @@ def tomo_equalize3D(dic,reconstruction,save=True):
     """
     start = time.time()
 
+    dic = {} 
+    dic["tomo_remove_outliers"] = remove_outliers
+    dic["tomo_threshold"] = threshold
+    dic["tomo_local_offset"] = local_offset # [top,bottom,left,right, axis]
+    dic["tomo_mask"] = mask
+
     equalized_tomogram = equalize_tomogram(
-        reconstruction,np.mean(reconstruction),
-        np.std(reconstruction),
+        tomo,np.mean(tomo),
+        np.std(tomo),
         remove_outliers=dic["tomo_remove_outliers"],
         threshold=float(dic["tomo_threshold"]),
         bkg_window=dic["tomo_local_offset"]
     )
 
-    if save:
-        open_or_create_h5_dataset(dic["eq_reconstruction_filepath"],'entry','data',equalized_tomogram,create_group=True)
-        print('Saved equalized object at: ',dic["eq_reconstruction_filepath"])
+    if savepath != {}:
+        open_or_create_h5_dataset(savepath,'entry','data',equalized_tomogram,create_group=True)
+        print('Saved equalized object at: ',savepath)
 
-    open_or_create_h5_dataset( dic["eq_reconstruction_filepath"],'entry', 'data',  equalized_tomogram,create_group=True)
+    open_or_create_h5_dataset( savepath,'entry', 'data',  equalized_tomogram,create_group=True)
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return equalized_tomogram
 
@@ -268,7 +266,7 @@ def equalize_frame(dic,frame):
 
     return frame
 
-def equalize_frames_parallel(sinogram,dic):
+def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,roi=[],cpus=1,iterations=1,min_max=(),remove_negative_values=False,remove_offset=False):
     """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
 
     Args:
@@ -280,6 +278,17 @@ def equalize_frames_parallel(sinogram,dic):
     Returns:
         equalized_sinogram: equalized sinogram
     """
+
+    dic = {}
+    dic["CPUs"] = cpus
+    dic["equalize_invert"] = invert                           # invert phase shift signal from negative to positive
+    dic["equalize_ROI"] = roi                   # region of interest of null region around the sample used for phase ramp and offset corrections
+    dic["equalize_remove_phase_gradient"] = remove_phase_gradient            # if empty and equalize_ROI = [], will subtract best plane fit from whole image
+    dic["equalize_remove_phase_gradient_iterations"] = iterations    # number of times the gradient fitting is performed
+    dic["equalize_local_offset"] = remove_offset                     # remove offset of each frame from the mean of ROI 
+    dic["equalize_set_min_max"]= min_max                         # [minimum,maximum] threshold values for whole volume
+    dic["equalize_non_negative"] = remove_negative_values                    # turn any remaining negative values to zero
+
 
     minimum, maximum, mean, std = np.min(sinogram), np.max(sinogram), np.mean(sinogram), np.std(sinogram)
 
@@ -352,6 +361,61 @@ def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),met
             
     return equalized_sinogram
 
+
+
+def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_size=1e-6, initial_guess = (0,0,0)):
+    
+    init_a, init_b, init_c = initial_guess
+    
+    step_a = step_b = step_c = step_size
+    
+    equalized_volume = np.empty_like(volume)
+    sizey, sizex = volume[0].shape
+    
+    Y, X = np.indices((sizey,sizex))
+    Y = Y - sizey//2
+    Y = Y/np.max(Y)
+    X = X - sizex//2
+    X = X/np.max(X)
+    
+    
+    if mask is None:
+        mask = np.ones_like(X)
+
+    def calculate_gradients(data,X,Y,W,a,b,c):
+        gradA = -2*np.sum(W*X*(W*data-(a*X+b*Y+c)))
+        gradB = -2*np.sum(W*Y*(W*data-(a*X+b*Y+c)))
+        gradC = -2*np.sum(W*(W*data-(a*X+b*Y+c)))
+        return gradA, gradB, gradC
+
+    def gradient_descent_iteration(a,b,c,gradA, gradB, gradC,step_a,step_b, step_c):
+        a = a - step_a * gradA
+        b = b - step_b * gradB
+        c = c - step_c * gradC
+        return a, b, c
+
+
+    def process_slice(slice, X, Y, mask, iterations, step_a, step_b, step_c, init_a, init_b, init_c):
+        a, b, c = init_a, init_b, init_c
+        for j in range(iterations):
+            gradA, gradB, gradC = calculate_gradients(slice, X, Y, mask, a, b, c)
+            a, b, c = gradient_descent_iteration(a, b, c, gradA, gradB, gradC, step_a, step_b, step_c)
+        return a, b, c
+
+
+    fitted_coefficients = np.empty((volume.shape[0], 3))
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [ executor.submit(process_slice, volume[i], X, Y, mask, iterations, step_a, step_b, step_c, init_a, init_b, init_c) for i in range(volume.shape[0])  ]
+        
+        for i, future in enumerate(tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=f"Processing slices with {executor._max_workers} workers")):
+            a,b,c = future.result()
+            fitted_coefficients[i] = a,b,c
+            equalized_volume[i] = volume[i] - (a*X+b*Y+c)
+
+    return equalized_volume, fitted_coefficients
+
+
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
     """ Filters outliers in the tomogram
 
@@ -390,6 +454,51 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
     return equalized_tomogram
 
 ####################### ALIGNMENT ###########################################
+
+def adjust_rotation_axis(sinogram, angles,displacements=[0,10]):
+
+    fig, ax = plt.subplots(1,2,dpi=150)
+    ax[0].imshow(np.abs(sinogram.sum(0)))
+    ax[1].imshow(np.angle(sinogram.sum(0)))
+    fig.suptitle('Sum of projections')
+    plt.show()
+    
+    slice_to_reconstruct = int(input("Choose a slice in the vertical direction to reconstruct (should be an integer):"))
+
+    displacements = np.linspace(displacements[0],displacements[1],displacements[1]-displacements[0]+1,dtype=int)
+    print("The horizontal position will be displaced for the following values: ",displacements)
+    
+    dic = {}
+    dic["algorithm_dic"] = { # if FBP: filtered back-projection
+    'algorithm': "FBP",
+    'gpu': [0],
+    'filter': 'lorentz', # 'gaussian','lorentz','cosine','rectangle'
+    'angles':angles[:,1]*np.pi/180,
+    'paganin regularization': 0, # 0 <= regularization <= 1; use for smoothening
+    }
+
+    biggest_side = np.max(sinogram[0].shape)
+    tomos = np.empty((len(displacements),biggest_side,biggest_side))
+
+    
+    for i, dx in enumerate(displacements):
+        shifted_sino = np.roll(sinogram[:,slice_to_reconstruct,:],shift=dx,axis=1)
+        tomo = sscRaft.fbp(shifted_sino, dic["algorithm_dic"])
+        tomos[i] = tomo
+
+
+    return tomos,displacements
+
+def apply_axis_adjustment(sinogram,displacements):
+
+    user_value = int(input("Choose a displacement index to use (should be an integer):"))
+    
+    chosen_dx = displacements[user_value]
+    sinogram_adjusted_axis = np.roll(sinogram,shift=chosen_dx,axis=2)
+    
+    return sinogram_adjusted_axis
+
+
 
 def wiggle_sinogram_alignment(dic,object,angles,save=True):
     """ Calls alignment algorithms for aligning the object along the sinogram frames
@@ -712,6 +821,21 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
     np.save(add_plot_suffix_to_file(path),downsampled_sinogram)
     return downsampled_sinogram
 
+def check_sinogram_shape(sinogram):
+    
+    myshape = sinogram.shape
+
+    if myshape[1]%2 != 0 or myshape[2]%2 != 0:
+
+        if myshape[1]%2 != 0:
+            sinogram = sinogram[:,0:-1,:]
+        if myshape[2]%2 != 0:
+            sinogram = sinogram[:,:,0:-1]
+
+        print(f"As of now, filtering in sscRaft requires an array with even pixels. Your array shape is {myshape}. Adjusting shape to {sinogram.shape} \n")
+            
+    return sinogram
+
 def call_sscRaft(dic, sinogram,save=True):
     """ Performs tomography
     Args:
@@ -737,8 +861,16 @@ def call_sscRaft(dic, sinogram,save=True):
         reconstruction3D (array): tomographic volume
     """
 
+
+    sinogram = check_sinogram_shape(sinogram)
+
     angles_filepath = dic["ordered_angles_filepath"]
     
+    if 'using_wiggle' not in dic:
+        dic['using_wiggle'] = False
+    if  'project_angles_to_regular_grid' not in dic:
+        dic['project_angles_to_regular_grid'] = False
+
     if dic['using_wiggle']:
         wiggle_cmas_path  = dic["wiggle_cmas_filepath"]
         try:
@@ -758,6 +890,7 @@ def call_sscRaft(dic, sinogram,save=True):
         dic['algorithm_dic']['angles[rad]'] = angles[:,1]*np.pi/180 
 
     """ Automatic Regularization """
+    if 'automatic_regularization' not in dic:  dic['automatic_regularization'] = 0
     if dic['automatic_regularization'] != 0:
         print('\tStarting automatic regularization frame by frame...')
         for k in range(sinogram.shape[1]):
@@ -793,13 +926,16 @@ def call_sscRaft(dic, sinogram,save=True):
     return reconstruction3D
 
 
+def gradient_y_wrapping_insensitive(sinogram,pixel_size):
+    g = np.exp(1j*sinogram) 
+    return np.angle(g * np.conj(np.roll(g,shift=1,axis=-1)))/pixel_size
+
 def phase_derivative_hilbert_transform(sinogram,pixel_size=1):
     """
     Calculate phase derivative to use it with backprojection (no filter!) 
     Pixel size in meters
     """
-    g = np.exp(1j*sinogram) 
-    grad_sinogram = np.angle(g * np.conj(np.roll(g,shift=1,axis=-1)))/pixel_size
+    grad_sinogram = gradient_y_wrapping_insensitive(sinogram,pixel_size)
     hilbert = np.imag(scipy.signal.hilbert(grad_sinogram,axis=-1)/(2*np.pi))
     return hilbert
 
