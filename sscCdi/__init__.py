@@ -15,7 +15,7 @@ from .lib.ssccommons_wrapper import (
 )
 log_start(project="sscCdi",
           version=__version__,
-          level="debug",
+          level="error",
           telem_key=__telem__)
 atexit.register(log_stop)
 
