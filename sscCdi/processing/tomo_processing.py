@@ -173,12 +173,12 @@ def tomo_equalize3D(tomo,remove_outliers=3,threshold=20,local_offset=[],mask=[],
         bkg_window=dic["tomo_local_offset"]
     )
 
-    if savepath != {}:
+    if savepath != '':
         open_or_create_h5_dataset(savepath,'entry','data',equalized_tomogram,create_group=True)
         print('Saved equalized object at: ',savepath)
 
-    open_or_create_h5_dataset( savepath,'entry', 'data',  equalized_tomogram,create_group=True)
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
+        open_or_create_h5_dataset( savepath,'entry', 'data',  equalized_tomogram,create_group=True)
+        print(f'Time elapsed: {time.time() - start:.2f} s' )
     return equalized_tomogram
 
 def remove_outliers(data,sigma):
@@ -460,6 +460,8 @@ def adjust_rotation_axis(sinogram, angles,displacements=[0,10]):
     fig, ax = plt.subplots(1,2,dpi=150)
     ax[0].imshow(np.abs(sinogram.sum(0)))
     ax[1].imshow(np.angle(sinogram.sum(0)))
+    ax[0].set_title('Magnitude')
+    ax[1].set_title('Phase')
     fig.suptitle('Sum of projections')
     plt.show()
     
