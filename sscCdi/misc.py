@@ -442,7 +442,7 @@ def save_volume_from_parts(input_dict):
     print("Deleting temporary object and probe files...")
     delete_files_if_not_empty_directory(input_dict["temporary_output_recons"])
 
-    save_json_logfile(input_dict) 
+    save_json_logfile(input_dict)   
     delete_temporary_folders(input_dict)
 
     return object, probes, angles, positions, errors
