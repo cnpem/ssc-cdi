@@ -2,7 +2,7 @@ import numpy as np
 import sys, os, h5py
 import random
 
-from ..cditypes import GL, PosCorrection, PIE, RAAR
+from ..cditypes import AP, PosCorrection, PIE, RAAR
 
 from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_meters_from_energy_keV
 from ..processing.propagation import fresnel_propagator_cone_beam
@@ -73,7 +73,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
                 'Algorithm2': {'Batch': 64,
                                 'Epsilon': 0.01,
                                 'Iterations': 50,
-                                'Name': 'GL',
+                                'Name': 'AP',
                                 'ObjBeta': 0.97,
                                 'ProbeBeta': 0.95,
                                 'TV': 0.0001},
@@ -119,15 +119,12 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     if "object_shape" not in input_dict:
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
-    
+
     create_output_h5_file(input_dict)
 
-    # if 'Algorithm1' not in input_dict:
-    #     obj, probe, error, positions = call_python_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
-    # else:
-    #     obj, probe, error, positions = call_CUDA_ptychography(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+    obj, probe, error, positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
-    obj, probe, error, positions = call_ptychography_all(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+    save_recon_output_h5_file(input_dict, obj, probe, positions, error)
 
     return obj, probe, error, positions
 
@@ -136,8 +133,8 @@ def check_shape_of_inputs(DPs,positions,initial_probe):
     if DPs.shape[0] != positions.shape[0]:
         raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
 
-    if initial_probe is not None:
-        if DPs[0].shape[1] != initial_probe.shape[1] or DPs[0].shape[2] != initial_probe.shape[2]:
+    if initial_probe is not None: # mudei como conversado com Mauro
+        if DPs[0].shape[0] != initial_probe.shape[1] or DPs[0].shape[1] != initial_probe.shape[2]:
             raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
 
 def create_output_h5_file(input_dict):
@@ -183,13 +180,29 @@ def create_output_h5_file(input_dict):
 
     h5file.close()
 
-def call_ptychography_all(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+def save_recon_output_h5_file(input_dict, obj, probe, positions, error):
+
+    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
+
+        h5file["recon"].create_dataset('object',data=obj) 
+        h5file["recon"].create_dataset('probe',data=probe) 
+
+        # error = np.concatenate((range(np.size(error)),error))
+
+        # h5file["recon"].create_dataset('error',data=error) 
+
+    h5file.close()
+
+def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     
-    if initial_probe == None:
+    if initial_probe is None:
         probe = set_initial_probe(input_dict, DPs ) # probe initial guess
-    if initial_obj == None:
+    else:
+        probe = initial_probe
+    if initial_obj is None:
         obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
-        obj = np.expand_dims(obj,axis=0)
+    else:
+        obj = initial_obj
 
     positions = positions.astype(np.int32)
     probe_positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
@@ -199,11 +212,7 @@ def call_ptychography_all(input_dict,DPs, positions, initial_obj=None, initial_p
     else:
         input_dict["probe_support"] = np.ones_like(DPs[0])
 
-    datapack, sigmask, input_dict = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj[0],probe,input_dict["probe_support"])
-
-    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_object',datapack["obj"],concatenate=False)
-    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','initial_probe',datapack["probe"],concatenate=False)
-    concatenate_array_to_h5_dataset(input_dict["hdf5_output"],'recon','probe_support',datapack["probesupp"],concatenate=False)
+    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
 
     error = np.empty((0,1))
 
@@ -233,24 +242,24 @@ def call_ptychography_all(input_dict,DPs, positions, initial_obj=None, initial_p
             inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
             inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
             inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
-            obj, probe, algo_error = PIE_multiprobe_loop(DPs, probe_positions,obj[0],probe[0], inputs)
+            obj_, probe, algo_error = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], inputs)
+            obj = obj_[0]
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj[0],probe[0],inputs)
-            obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
-        
-        elif input_dict["algorithms"][str(counter)]['name'] == 'AP_cuda': # former GL
+            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],inputs)
+            
+        elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
 
-            datapack["obj"] = obj[0]
+            datapack["obj"] = obj
             datapack['probe'] = probe
             
             inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
             inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
             inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
 
-            datapack = GL(iterations=inputs['iterations'],
+            datapack = AP(iterations=inputs['iterations'],
                           objbeta=inputs['momentum_obj'],
                           probebeta=inputs['momentum_probe'],
                           batch=inputs['batch'],
@@ -269,68 +278,101 @@ def call_ptychography_all(input_dict,DPs, positions, initial_obj=None, initial_p
             algo_error = datapack["error"]
             algo_error = np.expand_dims(algo_error,axis=1)
 
-            obj_ = datapack["obj"].astype(np.complex64)
+            obj = datapack["obj"].astype(np.complex64)
             probe = datapack['probe'].astype(np.complex64)
 
-            obj = np.expand_dims(obj_,axis=0)
-
-        else:
-            sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
-
-        error = np.concatenate((error,algo_error),axis=0)
-
-    return obj, probe, error, None
-            
-def call_python_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
-    """ 
-    Wrapper for ptychography algorithms in Python by GCC.
-    """
-
-    if initial_probe == None:
-        probe = set_initial_probe(input_dict, DPs ) # probe initial guess
-    if initial_obj == None:
-        obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
-        obj = np.expand_dims(obj,axis=0)
-
-    if 'probe_support' in input_dict:
-        input_dict["probe_support"] = get_probe_support(input_dict,probe.shape)
-    else:
-        input_dict["probe_support"] = np.ones_like(DPs[0])
-        
-
-    positions = positions.astype(np.int32)
-    positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
-    
-    error = np.empty((0,1))
-    
-    inputs = input_dict
-    for counter in range(1,1+len(input_dict['algorithms'].keys())):
-
-        inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
-        inputs['distance'] = input_dict["detector_distance"]
-        inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
-        inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
-        inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
-        inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
-
-        # POSITION CORRECTION. TO BE DONE.
-        inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
-        inputs['beta'] = 1 # position correction beta value
-        inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
-        # inputs['centralize_probe'] = False # not implemented 
-
-        if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
-            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
-            inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
-            inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
-            inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
-            inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
-            obj, probe, algo_error = PIE_multiprobe_loop(DPs, positions,obj[0],probe[0], inputs)
-
-        elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
+        elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,positions,obj[0],probe[0],inputs)
-            obj = np.expand_dims(obj,axis=0) # obj coming with one dimensions less. needs to be fixed
+
+            datapack["obj"] = obj
+            datapack['probe'] = probe
+            
+            inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
+            inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
+            inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
+            inputs['beta'] = input_dict['algorithms'][str(counter)]['beta']
+            
+            datapack = RAAR(iterations=inputs['iterations'],
+                            probebeta=inputs['momentum_probe'],
+                            objbeta=inputs['momentum_obj'],
+                            beta=inputs['beta'],
+                            batch=inputs['batch'],
+                            step_obj=inputs['step_object'],
+                            step_probe=inputs['step_probe'],
+                            reg_obj=inputs['regularization_object'],
+                            reg_probe=inputs['regularization_probe'],
+                            sigmask=sigmask,
+                            rois=datapack['rois'],
+                            difpads=datapack['difpads'],
+                            obj=datapack['obj'],
+                            probe=datapack['probe'],
+                            params={'device': input_dict["GPUs"]},
+                            probef1=input_dict['fresnel_number'])
+            
+            algo_error = datapack["error"]
+            algo_error = np.expand_dims(algo_error,axis=1)
+
+            obj = datapack["obj"].astype(np.complex64)
+            probe = datapack['probe'].astype(np.complex64)
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'AP_PC':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of AP PC algorithm...")
+
+            datapack["obj"] = obj
+            datapack['probe'] = probe
+            
+            inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
+            inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
+            inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
+            
+            datapack['bkg'] = None
+            datapack = PosCorrection(
+                            iterations=inputs['iterations'],
+                            objbeta=inputs['momentum_obj'],
+                            probebeta=inputs['momentum_probe'],
+                            batch=inputs['batch'],
+                            step_obj=inputs['step_object'],
+                            step_probe=inputs['step_probe'],
+                            reg_obj=inputs['regularization_object'],
+                            reg_probe=inputs['regularization_probe'],
+                            sigmask=sigmask,
+                            difpads=datapack['difpads'],
+                            obj=datapack['obj'],
+                            rois=datapack['rois'],
+                            probe=datapack['probe'],
+                            params={'device': input_dict["GPUs"]},
+                            probef1=input_dict['fresnel_number'])
+            corrected_positions = datapack['rois']
+            
+            algo_error = datapack["error"]
+            algo_error = np.expand_dims(algo_error,axis=1)
+
+            obj = datapack["obj"].astype(np.complex64)
+            probe = datapack['probe'].astype(np.complex64)
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of PIE algorithm...")
+
+            datapack["obj"] = obj
+            datapack['probe'] = probe
+            
+            datapack = PIE(iterations=inputs['iterations'],
+                           step_obj=inputs['step_object'],
+                           step_probe=inputs['step_probe'],
+                           reg_obj=inputs['regularization_object'],
+                           reg_probe=inputs['regularization_probe'],
+                           rois=datapack['rois'],
+                           difpads=datapack['difpads'],
+                           obj=datapack['obj'],
+                           probe=datapack['probe'],
+                           params={'device': input_dict["GPUs"]})
+            
+            algo_error = datapack["error"]
+            algo_error = np.expand_dims(algo_error,axis=1)
+
+            obj = datapack["obj"].astype(np.complex64)
+            probe = datapack['probe'].astype(np.complex64)
+
         else:
             sys.exit('Please select a proper algorithm! Selected: ', inputs["algorithm"])
 
@@ -372,7 +414,7 @@ def call_CUDA_ptychography(input_dict,DPs, probe_positions, initial_obj=None, in
             break
 
         if algorithm['Name'] == 'GL':
-            datapack = GL(iterations=algorithm['iterations'],
+            datapack = AP(iterations=algorithm['iterations'],
                           objbeta=algorithm['momentum_obj'],
                           probebeta=algorithm['momentum_probe'],
                           batch=algorithm['batch'],
@@ -447,6 +489,7 @@ def call_CUDA_ptychography(input_dict,DPs, probe_positions, initial_obj=None, in
     return datapack['obj'], datapack['probe'], error, corrected_positions
 
 def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, obj, probe, probe_support):
+
     """ Adjust probe initial data to be accepted by Giovanni's algorithm
 
     Args:
@@ -497,8 +540,6 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
         sigmask[DPs[0] < 0] = 0
         return sigmask
 
-
-
     def append_ones(probe_positions):
         """ Adjust shape and column order of positions array to be accepted by Giovanni's code
 
@@ -511,10 +552,6 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
         zeros = np.zeros((probe_positions.shape[0],1))
         probe_positions = np.concatenate((probe_positions,zeros),axis=1)
         probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
-        # probe_positions2 = np.ones_like(probe_positions)
-        # probe_positions2[:,0] = probe_positions[:,1] # change x and y column order
-        # probe_positions2[:,1] = probe_positions[:,0]
-        #check if we really need to change x and y
 
         return probe_positions
     
@@ -528,22 +565,14 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
 
     probe_positions = append_ones(probe_positions)
 
-    # probe = set_initial_probe(input_dict, DPs) # probe initial guess.
-    
-    # probe_support = get_probe_support(input_dict, probe.shape)
-    
-    # obj = set_initial_object(input_dict,DPs,probe) # object initial guess
-
     sigmask = set_sigmask(DPs) # mask for invalid pixels
     background = np.ones(DPs[0].shape) # dummy array 
 
-    # print(f"Diffraction Patterns: {DPs.shape}\nInitial Object: {obj.shape}\nInitial Probe: {probe.shape}\nProbe Support: {probe_support.shape}\nProbe Positions: {probe_positions.shape}")
-    
     datapack = set_datapack(obj, probe, probe_positions, DPs, background, probe_support)     # Set data for Ptycho algorithms:
 
     print(f"Total datapack size: {estimate_memory_usage(datapack['obj'],datapack['probe'],datapack['rois'],datapack['difpads'],datapack['bkg'],datapack['probesupp'])[3]:.2f} GBs")
 
-    return datapack, sigmask, input_dict
+    return datapack, sigmask
 
 def set_initial_probe(input_dict,DPs):
     print('Creating initial probe...')

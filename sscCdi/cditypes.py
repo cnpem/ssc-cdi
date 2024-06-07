@@ -349,7 +349,7 @@ def RAAR(obj: np.ndarray,
     }
 
 
-def GL(obj: np.ndarray,
+def AP(obj: np.ndarray,
        probe: np.ndarray,
        difpads: np.ndarray,
        rois: np.ndarray,

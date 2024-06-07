@@ -61,7 +61,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1)
     {
-        ssc_info(format("Starting GL - p: {} o: {} r: {} b: {} n: {}",
+        ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
@@ -78,7 +78,7 @@ extern "C"
 
             DestroyGLim(gl);
         }
-        ssc_info("End GL.");
+        ssc_info("End AP.");
     }
 
     void piecall(void* cpuobj, int osizex, int osizey,
