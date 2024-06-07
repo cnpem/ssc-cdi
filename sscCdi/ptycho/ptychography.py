@@ -176,7 +176,14 @@ def create_output_h5_file(input_dict):
         for key in input_dict['algorithms']: # save algorithms used
             h5file.create_group(f'metadata/algorithms/{key}')
             for subkey in input_dict['algorithms'][key]:
-                h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+                if subkey == 'initial_obj':
+                   h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                   h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]['obj'])
+                elif subkey == 'initial_probe':
+                    h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                    h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
+                else:
+                    h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
 
     h5file.close()
 
@@ -196,13 +203,12 @@ def save_recon_output_h5_file(input_dict, obj, probe, positions, error):
 def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     
     if initial_probe is None:
-        probe = set_initial_probe(input_dict, DPs ) # probe initial guess
-    else:
-        probe = initial_probe
+        initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
+    probe = initial_probe
+
     if initial_obj is None:
-        obj = set_initial_object(input_dict,DPs,probe[0]) # object initial guess
-    else:
-        obj = initial_obj
+        initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
+    obj = initial_obj
 
     positions = positions.astype(np.int32)
     probe_positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
@@ -238,6 +244,12 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
+            
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+                        
             inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
             inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
             inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
@@ -247,11 +259,22 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
             obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],inputs)
             
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
 
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -284,6 +307,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
 
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -318,6 +346,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP_PC':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of AP PC algorithm...")
 
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -353,6 +386,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of PIE algorithm...")
 
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -574,7 +612,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
 
     return datapack, sigmask
 
-def set_initial_probe(input_dict,DPs):
+def set_initial_probe(input_dict,DPs, incoherent_modes):
     print('Creating initial probe...')
 
     DP_shape = (DPs.shape[1], DPs.shape[2])
@@ -582,8 +620,8 @@ def set_initial_probe(input_dict,DPs):
     def set_modes(probe, input_dict):
         mode = probe.shape[0]
 
-        if input_dict['incoherent_modes'] > mode:
-            add = input_dict['incoherent_modes'] - mode
+        if incoherent_modes > mode:
+            add = incoherent_modes - mode
             probe = np.pad(probe, [[0, int(add)], [0, 0], [0, 0]])
             for i in range(add):
                 probe[i + mode] = probe[i + mode - 1] * np.random.rand(*probe[0].shape)
@@ -649,19 +687,19 @@ def detect_variable_type_of_guess(variable):
     else:
         raise ValueError("Your input for the initial guess is wrong.")
 
-def set_initial_object(input_dict,DPs, probe):
+def set_initial_object(input_dict,DPs, probe, obj_shape):
     print('Creating initial object...')
 
     type_of_initial_guess = detect_variable_type_of_guess(input_dict['initial_obj']["obj"])
 
     if type_of_initial_guess == 'standard':
         if input_dict['initial_obj']['obj'] == 'constant':
-            obj = np.ones(input_dict["object_shape"])
+            obj = np.ones(obj_shape)
         elif input_dict['initial_obj']['obj'] == 'random':
             normalization_factor = np.sqrt(np.average(DPs) / np.average(abs(np.fft.fft2(probe))**2))
-            obj = np.random.rand(*input_dict["object_shape"]) * normalization_factor
+            obj = np.random.rand(*obj_shape) * normalization_factor
         elif input_dict['initial_obj']['obj'] == 'complex_random':
-            obj =  1 * (np.random.rand(*input_dict["object_shape"]) + 1j*np.random.rand(*input_dict["object_shape"]))
+            obj =  1 * (np.random.rand(*obj_shape) + 1j*np.random.rand(*obj_shape))
         elif input_dict['initial_obj']['obj'] == 'initialize':
             pass #TODO: implement method from https://doi.org/10.1364/OE.465397
     elif type_of_initial_guess == 'path':
