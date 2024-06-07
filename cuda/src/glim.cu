@@ -71,7 +71,7 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
 }
 
 void GLimRun(GLim& glim, int iterations) {
-  ssc_info("Starting GL.");
+  ssc_info("Starting Alternate Projections.");
 
   ssc_event_start("GLim Run", {
             ssc_param_int("iter", iterations),
@@ -176,7 +176,7 @@ void GLimRun(GLim& glim, int iterations) {
 
   ssc_event_stop(); // GLim Run
   auto time1 = ssc_time();
-  ssc_info(format("End GL: {} ms", ssc_diff_time(time0, time1)));
+  ssc_info(format("End AP: {} ms", ssc_diff_time(time0, time1)));
 }
 
 
