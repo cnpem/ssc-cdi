@@ -5,65 +5,43 @@ To be added. Brief overview of the package.
 
 ----
 
-Modules
-############################################################
+.. Carnaúba module
+.. *********************
 
-The code is devided in the following modules:
-    - carnauba/
-        - cnb_ptycho_processing.py
-        - cnb_restoration.py
-    - caterete/
-        - cat_ptycho_processing.py
-        - cat_restoration.py
-        - cat_tomo_processing.py
-    - processing/
-        - restoration.py
-        - unwrap.py
-        - propagation.py
-    - ptychography/
-        - ptychography.py
-    - tomography/
-        - tomo_processing.py
-    - jupyter.py
-    - misc.py
+.. CNB ptycho module
+.. ----------------------------
 
-Carnaúba module
-*********************
+.. .. automodule:: sscCdi.carnauba.cnb_ptycho_processing
+..     :members:
 
-CNB ptycho module
-----------------------------
+.. CNB restoration module
+.. ----------------------------
 
-.. automodule:: sscCdi.carnauba.cnb_ptycho_processing
-    :members:
-
-CNB restoration module
-----------------------------
-
-.. automodule:: sscCdi.carnauba.cnb_restoration
-    :members:
+.. .. automodule:: sscCdi.carnauba.cnb_restoration
+..     :members:
 
 
-Cateretê module
-*********************
+.. Cateretê module
+.. *********************
 
-CAT ptycho module
-----------------------------
+.. CAT ptycho module
+.. ----------------------------
 
-.. automodule:: sscCdi.caterete.cat_ptycho_processing
-    :members:
+.. .. automodule:: sscCdi.caterete.cat_ptycho_processing
+..     :members:
 
-CAT restoration module
-----------------------------
+.. CAT restoration module
+.. ----------------------------
 
-.. automodule:: sscCdi.caterete.cat_restoration
-    :members:
+.. .. automodule:: sscCdi.caterete.cat_restoration
+..     :members:
 
 
-CAT tomography module
-----------------------------
+.. CAT tomography module
+.. ----------------------------
 
-.. automodule:: sscCdi.caterete.cat_tomo_processing
-    :members:
+.. .. automodule:: sscCdi.caterete.cat_tomo_processing
+..     :members:
 
 
 

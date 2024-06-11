@@ -7,10 +7,11 @@
 Welcome to ssc-cdi's documentation!
 ###################################
 
-
-Sirius Scientific Computing Group codes for Coherent Diffractive Imaging.
+Sirius Scientific Computing (ssc) Group codes for Coherent Diffractive Imaging.
 
 The **ssc-cdi** package currently performs Ptycography and Ptycho-tomography reconstructions. 
+
+Some examples are provided to ease the initial use. Enjoy!
 
 **Authors and acknowledgments**
 
