@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.6] - 2024-05-29
+
+Changed
+~~~~~
+- Added optional input to cat_restoration, to choose the scaling parameter for the PIMEGA detector.
+
+
 [0.9.5] - 2024-05-29
 
 Added
