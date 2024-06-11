@@ -1,25 +1,9 @@
-Public
+Python Codes
 ==============
 
-Ptychography
-############################################################
-
-This package uses the algorithms implemented in the **sscptycho** package for ptychography algorithms. 
-
-Ptycho-tomography
-############################################################
-To be added.
-
-Plane-wave Coherent Diffraction Imaging (PWCDI):
-############################################################
-To be added.
+To be added. Brief overview of the package.
 
 ----
-
-Main scripts
-############################################################
-The main scripts are contained in the **bin/** directory.
-
 
 Modules
 ############################################################
