@@ -5,7 +5,7 @@ import json
 import h5py
 import sys
 
-from ...jupyter import slide_and_play
+from ..gui_jupyter import slide_and_play
 
 from ... import log_event
 
@@ -13,7 +13,7 @@ from ... import log_event
 from ...misc import read_hdf5, list_files_in_folder, select_specific_angles
 from ...processing.restoration import restore_IO_SharedArray
 
-def Geometry(distance,susp,fill):
+def Geometry(distance,susp,fill,scale=0.995):
     """ 
     Get sscPimega detector geometry for certain distance and corresponding dictionary of input params
 
@@ -28,7 +28,7 @@ def Geometry(distance,susp,fill):
     """
     from sscPimega import pi540D, opt540D
 
-    params = {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp }
+    params = {'geo':'nonplanar','opt':True,'mode':'virtual', 'fill': fill, 'susp': susp, 'scale': scale }
     project = pi540D.dictionary540D( distance, params ) 
     geo = pi540D.geometry540D( project )
     return geo, project
@@ -43,14 +43,10 @@ def flatfield_forward_restoration(input_dict: dict):
     Returns:
         flat_forward (nunpy array): array with new flat
     """
-    from sscPimega import pi540D, opt540D
+    from sscPimega import pi540D
 
     flat_backward = np.load(input_dict["flatfield"])
-    geometry, project = Geometry(
-        input_dict["detector_distance"]*1000,
-        susp = input_dict["suspect_border_pixels"],
-        fill = input_dict["fill_blanks"]
-    ) # distance in milimeters
+    geometry, project = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
     
     flat_forward = pi540D.forward540D(flat_backward,  geometry)
         
@@ -96,7 +92,7 @@ def restoration_ptycho_CAT(input_dict):
     
     input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
 
-    geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"]) # distance in milimeters
+    geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"], scale = input_dict["scale"]) # distance in milimeters
 
     if input_dict["using_direct_beam"]:
         print("\t Using direct beam to find center: ",input_dict["DP_center"])
@@ -183,7 +179,7 @@ def restoration_CAT(input_dict,method = 'IO'):
     """
     from sscPimega import pi540D, opt540D
 
-    geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'])
+    geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'], scale = input_dict["scale"])
 
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ._version import __version__
+from ._telem import __telem__
 
 try:
     from .cditypes import *
@@ -14,13 +15,13 @@ from .lib.ssccommons_wrapper import (
 )
 log_start(project="sscCdi",
           version=__version__,
-          level="info",
-          telem_key="https://aa8e85a7f92d3fa14e2cab36d7a686ec@o1066143.ingest.us.sentry.io/4506592964116481")
+          level="error",
+          telem_key=__telem__)
 atexit.register(log_stop)
 
 from .cditypes import *
 from .processing import *
 from .ptycho import *
 from .misc import *
-from .jupyter import *
+from .beamlines.gui_jupyter import *
 from .beamlines import *

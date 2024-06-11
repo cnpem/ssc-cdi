@@ -68,8 +68,15 @@ struct POptAlgorithm {
     rMImage* probe_div;  //!< Denominator in the probe augmented projector / LS-gradient preconditioner.
     cMImage* probe_acc;  //!< Accumulator in the probe augmented projector / LS-gradient preconditioner.
 
-    float objbeta = 0.95f;   //!< Either momentum beta (AP/ML) or relaxation parameter (RAAR).
-    float probebeta = 0.9f;  //!< Either momentum beta (AP/ML) or relaxation parameter (RAAR).
+
+    float objmomentum = 0.95f;
+    float probemomentum = 0.9f;
+
+    float objstep = 1.0f;
+    float probestep = 1.0f;
+
+    float probereg = 0.01f;
+    float objreg = 0.01f;
 
     rMImage* background = nullptr;
     rMImage* bkgaccum = nullptr;
@@ -128,7 +135,8 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1);
+                                   float probef1,
+                                   float step_obj, float step_probe, float reg_obj, float reg_probe);
 
 
 template <typename dtype>
@@ -147,6 +155,7 @@ struct RAAR {
     std::vector<hcMImage*> phistack;  //!< Stack of current exitwave estimates. can become very huge
     const bool isGradPm = false;
     complex* wavefront = nullptr;
+    float beta = 0.9f;
 };
 
 /**
@@ -155,11 +164,13 @@ struct RAAR {
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1);
+                 int geometricsteps, float* background, float probef1,
+                 float step_obj, float step_probe,
+                 float reg_obj, float reg_probe);
 
 void DestroyRAAR(RAAR*& raar);
 
-void RAARRun(RAAR& raar, int iter, float tvmu, float epsilon);
+void RAARRun(RAAR& raar, int iter);
 
 void RAARProjectProbe(RAAR& raar, int section);
 
@@ -192,12 +203,14 @@ struct GLim {
     const bool isGradPm = true;
 };
 
-void GLimRun(GLim& glim, int iter, float tvmu, float epsilon);
+void GLimRun(GLim& glim, int iter);
 
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1);
+                 int geometricsteps, float* background, float probef1,
+                 float step_obj, float step_probe,
+                 float reg_obj, float reg_probe);
 
 void DestroyGLim(GLim*& glim);
 
@@ -206,10 +219,6 @@ void GLimProjectProbe(GLim& glim, int section);
 struct Pie {
     POptAlgorithm* ptycho;
     const bool isGradPm = false;
-    float step_obj = 0.0f;
-    float step_probe = 0.0f;
-    float reg_obj = 0.0;
-    float reg_probe = 0.0;
 };
 
 Pie* CreatePie(float* difpads, const dim3& difshape,

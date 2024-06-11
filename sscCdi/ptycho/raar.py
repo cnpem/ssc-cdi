@@ -1,16 +1,23 @@
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error
+from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
 
 from .. import log_event
 
 @log_event
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
+
+    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
+    diffraction_patterns = cp.array(diffraction_patterns) 
+    positions = cp.array(positions)
+    obj = cp.array(obj)
+    probe = cp.array(probe)
+
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
-    dx         = inputs['object_pixel']
+    obj_pixel  = inputs['object_pixel']
     wavelength = inputs['wavelength']
-    distance   = inputs['detector_distance']
+    distance_focus_sample  = inputs['distance_sample_focus']
     n_of_modes = inputs["incoherent_modes"]
     fresnel_regime = inputs["fresnel_regime"]
     probe_support  = inputs["probe_support"] 
@@ -19,11 +26,6 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         pass
     else:
         inputs['source_distance'] = None
-
-    diffraction_patterns = cp.array(diffraction_patterns) 
-    positions = cp.array(positions)
-    obj = cp.array(obj)
-    probe = cp.array(probe)
 
     if probe_support is None:
         probe_support = cp.ones_like(probe)
@@ -69,7 +71,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj_box # update all obj slices to be the same;
 
-        probe_modes = probe_modes[:]*probe_support
+        probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts[:,0,:,:],inputs) # should we insert more modes to calculate error?
 
@@ -77,7 +79,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         print(f'\tIteration {iteration+1}/{iterations} \tError: {iteration_error:.2e}',end='')
 
         error[iteration] = iteration_error
-        
+    print('\n')    
     return obj_matrix[0].get(), probe_modes.get(), error.get()
 
 def projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj,probes,positions,epsilon):
@@ -122,3 +124,5 @@ def RAAR_multiprobe_update_probe_cupy(wavefronts, obj, probe_shape,positions, ep
     probes = wave_sum/(object_sum + epsilon) # epsilon to avoid division by zero. 
 
     return probes
+
+
