@@ -8,6 +8,7 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
+from .plots import plot_ptycho_scan_points
 
 from .. import log_event
 
@@ -119,6 +120,8 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     if "object_shape" not in input_dict:
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
+
+    plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
 
     create_output_h5_file(input_dict)
 
