@@ -15,3 +15,7 @@ sscCdi.egg-info/*
 ._**
 bin/.DS_Store
 bin/._.DS_Store
+**/.DS_Store
+**/._.DS_Store
+data/dev/*
+examples/output.h5

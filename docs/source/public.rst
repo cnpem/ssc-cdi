@@ -1,85 +1,47 @@
-Public
+Python Codes
 ==============
 
-Ptychography
-############################################################
-
-This package uses the algorithms implemented in the **sscptycho** package for ptychography algorithms. 
-
-Ptycho-tomography
-############################################################
-To be added.
-
-Plane-wave Coherent Diffraction Imaging (PWCDI):
-############################################################
-To be added.
+To be added. Brief overview of the package.
 
 ----
 
-Main scripts
-############################################################
-The main scripts are contained in the **bin/** directory.
+.. Carnaúba module
+.. *********************
+
+.. CNB ptycho module
+.. ----------------------------
+
+.. .. automodule:: sscCdi.carnauba.cnb_ptycho_processing
+..     :members:
+
+.. CNB restoration module
+.. ----------------------------
+
+.. .. automodule:: sscCdi.carnauba.cnb_restoration
+..     :members:
 
 
-Modules
-############################################################
+.. Cateretê module
+.. *********************
 
-The code is devided in the following modules:
-    - carnauba/
-        - cnb_ptycho_processing.py
-        - cnb_restoration.py
-    - caterete/
-        - cat_ptycho_processing.py
-        - cat_restoration.py
-        - cat_tomo_processing.py
-    - processing/
-        - restoration.py
-        - unwrap.py
-        - propagation.py
-    - ptychography/
-        - ptychography.py
-    - tomography/
-        - tomo_processing.py
-    - jupyter.py
-    - misc.py
+.. CAT ptycho module
+.. ----------------------------
 
-Carnaúba module
-*********************
+.. .. automodule:: sscCdi.caterete.cat_ptycho_processing
+..     :members:
 
-CNB ptycho module
-----------------------------
+.. CAT restoration module
+.. ----------------------------
 
-.. automodule:: sscCdi.carnauba.cnb_ptycho_processing
-    :members:
-
-CNB restoration module
-----------------------------
-
-.. automodule:: sscCdi.carnauba.cnb_restoration
-    :members:
+.. .. automodule:: sscCdi.caterete.cat_restoration
+..     :members:
 
 
-Cateretê module
-*********************
+.. CAT tomography module
+.. ----------------------------
 
-CAT ptycho module
-----------------------------
-
-.. automodule:: sscCdi.caterete.cat_ptycho_processing
-    :members:
-
-CAT restoration module
-----------------------------
-
-.. automodule:: sscCdi.caterete.cat_restoration
-    :members:
-
-
-CAT tomography module
-----------------------------
-
-.. automodule:: sscCdi.caterete.cat_tomo_processing
-    :members:
+.. .. automodule:: sscCdi.caterete.cat_tomo_processing
+..     :members:
 
 
 

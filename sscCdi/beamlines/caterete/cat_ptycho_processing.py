@@ -4,9 +4,10 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 """ sscCdi relative imports"""
-from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, concatenate_array_to_h5_dataset, list_files_in_folder, select_specific_angles
+from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, wavelength_meters_from_energy_keV, list_files_in_folder, select_specific_angles
 from ...ptycho.ptychography import call_ptychography, set_object_pixel_size, set_object_shape
 from ...processing.restoration import binning_G_parallel
+from ...ptycho.plots import plot_iteration_error, plot_ptycho_corrected_scan_points
 
 from ... import event_start, event_stop, log_event
 
@@ -96,8 +97,8 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
             if file_number_index == 0:
-                input_dict = set_object_shape(input_dict, DPs.shape, probe_positions)
-                sinogram              = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64)
+                input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
+                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64)
 
                 if input_dict["incoherent_modes"] < 1:
                     incoherent_modes = 1
@@ -169,6 +170,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
 
+    plot_iteration_error(error)
+    if corrected_positions is not None:
+        plot_ptycho_corrected_scan_points(probe_positions,corrected_positions)
+
     return input_dict, sinogram, probes, probe_positions
 
 
@@ -212,16 +217,16 @@ def define_paths(input_dict):
     mdata_dict = json.load(open(os.path.join(input_dict['data_folder'] ,input_dict["acquisition_folders"][0],'mdata.json')))
     input_dict["energy"]               = mdata_dict['/entry/beamline/experiment']["energy"]
     input_dict["detector_distance"]    = mdata_dict['/entry/beamline/experiment']["distance"]*1e-3 # convert to meters
-    input_dict["restored_pixel_size"]  = mdata_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
+    input_dict["detector_pixel_size"]  = mdata_dict['/entry/beamline/detector']['pimega']["pixel size"]*1e-6 # convert to microns
     input_dict["detector_exposure"]    = [None,None]
     input_dict["detector_exposure"][1] = mdata_dict['/entry/beamline/detector']['pimega']["exposure time"]
     
     if "flatfield" not in input_dict:
-        input_dict["flatfield"]        = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
+        input_dict["flatfield"] = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     elif input_dict["flatfield"] == "":
-        input_dict["flatfield"]        = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
-    input_dict["mask"]                 = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
-    input_dict["empty"]                = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
+        input_dict["flatfield"] = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
+    input_dict["mask"]          = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
+    input_dict["empty"]         = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
 
     input_dict["datetime"] = get_datetime(input_dict)
 
@@ -337,6 +342,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         print('\t\tSetting object as null array with correct shape... New probe positions shape:', probe_positions.shape)
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
+    input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict["energy"])
     input_dict = set_object_pixel_size(input_dict,DP_size) 
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 

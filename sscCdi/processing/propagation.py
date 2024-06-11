@@ -3,30 +3,24 @@ import cupy as cp
 from tqdm import tqdm
 
 """ Relative imports """
-from ..misc import wavelength_from_energy
+from ..misc import wavelength_meters_from_energy_keV
 
-def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,magnification=1,source_sample_distance=0):
-    """
-    Calculate fresnel number in magnification scenario. 
+def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_detector_distance, source_to_sample_distance = 0.0):
+    """ Wavefront propagator in the Fresnel Regime by the angular spectrum method (ASM).
+
+    If a source_to_sample_distance is given, calculates magnification and the equivalent parallel beam configuration
 
     Args:
-        energy: energy in keV
-        pixel_size: object pixel size
-        sample_detector_distance: sample to detector distance in meters
-        magnification (int, optional): magnification of the optical system. If 1, no magnification is used. Defaults to 1.
-        source_sample_distance (int, optional): source to sample distance in meters. Defaults to 0.
+        wavefront: 2d array containing your wavefront/beam
+        wavelength: wavelength in meters
+        pixel_size: matrix pixel size in meters
+        sample_to_detector_distance: distance between sample and detectior in meters.
+        source_to_sample_distance (float, optional): distance between source and sample in meters. Defaults to 0.
 
     Returns:
-        (float): Fresnel number 
-    """
+        2d array: propagated wave
+    """    
 
-    wavelength = wavelength_from_energy(energy) # meters
-    if magnification != 1:
-        magnification = (source_sample_distance+source_sample_distance)/source_sample_distance
-    return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)
-
-
-def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_detector_distance, source_to_sample_distance = 0):
 
     np = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
     
@@ -59,54 +53,24 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
         return wave_cone
     else:
         return wave_parallel
+        
 
-def create_propagation_video(path_to_probefile,
-                             starting_f_value=1e-3,
-                             ending_f_value=9e-4,
-                             number_of_frames=100,
-                             frame_rate=10,
-                             mp4=False, 
-                             gif=False,
-                             jupyter=False):
-    
-    """ 
-    Propagates a probe using the fresnel number to multiple planes and create an animation of the propagation
-    #TODO: change this function to create propagation as a function of distance
+def calculate_fresnel_number(energy,pixel_size,sample_detector_distance,source_sample_distance=0):
+    """
+    Calculate fresnel number in magnification scenario. 
+
+    Args:
+        energy: energy in keV
+        pixel_size: object pixel size
+        sample_detector_distance: sample to detector distance in meters
+        magnification (int, optional): magnification of the optical system. If 1, no magnification is used. Defaults to 1.
+        source_sample_distance (int, optional): source to sample distance in meters. Defaults to 0.
+
+    Returns:
+        (float): Fresnel number 
     """
 
-    probe = np.load(path_to_probefile)[0] # load probe
-    
-    # delta = -1e-4
-    # f1 = [starting_f_value + delta*i for i in range(0,number_of_frames)]
-    
-    f1 = np.linspace(starting_f_value,ending_f_value,number_of_frames)
-    
-    # Create list of propagated probes
-    b =  [np.sqrt(np.sum([abs(Propagate(a,f1[0]))**2 for a in probe],0))]
-    for i in range(1,number_of_frames):
-            b += [np.sqrt(np.sum([abs(Propagate(a,f1[i]))**2 for a in probe],0))]
-    
-
-    image_list = []
-    for j, probe in enumerate(tqdm(b)):
-            if jupyter == False:
-                animation_fig, subplot = plt.subplots(dpi=300)
-                img = subplot.imshow(probe,cmap='jet')#,animated=True)
-                subplot.set_xticks([])
-                subplot.set_yticks([])
-                subplot.set_title(f'f#={f1[j]:.3e}')
-            if jupyter == False:
-                image_list.append(mplfig_to_npimage(animation_fig))
-            else:    
-                image_list.append(probe)
-            if jupyter == False: plt.close()
-
-    if mp4 or gif:  
-        clip = ImageSequenceClip(image_list, fps=frame_rate)
-        if mp4:
-            clip.write_videofile("propagation.mp4",fps=frame_rate)
-        if gif:
-            clip.write_gif('propagation.gif', fps=frame_rate)
-
-    return image_list, f1
-
+    if source_sample_distance != 0:
+        magnification = (source_sample_distance+sample_detector_distance)/source_sample_distance
+    wavelength = wavelength_meters_from_energy_keV(energy) # meters
+    return -(pixel_size**2) / (wavelength * sample_detector_distance * magnification)        

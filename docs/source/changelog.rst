@@ -13,7 +13,16 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.6] - 2024-05-29
+--------------------
+
+Changed
+~~~~~
+- Added optional input to cat_restoration, to choose the scaling parameter for the PIMEGA detector.
+
+
 [0.9.5] - 2024-05-29
+--------------------
 
 Added
 ~~~~~
@@ -25,20 +34,22 @@ Changed
 - Refactored tomo processing functions, mostly changing the calls from a dic input to a direct input call
 
 
-
 [0.9.4] - 2024-05-16
+--------------------
 
 Added
 ~~~~~
 - Prototype for using probe from previous ptycho run in new one to improve reconstruction
 
 [0.9.3] - 2024-05-08
+--------------------
 
 Changed
 ~~~~~
 - Changed the routine for reading probe positions in EMA pipeline
 
 [0.9.2] - 2024-05-02
+--------------------
 
 Added
 ~~~~~
@@ -55,12 +66,14 @@ Added
 
 
 [0.9.1] - 2024-04-08
+--------------------
 
 Fixed
 ~~~~~
 - Fixed initial guess for probe modes for RAAR_python. Secondary modes are random arrays between 0 and 1.
 
 [0.9.0] - 2024-04-05
+--------------------
 
 Added
 ~~~~~
@@ -74,6 +87,7 @@ Changed
 
 
 [0.8.10] - 2024-03-26
+--------------------
 
 Documentation
 ~~~~~
@@ -81,6 +95,7 @@ Documentation
 
 
 [0.7.17] - 2024-03-26
+--------------------
 
 Fixed
 ~~~~~
@@ -88,6 +103,7 @@ Fixed
 
 
 [0.7.16] - 2024-03-26
+--------------------
 
 Fixed
 ~~~~~
@@ -95,6 +111,7 @@ Fixed
 - Fixed missing imports after refactoring in version 0.7.15
 
 [0.7.15] - 2024-03-26
+--------------------
 
 Changed
 ~~~~~
@@ -110,6 +127,7 @@ Added
 
 
 [0.7.14] - 2024-03-01
+--------------------
 
 Removed
 ~~~~~
@@ -120,18 +138,21 @@ Added
 - Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.
 
 [0.7.13] - 2024-02-21
+--------------------
 
 Removed
 ~~~~~
 - Remove dev alignment files
 
 [0.7.12] - 2024-02-21
+--------------------
 
 Changed
 ~~~~~
 - Added EMA crop routine
 
 [0.7.11] - 2024-02-19
+--------------------
 
 Changed
 ~~~~~

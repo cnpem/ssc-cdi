@@ -17,12 +17,19 @@ from .unwrap import remove_phase_gradient, unwrap_in_parallel
 ####################### SORTING ###################################
 
 def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
-    """Call sorting algorithm to reorder sinogram frames by angle, instead of acquisition order
+    """ Sorting script to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
-        object (ndarray): read sinogram to be sorted
+        object (ndarray): 3d sinogram to be sorted
         angles (ndarray): rotation angle for each frame of the sinogram
-    """
+        object_savepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
+        angles_savepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
+
+    Returns:
+        sorted_object
+        sorted_angles
+    """    
+
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
@@ -40,8 +47,19 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
     return sorted_object, sorted_angles
 
 def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,updated_object_filepath= '', updated_angles_filepath= ''):
-    """ Remove unwanted sinogram frames after sorting
+    """ Remove wanted frames from volume of images and from the respective list of angle values
+
+    Args:
+        sinogram: 3d array of images. First index selects the frame.
+        angles: array of corresponding rotation angle values to the sinogram frames. There must be 1 angle for each sinogram frame.
+        list_of_bad_frames: list of values containing the frames to be removed
+        ordered_object_filepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
+        ordered_angles_filepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
+
+    Returns:
+        _type_: _description_
     """    
+
 
     print('Original shape: ',sinogram.shape)
 
@@ -94,8 +112,21 @@ def reorder_slices_low_to_high_angle(object, rois):
 ######################### CROP #################################################
 
 def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepath='',crop_mode=0):
-    """ Crops sinogram according to cropping parameters in dic
-    """
+    """ Crops images in a volume in the Y,X directions.
+
+    Args:
+        volume (ndarray): 3d array of shape (N,Y,X), N being the slice number
+        top_crop (int): number of pixels on top
+        bottom_crop (int): number of pixels on botto,
+        left_crop (int): number of pixels on left
+        right_crop (int): number of pixels on right
+        cropped_savepath (str, optional): Path to hdf5 file in which new volume will be saved. Defaults to ''.
+        crop_mode (int, optional): Crop mode == 0 means each crop will be like [:,top_crop:-bottom_crop,left_crop:-right_crop]. Mode ==1 means [:,top_crop:bottom_crop,left_crop:right_crop]. Defaults to 0.
+
+    Returns:
+        cropped volume 
+    """    
+
     
     start = time.time()
     if crop_mode == 0:
