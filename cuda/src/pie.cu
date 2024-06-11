@@ -30,12 +30,8 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             gpus,
             objsupp, probesupp, numobjsupp,
             sigmask, geometricsteps,
-            background, probef1);
-
-    pie->reg_obj = reg_obj;
-    pie->reg_probe = reg_probe;
-    pie->step_obj = step_object;
-    pie->step_probe = step_probe;
+            background, probef1,
+            step_object, step_probe, reg_obj, reg_probe);
 
     return pie;
 }
@@ -68,10 +64,7 @@ __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<com
 __global__ void k_pie_update_probe(GArray<complex> object_box,
         GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_obj, float reg_probe,
-        float step_obj, float step_probe,
-        float obj_abs2_max,
-        const ROI* rois) {
+        float reg_probe, float step_probe, float obj_abs2_max, const ROI* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -103,10 +96,7 @@ __global__ void k_pie_update_probe(GArray<complex> object_box,
 
 __global__ void k_pie_update_object(GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_obj, float reg_probe,
-        float step_obj, float step_probe,
-        float probe_abs2_max,
-        const ROI* rois) {
+        float reg_obj, float step_obj, float probe_abs2_max, const ROI* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -217,8 +207,8 @@ void PieRun(Pie& pie, int iterations) {
             const float probe_abs2_max = probe->maxAbs2();
             k_pie_update_object<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
-                    pie.reg_obj, pie.reg_probe,
-                    pie.step_obj, pie.step_probe,
+                    pie.ptycho->objreg,
+                    pie.ptycho->objstep,
                     probe_abs2_max, rois);
 
             const dim3 pos_offset(pie.ptycho->cpurois[random_pos_idx].x,
@@ -228,8 +218,8 @@ void PieRun(Pie& pie, int iterations) {
 
             k_pie_update_probe<<<blk, thr>>>(obj_box, *obj, *probe,
                     *wavefront, wavefront_prev,
-                    pie.reg_obj, pie.reg_probe,
-                    pie.step_obj, pie.step_probe,
+                    pie.ptycho->probereg,
+                    pie.ptycho->probestep,
                     obj_abs2_max, rois);
 
         }

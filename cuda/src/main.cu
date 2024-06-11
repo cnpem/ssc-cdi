@@ -58,10 +58,10 @@ extern "C" {
 extern "C"
 {
     void glcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
-            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
+            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
+            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1)
     {
-        ssc_info(format("Starting GL - p: {} o: {} r: {} b: {} n: {}",
+        ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
@@ -69,16 +69,16 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
-            gl->ptycho->objbeta = objbeta;
-            gl->ptycho->probebeta = probebeta;
+            gl->ptycho->objmomentum = objbeta;
+            gl->ptycho->probemomentum = probebeta;
 
-            GLimRun(*gl, numiter,tvmu,epsilon);
+            GLimRun(*gl, numiter);
 
             DestroyGLim(gl);
         }
-        ssc_info("End GL.");
+        ssc_info("End AP.");
     }
 
     void piecall(void* cpuobj, int osizex, int osizey,
@@ -128,8 +128,8 @@ extern "C"
     }
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
-            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
+            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
+            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1, float raarbeta)
     {
         ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -139,12 +139,12 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
-            raar->ptycho->objbeta = objbeta; // why is this not already inside CreateRAAR?
-            raar->ptycho->probebeta = probebeta;
+            raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
+            raar->ptycho->probemomentum = probebeta;
 
-            RAARRun(*raar, numiter, tvmu, epsilon); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
+            RAARRun(*raar, numiter); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
 
             DestroyRAAR(raar);
 

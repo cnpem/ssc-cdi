@@ -6,13 +6,10 @@ from numpy.fft import ifft2 as ifft2
 from concurrent.futures import ProcessPoolExecutor
 import tqdm
 
-""" Sirius Scientific Computing Imports """
-from sscIO import io
-from sscPimega import pi540D, pi135D
-from sscPimega import misc as miscPimega
-
 """ sscCdi relative imports"""
 from ..misc import read_hdf5
+
+""" Module for restoration of raw images from the PIMEGA detectors """
 
 def restore_pimega(diffraction_pattern,geometry,detector):
     """ 
@@ -27,10 +24,12 @@ def restore_pimega(diffraction_pattern,geometry,detector):
         (numpy.ndarray): restored diffractions patterns
     """
 
+    import sscPimega
+
     if detector == '135D':
-        return pi135D.backward135D(diffraction_pattern , geometry)
+        return sscPimega.pi135D.backward135D(diffraction_pattern , geometry)
     elif detector == '540D':
-        return pi540D.backward540D(diffraction_pattern, geometry)
+        return sscPimega.pi540D.backward540D(diffraction_pattern, geometry)
 
 def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     """ 
@@ -45,6 +44,8 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
     Returns:
         (numpy.ndarray): volume of restored diffraction patterns
     """
+
+    import sscPimega    
 
     dic = {}
     dic['path']     = hdf5_filepaths
@@ -68,9 +69,9 @@ def restore_CUDA(input_dict,geometry,hdf5_filepaths):
 
     file_number = 11 # which file idx from hdf5_filepaths to perform restoration
 
-    restored_data_info = pi540D.ioSetM_Backward540D( dic )
-    output = pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number) 
-    pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
+    restored_data_info = sscPimega.pi540D.ioSetM_Backward540D( dic )
+    output = sscPimega.pi540D.ioGetM_Backward540D( dic, restored_data_info, file_number) 
+    sscPimega.pi540D.ioCleanM_Backward540D( dic, restored_data_info ) # clean temporary files 
     return output
 
 def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
@@ -87,6 +88,9 @@ def restore_IO_SharedArray(input_dict, geometry, hdf5_path):
     Returns:
         (numpy.ndarray): volume of restored diffraction patterns 
     """
+
+
+    from sscPimega import misc as miscPimega
 
     if input_dict["detector"] == '540D':
         DP_shape = 3072
@@ -278,7 +282,10 @@ def get_DP_center_miqueles(dbeam, project):
     """
     Approach by Eduardo Miqueles to get center of the diffraction pattern
     """
-    aDP = pi540D._worker_annotation_image ( np.clip( dbeam, 0, 100) )
+
+    import sscPimega
+
+    aDP = sscPimega.pi540D._worker_annotation_image ( np.clip( dbeam, 0, 100) )
     aDP = ndimage.gaussian_filter( aDP, sigma=0.95, order=0 )
     aDP = aDP/aDP.max()
     aDP = 1.0 * ( aDP > 0.98 )    
@@ -287,8 +294,8 @@ def get_DP_center_miqueles(dbeam, project):
     xc = ((aDP * xx).sum() / aDP.sum() ).astype(int)
     yc = ((aDP * yy).sum() / aDP.sum() ).astype(int)
     annotation = np.array([ [xc, yc] ])
-    tracking = pi540D.annotation_points_standard ( annotation )
-    tracking = pi540D.tracking540D_vec_standard ( project, tracking ) 
+    tracking = sscPimega.pi540D.annotation_points_standard ( annotation )
+    tracking = sscPimega.pi540D.tracking540D_vec_standard ( project, tracking ) 
     xc = int( tracking[0][2] )
     yc = int( tracking[0][3] ) 
     return xc, yc

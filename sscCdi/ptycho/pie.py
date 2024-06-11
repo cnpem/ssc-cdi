@@ -1,11 +1,13 @@
 import sys
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error
+from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
 
 from .. import log_event, event_start, event_stop
 
 @log_event
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
+
+    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
 
     r_o = inputs["regularization_object"]
     r_p = inputs["regularization_probe"]
@@ -16,9 +18,12 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     m_counter_limit = inputs["momentum_counter"]
     n_of_modes = inputs["incoherent_modes"]
     iterations = inputs["iterations"]
-    experiment_params =  (inputs['object_pixel'], inputs['wavelength'],inputs['detector_distance'])
+    obj_pixel = inputs['object_pixel']
+    wavelength = inputs['wavelength']
+    detector_distance = inputs['detector_distance']
+    distance_focus_sample  = inputs['distance_sample_focus']
     fresnel_regime = inputs["fresnel_regime"]
-    probe_support  = inputs["probe_support"] #TODO
+    probe_support  = inputs["probe_support"] 
 
     if fresnel_regime == True:
         pass
@@ -29,6 +34,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     probe_guess  = cp.array(probe_guess)
     positions    = cp.array(positions)
     diffraction_patterns = cp.array(diffraction_patterns)
+    probe_support = cp.array(probe_support)
 
     obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
@@ -75,12 +81,15 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             if inputs["use_mPIE"] == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
+        probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
+
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
 
-        print('\r', end='')
-        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
+        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}',end='\r')
 
         error[i] = iteration_error
+   
+    print('\n')    
 
     return obj.get(), probe_modes.get(), error.get()
 
@@ -106,7 +115,6 @@ def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront
         
         return denominator  
 
-    import pdb; pdb.set_trace()
     # r_o,r_p,s_o,s_p,_,_,_ = mPIE_params
 
     # Pre-calculating to avoid repeated operations

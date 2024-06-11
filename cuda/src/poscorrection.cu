@@ -80,12 +80,16 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp, float* sigmask, int geometricsteps, float* background,
-                                   float probef1) {
+                                   float probef1,
+                                   float step_obj, float step_probe,
+                                   float reg_obj, float reg_probe) {
     PosCorrection* poscorr = new PosCorrection;
     poscorr->errorcounter = new rMImage(5, 1, batchsize, true, gpus);
     poscorr->ptycho =
-        CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1);
+        CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
+                object, objshape, rois, numrois, batchsize, rfact,
+                gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1,
+                step_obj, step_probe, reg_obj, reg_probe);
     return poscorr;
 }
 
@@ -196,13 +200,11 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 }
 
 
-void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float epsilon) {
+void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
   ssc_debug("Starting PosCorrectionRun.");
 
   ssc_event_start("Position Correction Run", {
             ssc_param_int("iter", iterations),
-            ssc_param_double("tvmu", tvmu),
-            ssc_param_double("epsilon", epsilon),
             ssc_param_int("difpadshape.x", (int)poscorr.ptycho->difpadshape.x),
             ssc_param_int("difpadshape.y", (int)poscorr.ptycho->difpadshape.y),
             ssc_param_int("difpadshape.z", (int)poscorr.ptycho->difpadshape.z)
@@ -213,10 +215,10 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
   auto time0 = ssc_time();
 
   ptycho.object->Set(0);
-  cImage objmomentum(ptycho.object->Shape());
-  cImage probemomentum(ptycho.probe->Shape());
-  objmomentum.SetGPUToZero();
-  probemomentum.SetGPUToZero();
+  cImage objvelocity(ptycho.object->Shape());
+  cImage probevelocity(ptycho.probe->Shape());
+  objvelocity.SetGPUToZero();
+  probevelocity.SetGPUToZero();
 
 
   const dim3 difpadshape = ptycho.difpadshape;
@@ -226,7 +228,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
     ssc_event_start("PosCorr iter", { ssc_param_int("iter", iter) });
 
     // std::cout << iter << std::endl;
-    const bool bIterProbe = (ptycho.probebeta >= 0);  // & (iter > iterations/20);
+    const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
     ptycho.rfactors->SetGPUToZero();
     ptycho.object_acc->SetGPUToZero();
     ptycho.object_div->SetGPUToZero();
@@ -234,8 +236,8 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
     ptycho.probe_div->SetGPUToZero();
 
     if (iter < 2) {
-      objmomentum.SetGPUToZero();
-      probemomentum.SetGPUToZero();
+      objvelocity.SetGPUToZero();
+      probevelocity.SetGPUToZero();
     }
 
     const size_t num_batches = ptycho.rois.size();
@@ -278,11 +280,11 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
     }
 
     ssc_debug("Syncing OBJ and setting RF");
-    if (ptycho.objbeta >= 0)
+    if (ptycho.objmomentum >= 0)
         ptycho.object->WeightedLerpSync(
                 *ptycho.object_acc, *ptycho.object_div,
-                1.0f, ptycho.objbeta,
-                objmomentum, epsilon, tvmu);
+                ptycho.objstep, ptycho.objmomentum,
+                objvelocity, ptycho.objreg);
 
     if (ptycho.objectsupport != nullptr)
       for (int g = 0; g < ptycho.gpus.size(); g++) {
@@ -292,9 +294,15 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
                 ptycho.SupportSizes);
       }
 
-    PosCorrectionApplyProbeUpdate(poscorr, probemomentum, 1.0f, ptycho.probebeta, epsilon);
+    PosCorrectionApplyProbeUpdate(poscorr, probevelocity, ptycho.probestep, ptycho.probemomentum, ptycho.probereg);
 
     ptycho.cpurfact[iter] = sqrtf(ptycho.rfactors->SumCPU());
+
+    if (iter % 10 == 0) {
+        ssc_info(format("iter {}/{} error: {}",
+                    iter, iterations, ptycho.cpurfact[iter]));
+    }
+
     ssc_event_stop(); // PosCorr iter
   }
 
@@ -309,8 +317,10 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations, float tvmu, float 
 extern "C"
 {
 void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez, float tvmu,
-	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float epsilon, float* background, float probef1)
+	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
+	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps,
+    float step_obj, float step_probe, float reg_obj, float reg_probe,
+    float* background, float probef1)
 {
 	ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
             psizex, osizex, numrois, bsize, numiter));
@@ -322,12 +332,12 @@ void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osi
         IndexRois((ROI*)cpurois, numrois);
 
     PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1);
+    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
-	pk->ptycho->objbeta = objbeta;
-	pk->ptycho->probebeta = probebeta;
+	pk->ptycho->objmomentum = objbeta;
+	pk->ptycho->probemomentum = probebeta;
 
-	PosCorrectionRun(*pk, numiter,tvmu,epsilon);
+	PosCorrectionRun(*pk, numiter);
     DestroyPosCorrection(pk);
     }
 	ssc_info("End PosCorrection.");
