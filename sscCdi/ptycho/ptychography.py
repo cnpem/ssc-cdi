@@ -105,6 +105,8 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
+    print(f'Data shape: {DPs.shape}')
+
     print(f'Pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
     
     print(f'Energy = {input_dict["energy"]} keV')
