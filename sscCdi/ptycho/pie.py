@@ -85,7 +85,8 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
 
         iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
 
-        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}',end='\r')
+        print('\r', end='')
+        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
 
         error[i] = iteration_error
    
