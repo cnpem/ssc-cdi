@@ -66,4 +66,13 @@ def get_magnitude_error(diffractions_patterns,wavefronts,inputs):
     return error_numerator/error_denominator 
 
 
-
+def apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel):
+    if distance_focus_sample == 0:
+        probe_modes = probe_modes*probe_support
+    else:
+        for i, mode in enumerate(probe_modes): # propagate each mode back to focus
+            probe_modes[i] = fresnel_propagator_cone_beam(mode,wavelength,obj_pixel,-distance_focus_sample)
+        probe_modes = probe_modes*probe_support
+        for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
+            probe_modes[i] = fresnel_propagator_cone_beam(mode,wavelength,obj_pixel,distance_focus_sample)
+    return probe_modes

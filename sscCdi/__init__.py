@@ -15,7 +15,7 @@ from .lib.ssccommons_wrapper import (
 )
 log_start(project="sscCdi",
           version=__version__,
-          level="debug",
+          level="error",
           telem_key=__telem__)
 atexit.register(log_stop)
 
@@ -23,5 +23,5 @@ from .cditypes import *
 from .processing import *
 from .ptycho import *
 from .misc import *
-from .jupyter import *
+from .beamlines.gui_jupyter import *
 from .beamlines import *

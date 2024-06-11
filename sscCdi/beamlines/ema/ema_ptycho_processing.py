@@ -3,8 +3,8 @@ import h5py, os
 
 
 """ sscCdi relative imports"""
-from ...ptycho.ptychography import call_GB_ptychography, set_object_shape, set_object_pixel_size, call_ptychography
-from ...misc import add_to_hdf5_group, wavelength_from_energy
+from ...ptycho.ptychography import set_object_shape, set_object_pixel_size, call_ptychography
+from ...misc import add_to_hdf5_group
 
 def ema_ptychography(input_dict,DPs):
     """Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
@@ -28,12 +28,13 @@ def ema_ptychography(input_dict,DPs):
 
     probe_positions = read_ema_probe_positions(input_dict,DPs.shape)
 
-    input_dict = set_object_shape(input_dict,DPs.shape,probe_positions) # add object shape to input_dict
+    input_dict["object_shape"] = set_object_shape(input_dict["object_padding"],DPs.shape,probe_positions) # add object shape to input_dict
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
+    add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
     if initial_probe:
         print("Second ptycho run")
         sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[0, :, :, :])
@@ -59,7 +60,7 @@ def define_paths(input_dict):
                 "temporary_output": location of temporary files
                 "energy": beamline energy
                 "detector_distance": detector distance
-                "restored_pixel_size": restored pixel size
+                "detector_pixel_size": restored pixel size
                 "detector_exposure": detector exposure
                 "datetime": string with time and date to name files
                 "hdf5_output": hdf5 output
@@ -82,7 +83,7 @@ def define_paths(input_dict):
     
     input_dict["energy"]               = data['entry/info_exp/Energy(KeV)'][()] # keV
     # input_dict["detector_distance"]    = data['entry/info_exp/dist(mm)'][()]*1e-3 # convert to meters
-    input_dict["restored_pixel_size"]  = data['entry/info_exp/pixel(um)'][()]*1e-6 # convert to meters 
+    input_dict["detector_pixel_size"]  = data['entry/info_exp/pixel(um)'][()]*1e-6 # convert to meters 
 
     data.close()
 

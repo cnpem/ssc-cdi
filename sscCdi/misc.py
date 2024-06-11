@@ -6,6 +6,17 @@ from ipywidgets import IntSlider, FloatRangeSlider, VBox, HBox, Dropdown, Checkb
 
 from . import log_event
 
+def create_image_from_text(text):
+    from matplotlib.backends.backend_agg import FigureCanvas
+    fig = plt.Figure(figsize=(2.56, 2.56), dpi=200)
+    canvas = FigureCanvas(fig)
+    ax = fig.subplots()
+    t = ax.text(0.5, 0.5, text, fontsize=30, fontweight='heavy', ha='center', va='center')
+    ax.axis('off')
+    canvas.draw()
+    img = 1- np.array(canvas.renderer.buffer_rgba())[:, :, 0]/255
+    return img
+
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
 
@@ -41,7 +52,7 @@ def miqueles_colormap(img):
 
     return cmap, colors, bounds, norm
 
-def plotshow_cmap2(image,title=None,figsize=(20,20),savepath=None,show=False):
+def plotshow_miqueles(image,title=None,figsize=(20,20),savepath=None,show=False):
     """ Function to plot and save figures using Miquele's colormap
 
     Args:
@@ -158,7 +169,7 @@ def save_json_logfile(input_dict):
     file.write(json_string)
     file.close()
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'log','logfile',filepath)
+    add_to_hdf5_group(input_dict["hdf5_output"],'metadata','logfile',filepath)
 
 def save_json_logfile_tomo(input_dict):
     """Save a copy of the json input file with datetime at the filename
@@ -247,7 +258,7 @@ def export_json(params,output_path):
     json.dump(export,out_file)
     return 0
 
-def wavelength_from_energy(energy_keV):
+def wavelength_meters_from_energy_keV(energy_keV):
     """ Calculate wavelenth from energy
 
     Args:
@@ -298,17 +309,10 @@ def estimate_memory_usage(*args):
     Gibytes = bytes/1024/1024/1024
     return (bytes,kbytes,Mbytes,Gbytes,kibytes,Mibytes,Gibytes)
 
-def get_RGB_wheel():
-    import matplotlib
-    V, H = np.mgrid[0:1:100j, 0:1:300j]
-    S = np.ones_like(V)
-    HSV = np.dstack((H,S,V))
-    RGB = matplotlib.colors.hsv_to_rgb(HSV)
-    return RGB, H, S, V
+
     
 def save_plots(complex_array,title='',path=''):
 
-    from sscMisc import convert_complex_to_RGB
     complex_array = np.squeeze(complex_array)
 
     data_rgb = convert_complex_to_RGB(complex_array)
@@ -431,7 +435,7 @@ def save_volume_from_parts(input_dict):
     print("Combining and saving errors into single file...")
     errors = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="error.npy")[0]
     errors = combine_volume(*errors)
-    save_variable(input_dict,errors,name='error',group='log')
+    save_variable(input_dict,errors,name='error',group='metada')
 
     corrected_positions = list_files_in_folder(input_dict["temporary_output_recons"],look_for_extension="corrected_positions.npy")[0]
     if len(corrected_positions) > 0:
@@ -534,59 +538,111 @@ def slice_visualizer(data,axis=0,type='',title='',cmap='viridis',aspect_ratio='a
 
     return box
 
-def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
+def slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
+    """
+    data (ndarray): complex valued data
+    pixel_values (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
+    axis (int): slice direction
+    extent (tuple): extent of the images in the format (xmin, xmax, ymin, ymax)
+    """
 
     import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import matplotlib.colors as colors
+    import matplotlib.cm
 
     import ipywidgets as widgets
     from ipywidgets import fixed
-    
-    def update_imshow(volume,figure,ax1,ax2,frame_number,axis=0,cmap='jet',aspect_ratio=''):
-        
-        ax1.clear()
-        ax2.clear()        
-        
-        if cmap=='gray':
-            cmap1, cmap2 = 'gray', 'gray'
-        else:
-            cmap1, cmap2 = 'viridis', 'hsv'
 
-        if axis == 0:
-            ax11 = ax1.imshow(np.abs(volume[frame_number,:,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[frame_number,:,:]),cmap=cmap2)
-        elif axis == 1:
-            ax11 = ax1.imshow(np.abs(volume[:,frame_number,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[:,frame_number,:]),cmap=cmap2)
-        elif axis == 2:
-            ax11 = ax1.imshow(np.abs(volume[:,:,frame_number]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[:,:frame_number]),cmap=cmap2)
-            
-        ax11.set_title(f'Magnitude')
-        ax22.set_title(f'Phase') 
+    def get_vol_slice(volume, axis, frame):
+        selection = [slice(None)] * 3
+        selection[axis] = frame
+        frame_data = volume[tuple(selection)]
+        return frame_data
+
+    def get_colornorm(frame, vmin, vmax, norm):
+        if norm is None:
+            return None
+        elif norm == "normalize":
+            if vmin is not None or vmax is not None:
+                return colors.Normalize(vmin=vmin, vmax=vmax)
+            else:
+                return colors.Normalize(vmin=frame.min(), vmax=frame.max())
+        elif norm == "LogNorm":
+            return colors.LogNorm()
+        else:
+            raise ValueError("Invalid norm value: {}".format(norm))
+
+    def draw_rectangle(ax, pixel_values):
+        y_min, y_max = pixel_values[:, 0].min(), pixel_values[:, 0].max()
+        x_min, x_max = pixel_values[:, 1].min(), pixel_values[:, 1].max()
+        rect = patches.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=2, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+    output = widgets.Output()
+    with output:
+        volume_slice_amplitude = np.abs(get_vol_slice(data, axis, 0))
+        volume_slice_phase = np.angle(get_vol_slice(data, axis, 0))
+
+        figure, (ax1, ax2) = plt.subplots(1, 2, dpi=100, figsize=(10, 5))
+
+        im1 = ax1.imshow(volume_slice_amplitude, cmap=cmap1, norm=get_colornorm(volume_slice_amplitude, vmin, vmax, norm), extent=extent)
+        ax1.set_title('Amplitude')
+        cbar1 = figure.colorbar(im1, ax=ax1, format='%.2e')
+        draw_rectangle(ax1, pixel_values)
+
+        im2 = ax2.imshow(volume_slice_phase, cmap=cmap2, norm=get_colornorm(volume_slice_phase, vmin, vmax, norm), extent=extent)
+        ax2.set_title('Phase')
+        cbar2 = figure.colorbar(im2, ax=ax2, format='%.2e')
+        draw_rectangle(ax2, pixel_values)
+
+        figure.canvas.draw_idle()
+        plt.show()
+
+    def update_imshow(frame_number, axis=0, cmap1='viridis', cmap2='hsv', aspect_ratio='auto', norm=None, extent=None):
+        nonlocal im1, im2, cbar1, cbar2
+
+        ax1.clear()
+        ax2.clear()
+
+        volume_slice_amplitude = np.abs(get_vol_slice(data, axis, frame_number))
+        volume_slice_phase = np.angle(get_vol_slice(data, axis, frame_number))
+
+        im1 = ax1.imshow(volume_slice_amplitude, cmap=cmap1, norm=get_colornorm(volume_slice_amplitude, vmin, vmax, norm), extent=extent)
+        ax1.set_title('Amplitude')
+        draw_rectangle(ax1, pixel_values)
+
+        im2 = ax2.imshow(volume_slice_phase, cmap=cmap2, norm=get_colornorm(volume_slice_phase, vmin, vmax, norm), extent=extent)
+        ax2.set_title('Phase')
+        draw_rectangle(ax2, pixel_values)
+
+        # Update the colorbars
+        cbar1.update_normal(im1)
+        cbar2.update_normal(im2)
+
         figure.canvas.draw_idle()
 
         if aspect_ratio != '':
             ax1.set_aspect(aspect_ratio)
             ax2.set_aspect(aspect_ratio)
 
-    output = widgets.Output()
-    
-    with output:
-        figure, (ax1,ax2) = plt.subplots(1,2,figsize=(10,5),dpi=100)
-        ax1.imshow(np.abs(data[0,:,:]),cmap='viridis')
-        ax2.imshow(np.angle(data[0,:,:]),cmap='hsv')
-        figure.canvas.draw_idle()
-        figure.canvas.header_visible = False
-        plt.show()   
+    slider_layout = widgets.Layout(width='50%')
+    selection_slider = widgets.IntSlider(min=0, max=data.shape[axis] - 1, step=1, description="Slice", value=data.shape[axis] // 2, layout=slider_layout)
 
-    slider_layout = widgets.Layout(width='25%')
-    selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
+    interactive_output = widgets.interactive_output(update_imshow, {
+        'frame_number': selection_slider,
+        'axis': fixed(axis),
+        'cmap1': fixed(cmap1),
+        'cmap2': fixed(cmap2),
+        'aspect_ratio': fixed(aspect_ratio),
+        'norm': fixed(norm),
+        'extent': fixed(extent)
+    })
 
-    selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'volume':fixed(data),'figure':fixed(figure),'ax1':fixed(ax1),'ax2':fixed(ax2),'axis':fixed(axis), 'cmap':fixed(cmap),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
-    box = widgets.VBox([selection_slider,output])
+    box = widgets.VBox([selection_slider, output])
     return box
+
 
 def plot_probe_modes(probe,contrast='phase',frame=0):
     if contrast == 'phase':
@@ -614,6 +670,12 @@ def plot_volume_histogram(volume,bins=100):
 
 
 def convert_complex_to_RGB(ComplexImg,bias=0.01):
+    """ Convert complex image into RGB image with amplitude encoded by intensity and phase encoded by color
+
+    Args:
+        ComplexImg (array): 2d complex array
+        bias (float, optional): _description_. Defaults to 0.01.
+    """    
         
     def MakeRGB(Amps,Phases,bias=0): 	# Make RGB image from amplitude and phase
         from matplotlib.colors import hsv_to_rgb
@@ -634,16 +696,13 @@ def convert_complex_to_RGB(ComplexImg,bias=0.01):
     Amps,Phases = SplitComplex(ComplexImg)
     return MakeRGB(Amps,Phases,bias)
 
-def create_image_from_text(text):
-    from matplotlib.backends.backend_agg import FigureCanvas
-    fig = plt.Figure(figsize=(2.56, 2.56), dpi=200)
-    canvas = FigureCanvas(fig)
-    ax = fig.subplots()
-    t = ax.text(0.5, 0.5, text, fontsize=30, fontweight='heavy', ha='center', va='center')
-    ax.axis('off')
-    canvas.draw()
-    img = 1- np.array(canvas.renderer.buffer_rgba())[:, :, 0]/255
-    return img
+def get_RGB_wheel():
+    import matplotlib
+    V, H = np.mgrid[0:1:100j, 0:1:300j]
+    S = np.ones_like(V)
+    HSV = np.dstack((H,S,V))
+    RGB = matplotlib.colors.hsv_to_rgb(HSV)
+    return RGB, H, S, V
 
 def save_as_hdf5(filepath,data,tag='data'):
     with h5py.File(filepath,'a') as h5file:
