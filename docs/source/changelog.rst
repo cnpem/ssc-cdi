@@ -13,6 +13,27 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.9.6] - 2024-05-29
+--------------------
+
+Changed
+~~~~~
+- Added optional input to cat_restoration, to choose the scaling parameter for the PIMEGA detector.
+
+
+[0.9.5] - 2024-05-29
+--------------------
+
+Added
+~~~~~
+- Added simple interactive function in misc for selecting equalization mask
+- Added equalization by gradient descent method
+
+Changed
+~~~~~
+- Refactored tomo processing functions, mostly changing the calls from a dic input to a direct input call
+
+
 [0.9.4] - 2024-05-16
 --------------------
 
