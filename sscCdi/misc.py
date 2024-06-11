@@ -528,59 +528,111 @@ def deploy_visualizer(data,axis=0,type='',title='',cmap='jet',aspect_ratio='',no
 
     return box
 
-def visualize_magnitude_and_phase(data,axis=0,cmap='jet',aspect_ratio=''):
+def slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
+    """
+    data (ndarray): complex valued data
+    pixel_values (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
+    axis (int): slice direction
+    extent (tuple): extent of the images in the format (xmin, xmax, ymin, ymax)
+    """
 
     import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    import matplotlib.colors as colors
+    import matplotlib.cm
 
     import ipywidgets as widgets
     from ipywidgets import fixed
-    
-    def update_imshow(volume,figure,ax1,ax2,frame_number,axis=0,cmap='jet',aspect_ratio=''):
-        
-        ax1.clear()
-        ax2.clear()        
-        
-        if cmap=='gray':
-            cmap1, cmap2 = 'gray', 'gray'
-        else:
-            cmap1, cmap2 = 'viridis', 'hsv'
 
-        if axis == 0:
-            ax11 = ax1.imshow(np.abs(volume[frame_number,:,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[frame_number,:,:]),cmap=cmap2)
-        elif axis == 1:
-            ax11 = ax1.imshow(np.abs(volume[:,frame_number,:]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[:,frame_number,:]),cmap=cmap2)
-        elif axis == 2:
-            ax11 = ax1.imshow(np.abs(volume[:,:,frame_number]),cmap=cmap1)
-            ax22 = ax2.imshow(np.angle(volume[:,:frame_number]),cmap=cmap2)
-            
-        ax11.set_title(f'Magnitude')
-        ax22.set_title(f'Phase') 
+    def get_vol_slice(volume, axis, frame):
+        selection = [slice(None)] * 3
+        selection[axis] = frame
+        frame_data = volume[tuple(selection)]
+        return frame_data
+
+    def get_colornorm(frame, vmin, vmax, norm):
+        if norm is None:
+            return None
+        elif norm == "normalize":
+            if vmin is not None or vmax is not None:
+                return colors.Normalize(vmin=vmin, vmax=vmax)
+            else:
+                return colors.Normalize(vmin=frame.min(), vmax=frame.max())
+        elif norm == "LogNorm":
+            return colors.LogNorm()
+        else:
+            raise ValueError("Invalid norm value: {}".format(norm))
+
+    def draw_rectangle(ax, pixel_values):
+        y_min, y_max = pixel_values[:, 0].min(), pixel_values[:, 0].max()
+        x_min, x_max = pixel_values[:, 1].min(), pixel_values[:, 1].max()
+        rect = patches.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=2, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+    output = widgets.Output()
+    with output:
+        volume_slice_amplitude = np.abs(get_vol_slice(data, axis, 0))
+        volume_slice_phase = np.angle(get_vol_slice(data, axis, 0))
+
+        figure, (ax1, ax2) = plt.subplots(1, 2, dpi=100, figsize=(10, 5))
+
+        im1 = ax1.imshow(volume_slice_amplitude, cmap=cmap1, norm=get_colornorm(volume_slice_amplitude, vmin, vmax, norm), extent=extent)
+        ax1.set_title('Amplitude')
+        cbar1 = figure.colorbar(im1, ax=ax1, format='%.2e')
+        draw_rectangle(ax1, pixel_values)
+
+        im2 = ax2.imshow(volume_slice_phase, cmap=cmap2, norm=get_colornorm(volume_slice_phase, vmin, vmax, norm), extent=extent)
+        ax2.set_title('Phase')
+        cbar2 = figure.colorbar(im2, ax=ax2, format='%.2e')
+        draw_rectangle(ax2, pixel_values)
+
+        figure.canvas.draw_idle()
+        plt.show()
+
+    def update_imshow(frame_number, axis=0, cmap1='viridis', cmap2='hsv', aspect_ratio='auto', norm=None, extent=None):
+        nonlocal im1, im2, cbar1, cbar2
+
+        ax1.clear()
+        ax2.clear()
+
+        volume_slice_amplitude = np.abs(get_vol_slice(data, axis, frame_number))
+        volume_slice_phase = np.angle(get_vol_slice(data, axis, frame_number))
+
+        im1 = ax1.imshow(volume_slice_amplitude, cmap=cmap1, norm=get_colornorm(volume_slice_amplitude, vmin, vmax, norm), extent=extent)
+        ax1.set_title('Amplitude')
+        draw_rectangle(ax1, pixel_values)
+
+        im2 = ax2.imshow(volume_slice_phase, cmap=cmap2, norm=get_colornorm(volume_slice_phase, vmin, vmax, norm), extent=extent)
+        ax2.set_title('Phase')
+        draw_rectangle(ax2, pixel_values)
+
+        # Update the colorbars
+        cbar1.update_normal(im1)
+        cbar2.update_normal(im2)
+
         figure.canvas.draw_idle()
 
         if aspect_ratio != '':
             ax1.set_aspect(aspect_ratio)
             ax2.set_aspect(aspect_ratio)
 
-    output = widgets.Output()
-    
-    with output:
-        figure, (ax1,ax2) = plt.subplots(1,2,figsize=(10,5),dpi=100)
-        ax1.imshow(np.abs(data[0,:,:]),cmap='viridis')
-        ax2.imshow(np.angle(data[0,:,:]),cmap='hsv')
-        figure.canvas.draw_idle()
-        figure.canvas.header_visible = False
-        plt.show()   
+    slider_layout = widgets.Layout(width='50%')
+    selection_slider = widgets.IntSlider(min=0, max=data.shape[axis] - 1, step=1, description="Slice", value=data.shape[axis] // 2, layout=slider_layout)
 
-    slider_layout = widgets.Layout(width='25%')
-    selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
+    interactive_output = widgets.interactive_output(update_imshow, {
+        'frame_number': selection_slider,
+        'axis': fixed(axis),
+        'cmap1': fixed(cmap1),
+        'cmap2': fixed(cmap2),
+        'aspect_ratio': fixed(aspect_ratio),
+        'norm': fixed(norm),
+        'extent': fixed(extent)
+    })
 
-    selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'volume':fixed(data),'figure':fixed(figure),'ax1':fixed(ax1),'ax2':fixed(ax2),'axis':fixed(axis), 'cmap':fixed(cmap),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})    
-    box = widgets.VBox([selection_slider,output])
+    box = widgets.VBox([selection_slider, output])
     return box
+
 
 def plot_probe_modes(probe,contrast='phase',frame=0):
     if contrast == 'phase':
@@ -696,3 +748,6 @@ def create_propagation_video(path_to_probefile,
             clip.write_gif('propagation.gif', fps=frame_rate)
 
     return image_list, f1 
+
+
+    
