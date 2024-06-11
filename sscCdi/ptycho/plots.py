@@ -6,43 +6,6 @@ import numpy as np
 from ..misc import convert_complex_to_RGB
 
 
-def plot_ptycho_scan_points_and_error(positions,error,pixel_size=None):
-
-    fig, ax = plt.subplots(1,2,figsize=(8,8))
-    ax[0].set_title('Scan points')
-    if pixel_size is None:
-        ax[0].set_ylabel('Y [pxls]')
-        ax[0].set_xlabel('X [pxls]')
-
-    else:
-        ax[0].set_ylabel('Y [m]')
-        ax[0].set_xlabel('X [m]')
-        
-        from matplotlib.ticker import ScalarFormatter
-        ax[0].yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-        ax[0].xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
-        ax[0].ticklabel_format(axis='both', style='sci', scilimits=(0, 0))
-    ax[0].grid()
-    ax[0].set_aspect(1)
-
-    
-    if pixel_size is None:
-        pixel_size = 1
-    else:
-        pass
-    
-    positions = positions*pixel_size
-    ax[0].plot(positions[:,0],positions[:,1],'o-',color='gray')
-    
-    
-    ax[1].plot(error,'.-',color='black')
-    ax[1].grid()
-    ax[1].set_xlabel('iteration')
-    ax[1].set_ylabel('error')
-    
-    plt.show()
-
-
 def plot_ptycho_scan_points(positions,pixel_size=None):
 
     fig, ax = plt.subplots(figsize=(8,8))
@@ -74,6 +37,10 @@ def plot_ptycho_scan_points(positions,pixel_size=None):
 
 
 def plot_ptycho_corrected_scan_points(positions, positions2, pixel_size=None):
+
+    if positions2 is None:
+        positions2 = positions
+
     fig, ax = plt.subplots(figsize=(8,8))
     ax.set_title('Scan points')
     if pixel_size is None:
@@ -183,8 +150,7 @@ def plot_iteration_error(error):
     ax.set_ylabel('error')
 
 
-
-def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
+def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='viridis', cmap2='viridis', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
     """
     data (ndarray): complex valued data
     positions (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
