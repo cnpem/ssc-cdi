@@ -4,7 +4,7 @@ import h5py, os
 
 """ sscCdi relative imports"""
 from ...ptycho.ptychography import set_object_shape, set_object_pixel_size, call_ptychography
-from ...misc import add_to_hdf5_group
+from ...misc import add_to_hdf5_group, wavelength_meters_from_energy_keV
 
 def ema_ptychography(input_dict,DPs):
     """Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
@@ -24,7 +24,7 @@ def ema_ptychography(input_dict,DPs):
     """    
 
     # defining flag for initial probe from previous ptycho
-    initial_probe = input_dict["probe_from_previous"]
+    # initial_probe = input_dict["probe_from_previous"]
 
     probe_positions = read_ema_probe_positions(input_dict,DPs.shape)
 
@@ -34,12 +34,12 @@ def ema_ptychography(input_dict,DPs):
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
     sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions)
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
-    if initial_probe:
-        print("Second ptycho run")
-        sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[0, :, :, :])
+    # add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
+    # if initial_probe:
+    #     print("Second ptycho run")
+    #     sinogram[0, :, :], probes[0, :, :, :], error, _ = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[0, :, :, :])
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
+    # add_to_hdf5_group(input_dict["hdf5_output"],'log','error',np.array(error))
 
     return sinogram, probes, input_dict
 
@@ -125,6 +125,10 @@ def read_ema_probe_positions(input_dict,sinogram_shape):
     Returns:
         positions_pixels (array): array with probe positions in pixels
     """    
+
+    if "wavenlegnth" not in input_dict:
+        input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
+    
     positions_mm = read_position_metadata(input_dict)
     input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
     positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
