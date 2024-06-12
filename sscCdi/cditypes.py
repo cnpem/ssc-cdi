@@ -79,15 +79,16 @@ except Exception as e:
     # pass
 
 
-def ctypes_array(c: np.ndarray) -> Tuple[c_void_p, list[c_int]]:
-    cptr = np.ascontiguousarray(c).ctypes.data_as(c_void_p)
+def ctypes_array(c: np.ndarray) -> Tuple[np.ndarray, c_void_p, list[c_int]]:
+    contiguous_array = np.ascontiguousarray(c)
+    cptr = contiguous_array.ctypes.data_as(c_void_p)
     cshape = [c_int(d) for d in c.shape]
-    return cptr, cshape
+    return contiguous_array, cptr, cshape
 
 
 def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[c_void_p, list[c_int]]:
     if c is None:
-        return c_void_p(0), [c_int(0)]
+        return c_void_p(0), c_void_p(0), [c_int(0)]
     return ctypes_array(c)
 
 
@@ -183,23 +184,23 @@ def PIE(obj: np.ndarray,
 
         """
 
-    objptr, (osizey, osizex) = ctypes_array(obj)
+    obj, objptr, (osizey, osizex) = ctypes_array(obj)
     probeptr, (psizez, _, psizex) = ctypes_array(probe)
 
-    difpadsptr, (*_, dsizex) = ctypes_array(difpads)
+    difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
     rois = sanitize_rois(rois, obj, difpads, probe)
-    roisptr, (numrois, *_) = ctypes_array(rois)
+    rois, roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
         np.asarray(params['device']).astype(np.int32))
-    devicesptr, (ndevices, ) = ctypes_array(devices)
+    devices, devicesptr, (ndevices, ) = ctypes_array(devices)
 
     rfactor = np.zeros(iterations, dtype=np.float32)
-    rfactorptr, _ = ctypes_array(rfactor)
+    rfactor, rfactorptr, _ = ctypes_array(rfactor)
 
     sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmaskptr, _ = ctypes_array(sigmask)
+    sigmask, sigmaskptr, _ = ctypes_array(sigmask)
 
     time0 = time()
 
@@ -290,30 +291,30 @@ def RAAR(obj: np.ndarray,
 
         """
 
-    objptr, (osizey, osizex) = ctypes_array(obj)
-    probeptr, (psizez, _, psizex) = ctypes_array(probe)
-    difpadsptr, (*_, dsizex) = ctypes_array(difpads)
+    obj,objptr, (osizey, osizex) = ctypes_array(obj)
+    probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
+    difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
     rois = sanitize_rois(rois, obj, difpads, probe)
-    roisptr, (numrois, *_) = ctypes_array(rois)
+    rois,roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
         np.asarray(params['device']).astype(np.int32))
-    devicesptr, (ndevices, ) = ctypes_array(devices)
+    devices,devicesptr, (ndevices, ) = ctypes_array(devices)
 
     rfactor = np.zeros(iterations, dtype=np.float32)
-    rfactorptr, _ = ctypes_array(rfactor)
+    rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
     sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmaskptr, _ = ctypes_array(sigmask)
+    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
 
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
 
-    probesuppptr, _ = ctypes_opt_array(probesupp)
-    objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
-    bkgptr, _ = ctypes_opt_array(bkg)
+    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
     # if objsupp is not None:
     # assert (objsupp.size >= obj.size)
@@ -414,30 +415,30 @@ def AP(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
-    objptr, (osizey, osizex) = ctypes_array(obj)
-    probeptr, (psizez, _, psizex) = ctypes_array(probe)
-    difpadsptr, (*_, dsizex) = ctypes_array(difpads)
+    obj,objptr, (osizey, osizex) = ctypes_array(obj)
+    probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
+    difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
     rois = sanitize_rois(rois, obj, difpads, probe)
-    roisptr, (numrois, *_) = ctypes_array(rois)
+    rois,roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
         np.asarray(params['device']).astype(np.int32))
-    devicesptr, (ndevices, ) = ctypes_array(devices)
+    devices,devicesptr, (ndevices, ) = ctypes_array(devices)
 
     rfactor = np.zeros(iterations, dtype=np.float32)
-    rfactorptr, _ = ctypes_array(rfactor)
+    rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
     sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmaskptr, _ = ctypes_array(sigmask)
+    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
 
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
 
-    probesuppptr, _ = ctypes_opt_array(probesupp)
-    objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
-    bkgptr, _ = ctypes_opt_array(bkg)
+    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
     libcdi.glcall(objptr, probeptr, difpadsptr, psizex, osizex,
                   osizey, dsizex, roisptr, numrois, c_int(batch),
@@ -525,30 +526,30 @@ def PosCorrection(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
-    objptr, (osizey, osizex) = ctypes_array(obj)
-    probeptr, (psizez, _, psizex) = ctypes_array(probe)
-    difpadsptr, (*_, dsizex) = ctypes_array(difpads)
+    obj,objptr, (osizey, osizex) = ctypes_array(obj)
+    probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
+    difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
     rois = sanitize_rois(rois, obj, difpads, probe)
-    roisptr, (numrois, *_) = ctypes_array(rois)
+    rois,roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
         np.asarray(params['device']).astype(np.int32))
-    devicesptr, (ndevices, ) = ctypes_array(devices)
+    devices,devicesptr, (ndevices, ) = ctypes_array(devices)
 
     rfactor = np.zeros(iterations, dtype=np.float32)
-    rfactorptr, _ = ctypes_array(rfactor)
+    rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
     sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmaskptr, _ = ctypes_array(sigmask)
+    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
 
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
 
-    probesuppptr, _ = ctypes_opt_array(probesupp)
-    objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
-    bkgptr, _ = ctypes_opt_array(bkg)
+    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
     libcdi.poscorrcall(objptr, probeptr, difpadsptr, psizex, osizex,
                        osizey, dsizex, roisptr, numrois, c_int(batch),
