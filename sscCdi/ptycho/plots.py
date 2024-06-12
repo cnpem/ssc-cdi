@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+import matplotlib.patches as patches
+import matplotlib.colors as colors
 
 import numpy as np
 
@@ -105,7 +107,7 @@ def plot_probe_modes(probe,extent=None):
     
     N, Y, X = probe.shape  # N modes
     
-    fig = plt.figure(figsize=(15, 8))
+    fig = plt.figure(figsize=(20+N, 7+N))
     gs = plt.GridSpec(1, N + 1, width_ratios=[1] + [9] * N)
 
     # Plot the color map on the left
@@ -128,6 +130,8 @@ def plot_probe_modes(probe,extent=None):
     ax_cbar.set_ylabel('Amplitude')
     ax_cbar.set_title('')
 
+    ax_cbar.set_aspect((X / Y) * 9)
+
     for i in range(N):
         rgb_probe = convert_complex_to_RGB(probe[i], bias=0.01)
         
@@ -143,7 +147,7 @@ def plot_probe_modes(probe,extent=None):
         ax_main.set_title(f'Mode {i+1}')
 
     plt.tight_layout()
-    plt.show()    
+    plt.show()  
 
 
 def get_plot_extent_from_positions(positions):
@@ -314,3 +318,77 @@ def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='virid
 
     box = widgets.VBox([selection_slider, output])
     return box
+
+
+
+def plot_amplitude_and_phase(data, positions=None, title='', cmap1='viridis', cmap2='viridis', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
+    """
+    data (ndarray): 2D complex valued data
+    positions (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
+    extent (tuple): extent of the images in the format (xmin, xmax, ymin, ymax)
+    """
+
+    def get_colornorm(frame, vmin, vmax, norm):
+        if norm is None:
+            return None
+        elif norm == "normalize":
+            if vmin is not None or vmax is not None:
+                return colors.Normalize(vmin=vmin, vmax=vmax)
+            else:
+                return colors.Normalize(vmin=frame.min(), vmax=frame.max())
+        elif norm == "LogNorm":
+            return colors.LogNorm()
+        else:
+            raise ValueError("Invalid norm value: {}".format(norm))
+
+    def draw_rectangle(ax, x_min, x_max, y_min, y_max):
+        rect = patches.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=1, edgecolor='r', facecolor='none')
+        ax.add_patch(rect)
+
+    if positions is not None:
+        y_min, y_max = positions[:, 0].min(), positions[:, 0].max()
+        x_min, x_max = positions[:, 1].min(), positions[:, 1].max()
+
+        if extent is not None:
+            ymin_extent, ymax_extent = extent[2], extent[3]
+            xmin_extent, xmax_extent = extent[0], extent[1]
+            pixel_size_y = (ymax_extent - ymin_extent) / data.shape[0]
+            pixel_size_x = (xmax_extent - xmin_extent) / data.shape[1]
+
+            y_min = ymin_extent + y_min * pixel_size_y
+            y_max = ymin_extent + y_max * pixel_size_y
+            x_min = xmin_extent + x_min * pixel_size_x
+            x_max = xmin_extent + x_max * pixel_size_x
+
+    amplitude = np.abs(data)
+    phase = np.angle(data)
+
+    figure, (ax1, ax2) = plt.subplots(1, 2, dpi=100, figsize=(15, 7))
+
+    im1 = ax1.imshow(amplitude, cmap=cmap1, norm=get_colornorm(amplitude, vmin, vmax, norm), extent=extent, origin='lower')
+    ax1.set_title('Amplitude')
+    if extent is None:
+        ax1.set_ylabel('Y [pxls]')
+        ax1.set_xlabel('X [pxls]')
+    else:
+        ax1.set_ylabel('Y [m]')
+        ax1.set_xlabel('X [m]')
+    cbar1 = figure.colorbar(im1, ax=ax1, format='%.2e')
+    if positions is not None:
+        draw_rectangle(ax1, x_min, x_max, y_min, y_max)
+
+    im2 = ax2.imshow(phase, cmap=cmap2, norm=get_colornorm(phase, vmin, vmax, norm), extent=extent, origin='lower')
+    ax2.set_title('Phase')
+    if extent is None:
+        ax2.set_ylabel('Y [pxls]')
+        ax2.set_xlabel('X [pxls]')
+    else:
+        ax2.set_ylabel('Y [m]')
+        ax2.set_xlabel('X [m]')
+    cbar2 = figure.colorbar(im2, ax=ax2, format='%.2e')
+    if positions is not None:
+        draw_rectangle(ax2, x_min, x_max, y_min, y_max)
+
+    plt.suptitle(title)
+    plt.tight_layout()
+    plt.show()

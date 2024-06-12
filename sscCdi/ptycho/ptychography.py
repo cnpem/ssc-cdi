@@ -8,7 +8,7 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
-from .plots import plot_ptycho_scan_points
+from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions
 
 from .. import log_event
 
@@ -180,6 +180,8 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     obj, probe, error, positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
+    plot_iteration_error(error)
+
     save_recon_output_h5_file(input_dict, obj, probe, positions, error)
 
     return obj, probe, positions, input_dict, error
@@ -256,7 +258,7 @@ def save_recon_output_h5_file(input_dict, obj, probe, positions, error):
 
     h5file.close()
 
-def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     
     if initial_probe is None:
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
@@ -265,6 +267,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     if initial_obj is None:
         initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
     obj = initial_obj
+
+    print('Plotting initial guesses...')
+    plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+    plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
 
     positions = positions.astype(np.int32)
     probe_positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
