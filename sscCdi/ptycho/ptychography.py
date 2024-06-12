@@ -8,14 +8,14 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
-from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions
+from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support
 
 from .. import log_event
 
 random.seed(0)
 
 @log_event
-def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
+def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     """ Call Ptychography algorithms. Options are:
 
         - RAAR_python: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
@@ -174,14 +174,15 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
 
-    plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
+    if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
 
     create_output_h5_file(input_dict)
 
-    obj, probe, error, positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+    obj, probe, error, positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
-    plot_iteration_error(error)
+    if plot: plot_iteration_error(error)
 
+    print('Saving output hdf5 file...')
     save_recon_output_h5_file(input_dict, obj, probe, positions, error)
 
     return obj, probe, positions, input_dict, error
@@ -269,16 +270,18 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     obj = initial_obj
 
     print('Plotting initial guesses...')
-    plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
-    plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+    if plot: plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+    if plot: plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
 
-    positions = positions.astype(np.int32)
-    probe_positions = np.roll(positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
+    probe_positions = positions.astype(np.int32)
+    probe_positions = np.roll(probe_positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
 
     if 'probe_support' in input_dict:
         input_dict["probe_support"] = get_probe_support(input_dict,probe.shape)
     else:
         input_dict["probe_support"] = np.ones_like(DPs[0])
+
+    if plot: plot_probe_support(input_dict["probe_support"][0],extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
     datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
 
