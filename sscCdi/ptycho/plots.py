@@ -134,12 +134,31 @@ def plot_probe_modes(probe,extent=None):
         ax_main = fig.add_subplot(gs[0, i + 1])
         
         im = ax_main.imshow(rgb_probe,extent=extent)
-        ax_main.axis('off')  # Hide axes for the main plot
+        if extent is None:
+            ax_main.set_ylabel('Y [pxls]')
+            ax_main.set_xlabel('X [pxls]')
+        else:
+            ax_main.set_ylabel('Y [m]')
+            ax_main.set_xlabel('X [m]')
         ax_main.set_title(f'Mode {i+1}')
 
     plt.tight_layout()
     plt.show()    
 
+
+def get_plot_extent_from_positions(positions):
+    y_min, y_max = positions[:, 0].min(), positions[:, 0].max()
+    x_min, x_max = positions[:, 1].min(), positions[:, 1].max()
+    return [x_min,x_max,y_min,y_max]
+
+def get_extent_from_pixel_size(array_shape,pixel_size):
+    sy, sx = array_shape
+    
+    x_min = (-sx//2)*pixel_size
+    x_max = (sx//2)*pixel_size
+    y_min = (-sy//2)*pixel_size
+    y_max = (sy//2)*pixel_size    
+    return [x_min,x_max,y_min,y_max] 
 
 def plot_iteration_error(error):
 

@@ -18,12 +18,12 @@ random.seed(0)
 def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography algorithms. Options are:
 
-        - RAAR_PYTHON: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
-        - ePIE_PYTHON: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
-        - RAAR_CUDA:   Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
-        - AP_CUDA:     Alternate Projections. Multi GPU, CUDA implementation
-        - AP_PC_CUDA:  Alternate Projections with Position Correction via Annealing method. Multi GPU, CUDA implementation
-        - ePIE_CUDA:   Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
+        - RAAR_python: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
+        - ePIE_python: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
+        - RAAR:   Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
+        - AP:     Alternate Projections. Multi GPU, CUDA implementation
+        - AP_PC:  Alternate Projections with Position Correction via Annealing method. Multi GPU, CUDA implementation
+        - ePIE:   Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
 
     Args:
         DPs (ndarray): diffraction data with shape (N,Y,X). N is the number of diffraction patterns.
@@ -33,67 +33,118 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
         input_dict (dict): dictionary of input required for Ptychography. Example below are:
            
             input_dict = {
-                'CPUs': 32,  # number of cpus to use for parallel execution    
+                "hdf5_output": './output.h5', # path to hdf5 file to contain all outputs
                 
-                'GPUs': [0], # list of numbers (e.g. [0,1,2]) containg the number of the GPU
-                
-                'position_rotation': 0, # angle in radians. Rotation angle between detector and probe transverse coordinates
-                
-                'object_padding': 50, # pixels. Number of pixels to add around the object matrix
-                
-                'incoherent_modes': 0, # int. Number of incoherent modes to use
-                
-                'probe_support': [ "circular", 300,0,0 ], # support to be applied to the probe matrix after probe update. Options are:
-                                                          # - ["circular",radius_pxls,center_y, center_x]; (0,0) is the center of the image
-                                                          # - [ "cross", cross_width, border_padding, center_width ]; all values in pixels
+                'CPUs': 32,  # number of cpus to use in parallel execution    
+                'GPUs': [0], # list of numbers (e.g. [0,1,2]) containg the number of the GPUs
 
+                "fresnel_regime": False, # only available for Python engines
+                
+                'energy': 6, # energy in keV
+                
+                'detector_distance': 13, # meters
+                
                 'distance_sample_focus': 0, # float. Distance in meters between sample and focus or pinhole. This distance is used to propagated the probe prior to application of the probe support. 
                 
-                "initial_obj": ["random"], # 2d array. Initial guess for the object. Options are:
-                                           # - path to .npy, 
-                                           # - path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                                           # - ["random"], random matrix with values between
-                                           # - ["constant"], constant matrix of 1s
+                'detector_pixel_size': 55e-6, # meters
+                
+                'binning': 1, # how many times to bin data. Must be even number. if 1, no binning occurs.
+                
+                'position_rotation': 0, # angle in radians. Rotation applied to the positions for correcting angle between detector and probe transverse coordinates
 
-                "initial_probe": ["inverse"], # 2d array. Initial guess for the probe. Options are:
-                                              # - path to .npy, 
-                                              # - path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                                              # - ["random"], random matrix with values between
-                                              # - ["constant"], constant matrix of 1s
-                                              # - ["inverse"], matrix of the Inverse Fourier Transform of the mean of DPs.
-                                              # - ["circular",radius,distance], circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method.
+                'object_padding': 0, # pixels. Number of pixels to add around the object matrix
 
-                'Algorithm1': {'Batch': 64,
-                                'Beta': 0.995,
-                                'Epsilon': 0.01,
-                                'Iterations': 70,
-                                'Name': 'RAAR',
-                                'ProbeCycles': 4,
-                                'TV': 0},
+                'incoherent_modes': 1, # int. Number of incoherent modes to use.
 
-                'Algorithm2': {'Batch': 64,
-                                'Epsilon': 0.01,
-                                'Iterations': 50,
-                                'Name': 'AP',
-                                'ObjBeta': 0.97,
-                                'ProbeBeta': 0.95,
-                                'TV': 0.0001},
+                'probe_support': {"type": "circular",  "radius": 300,  "center_y": 0, "center_x": 0} , # support to be applied to the probe matrix after probe update. Options are:
+                                                                                                    # - {"type": "circular",  "radius": 300,  "center_y": 0, "center_x": 0} (0,0) is the center of the image
+                                                                                                    # - {"type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0} 
+                                                                                                    # - {"type": "array",  "data": myArray}
 
-                'Algorithm2': {'Batch': 64,
-                                'Epsilon': 0.01,
-                                'Iterations': 50,
-                                'Name': 'positioncorrection',
-                                'ObjBeta': 0.97,
-                                'ProbeBeta': 0.95,
-                                'TV': 0.0001},
-                    
-                'Algorithm3': { 'Name': 'PIE',
-                                'Iterations': 100,
-                                'step_obj': 0.5,    # step size for object update
-                                'step_probe': 1,    # step size for probe update
-                                'reg_obj': 0.25,    # regularization for object update
-                                'reg_probe': 0.5,   # regularization for probe update
-                                'Batch':1}
+                
+                "initial_obj": {"obj": 'random'},     # 2d array. Initial guess for the object. Options are:
+                                                    # - {"obj": my2darray}, numpy array 
+                                                    # - {"obj": 'path/to/numpyFile.npy'}, path to .npy, 
+                                                    # - {"obj": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                                                    # - {"obj": 'random'}, random matrix with values between 0 and 1
+                                                    # - {"obj": 'constant'}, constant matrix of 1s
+
+                'initial_probe': { "probe": 'inverse'},   # 2d array. Initial guess for the probe. Options are:
+                                                    # - {"probe": my2darray}, numpy array 
+                                                    # - {"probe": 'path/to/numpyFile.npy'}, path to .npy, 
+                                                    # - {"probe": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                                                    # - {"probe": 'random'}, random matrix with values between 0 and 1
+                                                    # - {"probe": 'constant'}, constant matrix of 1s
+                                                    # - {"probe": 'inverse'}, matrix of the Inverse Fourier Transform of the mean of DPs.
+                                                    # - {"probe": 'circular', "radius": 100, "distance":0},  circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method 
+                
+
+            'algorithms': {
+                
+            '1': {'name': 'RAAR_python',
+                    'iterations': 50,
+                    'regularization_object': 0.01,
+                    'regularization_probe': 0.01,
+                    'step_object': 1.0,
+                    'step_probe': 1.0,
+                    },
+
+            '2': {'name': 'ePIE_python',
+                    'iterations': 20,
+                    'regularization_object': 0.25,
+                    'regularization_probe': 0.5,
+                    'step_object': 0.5,
+                    'step_probe': 1,
+                    'use_mPIE': False,
+                    'mPIE_friction_obj': 0.9,
+                    'mPIE_friction_probe': 0.99,
+                    'mPIE_momentum_counter': 10,
+                    },    
+                
+            '3': {'name':'RAAR',
+                'iterations': 100, 
+                'beta': 0.9,
+                'step_object': 1.0,
+                'step_probe': 1.0,   
+                'regularization_object': 0.01,
+                'regularization_probe': 0.01,
+                'momentum_obj': 0.0,
+                'momentum_probe': 0.0, 
+                'batch': 64
+                },   
+                
+            '4': {'name':'AP_PC',
+                'iterations': 100, 
+                'step_object': 0.9,
+                'step_probe': 0.9,      
+                'regularization_object': 0.001,
+                'regularization_probe': 0.001,
+                'momentum_obj': 0.5,
+                'momentum_probe': 0.5, 
+                'batch': 64,
+                },
+                
+            '5': {'name':'AP',
+                'iterations': 50, 
+                'step_object': 1.0,
+                'step_probe': 1.0,   
+                'regularization_object': 0.01,
+                'regularization_probe': 0.01,
+                'momentum_obj': 0.5,
+                'momentum_probe': 0.5, 
+                'batch': 64,
+                },   
+                
+            '6': {'name':'PIE',
+                'iterations': 50, 
+                'step_object': 1.0,
+                'step_probe': 1.0,   
+                'regularization_object': 0.5,
+                'regularization_probe': 0.5,
+                'momentum_obj': 0.5,
+                'momentum_probe': 0.5, 
+                'batch': 64,
+                }
             }
 
     Returns:
@@ -131,7 +182,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     save_recon_output_h5_file(input_dict, obj, probe, positions, error)
 
-    return obj, probe, error, positions
+    return obj, probe, positions, input_dict, error
 
 def check_shape_of_inputs(DPs,positions,initial_probe):
 
