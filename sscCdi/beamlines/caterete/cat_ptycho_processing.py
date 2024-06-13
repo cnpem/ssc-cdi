@@ -42,12 +42,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
     frame_index = input_dict["projections"]
     corrected_positions_list = []
 
-    # defining flag for multiple initial probe and/or objects from previous ptycho
-    run_again     = input_dict["mult_obj_probe"]["run_again"]
-    initial_obj   = input_dict["mult_obj_probe"]["mult_obj"]
-    initial_probe = input_dict["mult_obj_probe"]["mult_probe"]
-
-    if strategy == "serial":
+    if strategy == "serial": #TODO: implement second parallel strategy
 
         event_start("Read and reconstruct", {"num_of_files": len(filenames)})
 
@@ -112,36 +107,18 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
                 print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
 
-            run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
             event_stop()
 
             """ Call Ptychography """
-            if not run_ptycho:
-                print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
-                input_dict['ignored_scans'].append((folder_number,file_number))
-                sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-                probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                angle = np.array([file_number_index,1,angle,angle*180/np.pi])
-            else:
-                sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
+            print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
+            input_dict['ignored_scans'].append((folder_number,file_number))
+            sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
+            probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
+            angle = np.array([file_number_index,1,angle,angle*180/np.pi])
 
                 if corrected_positions is not None:
                     corrected_positions_list.append(corrected_positions[:,0,0:2])
                 angle = np.array([file_number_index,0,angle,angle*180/np.pi])
-
-            if run_again:
-                print("Second ptycho run")
-                if initial_obj and initial_probe:
-                    print("Running with multiple initial objects and probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_probe:
-                    print("Running with multiple initial probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_obj:
-                    print("Running with multiple initial objects")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
-                if corrected_positions is not None:
-                    corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
 
             """ Save single frame of object and probe to temporary folder"""
 
