@@ -94,7 +94,7 @@ def restoration_ptycho_CAT(input_dict):
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"], scale = input_dict["scale"]) # distance in milimeters
 
-    print(f'Restored pixel size: {geometry['pxlsize']}. Pixel size read from metadata: {input_dict["detector_pixel_size"]}. Make sure values are the values the same')
+    print(f'Restored pixel size: {geometry["pxlsize"]:.3f}. Pixel size read from metadata: {input_dict["detector_pixel_size"]:.3f}. Make sure values are the values the same')
 
     if input_dict["using_direct_beam"]:
         print("\t Using direct beam to find center: ",input_dict["DP_center"])
@@ -187,7 +187,7 @@ def restoration_CAT(input_dict,method = 'IO'):
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
             print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
-    print(f'Restored pixel size: {geometry['pxlsize']}. Pixel size read from metadata: {input_dict["detector_pixel_size"]}. Make sure values are the values the same')
+    print(f'Restored pixel size: {geometry["pxlsize"]:.3f}. Pixel size read from metadata: {input_dict["detector_pixel_size"]:.3f}. Make sure values are the values the same')
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
