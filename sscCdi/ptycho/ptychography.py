@@ -274,7 +274,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     if plot: plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
 
     probe_positions = positions.astype(np.int32)
-    probe_positions = np.roll(probe_positions,shift=1,axis=1) # adjusting to the same standard as GB ptychography
 
     if 'probe_support' in input_dict:
         input_dict["probe_support"] = get_probe_support(input_dict,probe.shape)
@@ -282,8 +281,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         input_dict["probe_support"] = np.ones_like(DPs[0])
 
     if plot: plot_probe_support(input_dict["probe_support"][0],extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
-
-    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
 
     error = np.empty((0,1))
 
@@ -340,6 +337,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
+            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
+
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -377,6 +376,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
+            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
+
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -416,6 +417,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
+            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
+
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -440,6 +443,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                             probe=datapack['probe'],
                             params={'device': input_dict["GPUs"]},
                             probef1=input_dict['fresnel_number'])
+            
             corrected_positions = datapack['rois']
             
             algo_error = datapack["error"]
@@ -456,6 +460,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
+            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
+
             datapack["obj"] = obj
             datapack['probe'] = probe
             
@@ -481,7 +487,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         error = np.concatenate((error,algo_error),axis=0)
 
-    return obj, probe, error, None
+    return obj, probe, error, corrected_positions
 
 def call_CUDA_ptychography(input_dict,DPs, probe_positions, initial_obj=None, initial_probe=None):
     """ Call Ptychography CUDA codes
