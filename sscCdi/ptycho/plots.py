@@ -34,9 +34,9 @@ def plot_ptycho_scan_points(positions,pixel_size=None):
         pass
     
     positions = positions*pixel_size
-    ax.plot(positions[:,0],positions[:,1],'o-',color='gray')
-    ax.plot(positions[0,0],positions[0,1],'X',color='green',label='start')
-    ax.plot(positions[-1,0],positions[-1,1],'X',color='red',label='end')
+    ax.plot(positions[:,1],positions[:,0],'o-',color='gray')
+    ax.plot(positions[0,1],positions[0,0],'X',color='green',label='start')
+    ax.plot(positions[-1,1],positions[-1,0],'X',color='red',label='end')
     ax.legend(loc='best')
     plt.show()
 
@@ -68,8 +68,8 @@ def plot_ptycho_corrected_scan_points(positions, positions2, pixel_size=None):
     positions2 = positions2 * pixel_size
 
     # Plot the points
-    ax.plot(positions[:,0], positions[:,1], 'o', color='gray', label='Original')
-    ax.plot(positions2[:,0], positions2[:,1], 'o', color='orange', label='Corrected')
+    ax.plot(positions[:,1], positions[:,0], 'o', color='gray', label='Original')
+    ax.plot(positions2[:,1], positions2[:,0], 'o', color='orange', label='Corrected')
     ax.legend(loc='best')
 
     # Add connectors between the points
