@@ -252,10 +252,8 @@ def save_recon_output_h5_file(input_dict, obj, probe, positions, error):
 
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
-
-        # error = np.concatenate((range(np.size(error)),error))
-
-        # h5file["recon"].create_dataset('error',data=error) 
+        h5file["positions"].create_dataset('positions',data=positions) 
+        h5file["error"].create_dataset('error',data=error) 
 
     h5file.close()
 
@@ -284,25 +282,27 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     error = np.empty((0,1))
 
-    inputs = input_dict
+    algo_inputs = input_dict #TODO: unification of algo calls
 
+    datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"]) #TODO: kill datapack and unify input standard
+ 
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     corrected_positions = None
 
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
-        inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
-        inputs['distance'] = input_dict["detector_distance"]
-        inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
-        inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
-        inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
-        inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
+        algo_inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
+        algo_inputs['distance'] = input_dict["detector_distance"]
+        algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
+        algo_inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
+        algo_inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
+        algo_inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
 
         # POSITION CORRECTION. TO BE DONE.
-        inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
-        inputs['beta'] = 1 # position correction beta value
-        inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
-        # inputs['centralize_probe'] = False # not implemented 
+        algo_inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
+        algo_inputs['beta'] = 1 # position correction beta value
+        algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
+        # algo_inputs['centralize_probe'] = False # not implemented 
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
@@ -312,11 +312,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
                         
-            inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
-            inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
-            inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
-            inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
-            obj_, probe, algo_error = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], inputs)
+            algo_inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
+            algo_inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
+            algo_inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
+            algo_inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
+            obj_, probe, algo_error = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], algo_inputs)
             obj = obj_[0]
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
@@ -327,7 +327,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],inputs)
+            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],algo_inputs)
             
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
@@ -337,23 +337,21 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
-
             datapack["obj"] = obj
             datapack['probe'] = probe
             
-            inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
+            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
+            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
+            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
 
-            datapack = AP(iterations=inputs['iterations'],
-                          objbeta=inputs['momentum_obj'],
-                          probebeta=inputs['momentum_probe'],
-                          batch=inputs['batch'],
-                          step_obj=inputs['step_object'],
-                          step_probe=inputs['step_probe'],
-                          reg_obj=inputs['regularization_object'],
-                          reg_probe=inputs['regularization_probe'],
+            datapack = AP(iterations=algo_inputs['iterations'],
+                          objbeta=algo_inputs['momentum_obj'],
+                          probebeta=algo_inputs['momentum_probe'],
+                          batch=algo_inputs['batch'],
+                          step_obj=algo_inputs['step_object'],
+                          step_probe=algo_inputs['step_probe'],
+                          reg_obj=algo_inputs['regularization_object'],
+                          reg_probe=algo_inputs['regularization_probe'],
                           sigmask=sigmask,
                           difpads=datapack['difpads'],
                           obj=datapack['obj'],
@@ -376,25 +374,23 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
-
             datapack["obj"] = obj
             datapack['probe'] = probe
             
-            inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
-            inputs['beta'] = input_dict['algorithms'][str(counter)]['beta']
+            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
+            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
+            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
+            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta']
             
-            datapack = RAAR(iterations=inputs['iterations'],
-                            probebeta=inputs['momentum_probe'],
-                            objbeta=inputs['momentum_obj'],
-                            beta=inputs['beta'],
-                            batch=inputs['batch'],
-                            step_obj=inputs['step_object'],
-                            step_probe=inputs['step_probe'],
-                            reg_obj=inputs['regularization_object'],
-                            reg_probe=inputs['regularization_probe'],
+            datapack = RAAR(iterations=algo_inputs['iterations'],
+                            probebeta=algo_inputs['momentum_probe'],
+                            objbeta=algo_inputs['momentum_obj'],
+                            beta=algo_inputs['beta'],
+                            batch=algo_inputs['batch'],
+                            step_obj=algo_inputs['step_object'],
+                            step_probe=algo_inputs['step_probe'],
+                            reg_obj=algo_inputs['regularization_object'],
+                            reg_probe=algo_inputs['regularization_probe'],
                             sigmask=sigmask,
                             rois=datapack['rois'],
                             difpads=datapack['difpads'],
@@ -417,25 +413,23 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            datapack, sigmask = set_initial_parameters_for_GB_algorithms(input_dict,DPs,probe_positions,obj,probe,input_dict["probe_support"])
-
             datapack["obj"] = obj
             datapack['probe'] = probe
             
-            inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
+            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
+            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
+            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
             
             datapack['bkg'] = None
             datapack = PosCorrection(
-                            iterations=inputs['iterations'],
-                            objbeta=inputs['momentum_obj'],
-                            probebeta=inputs['momentum_probe'],
-                            batch=inputs['batch'],
-                            step_obj=inputs['step_object'],
-                            step_probe=inputs['step_probe'],
-                            reg_obj=inputs['regularization_object'],
-                            reg_probe=inputs['regularization_probe'],
+                            iterations=algo_inputs['iterations'],
+                            objbeta=algo_inputs['momentum_obj'],
+                            probebeta=algo_inputs['momentum_probe'],
+                            batch=algo_inputs['batch'],
+                            step_obj=algo_inputs['step_object'],
+                            step_probe=algo_inputs['step_probe'],
+                            reg_obj=algo_inputs['regularization_object'],
+                            reg_probe=algo_inputs['regularization_probe'],
                             sigmask=sigmask,
                             difpads=datapack['difpads'],
                             obj=datapack['obj'],
@@ -465,11 +459,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             datapack["obj"] = obj
             datapack['probe'] = probe
             
-            datapack = PIE(iterations=inputs['iterations'],
-                           step_obj=inputs['step_object'],
-                           step_probe=inputs['step_probe'],
-                           reg_obj=inputs['regularization_object'],
-                           reg_probe=inputs['regularization_probe'],
+            datapack = PIE(iterations=algo_inputs['iterations'],
+                           step_obj=algo_inputs['step_object'],
+                           step_probe=algo_inputs['step_probe'],
+                           reg_obj=algo_inputs['regularization_object'],
+                           reg_probe=algo_inputs['regularization_probe'],
                            rois=datapack['rois'],
                            difpads=datapack['difpads'],
                            obj=datapack['obj'],
@@ -670,7 +664,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
         input_dict['fresnel_number'] = input_dict["detector_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
 
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm')
-    print(f'Fresnel number: {input_dict["fresnel_number"]}')
+    print(f'Correspondeing fresnel number: {input_dict["fresnel_number"]}')
 
     probe_positions = append_ones(probe_positions)
 
