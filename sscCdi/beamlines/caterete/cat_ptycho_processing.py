@@ -110,15 +110,11 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             event_stop()
 
             """ Call Ptychography """
-            print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
-            input_dict['ignored_scans'].append((folder_number,file_number))
-            sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-            probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-            angle = np.array([file_number_index,1,angle,angle*180/np.pi])
+            sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
-                if corrected_positions is not None:
-                    corrected_positions_list.append(corrected_positions[:,0,0:2])
-                angle = np.array([file_number_index,0,angle,angle*180/np.pi])
+            if corrected_positions is not None:
+                corrected_positions_list.append(corrected_positions[:,0,0:2])
+            angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             """ Save single frame of object and probe to temporary folder"""
 

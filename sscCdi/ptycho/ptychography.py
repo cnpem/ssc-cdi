@@ -178,14 +178,14 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     create_output_h5_file(input_dict)
 
-    obj, probe, error, positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
+    obj, probe, error, corrected_positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
     if plot: plot_iteration_error(error)
 
     print('Saving output hdf5 file...')
-    save_recon_output_h5_file(input_dict, obj, probe, positions, error)
+    save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error)
 
-    return obj, probe, positions, input_dict, error
+    return obj, probe, corrected_positions, input_dict, error
 
 def check_shape_of_inputs(DPs,positions,initial_probe):
 
@@ -246,14 +246,16 @@ def create_output_h5_file(input_dict):
 
     h5file.close()
 
-def save_recon_output_h5_file(input_dict, obj, probe, positions, error):
+def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error):
 
     with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
 
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
-        h5file["positions"].create_dataset('positions',data=positions) 
-        h5file["error"].create_dataset('error',data=error) 
+        h5file["recon"].create_dataset('positions',data=positions) 
+        if corrected_positions is not None:
+            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
+        h5file["recon"].create_dataset('error',data=error) 
 
     h5file.close()
 
