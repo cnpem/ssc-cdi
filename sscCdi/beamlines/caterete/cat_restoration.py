@@ -96,6 +96,10 @@ def restoration_ptycho_CAT(input_dict):
 
     print(f'Restored pixel size: {geometry["pxlsize"]:.3f} um. Pixel size read from metadata: {input_dict["detector_pixel_size"]*1e6:.3f} um. Make sure values are the values the same')
 
+    if input_dict["DP_center"] == []:
+        input_dict["DP_center"] = [0,0]
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
+
     if input_dict["using_direct_beam"]:
         print("\t Using direct beam to find center: ",input_dict["DP_center"])
         input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], project)
@@ -182,6 +186,10 @@ def restoration_CAT(input_dict,method = 'IO'):
     from sscPimega import pi540D, opt540D
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'], scale = input_dict["scale"])
+
+    if input_dict["DP_center"] == []:
+        input_dict["DP_center"] = [0,0]
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
 
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
@@ -297,3 +305,25 @@ def restoration_CAT(input_dict,method = 'IO'):
 
     return DPs
 
+
+def get_DP_center_from_dbeam(dic,path):
+    dic['data_path'] = [path]
+    dbeam_restored = np.squeeze(restoration_CAT(dic,method = 'IO'))
+    max_y, max_x = get_center_coordinate_from_integrated_dbeam(dbeam_restored)
+    return max_y, max_x
+
+def get_center_coordinate_from_integrated_dbeam(dbeam_restored,plot=False):
+
+    sumx = dbeam_restored.sum(0)
+    maxx = np.where(sumx==sumx.max())
+
+    sumy = dbeam_restored.sum(1)
+    maxy = np.where(sumy==sumy.max())
+
+    if plot:
+        fig, ax = plt.subplots(dpi=300)
+        ax.plot(dbeam_restored.sum(0))
+        ax.plot(dbeam_restored.sum(1))
+        ax.grid()
+        
+    return maxy,maxx

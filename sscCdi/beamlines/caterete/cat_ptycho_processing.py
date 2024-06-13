@@ -60,6 +60,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
             event_stop() # read restored data
 
@@ -143,9 +144,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
 
-    plot_iteration_error(error)
-    if corrected_positions is not None:
-        plot_ptycho_corrected_scan_points(probe_positions,corrected_positions)
+
 
     return input_dict, sinogram, probes, probe_positions
 
@@ -200,6 +199,7 @@ def define_paths(input_dict):
         input_dict["flatfield"] = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]          = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
     input_dict["empty"]         = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
+    input_dict["dbeam"]         = os.path.join(input_dict['data_folder'] ,images_folder,'dbeam.hdf5')
 
     input_dict["datetime"] = get_datetime(input_dict)
 

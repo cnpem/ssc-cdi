@@ -527,7 +527,7 @@ def slice_visualizer(data,axis=0,type='',title='',cmap='viridis',aspect_ratio='a
 
     return box
 
-def slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
+def amplitude_and_phase_slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
     """
     data (ndarray): complex valued data
     pixel_values (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
