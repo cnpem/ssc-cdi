@@ -201,6 +201,14 @@ def define_paths(input_dict):
     input_dict["empty"]         = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
     input_dict["dbeam"]         = os.path.join(input_dict['data_folder'] ,images_folder,'dbeam.hdf5')
 
+    posflat_path = os.path.join(input_dict['data_folder'] ,images_folder,'posflat.hdf5')
+    if os.path.exists(posflat_path): # restored flatfield
+        input_dict["posflat"] = posflat_path
+
+    posmask_path = os.path.join(input_dict['data_folder'] ,images_folder,'posmask.hdf5')
+    if os.path.exists(posflat_path): # restored mask
+        input_dict["posmask"] = posmask_path        
+
     input_dict["datetime"] = get_datetime(input_dict)
 
     input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file

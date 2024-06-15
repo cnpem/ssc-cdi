@@ -8,6 +8,7 @@ from typing import Optional, Tuple
 import numpy as np
 from time import time
 
+
 nthreads = multiprocessing.cpu_count()
 
 # Load required libraries:
@@ -91,6 +92,20 @@ def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[c_void_p, list[c_int]]:
         return c_void_p(0), c_void_p(0), [c_int(0)]
     return ctypes_array(c)
 
+def append_ones(probe_positions):
+    """ Adjust shape and column order of positions array to be accepted by Giovanni's code
+
+    Args:
+        probe_positions (array): initial positions array in (PY,PX) shape
+
+    Returns:
+        probe_positions2 (array): rearranged probe positions array
+    """
+    zeros = np.zeros((probe_positions.shape[0],1))
+    probe_positions = np.concatenate((probe_positions,zeros),axis=1)
+    probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
+
+    return probe_positions
 
 def sanitize_rois(rois, obj, difpads, probe) -> np.ndarray:
 
@@ -184,8 +199,10 @@ def PIE(obj: np.ndarray,
 
         """
 
+    rois = append_ones(rois)
+
     obj, objptr, (osizey, osizex) = ctypes_array(obj)
-    probeptr, (psizez, _, psizex) = ctypes_array(probe)
+    probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
 
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
@@ -212,17 +229,7 @@ def PIE(obj: np.ndarray,
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
-    return {
-        'obj': obj,
-        'probe': probe,
-        'error': rfactor,
-        'bkg': None,
-        'rois': rois,
-        'difpads': difpads,
-        'probesupp': None,
-        'objsupp': None
-    }
-
+    return obj, probe, rfactor, rois[:,0,0:2]
 
 def RAAR(obj: np.ndarray,
          probe: np.ndarray,
@@ -291,6 +298,8 @@ def RAAR(obj: np.ndarray,
 
         """
 
+    rois = append_ones(rois)
+
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -338,16 +347,8 @@ def RAAR(obj: np.ndarray,
                     c_float(reg_obj), c_float(reg_probe),
                     bkgptr, c_float(probef1), c_float(beta))
 
-    return {
-        'obj': obj,
-        'probe': probe,
-        'error': rfactor,
-        'bkg': bkg,
-        'rois': rois,
-        'difpads': difpads,
-        'probesupp': probesupp,
-        'objsupp': objsupp
-    }
+    return obj, probe, rfactor, rois[:,0,0:2]
+
 
 
 def AP(obj: np.ndarray,
@@ -415,6 +416,8 @@ def AP(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
+    rois = append_ones(rois)
+
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -449,16 +452,7 @@ def AP(obj: np.ndarray,
                   c_float(reg_obj), c_float(reg_probe), bkgptr,
                   c_float(probef1))
 
-    return {
-        'obj': obj,
-        'probe': probe,
-        'error': rfactor,
-        'bkg': bkg,
-        'rois': rois,
-        'difpads': difpads,
-        'probesupp': probesupp,
-        'objsupp': objsupp
-    }
+    return obj, probe, rfactor, rois[:,0,0:2]
 
 
 def PosCorrection(obj: np.ndarray,
@@ -526,6 +520,8 @@ def PosCorrection(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
+    
+    rois = append_ones(rois)
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -561,13 +557,4 @@ def PosCorrection(obj: np.ndarray,
                        c_float(reg_obj),c_float(reg_probe),
                        bkgptr, c_float(probef1))
 
-    return {
-        'obj': obj,
-        'probe': probe,
-        'error': rfactor,
-        'bkg': bkg,
-        'rois': rois,
-        'difpads': difpads,
-        'probesupp': probesupp,
-        'objsupp': objsupp
-    }
+    return obj, probe, rfactor, rois[:,0,0:2]
