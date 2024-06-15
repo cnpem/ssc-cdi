@@ -93,8 +93,11 @@ def restoration_ptycho_CAT(input_dict):
     input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"], scale = input_dict["scale"]) # distance in milimeters
+    
+    input_dict["detector_physical_pixel_size"] = input_dict["detector_pixel_size"]
+    input_dict["detector_pixel_size"] = geometry["pxlsize"]
 
-    print(f'Restored pixel size: {geometry["pxlsize"]:.3f} um. Pixel size read from metadata: {input_dict["detector_pixel_size"]*1e6:.3f} um. Make sure values are the values the same')
+    print(f'Restored pixel size: {input_dict["detector_pixel_size"]:.3f} um. Pixel size read from metadata: {input_dict["detector_physical_pixel_size"]*1e6:.3f} um.')
 
     if input_dict["DP_center"] == []:
         input_dict["DP_center"] = [0,0]
@@ -149,16 +152,16 @@ def restoration_ptycho_CAT(input_dict):
 
     if len(filepaths) == 1:
         dic['path'] = dic['path'][0]
-        os.system(f"h5clear -s {dic['path']}")
+        # os.system(f"h5clear -s {dic['path']}")
         restored_data_info = pi540D.ioSet_Backward540D( dic )
     else:
-        for i, filepath in enumerate(dic['path']):
-            if i == 0:
-                print("Closing open hdf5 files with h5clear -s")
-            os.system(f"h5clear -s {filepath}")
+        # for i, filepath in enumerate(dic['path']):
+            # if i == 0:
+                # print("Closing open hdf5 files with h5clear -s")
+            # os.system(f"h5clear -s {filepath}")
         restored_data_info = pi540D.ioSetM_Backward540D( dic )
 
-    return dic, restored_data_info, filepaths, filenames, folders_name, folders_number
+    return dic, restored_data_info, filepaths, filenames, folders_name, folders_number, input_dict
 
 
 @log_event
@@ -195,7 +198,10 @@ def restoration_CAT(input_dict,method = 'IO'):
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
             print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
-    print(f'Restored pixel size: {geometry["pxlsize"]:.3f} um. Pixel size read from metadata: {input_dict["detector_pixel_size"]*1e6:.3f} um. Make sure values are the values the same')
+    input_dict["detector_physical_pixel_size"] = input_dict["detector_pixel_size"]
+    input_dict["detector_pixel_size"] = geometry["pxlsize"]
+
+    print(f'Restored pixel size: {input_dict["detector_pixel_size"]:.3f} um. Pixel size read from metadata: {input_dict["detector_physical_pixel_size"]*1e6:.3f} um.')
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
@@ -288,7 +294,7 @@ def restoration_CAT(input_dict,method = 'IO'):
         data_path = input_dict['data_path'][0]
 
         """ Restore data """
-        os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
+        # os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
         DPs = restore_IO_SharedArray(input_dict, geometry, data_path)
 
     print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
