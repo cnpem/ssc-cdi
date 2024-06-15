@@ -176,18 +176,20 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
 
     if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
 
-    create_output_h5_file(input_dict)
+    if input_dict['hdf5_output'] is not None:
+        print('Creating output hdf5 file...')
+        create_output_h5_file(input_dict)
 
     obj, probe, error, corrected_positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
-    if plot:     
-        if corrected_positions is not None:
-            plot_ptycho_corrected_scan_points(positions,corrected_positions)
+    if plot == True and corrected_positions is not None:
+        plot_ptycho_corrected_scan_points(positions,corrected_positions)
 
     if plot: plot_iteration_error(error)
 
-    print('Saving output hdf5 file...')
-    save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error)
+    if input_dict['hdf5_output'] is not None:
+        print('Saving output hdf5 file...')
+        save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error)
 
     return obj, probe, corrected_positions, input_dict, error
 
@@ -294,7 +296,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     else:
         input_dict['fresnel_number'] = input_dict["object_pixel"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
 
-    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Correspondeing Fresnel number: {input_dict["fresnel_number"]}')
+    print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Corresponding Fresnel number: {input_dict["fresnel_number"]}')
 
     print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support'])[3]:.2f} GBs")
 
@@ -367,6 +369,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         obj=obj,
                                                         rois=probe_positions,
                                                         probe=probe,
+                                                        # probesupp = algo_inputs['probe_support'],
                                                         params={'device': input_dict["GPUs"]},
                                                         probef1=input_dict['fresnel_number'])
             
@@ -402,6 +405,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
+                                                            # probesupp = algo_inputs['probe_support'],
                                                             params={'device': input_dict["GPUs"]},
                                                             probef1=input_dict['fresnel_number'])
                                 
@@ -435,6 +439,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     obj=obj, 
                                                                     rois=probe_positions,
                                                                     probe=probe,
+                                                                    # probesupp = algo_inputs['probe_support'],
                                                                     params={'device': input_dict["GPUs"]},
                                                                     probef1=input_dict['fresnel_number'])
             
