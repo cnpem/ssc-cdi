@@ -8,7 +8,7 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
-from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points
+from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
 from .. import log_event
 
@@ -193,6 +193,7 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     if plot: 
         print('Plotting final object and probe...')
         plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+        plot_object_spectrum(obj,cmap='gray')
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
         if input_dict["distance_sample_focus"] != 0:
