@@ -321,7 +321,10 @@ def RAAR(obj: np.ndarray,
 
     flyscansteps = int(rois.shape[1])
 
-    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    assert (probesupp.shape[-1] == probe.shape[-1] and
+                probesupp.shape[-2] == probe.shape[-2] and
+                probesupp.size == probe.size)
+    probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
     objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
     bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
@@ -439,7 +442,10 @@ def AP(obj: np.ndarray,
 
     flyscansteps = int(rois.shape[1])
 
-    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    assert (probesupp.shape[-1] == probe.shape[-1] and
+                probesupp.shape[-2] == probe.shape[-2] and
+                probesupp.size == probe.size)
+    probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
     objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
     bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
@@ -543,7 +549,10 @@ def PosCorrection(obj: np.ndarray,
 
     flyscansteps = int(rois.shape[1])
 
-    probesupp,probesuppptr, _ = ctypes_opt_array(probesupp)
+    assert (probesupp.shape[-1] == probe.shape[-1] and
+                probesupp.shape[-2] == probe.shape[-2] and
+                probesupp.size == probe.size)
+    probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
     objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
     bkg,bkgptr, _ = ctypes_opt_array(bkg)
 
