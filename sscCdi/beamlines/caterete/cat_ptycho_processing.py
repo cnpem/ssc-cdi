@@ -3,6 +3,9 @@ import h5py
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from datetime import datetime
+import glob
+import h5py
+from datetime import datetime
 
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, wavelength_meters_from_energy_keV, list_files_in_folder, select_specific_angles
@@ -668,3 +671,244 @@ def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/catere
     return filepath
 
 
+
+
+def extract_datetime_from_filename(filename):
+    """
+    Extract datetime from the filename.
+    
+    Parameters:
+    filename : str
+        The filename containing the datetime substring.
+    
+    Returns:
+    datetime
+        The datetime object parsed from the filename.
+    """
+    # Extract the datetime substring (first 10 characters of the filename)
+    datetime_str = os.path.basename(filename)[:10]
+    # Parse the datetime substring to a datetime object
+    return datetime.strptime(datetime_str, '%y%m%d%H%M')
+
+def get_most_recent_file(folder_path):
+    """
+    Get the most recently created HDF5 file based on the datetime in the filename.
+    
+    Parameters:
+    folder_path : str
+        Path to the folder.
+    
+    Returns:
+    str
+        Path to the most recently created HDF5 file.
+    """
+    # Get a list of all HDF5 files in the folder
+    hdf5_files = glob.glob(os.path.join(folder_path, '*.hdf5'))
+    
+    # Check if there are any HDF5 files in the folder
+    if not hdf5_files:
+        return None
+    
+    # Find the most recent file based on the datetime in the filename
+    most_recent_file = max(hdf5_files, key=extract_datetime_from_filename)
+    
+    return most_recent_file
+
+def read_hdf5_file_metadata(file_path):
+    """
+    Read metadata and dataset shapes from an HDF5 file.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error_shape (tuple): The shape of the error dataset.
+        - obj_shape (tuple): The shape of the object dataset.
+        - positions_shape (tuple): The shape of the positions dataset.
+        - probe_shape (tuple): The shape of the probe dataset.
+        - probe_support_array_shape (tuple): The shape of the probe support array dataset.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Get shapes of specific datasets
+        error_shape = f["recon/error"].shape
+        obj_shape = f["recon/object"].shape
+        positions_shape = f["recon/positions"].shape
+        probe_shape = f["recon/probe"].shape
+        probe_support_array_shape = f["recon/probe_support_array"].shape
+    
+    return metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape
+
+def read_and_crop_hdf5_file(file_path, target_shapes, mode):
+    """
+    Read and crop or append datasets from an HDF5 file to specified shapes.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+    target_shapes : dict
+        Dictionary containing target shapes for cropping or appending.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error (numpy.ndarray): The processed error array.
+        - obj (numpy.ndarray): The processed object array.
+        - positions (numpy.ndarray): The processed positions array.
+        - probe (numpy.ndarray): The processed probe array.
+        - probe_support_array (numpy.ndarray): The processed probe support array.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Read and process specific datasets into numpy arrays
+        datasets = {}
+        datasets['error'] = f["recon/error"][()]
+        datasets['obj'] = f["recon/object"][()]
+        datasets['positions'] = f["recon/positions"][()]
+        datasets['probe'] = f["recon/probe"][()]
+        datasets['probe_support_array'] = f["recon/probe_support_array"][()]
+        
+        processed_datasets = {}
+        for key, data in datasets.items():
+            target_shape = target_shapes[key]
+            if mode == 'crop':
+                slices = tuple(slice(0, min(s, t)) for s, t in zip(data.shape, target_shape))
+                processed_datasets[key] = data[slices]
+            elif mode == 'append':
+                processed_datasets[key] = np.zeros(target_shape, dtype=data.dtype)
+                slices = tuple(slice(0, s) for s in data.shape)
+                processed_datasets[key][slices] = data
+        
+    return (metadata, processed_datasets['error'], processed_datasets['obj'],
+            processed_datasets['positions'], processed_datasets['probe'], 
+            processed_datasets['probe_support_array'])
+
+def read_recent_hdf5_files_in_folders(base_path, mode='crop', selected_folders=None):
+    """
+    Read the most recent HDF5 files in each folder named by 6-digit integers and aggregate the data.
+
+    Parameters:
+    base_path : str
+        Path to the base directory containing the folders.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+    selected_folders : list of int, optional
+        List of integers specifying which folders to read. If None, all folders are read.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata_dict (dict): Dictionary of all metadata, keyed by folder names.
+        - error_array (numpy.ndarray): Aggregated error arrays.
+        - obj_array (numpy.ndarray): Aggregated object arrays.
+        - positions_array (numpy.ndarray): Aggregated positions arrays.
+        - probe_array (numpy.ndarray): Aggregated probe arrays.
+        - probe_support_array_array (numpy.ndarray): Aggregated probe support arrays.
+    """
+    if selected_folders is not None:
+        selected_folders = [f"{i:06d}" for i in selected_folders]
+        folder_pattern = [os.path.join(base_path, f) for f in selected_folders]
+    else:
+        folder_pattern = glob.glob(os.path.join(base_path, '[0-9]' * 6))
+    
+    # Sort folders in increasing order
+    folder_pattern.sort()
+    
+    metadata_dict = {}
+    error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes = [], [], [], [], []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape = read_hdf5_file_metadata(most_recent_file)
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            error_shapes.append(error_shape)
+            obj_shapes.append(obj_shape)
+            positions_shapes.append(positions_shape)
+            probe_shapes.append(probe_shape)
+            probe_support_array_shapes.append(probe_support_array_shape)
+    
+    if mode == 'crop':
+        target_shapes = {
+            'error': tuple(map(min, zip(*error_shapes))),
+            'obj': tuple(map(min, zip(*obj_shapes))),
+            'positions': tuple(map(min, zip(*positions_shapes))),
+            'probe': tuple(map(min, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(min, zip(*probe_support_array_shapes)))
+        }
+    elif mode == 'append':
+        target_shapes = {
+            'error': tuple(map(max, zip(*error_shapes))),
+            'obj': tuple(map(max, zip(*obj_shapes))),
+            'positions': tuple(map(max, zip(*positions_shapes))),
+            'probe': tuple(map(max, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(max, zip(*probe_support_array_shapes)))
+        }
+
+    # Print warnings if cropping or appending occurs
+    for shape, target_shape, name in zip([error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes], 
+                                         [target_shapes['error'], target_shapes['obj'], target_shapes['positions'], target_shapes['probe'], target_shapes['probe_support_array']],
+                                         ["error", "object", "positions", "probe", "probe_support_array"]):
+        if any(s != target_shape for s in shape):
+            if mode == 'crop':
+                print(f"Warning: Cropping {name} datasets to the minimum shape {target_shape}.")
+            elif mode == 'append':
+                print(f"Warning: Appending zeros to {name} datasets to the maximum shape {target_shape}.")
+
+    # Read and process datasets to the target shapes
+    errors, objs, positions, probes, probe_support_arrays = [], [], [], [], []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error, obj, pos, probe, probe_support_array = read_and_crop_hdf5_file(
+                most_recent_file, target_shapes, mode
+            )
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            errors.append(error)
+            objs.append(obj)
+            positions.append(pos)
+            probes.append(probe)
+            probe_support_arrays.append(probe_support_array)
+    
+    # Convert lists to numpy arrays with an additional dimension
+    error_array = np.array(errors)
+    obj_array = np.array(objs)
+    positions_array = np.array(positions)
+    probe_array = np.array(probes)
+    probe_support_array_array = np.array(probe_support_arrays)
+    
+    return metadata_dict, error_array, obj_array, positions_array, probe_array, probe_support_array_array
