@@ -204,6 +204,8 @@ def plot_iteration_error(error):
     ax.grid()
     ax.set_xlabel('iteration')
     ax.set_ylabel('error')
+    ax.set_title('Ptychography error')
+    plt.show()
 
 
 def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='viridis', cmap2='viridis', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):

@@ -78,11 +78,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 if DPs.shape[2] % 2 != 0:    
                     DPs = DPs[:,:,0:-1]
 
-            if 'save_restored_data' in input_dict:
+            if input_dict['save_restored_data'] == True:
                 event_start("Save numpy file restored data")
                 print(f"Saving restored diffraction patterns...")
-                if input_dict['save_restored_data'] == True:
-                    np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
+                np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
                 event_stop() # save restored data
 
             print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
@@ -93,14 +92,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-            if file_number_index == 0:
-                input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
-
-                print(f"\tInitial object shape: {input_dict['object_shape']}\t Initial probe shape: {DPs[0].shape}")
-
-                size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
+            input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
 
             event_stop()
 
@@ -124,6 +116,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
             save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
             print('Results saved at: ',input_dict["hdf5_output"])
+            print('.................................................................................................................')
             event_stop() # save numpy ptychography files
 
         event_stop() # read and reconstruct
@@ -135,6 +128,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
         else:
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
+        
 
 def create_parent_folder(file_path):
     """
