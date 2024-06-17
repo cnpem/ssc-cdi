@@ -433,7 +433,6 @@ def plot_probe_modes_multiple(probe, extent=None):
 
     if len(probe.shape) == 2:
         probe = np.expand_dims(probe, axis=0)
-        print(probe.shape)
     
     N, Y, X = probe.shape  # N modes
     
@@ -503,3 +502,92 @@ def plot_probe_modes_interactive(probes, extent=None):
     
     display(VBox([play]))
     interact(update_plot, probe_index=slider)
+
+
+import matplotlib.patches as patches
+
+def draw_rectangle(ax, x_min, x_max, y_min, y_max):
+    rect = patches.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=1, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+
+def plot_objects_multiple(obj, extent=None, positions=None):
+    if len(obj.shape) == 2:
+        obj = np.expand_dims(obj, axis=0)
+    
+    N, Y, X = obj.shape  # N modes
+    
+    fig = plt.figure(figsize=(20+N, 7+N))
+    gs = plt.GridSpec(1, 2 * N, width_ratios=[9] * 2 * N)
+
+    for i in range(N):
+        abs_obj = np.abs(obj[i])
+        angle_obj = np.angle(obj[i])
+        
+        ax_abs = fig.add_subplot(gs[0, 2 * i])
+        im_abs = ax_abs.imshow(abs_obj, cmap='viridis', extent=extent)
+        fig.colorbar(im_abs, ax=ax_abs, orientation='vertical')
+        if extent is None:
+            ax_abs.set_ylabel('Y [pxls]')
+            ax_abs.set_xlabel('X [pxls]')
+        else:
+            ax_abs.set_ylabel('Y [m]')
+            ax_abs.set_xlabel('X [m]')
+        ax_abs.set_title(f'Mode {i+1} Magnitude')
+        
+        if positions is not None:
+            y_min, y_max = positions[:, 0].min(), positions[:, 0].max()
+            x_min, x_max = positions[:, 1].min(), positions[:, 1].max()
+
+            if extent is not None:
+                ymin_extent, ymax_extent = extent[2], extent[3]
+                xmin_extent, xmax_extent = extent[0], extent[1]
+                pixel_size_y = (ymax_extent - ymin_extent) / abs_obj.shape[0]
+                pixel_size_x = (xmax_extent - xmin_extent) / abs_obj.shape[1]
+
+                y_min = ymin_extent + y_min * pixel_size_y
+                y_max = ymin_extent + y_max * pixel_size_y
+                x_min = xmin_extent + x_min * pixel_size_x
+                x_max = xmin_extent + x_max * pixel_size_x
+
+            draw_rectangle(ax_abs, x_min, x_max, y_min, y_max)
+
+        ax_angle = fig.add_subplot(gs[0, 2 * i + 1])
+        im_angle = ax_angle.imshow(angle_obj, cmap='viridis', extent=extent)
+        fig.colorbar(im_angle, ax=ax_angle, orientation='vertical')
+        if extent is None:
+            ax_angle.set_ylabel('Y [pxls]')
+            ax_angle.set_xlabel('X [pxls]')
+        else:
+            ax_angle.set_ylabel('Y [m]')
+            ax_angle.set_xlabel('X [m]')
+        ax_angle.set_title(f'Mode {i+1} Phase')
+
+        if positions is not None:
+            draw_rectangle(ax_angle, x_min, x_max, y_min, y_max)
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_objects_interactive(objects, extent=None, positions=None):
+    """
+    Display an interactive plot to visualize different slices of multiple objects.
+
+    Parameters:
+    objects (ndarray): 4D complex-valued array with shape (M, N, Y, X) where M is the number of objects,
+                      N is the number of modes, Y and X are the dimensions of each mode.
+    extent (tuple): Extent of the plot for x and y axes. Default is None.
+    positions (ndarray): 2D array with shape (P, 2) containing the positions to draw the rectangle. Default is None.
+    """
+    num_objects = objects.shape[0]
+    from ipywidgets import interact, IntSlider, Play, jslink, VBox, HBox
+    from IPython.display import display
+
+    def update_plot(obj_index):
+        plot_objects_multiple(objects[obj_index], extent, positions)
+    
+    slider = IntSlider(min=0, max=num_objects-1, step=1, description='Probe Index')
+    play = Play(value=0, min=0, max=num_objects-1, step=1, interval=500)
+    jslink((play, 'value'), (slider, 'value'))
+    
+    display(HBox([play]))
+    interact(update_plot, obj_index=slider)
