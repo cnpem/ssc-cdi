@@ -369,7 +369,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         obj=obj,
                                                         rois=probe_positions,
                                                         probe=probe,
-                                                        # probesupp = algo_inputs['probe_support'],
+                                                        probesupp = algo_inputs['probe_support'],
                                                         params={'device': input_dict["GPUs"]},
                                                         probef1=input_dict['fresnel_number'])
             
@@ -405,7 +405,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
-                                                            # probesupp = algo_inputs['probe_support'],
+                                                            probesupp = algo_inputs['probe_support'],
                                                             params={'device': input_dict["GPUs"]},
                                                             probef1=input_dict['fresnel_number'])
                                 
@@ -426,24 +426,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
             algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
             
-            datapack['bkg'] = None
-            datapack = PosCorrection(
-                            iterations=inputs['iterations'],
-                            objbeta=inputs['momentum_obj'],
-                            probebeta=inputs['momentum_probe'],
-                            batch=inputs['batch'],
-                            step_obj=inputs['step_object'],
-                            step_probe=inputs['step_probe'],
-                            reg_obj=inputs['regularization_object'],
-                            reg_probe=inputs['regularization_probe'],
-                            sigmask=sigmask,
-                            difpads=datapack['difpads'],
-                            obj=datapack['obj'],
-                            rois=datapack['rois'],
-                            probe=datapack['probe'],
-                            params={'device': input_dict["GPUs"]},
-                            probef1=(-input_dict['fresnel_number']))
-            corrected_positions = datapack['rois']
             obj, probe, algo_error, probe_positions = PosCorrection( iterations=algo_inputs['iterations'],
                                                                     objbeta=algo_inputs['momentum_obj'],
                                                                     probebeta=algo_inputs['momentum_probe'],
@@ -457,7 +439,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     obj=obj, 
                                                                     rois=probe_positions,
                                                                     probe=probe,
-                                                                    # probesupp = algo_inputs['probe_support'],
+                                                                    probesupp = algo_inputs['probe_support'],
                                                                     params={'device': input_dict["GPUs"]},
                                                                     probef1=input_dict['fresnel_number'])
             
