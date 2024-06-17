@@ -33,7 +33,7 @@ def Geometry(distance,susp,fill,scale=0.995):
     geo = pi540D.geometry540D( project )
     return geo, project
 
-def flatfield_forward_restoration(input_dict: dict):
+def flatfield_forward_restoration(input_dict: dict,name='flatfield'):
     """
     Generates forward flat field restoration
     
@@ -45,7 +45,7 @@ def flatfield_forward_restoration(input_dict: dict):
     """
     from sscPimega import pi540D
 
-    flat_backward = np.load(input_dict["flatfield"])
+    flat_backward = np.load(input_dict[name])
     geometry, project = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
     
     flat_forward = pi540D.forward540D(flat_backward,  geometry)
@@ -93,6 +93,15 @@ def restoration_ptycho_CAT(input_dict):
     input_dict["filepaths"], input_dict["filenames"] = filepaths, filenames
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict["suspect_border_pixels"],fill=input_dict["fill_blanks"], scale = input_dict["scale"]) # distance in milimeters
+    
+    input_dict["detector_physical_pixel_size"] = input_dict["detector_pixel_size"]
+    input_dict["detector_pixel_size"] = geometry["pxlsize"]*1e-6
+
+    print(f'Restored pixel size: {input_dict["detector_pixel_size"]*1e6:.3f} um. Pixel size read from metadata: {input_dict["detector_physical_pixel_size"]*1e6:.3f} um.')
+
+    if input_dict["DP_center"] == []:
+        input_dict["DP_center"] = [0,0]
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
 
     if input_dict["using_direct_beam"]:
         print("\t Using direct beam to find center: ",input_dict["DP_center"])
@@ -126,13 +135,38 @@ def restoration_ptycho_CAT(input_dict):
         flat_path = input_dict["flatfield"]
         flat_type = flat_path.rsplit(".")[-1]
 
-        if flat_type == "npy":
-            dic["flat"] = flatfield_forward_restoration(input_dict)
-        else:
-            dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
-        
-        dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]      
+        if "flatfield" not in input_dict:
+            print("Flatfield key not found in input_dict. Using constant flatfield of ones.")
+            dic['flat'] = np.ones([detector_size, detector_size])
+        elif input_dict["flatfield"] != '':    
+          
+            if "posflat" in input_dict:
+                print("Using already restored flatfield: ", input_dict["posflat"])
+                input_dict["flatfield"] = input_dict["posflat"]
+                dic["flat"] = flatfield_forward_restoration(input_dict)
+            else:
+                flat_path = input_dict["flatfield"]
+                flat_type = flat_path.rsplit(".")[-1]
 
+                if flat_type == "npy":
+                    print("Using already restored flatfield being from: ", input_dict["flatfield"])
+                    dic["flat"] = flatfield_forward_restoration(input_dict)
+                else:
+                    print("Flatfield being loaded from: ", input_dict["flatfield"])
+                    dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
+        else:
+            raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
+        
+        if "posmask" in input_dict:
+            print("Using already restored mask: ", input_dict["posmask"])
+            input_dict["mask"] = input_dict["posmask"]
+            dic["mask"] = flatfield_forward_restoration(input_dict,name="mask")
+        else:
+            if input_dict["mask"] != '':    
+                dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
+            else:
+                dic['mask'] = np.zeros([detector_size, detector_size])
+                
     if os.path.isfile(input_dict["empty"]):
         dic['empty'] = read_hdf5(input_dict["empty"])[()][0, 0, :, :] 
     else:
@@ -143,20 +177,22 @@ def restoration_ptycho_CAT(input_dict):
 
     if len(filepaths) == 1:
         dic['path'] = dic['path'][0]
-        os.system(f"h5clear -s {dic['path']}")
+        # os.system(f"h5clear -s {dic['path']}")
         restored_data_info = pi540D.ioSet_Backward540D( dic )
     else:
-        for i, filepath in enumerate(dic['path']):
-            if i == 0:
-                print("Closing open hdf5 files with h5clear -s")
-            os.system(f"h5clear -s {filepath}")
+        # for i, filepath in enumerate(dic['path']):
+            # if i == 0:
+                # print("Closing open hdf5 files with h5clear -s")
+            # os.system(f"h5clear -s {filepath}")
         restored_data_info = pi540D.ioSetM_Backward540D( dic )
 
-    return dic, restored_data_info, filepaths, filenames, folders_name, folders_number
+    return dic, restored_data_info, filepaths, filenames, folders_name, folders_number, input_dict
 
 
 @log_event
 def restoration_CAT(input_dict,method = 'IO'):
+
+
     """
     Function to perform restoration either via CUDA or IO-SharedArray approaches and saves diffraction patterns
 
@@ -181,10 +217,18 @@ def restoration_CAT(input_dict,method = 'IO'):
 
     geometry, project = Geometry(input_dict["detector_distance"]*1000,susp=input_dict['suspect_border_pixels'],fill=input_dict['fill_blanks'], scale = input_dict["scale"])
 
+    if input_dict["DP_center"] == []:
+        input_dict["DP_center"] = [0,0]
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
+
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
             print(f"Corrected center position: cy={input_dict['DP_center'][0]} cx={input_dict['DP_center'][1]}")
 
+    input_dict["detector_physical_pixel_size"] = input_dict["detector_pixel_size"]
+    input_dict["detector_pixel_size"] = geometry["pxlsize"]*1e-6
+
+    print(f'Restored pixel size: {input_dict["detector_pixel_size"]*1e6:.3f} um. Pixel size read from metadata: {input_dict["detector_physical_pixel_size"]*1e6:.3f} um.')
 
     if input_dict['detector'] == '540D':
         detector_size = 3072
@@ -219,23 +263,36 @@ def restoration_CAT(input_dict,method = 'IO'):
             dic['roi'] = input_dict["detector_ROI_radius"] # integer
 
         if "flatfield" not in input_dict:
+            print("Flatfield key not found in input_dict. Using constant flatfield of ones.")
             dic['flat'] = np.ones([detector_size, detector_size])
         elif input_dict["flatfield"] != '':    
-            # dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] 
-            flat_path = input_dict["flatfield"]
-            flat_type = flat_path.rsplit(".")[-1]
-
-            if flat_type == "npy":
+          
+            if "posflat" in input_dict:
+                print("Using already restored flatfield: ", input_dict["posflat"])
+                input_dict["flatfield"] = input_dict["posflat"]
                 dic["flat"] = flatfield_forward_restoration(input_dict)
             else:
-                dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
-        else:
-            dic['flat'] = np.ones([detector_size, detector_size])
+                flat_path = input_dict["flatfield"]
+                flat_type = flat_path.rsplit(".")[-1]
 
-        if input_dict["mask"] != '':    
-            dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
+                if flat_type == "npy":
+                    print("Using already restored flatfield being from: ", input_dict["flatfield"])
+                    dic["flat"] = flatfield_forward_restoration(input_dict)
+                else:
+                    print("Flatfield being loaded from: ", input_dict["flatfield"])
+                    dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
         else:
-            dic['mask'] = np.zeros([detector_size, detector_size])
+            raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
+
+        if "posmask" in input_dict:
+            print("Using already restored mask: ", input_dict["posmask"])
+            input_dict["mask"] = input_dict["posmask"]
+            dic["mask"] = flatfield_forward_restoration(input_dict,name="mask")
+        else:
+            if input_dict["mask"] != '':    
+                dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
+            else:
+                dic['mask'] = np.zeros([detector_size, detector_size])
 
         if input_dict["empty_path"] != '':    
             dic['empty'] = read_hdf5(input_dict["empty_path"])[()][0, 0, :, :] 
@@ -277,7 +334,7 @@ def restoration_CAT(input_dict,method = 'IO'):
         data_path = input_dict['data_path'][0]
 
         """ Restore data """
-        os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
+        # os.system(f"h5clear -s {data_path}") # gambiarra because file is not closed at the backend!
         DPs = restore_IO_SharedArray(input_dict, geometry, data_path)
 
     print(f"Output data shape {DPs.shape}. Type: {DPs.dtype}")
@@ -294,3 +351,25 @@ def restoration_CAT(input_dict,method = 'IO'):
 
     return DPs
 
+
+def get_DP_center_from_dbeam(dic,path):
+    dic['data_path'] = [path]
+    dbeam_restored = np.squeeze(restoration_CAT(dic,method = 'IO'))
+    max_y, max_x = get_center_coordinate_from_integrated_dbeam(dbeam_restored)
+    return max_y, max_x
+
+def get_center_coordinate_from_integrated_dbeam(dbeam_restored,plot=False):
+
+    sumx = dbeam_restored.sum(0)
+    maxx = np.where(sumx==sumx.max())
+
+    sumy = dbeam_restored.sum(1)
+    maxy = np.where(sumy==sumy.max())
+
+    if plot:
+        fig, ax = plt.subplots(dpi=300)
+        ax.plot(dbeam_restored.sum(0))
+        ax.plot(dbeam_restored.sum(1))
+        ax.grid()
+        
+    return maxy,maxx

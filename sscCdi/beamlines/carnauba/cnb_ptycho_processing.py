@@ -4,7 +4,7 @@ import h5py, os
 
 """ sscCdi relative imports"""
 
-from ...ptycho.ptychography import call_CUDA_ptychography, set_object_shape, set_object_pixel_size
+from ...ptycho.ptychography import set_object_shape, set_object_pixel_size
 from ...misc import add_to_hdf5_group
 
 def cnb_ptychography(input_dict,DPs):
