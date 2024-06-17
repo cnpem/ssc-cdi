@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import os, sys, h5py, time
 from scipy import ndimage
 from numpy.fft import fft2 as fft2
@@ -195,6 +196,7 @@ def corrections_and_restoration(input_dict, DP,geometry, flat, mask, subtraction
         DP = DP[cy - hsize:cy + hsize, cx - hsize:cx + hsize] # select ROI from the center (cx,cy)
 
     return DP 
+
 
 
 def binning_G(binning,DP):

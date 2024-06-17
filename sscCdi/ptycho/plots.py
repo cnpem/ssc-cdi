@@ -34,7 +34,10 @@ def plot_ptycho_scan_points(positions,pixel_size=None):
         pass
     
     positions = positions*pixel_size
-    ax.plot(positions[:,0],positions[:,1],'o-',color='gray')
+    ax.plot(positions[:,1],positions[:,0],'o-',color='gray')
+    ax.plot(positions[0,1],positions[0,0],'X',color='green',label='start')
+    ax.plot(positions[-1,1],positions[-1,0],'X',color='red',label='end')
+    ax.legend(loc='best')
     plt.show()
 
 
@@ -65,8 +68,8 @@ def plot_ptycho_corrected_scan_points(positions, positions2, pixel_size=None):
     positions2 = positions2 * pixel_size
 
     # Plot the points
-    ax.plot(positions[:,0], positions[:,1], 'o', color='gray', label='Original')
-    ax.plot(positions2[:,0], positions2[:,1], 'o', color='orange', label='Corrected')
+    ax.plot(positions[:,1], positions[:,0], 'o', color='gray', label='Original')
+    ax.plot(positions2[:,1], positions2[:,0], 'o', color='orange', label='Corrected')
     ax.legend(loc='best')
 
     # Add connectors between the points
@@ -96,6 +99,22 @@ def plot_object_spectrum(data,pixel_size=1,cmap='viridis',figsize=(10, 10)):
     plt.colorbar(label='Log Magnitude')
     plt.show()
 
+
+def calculate_mode_powers(modes):
+    """
+    Calculate the power of each mode in an incoherent sum.
+
+    Parameters:
+    modes (ndarray): 3D complex-valued array with shape (N, Y, X) where N is the number of modes.
+
+    Returns:
+    ndarray: 1D array of power values for each mode.
+    """
+    powers = np.sum(np.abs(modes) ** 2, axis=(1, 2))
+    # Normalize the power values
+    total_power = np.sum(powers)
+    normalized_powers = powers / total_power
+    return normalized_powers
 
 def plot_probe_modes(probe,extent=None):
 
@@ -132,6 +151,8 @@ def plot_probe_modes(probe,extent=None):
 
     ax_cbar.set_aspect((X / Y) * 9)
 
+    powers = calculate_mode_powers(probe)
+    
     for i in range(N):
         rgb_probe = convert_complex_to_RGB(probe[i], bias=0.01)
         
@@ -144,9 +165,21 @@ def plot_probe_modes(probe,extent=None):
         else:
             ax_main.set_ylabel('Y [m]')
             ax_main.set_xlabel('X [m]')
-        ax_main.set_title(f'Mode {i+1}')
+        ax_main.set_title(f'Mode {i+1}. Power = {powers[i]*100:.2f}%')
 
     plt.tight_layout()
+    plt.show()  
+
+def plot_probe_support(support,extent=None,cmap='gray'):
+    fig, ax = plt.subplots(figsize=(7,7))
+    im = ax.imshow(support,extent=extent,cmap=cmap)
+    if extent is None:
+        ax.set_ylabel('Y [pxls]')
+        ax.set_xlabel('X [pxls]')
+    else:
+        ax.set_ylabel('Y [m]')
+        ax.set_xlabel('X [m]')
+    ax.set_title('Probe Support')
     plt.show()  
 
 

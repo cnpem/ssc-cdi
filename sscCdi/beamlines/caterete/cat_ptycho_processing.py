@@ -2,6 +2,7 @@ import os, sys, json
 import h5py
 import numpy as np
 from scipy.ndimage import gaussian_filter
+from datetime import datetime
 
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, wavelength_meters_from_energy_keV, list_files_in_folder, select_specific_angles
@@ -42,29 +43,25 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
     frame_index = input_dict["projections"]
     corrected_positions_list = []
 
-    # defining flag for multiple initial probe and/or objects from previous ptycho
-    run_again     = input_dict["mult_obj_probe"]["run_again"]
-    initial_obj   = input_dict["mult_obj_probe"]["mult_obj"]
-    initial_probe = input_dict["mult_obj_probe"]["mult_probe"]
-
-    if strategy == "serial":
+    if strategy == "serial": #TODO: implement second parallel strategy
 
         event_start("Read and reconstruct", {"num_of_files": len(filenames)})
 
         for file_number_index, filename in enumerate(filenames):
-            if frame_index == []:
+            if frame_index == []: 
                 file_number = file_number_index
             else:
                 file_number = frame_index[file_number_index]
             folder_number = folder_numbers_list[file_number_index]
             acquisitions_folder = folder_names_list[file_number_index]
 
-            print(f"\nReading diffraction data for angle: {file_number}")
+            print(f"\nReading diffraction data for angle #{file_number}")
             event_start("Read restored data")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
                 DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
             event_stop() # read restored data
 
@@ -98,60 +95,30 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             if file_number_index == 0:
                 input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
-                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64)
 
-                if input_dict["incoherent_modes"] < 1:
-                    incoherent_modes = 1
-                else:
-                    incoherent_modes = input_dict["incoherent_modes"]
-                probes = np.zeros((total_number_of_angles,incoherent_modes,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-
-                print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
+                print(f"\tInitial object shape: {input_dict['object_shape']}\t Initial probe shape: {DPs[0].shape}")
 
                 size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
                 estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
                 print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
 
-            run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
             event_stop()
 
             """ Call Ptychography """
-            if not run_ptycho:
-                print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
-                input_dict['ignored_scans'].append((folder_number,file_number))
-                sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-                probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                angle = np.array([file_number_index,1,angle,angle*180/np.pi])
-            else:
-                sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
+            input_dict["hdf5_output"] = None # use None so call_ptychography does not save the output. We shall save it in the CATERETE format ahead
+            obj, probe, corrected_positions, input_dict, error  = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
-                if corrected_positions is not None:
-                    corrected_positions_list.append(corrected_positions[:,0,0:2])
-                angle = np.array([file_number_index,0,angle,angle*180/np.pi])
-
-            if run_again:
-                print("Second ptycho run")
-                if initial_obj and initial_probe:
-                    print("Running with multiple initial objects and probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_probe:
-                    print("Running with multiple initial probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_obj:
-                    print("Running with multiple initial objects")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
-                if corrected_positions is not None:
-                    corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
+            if corrected_positions is not None:
+                corrected_positions_list.append(corrected_positions[:,0,0:2])
+            angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
             """ Save single frame of object and probe to temporary folder"""
 
-            event_start("Save numpy ptychography files")
-
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_object.npy"),sinogram[file_number_index])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_probe.npy"),probes[file_number_index])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_angle.npy"),angle)
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_error.npy"),error)
+            event_start("Save ptychography results")
+            print(input_dict["output_path"], file_number_index, input_dict["filename"])
+            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, input_dict["filename"])
+            create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
+            save_h5_output(input_dict,obj, probe, probe_positions,corrected_positions, error)
 
             if corrected_positions is not None:
                 corrected_positions = corrected_positions[:,0,0:2]
@@ -170,11 +137,112 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
 
-    plot_iteration_error(error)
-    if corrected_positions is not None:
-        plot_ptycho_corrected_scan_points(probe_positions,corrected_positions)
+    return _,_,_,_
 
-    return input_dict, sinogram, probes, probe_positions
+def create_parent_folder(file_path):
+    """
+    Create the parent folder of the specified file path if it does not exist.
+    
+    Parameters:
+    file_path : str
+        The path of the file for which to create the parent directory.
+    """
+    parent_folder = os.path.dirname(file_path)
+    if not os.path.exists(parent_folder):
+        os.makedirs(parent_folder, exist_ok=True)
+        print(f"Created directory: {parent_folder}")
+    else:
+        # print(f"Directory already exists: {parent_folder}")
+        pass
+
+def get_unique_filename(output_path, file_number_index, filename):
+    """
+    Generate a unique filename by adding a prefix containing the date and time in YYMMDDHHMMSS format.
+    
+    Parameters:
+    output_path : str
+        The base output directory.
+    file_number_index : int
+        The index used to create the subdirectory.
+    filename : str
+        The base filename without the extension.
+    
+    Returns:
+    str
+        A unique file path.
+    """
+    # Construct the base directory path
+    base_path = os.path.join(output_path, f"{file_number_index:06d}")
+    
+    # Ensure the base directory exists
+    if not os.path.exists(base_path):
+        os.makedirs(base_path, exist_ok=True)
+    
+    # Generate the current date and time string
+    date_time_str = datetime.now().strftime("%y%m%d%H%M")
+    
+    # Construct the new filename with the prefix
+    file_path = os.path.join(base_path, f"{date_time_str}_{filename}.h5")
+    
+    return file_path
+
+def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
+
+    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
+
+        h5file.create_group("recon")
+        h5file.create_group("metadata")
+
+        h5file["metadata"].create_dataset('energy_keV',data=input_dict['datetime']) 
+        h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
+        h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
+        h5file["metadata"].create_dataset('distance_sample_focus',data=input_dict['distance_sample_focus']) 
+        h5file["metadata"].create_dataset('detector_pixel_microns',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('object_pixel_meters',data=input_dict['object_pixel']) 
+        h5file["metadata"].create_dataset('cpus',data=input_dict['CPUs']) 
+        h5file["metadata"].create_dataset('binning',data=input_dict['binning']) 
+        h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
+        h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
+        h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
+        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+
+        # lists, tuples, arrays
+        h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
+        h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
+        
+        h5file.create_group(f'metadata/probe_support')
+        for key in input_dict['probe_support']: # save input probe
+            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
+
+        h5file.create_group(f'metadata/initial_obj')
+        for key in input_dict['initial_obj']: # save input probe
+            h5file[f'metadata/initial_obj'].create_dataset(key,data=input_dict['initial_obj'][key])
+
+        h5file.create_group(f'metadata/initial_probe')
+        for key in input_dict['initial_probe']: # save input probe
+            h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
+        
+        for key in input_dict['algorithms']: # save algorithms used
+            h5file.create_group(f'metadata/algorithms/{key}')
+            for subkey in input_dict['algorithms'][key]:
+                if subkey == 'initial_obj':
+                   h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                   h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]['obj'])
+                elif subkey == 'initial_probe':
+                    h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                    h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
+                else:
+                    h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+
+        h5file["recon"].create_dataset('object',data=obj) 
+        h5file["recon"].create_dataset('probe',data=probe) 
+        h5file["recon"].create_dataset('positions',data=positions) 
+        if corrected_positions is not None:
+            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
+        h5file["recon"].create_dataset('error',data=error) 
+
+    h5file.close()
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
@@ -189,8 +257,7 @@ def define_paths(input_dict):
     Returns:
         input_dict: updated input dictionary
     """
-    if 'PreviewGCC' not in input_dict: input_dict['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
-    
+
     #=========== Set Parameters and Folders =====================
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
@@ -202,7 +269,6 @@ def define_paths(input_dict):
     print("\tOutput path:", beamline_outputs_path)
     input_dict["output_path"]  = os.path.join(beamline_outputs_path)
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
-    input_dict["temporary_output_recons"]  = os.path.join(input_dict["output_path"],'recons')
 
     create_output_directories(input_dict) # create all output directories of interest
     delete_files_if_not_empty_directory(input_dict["temporary_output"])
@@ -227,14 +293,19 @@ def define_paths(input_dict):
         input_dict["flatfield"] = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]          = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
     input_dict["empty"]         = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
+    input_dict["dbeam"]         = os.path.join(input_dict['data_folder'] ,images_folder,'dbeam.hdf5')
+
+    posflat_path = os.path.join(input_dict['data_folder'] ,images_folder,'posflat.hdf5')
+    if os.path.exists(posflat_path): # restored flatfield
+        input_dict["posflat"] = posflat_path
+
+    posmask_path = os.path.join(input_dict['data_folder'] ,images_folder,'posmask.hdf5')
+    if os.path.exists(posflat_path): # restored mask
+        input_dict["posmask"] = posmask_path        
 
     input_dict["datetime"] = get_datetime(input_dict)
 
     input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file
-    hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
-    hdf5_output.create_group("recon")
-    hdf5_output.create_group("log")
-    hdf5_output.create_group("frc")
 
     return input_dict
 
@@ -267,7 +338,6 @@ def create_output_directories(input_dict):
     if input_dict["output_path"] != "": # if no path is given, create directory
         create_directory_if_doesnt_exist(input_dict["output_path"])
         create_directory_if_doesnt_exist(input_dict["temporary_output"])
-        create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
 
 
@@ -583,10 +653,10 @@ def calculate_FRC(img, input_dict):
     resolution = 1e9*input_dict["object_pixel"]/halfbit
     print(f"\tResolution via halfbit criterion: {resolution:.2f} nm")
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
 def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"):
@@ -604,3 +674,5 @@ def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/catere
     json.dump(input_dict, out_file, indent = 3)
     out_file.close()
     return filepath
+
+
