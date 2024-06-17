@@ -32,7 +32,7 @@ def ema_ptychography(input_dict,DPs):
 
     sinogram = np.zeros((1,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # first dimension to be expanded in the future for multiple angles
     probes   = np.zeros((1,input_dict["incoherent_modes"],DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-    sinogram[0, :, :], probes[0, :, :, :], corrected_positions, error, metadata = call_ptychography(input_dict,DPs,probe_positions)
+    sinogram[0, :, :], probes[0, :, :, :], positions,  input_dict, error = call_ptychography(input_dict,DPs,probe_positions)
 
     # add_to_hdf5_group(input_dict["hdf5_output"],'recon','error',np.array(error))
     # if initial_probe:

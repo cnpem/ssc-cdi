@@ -358,7 +358,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                           rois=datapack['rois'],
                           probe=datapack['probe'],
                           params={'device': input_dict["GPUs"]},
-                          probef1=input_dict['fresnel_number'])
+                          probef1=(-input_dict['fresnel_number']))
             
             algo_error = datapack["error"]
             algo_error = np.expand_dims(algo_error,axis=1)
@@ -397,7 +397,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                             obj=datapack['obj'],
                             probe=datapack['probe'],
                             params={'device': input_dict["GPUs"]},
-                            probef1=input_dict['fresnel_number'])
+                            probef1=(-input_dict['fresnel_number']))
             
             algo_error = datapack["error"]
             algo_error = np.expand_dims(algo_error,axis=1)
@@ -436,7 +436,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                             rois=datapack['rois'],
                             probe=datapack['probe'],
                             params={'device': input_dict["GPUs"]},
-                            probef1=input_dict['fresnel_number'])
+                            probef1=(-input_dict['fresnel_number']))
             corrected_positions = datapack['rois']
             
             algo_error = datapack["error"]
@@ -658,7 +658,7 @@ def set_initial_parameters_for_GB_algorithms(input_dict, DPs, probe_positions, o
     if input_dict["distance_sample_focus"] == 0:
         input_dict['fresnel_number'] = 0
     else:
-        input_dict['fresnel_number'] = input_dict["detector_pixel_size"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
+        input_dict['fresnel_number'] = input_dict["object_pixel"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
 
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm')
     print(f'Fresnel number: {input_dict["fresnel_number"]}')
