@@ -185,7 +185,7 @@ def PIE(obj: np.ndarray,
         """
 
     obj, objptr, (osizey, osizex) = ctypes_array(obj)
-    probeptr, (psizez, _, psizex) = ctypes_array(probe)
+    probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
 
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
