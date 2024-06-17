@@ -208,10 +208,9 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
         h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
         h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
 
-        # h5file.create_group(f'metadata/probe_support')
-        # for key in input_dict['probe_support']: # save input probe
-            # print(key, input_dict['probe_support'])
-            # h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
+        h5file.create_group(f'metadata/probe_support')
+        for key in input_dict['probe_support']: # save input probe
+            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
 
         h5file.create_group(f'metadata/initial_obj')
         for key in input_dict['initial_obj']: # save input probe
@@ -236,7 +235,7 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
         h5file["recon"].create_dataset('positions',data=positions)
-        h5file["recon"].create_dataset('probe_support',data=input_dict['probe_support'])
+        h5file["recon"].create_dataset('probe_support_array',data=input_dict['probe_support_array'])
         if corrected_positions is not None:
             h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
         h5file["recon"].create_dataset('error',data=error) 
