@@ -99,23 +99,6 @@ def plot_object_spectrum(data,pixel_size=1,cmap='viridis',figsize=(10, 10)):
     plt.colorbar(label='Log Magnitude')
     plt.show()
 
-
-def calculate_mode_powers(modes):
-    """
-    Calculate the power of each mode in an incoherent sum.
-
-    Parameters:
-    modes (ndarray): 3D complex-valued array with shape (N, Y, X) where N is the number of modes.
-
-    Returns:
-    ndarray: 1D array of power values for each mode.
-    """
-    powers = np.sum(np.abs(modes) ** 2, axis=(1, 2))
-    # Normalize the power values
-    total_power = np.sum(powers)
-    normalized_powers = powers / total_power
-    return normalized_powers
-
 def plot_probe_modes(probe,extent=None):
 
     from matplotlib.colors import hsv_to_rgb
@@ -427,3 +410,96 @@ def plot_amplitude_and_phase(data, positions=None, title='', cmap1='viridis', cm
     plt.suptitle(title)
     plt.tight_layout()
     plt.show()
+
+
+def calculate_mode_powers(modes):
+    """
+    Calculate the power of each mode in an incoherent sum.
+
+    Parameters:
+    modes (ndarray): 3D complex-valued array with shape (N, Y, X) where N is the number of modes.
+
+    Returns:
+    ndarray: 1D array of power values for each mode.
+    """
+    powers = np.sum(np.abs(modes) ** 2, axis=(1, 2))
+    # Normalize the power values
+    total_power = np.sum(powers)
+    normalized_powers = powers / total_power
+    return normalized_powers
+
+def plot_probe_modes_multiple(probe, extent=None):
+    from matplotlib.colors import hsv_to_rgb
+
+    if len(probe.shape) == 2:
+        probe = np.expand_dims(probe, axis=0)
+        print(probe.shape)
+    
+    N, Y, X = probe.shape  # N modes
+    
+    fig = plt.figure(figsize=(20+N, 7+N))
+    gs = plt.GridSpec(1, N + 1, width_ratios=[1] + [9] * N)
+
+    # Plot the color map on the left
+    ax_cbar = fig.add_subplot(gs[0, 0])
+    
+    # Create a custom colorbar
+    # Generate a 2D array where the first dimension is phase and the second dimension is amplitude
+    phase = np.linspace(0, 1, 256)  # Normalized phase
+    amplitude = np.linspace(0, 1, 256)  # Normalized amplitude
+    phase_grid, amplitude_grid = np.meshgrid(phase, amplitude)
+    color_map = hsv_to_rgb(np.dstack((phase_grid, np.ones_like(phase_grid), amplitude_grid)))
+
+    # Plot the color map as an image
+    ax_cbar.imshow(color_map, aspect='auto', origin='lower')
+    ax_cbar.set_xticks([0, 255])
+    ax_cbar.set_xticklabels(['-π', 'π'])
+    ax_cbar.set_yticks([0, 255])
+    ax_cbar.set_yticklabels(['0', 'Max'])
+    ax_cbar.set_xlabel('Phase')
+    ax_cbar.set_ylabel('Amplitude')
+    ax_cbar.set_title('')
+
+    ax_cbar.set_aspect((X / Y) * 9)
+
+    powers = calculate_mode_powers(probe)
+    
+    for i in range(N):
+        rgb_probe = convert_complex_to_RGB(probe[i], bias=0.01)
+        
+        ax_main = fig.add_subplot(gs[0, i + 1])
+        
+        im = ax_main.imshow(rgb_probe, extent=extent)
+        if extent is None:
+            ax_main.set_ylabel('Y [pxls]')
+            ax_main.set_xlabel('X [pxls]')
+        else:
+            ax_main.set_ylabel('Y [m]')
+            ax_main.set_xlabel('X [m]')
+        ax_main.set_title(f'Mode {i+1}. Power = {powers[i]*100:.2f}%')
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_probe_modes_interactive(probes, extent=None):
+    """
+    Display an interactive plot to visualize different slices of multiple probes.
+
+    Parameters:
+    probes (ndarray): 4D complex-valued array with shape (M, N, Y, X) where M is the number of probes,
+                      N is the number of modes, Y and X are the dimensions of each mode.
+    extent (tuple): Extent of the plot for x and y axes. Default is None.
+    """
+    num_probes = probes.shape[0]
+    from ipywidgets import interact, IntSlider, Play, jslink, VBox
+    from IPython.display import display
+
+    def update_plot(probe_index):
+        plot_probe_modes_multiple(probes[probe_index], extent)
+    
+    slider = IntSlider(min=0, max=num_probes-1, step=1, description='Probe Index')
+    play = Play(value=0, min=0, max=num_probes-1, step=1, interval=500)
+    jslink((play, 'value'), (slider, 'value'))
+    
+    display(VBox([play]))
+    interact(update_plot, probe_index=slider)

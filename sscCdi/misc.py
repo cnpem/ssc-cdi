@@ -966,3 +966,32 @@ def draw_rectangles(array):
     drawer = MultiRectangleDrawer(array)
     # drawer.show()
     return drawer.mask
+
+
+def print_h5_tree(name, obj):
+    """
+    Print the structure of the HDF5 file.
+    
+    Parameters:
+    name : str
+        The name of the current group or dataset.
+    obj : h5py.Group or h5py.Dataset
+        The current group or dataset object.
+    """
+    if isinstance(obj, h5py.Group):
+        print(f"{name}/ (Group)")
+        for key in obj.keys():
+            print_h5_tree(f"{name}/{key}", obj[key])
+    elif isinstance(obj, h5py.Dataset):
+        print(f"{name} (Dataset, shape: {obj.shape}, dtype: {obj.dtype})")
+
+def list_h5_file_tree(file_path):
+    """
+    List the tree structure of an HDF5 file.
+    
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+    """
+    with h5py.File(file_path, 'r') as h5file:
+        print_h5_tree("/", h5file)
