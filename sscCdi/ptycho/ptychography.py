@@ -157,7 +157,12 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
     print(f'Data shape: {DPs.shape}')
+    print(f"Initial object shape: {input_dict['object_shape']}")
+    print(f"Initial probe shape: {DPs[0].shape}")
 
+    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+    estimated_size_for_all_DPs = DPs.shape[0]*size_of_single_restored_DP
+    print(f"Estimated size for {DPs.shape[0]} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
     print(f'Pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
     
     print(f'Energy = {input_dict["energy"]} keV')
@@ -185,7 +190,19 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     if plot == True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
 
-    if plot: plot_iteration_error(error)
+    if plot: 
+        print('Plotting final object and probe...')
+        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+        plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+
+        if input_dict["distance_sample_focus"] != 0:
+            print(f'Plotting probe at focus... Propagating it to source by {-input_dict["distance_sample_focus"]*1e3:.3f} mm')
+            propagated_probe = np.empty_like(probe)
+            for i, probe_mode in enumerate(probe):
+                propagated_probe[i] = fresnel_propagator_cone_beam(probe_mode,input_dict["wavelength"],input_dict["detector_pixel_size"],-input_dict["distance_sample_focus"]) 
+            plot_probe_modes(propagated_probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+
+        plot_iteration_error(error)
 
     if input_dict['hdf5_output'] is not None:
         print('Saving output hdf5 file...')
