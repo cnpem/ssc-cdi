@@ -8,7 +8,7 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
-from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points
+from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
 from .. import log_event
 
@@ -157,7 +157,12 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
     print(f'Data shape: {DPs.shape}')
+    print(f"Initial object shape: {input_dict['object_shape']}")
+    print(f"Initial probe shape: {DPs[0].shape}")
 
+    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
+    estimated_size_for_all_DPs = DPs.shape[0]*size_of_single_restored_DP
+    print(f"Estimated size for {DPs.shape[0]} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
     print(f'Pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
     
     print(f'Energy = {input_dict["energy"]} keV')
@@ -185,7 +190,20 @@ def call_ptychography(input_dict,DPs, positions, initial_obj=None, initial_probe
     if plot == True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
 
-    if plot: plot_iteration_error(error)
+    if plot: 
+        print('Plotting final object and probe...')
+        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+        plot_object_spectrum(obj,cmap='gray')
+        plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+
+        if input_dict["distance_sample_focus"] != 0:
+            print(f'Plotting probe at focus... Propagating it to source by {-input_dict["distance_sample_focus"]*1e3:.3f} mm')
+            propagated_probe = np.empty_like(probe)
+            for i, probe_mode in enumerate(probe):
+                propagated_probe[i] = fresnel_propagator_cone_beam(probe_mode,input_dict["wavelength"],input_dict["detector_pixel_size"],-input_dict["distance_sample_focus"]) 
+            plot_probe_modes(propagated_probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+
+        plot_iteration_error(error)
 
     if input_dict['hdf5_output'] is not None:
         print('Saving output hdf5 file...')
@@ -283,11 +301,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     probe_positions = np.roll(probe_positions,shift=1,axis=1) # change from (Y,X) to (X,Y) for the algorithms
 
     if 'probe_support' in input_dict:
-        input_dict["probe_support"] = get_probe_support(input_dict,probe.shape)
+        input_dict["probe_support_array"] = get_probe_support(input_dict,probe.shape)
     else:
-        input_dict["probe_support"] = np.ones_like(DPs[0])
+        input_dict["probe_support_array"] = np.ones_like(DPs[0])
 
-    if plot: plot_probe_support(input_dict["probe_support"][0],extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+    if plot: plot_probe_support(input_dict["probe_support_array"][0],extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
     error = np.empty((0,1))
 
@@ -298,7 +316,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Corresponding Fresnel number: {input_dict["fresnel_number"]}')
 
-    print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support'])[3]:.2f} GBs")
+    print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support_array'])[3]:.2f} GBs")
 
     algo_inputs = input_dict #TODO: unification of algo calls
 
@@ -369,7 +387,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         obj=obj,
                                                         rois=probe_positions,
                                                         probe=probe,
-                                                        probesupp = algo_inputs['probe_support'],
+                                                        probesupp = algo_inputs['probe_support_array'],
                                                         params={'device': input_dict["GPUs"]},
                                                         probef1=input_dict['fresnel_number'])
             
@@ -405,7 +423,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
-                                                            probesupp = algo_inputs['probe_support'],
+                                                            probesupp = algo_inputs['probe_support_array'],
                                                             params={'device': input_dict["GPUs"]},
                                                             probef1=input_dict['fresnel_number'])
                                 
@@ -439,7 +457,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     obj=obj, 
                                                                     rois=probe_positions,
                                                                     probe=probe,
-                                                                    probesupp = algo_inputs['probe_support'],
+                                                                    probesupp = algo_inputs['probe_support_array'],
                                                                     params={'device': input_dict["GPUs"]},
                                                                     probef1=input_dict['fresnel_number'])
             

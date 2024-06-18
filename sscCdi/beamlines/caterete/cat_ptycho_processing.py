@@ -3,6 +3,9 @@ import h5py
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from datetime import datetime
+import glob
+import h5py
+from datetime import datetime
 
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, wavelength_meters_from_energy_keV, list_files_in_folder, select_specific_angles
@@ -78,11 +81,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 if DPs.shape[2] % 2 != 0:    
                     DPs = DPs[:,:,0:-1]
 
-            if 'save_restored_data' in input_dict:
+            if input_dict['save_restored_data'] == True:
                 event_start("Save numpy file restored data")
                 print(f"Saving restored diffraction patterns...")
-                if input_dict['save_restored_data'] == True:
-                    np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
+                np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
                 event_stop() # save restored data
 
             print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
@@ -91,16 +93,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             """ Read positions """
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
+            input_dict["rotation_angle"] = angle
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-            if file_number_index == 0:
-                input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
-
-                print(f"\tInitial object shape: {input_dict['object_shape']}\t Initial probe shape: {DPs[0].shape}")
-
-                size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
+            input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
 
             event_stop()
 
@@ -112,19 +108,20 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 corrected_positions_list.append(corrected_positions[:,0,0:2])
             angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
+
+            if corrected_positions is not None:
+                        corrected_positions = corrected_positions[:,0,0:2]
+                        corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
+
             """ Save single frame of object and probe to temporary folder"""
 
             event_start("Save ptychography results")
-            print(input_dict["output_path"], file_number_index, input_dict["filename"])
-            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, input_dict["filename"])
+
+            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, filename)
             create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
-            save_h5_output(input_dict,obj, probe, probe_positions,corrected_positions, error)
-
-            if corrected_positions is not None:
-                corrected_positions = corrected_positions[:,0,0:2]
-                corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
-
+            save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
+            print('Results saved at: ',input_dict["hdf5_output"])
+            print('.................................................................................................................')
             event_stop() # save numpy ptychography files
 
         event_stop() # read and reconstruct
@@ -136,8 +133,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
         else:
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
-
-    return _,_,_,_
+        
 
 def create_parent_folder(file_path):
     """
@@ -182,7 +178,7 @@ def get_unique_filename(output_path, file_number_index, filename):
     date_time_str = datetime.now().strftime("%y%m%d%H%M")
     
     # Construct the new filename with the prefix
-    file_path = os.path.join(base_path, f"{date_time_str}_{filename}.h5")
+    file_path = os.path.join(base_path, f"{date_time_str}_{filename}")
     
     return file_path
 
@@ -193,7 +189,7 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
         h5file.create_group("recon")
         h5file.create_group("metadata")
 
-        h5file["metadata"].create_dataset('energy_keV',data=input_dict['datetime']) 
+        h5file["metadata"].create_dataset('datetime',data=input_dict['datetime']) 
         h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
         h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
         h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
@@ -206,11 +202,12 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
         h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
         h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
         h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+        h5file["metadata"].create_dataset('rotation_angle',data=input_dict['rotation_angle']) 
 
         # lists, tuples, arrays
         h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
         h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
-        
+
         h5file.create_group(f'metadata/probe_support')
         for key in input_dict['probe_support']: # save input probe
             h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
@@ -237,7 +234,8 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
 
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
-        h5file["recon"].create_dataset('positions',data=positions) 
+        h5file["recon"].create_dataset('positions',data=positions)
+        h5file["recon"].create_dataset('probe_support_array',data=input_dict['probe_support_array'])
         if corrected_positions is not None:
             h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
         h5file["recon"].create_dataset('error',data=error) 
@@ -397,7 +395,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
             positions_x, positions_y = rotate_coordinate_system(input_dict["position_rotation"],positions_x, positions_y) # rotate whole coordinate system (correct misalignment of scan and detector axes)
 
-            #TODO: rolate relative angle between scan x and y positions
+            #TODO: rotate relative angle between scan x and y positions
 
             probe_positions.append([positions_y, positions_x])
 
@@ -676,3 +674,249 @@ def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/catere
     return filepath
 
 
+
+def extract_datetime_from_filename(filename):
+    """
+    Extract datetime from the filename.
+    
+    Parameters:
+    filename : str
+        The filename containing the datetime substring.
+    
+    Returns:
+    datetime
+        The datetime object parsed from the filename.
+    """
+    # Extract the datetime substring (first 10 characters of the filename)
+    datetime_str = os.path.basename(filename)[:10]
+    # Parse the datetime substring to a datetime object
+    return datetime.strptime(datetime_str, '%y%m%d%H%M')
+
+def get_most_recent_file(folder_path):
+    """
+    Get the most recently created HDF5 file based on the datetime in the filename.
+    
+    Parameters:
+    folder_path : str
+        Path to the folder.
+    
+    Returns:
+    str
+        Path to the most recently created HDF5 file.
+    """
+    # Get a list of all HDF5 files in the folder
+    hdf5_files = glob.glob(os.path.join(folder_path, '*.hdf5'))
+    
+    # Check if there are any HDF5 files in the folder
+    if not hdf5_files:
+        return None
+    
+    # Find the most recent file based on the datetime in the filename
+    most_recent_file = max(hdf5_files, key=extract_datetime_from_filename)
+    
+    return most_recent_file
+
+def read_hdf5_file_metadata(file_path):
+    """
+    Read metadata and dataset shapes from an HDF5 file.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error_shape (tuple): The shape of the error dataset.
+        - obj_shape (tuple): The shape of the object dataset.
+        - positions_shape (tuple): The shape of the positions dataset.
+        - probe_shape (tuple): The shape of the probe dataset.
+        - probe_support_array_shape (tuple): The shape of the probe support array dataset.
+        - rotation_angle (float): The rotation angle.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Get shapes of specific datasets
+        error_shape = f["recon/error"].shape
+        obj_shape = f["recon/object"].shape
+        positions_shape = f["recon/positions"].shape
+        probe_shape = f["recon/probe"].shape
+        probe_support_array_shape = f["recon/probe_support_array"].shape
+        rotation_angle = f["metadata/rotation_angle"][()]
+    
+    return metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape, rotation_angle
+
+def read_and_crop_hdf5_file(file_path, target_shapes, mode):
+    """
+    Read and crop or append datasets from an HDF5 file to specified shapes.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+    target_shapes : dict
+        Dictionary containing target shapes for cropping or appending.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error (numpy.ndarray): The processed error array.
+        - obj (numpy.ndarray): The processed object array.
+        - positions (numpy.ndarray): The processed positions array.
+        - probe (numpy.ndarray): The processed probe array.
+        - probe_support_array (numpy.ndarray): The processed probe support array.
+        - rotation_angle (float): The rotation angle.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Read and process specific datasets into numpy arrays
+        datasets = {}
+        datasets['error'] = f["recon/error"][()]
+        datasets['obj'] = f["recon/object"][()]
+        datasets['positions'] = f["recon/positions"][()]
+        datasets['probe'] = f["recon/probe"][()]
+        datasets['probe_support_array'] = f["recon/probe_support_array"][()]
+        rotation_angle = f["metadata/rotation_angle"][()]
+
+        processed_datasets = {}
+        for key, data in datasets.items():
+            target_shape = target_shapes[key]
+            if mode == 'crop':
+                slices = tuple(slice(0, min(s, t)) for s, t in zip(data.shape, target_shape))
+                processed_datasets[key] = data[slices]
+            elif mode == 'append':
+                processed_datasets[key] = np.zeros(target_shape, dtype=data.dtype)
+                slices = tuple(slice(0, s) for s in data.shape)
+                processed_datasets[key][slices] = data
+        
+    return (metadata, processed_datasets['error'], processed_datasets['obj'],
+            processed_datasets['positions'], processed_datasets['probe'], 
+            processed_datasets['probe_support_array'], rotation_angle)
+
+def read_ptychography_results(base_path, mode='crop', selected_folders=None):
+    """
+    Read the most recent HDF5 files in each folder named by 6-digit integers and aggregate the data.
+
+    Parameters:
+    base_path : str
+        Path to the base directory containing the folders.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+    selected_folders : list of int, optional
+        List of integers specifying which folders to read. If None, all folders are read.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata_dict (dict): Dictionary of all metadata, keyed by folder names.
+        - error_array (numpy.ndarray): Aggregated error arrays.
+        - obj_array (numpy.ndarray): Aggregated object arrays.
+        - positions_array (numpy.ndarray): Aggregated positions arrays.
+        - probe_array (numpy.ndarray): Aggregated probe arrays.
+        - probe_support_array_array (numpy.ndarray): Aggregated probe support arrays.
+        - angles_array (numpy.ndarray): Aggregated rotation angles.
+    """
+    if selected_folders is not None:
+        selected_folders = [f"{i:06d}" for i in selected_folders]
+        folder_pattern = [os.path.join(base_path, f) for f in selected_folders]
+    else:
+        folder_pattern = glob.glob(os.path.join(base_path, '[0-9]' * 6))
+    
+    # Sort folders in increasing order
+    folder_pattern.sort()
+    
+    metadata_dict = {}
+    error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes = [], [], [], [], []
+    rotation_angles = []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape, rotation_angle = read_hdf5_file_metadata(most_recent_file)
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            error_shapes.append(error_shape)
+            obj_shapes.append(obj_shape)
+            positions_shapes.append(positions_shape)
+            probe_shapes.append(probe_shape)
+            probe_support_array_shapes.append(probe_support_array_shape)
+            rotation_angles.append(rotation_angle)
+    
+    if mode == 'crop':
+        target_shapes = {
+            'error': tuple(map(min, zip(*error_shapes))),
+            'obj': tuple(map(min, zip(*obj_shapes))),
+            'positions': tuple(map(min, zip(*positions_shapes))),
+            'probe': tuple(map(min, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(min, zip(*probe_support_array_shapes)))
+        }
+    elif mode == 'append':
+        target_shapes = {
+            'error': tuple(map(max, zip(*error_shapes))),
+            'obj': tuple(map(max, zip(*obj_shapes))),
+            'positions': tuple(map(max, zip(*positions_shapes))),
+            'probe': tuple(map(max, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(max, zip(*probe_support_array_shapes)))
+        }
+
+    # Print warnings if cropping or appending occurs
+    for shape, target_shape, name in zip([error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes], 
+                                         [target_shapes['error'], target_shapes['obj'], target_shapes['positions'], target_shapes['probe'], target_shapes['probe_support_array']],
+                                         ["error", "object", "positions", "probe", "probe_support_array"]):
+        if any(s != target_shape for s in shape):
+            if mode == 'crop':
+                print(f"Warning: Cropping {name} datasets to the minimum shape {target_shape}.")
+            elif mode == 'append':
+                print(f"Warning: Appending zeros to {name} datasets to the maximum shape {target_shape}.")
+
+    # Read and process datasets to the target shapes
+    errors, objs, positions, probes, probe_support_arrays = [], [], [], [], []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error, obj, pos, probe, probe_support_array, rotation_angle = read_and_crop_hdf5_file(  most_recent_file, target_shapes, mode )
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            errors.append(error)
+            objs.append(obj)
+            positions.append(pos)
+            probes.append(probe)
+            probe_support_arrays.append(probe_support_array)
+
+    # Convert lists to numpy arrays with an additional dimension
+    error_array = np.array(errors)
+    obj_array = np.array(objs)
+    positions_array = np.array(positions)
+    probe_array = np.array(probes)
+    probe_support_array_array = np.array(probe_support_arrays)
+    angles_array = np.array(rotation_angles)
+    
+    return obj_array, probe_array, positions_array, probe_support_array_array, error_array, metadata_dict, angles_array

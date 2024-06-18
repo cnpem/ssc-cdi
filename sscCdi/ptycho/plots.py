@@ -99,23 +99,6 @@ def plot_object_spectrum(data,pixel_size=1,cmap='viridis',figsize=(10, 10)):
     plt.colorbar(label='Log Magnitude')
     plt.show()
 
-
-def calculate_mode_powers(modes):
-    """
-    Calculate the power of each mode in an incoherent sum.
-
-    Parameters:
-    modes (ndarray): 3D complex-valued array with shape (N, Y, X) where N is the number of modes.
-
-    Returns:
-    ndarray: 1D array of power values for each mode.
-    """
-    powers = np.sum(np.abs(modes) ** 2, axis=(1, 2))
-    # Normalize the power values
-    total_power = np.sum(powers)
-    normalized_powers = powers / total_power
-    return normalized_powers
-
 def plot_probe_modes(probe,extent=None):
 
     from matplotlib.colors import hsv_to_rgb
@@ -204,6 +187,8 @@ def plot_iteration_error(error):
     ax.grid()
     ax.set_xlabel('iteration')
     ax.set_ylabel('error')
+    ax.set_title('Ptychography error')
+    plt.show()
 
 
 def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='viridis', cmap2='viridis', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
@@ -425,3 +410,184 @@ def plot_amplitude_and_phase(data, positions=None, title='', cmap1='viridis', cm
     plt.suptitle(title)
     plt.tight_layout()
     plt.show()
+
+
+def calculate_mode_powers(modes):
+    """
+    Calculate the power of each mode in an incoherent sum.
+
+    Parameters:
+    modes (ndarray): 3D complex-valued array with shape (N, Y, X) where N is the number of modes.
+
+    Returns:
+    ndarray: 1D array of power values for each mode.
+    """
+    powers = np.sum(np.abs(modes) ** 2, axis=(1, 2))
+    # Normalize the power values
+    total_power = np.sum(powers)
+    normalized_powers = powers / total_power
+    return normalized_powers
+
+def plot_probe_modes_multiple(probe, extent=None):
+    from matplotlib.colors import hsv_to_rgb
+
+    if len(probe.shape) == 2:
+        probe = np.expand_dims(probe, axis=0)
+    
+    N, Y, X = probe.shape  # N modes
+    
+    fig = plt.figure(figsize=(20+N, 7+N))
+    gs = plt.GridSpec(1, N + 1, width_ratios=[1] + [9] * N)
+
+    # Plot the color map on the left
+    ax_cbar = fig.add_subplot(gs[0, 0])
+    
+    # Create a custom colorbar
+    # Generate a 2D array where the first dimension is phase and the second dimension is amplitude
+    phase = np.linspace(0, 1, 256)  # Normalized phase
+    amplitude = np.linspace(0, 1, 256)  # Normalized amplitude
+    phase_grid, amplitude_grid = np.meshgrid(phase, amplitude)
+    color_map = hsv_to_rgb(np.dstack((phase_grid, np.ones_like(phase_grid), amplitude_grid)))
+
+    # Plot the color map as an image
+    ax_cbar.imshow(color_map, aspect='auto', origin='lower')
+    ax_cbar.set_xticks([0, 255])
+    ax_cbar.set_xticklabels(['-π', 'π'])
+    ax_cbar.set_yticks([0, 255])
+    ax_cbar.set_yticklabels(['0', 'Max'])
+    ax_cbar.set_xlabel('Phase')
+    ax_cbar.set_ylabel('Amplitude')
+    ax_cbar.set_title('')
+
+    ax_cbar.set_aspect((X / Y) * 9)
+
+    powers = calculate_mode_powers(probe)
+    
+    for i in range(N):
+        rgb_probe = convert_complex_to_RGB(probe[i], bias=0.01)
+        
+        ax_main = fig.add_subplot(gs[0, i + 1])
+        
+        im = ax_main.imshow(rgb_probe, extent=extent)
+        if extent is None:
+            ax_main.set_ylabel('Y [pxls]')
+            ax_main.set_xlabel('X [pxls]')
+        else:
+            ax_main.set_ylabel('Y [m]')
+            ax_main.set_xlabel('X [m]')
+        ax_main.set_title(f'Mode {i+1}. Power = {powers[i]*100:.2f}%')
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_probe_modes_interactive(probes, extent=None):
+    """
+    Display an interactive plot to visualize different slices of multiple probes.
+
+    Parameters:
+    probes (ndarray): 4D complex-valued array with shape (M, N, Y, X) where M is the number of probes,
+                      N is the number of modes, Y and X are the dimensions of each mode.
+    extent (tuple): Extent of the plot for x and y axes. Default is None.
+    """
+    num_probes = probes.shape[0]
+    from ipywidgets import interact, IntSlider, Play, jslink, VBox
+    from IPython.display import display
+
+    def update_plot(probe_index):
+        plot_probe_modes_multiple(probes[probe_index], extent)
+    
+    slider = IntSlider(min=0, max=num_probes-1, step=1, description='Probe Index')
+    play = Play(value=0, min=0, max=num_probes-1, step=1, interval=500)
+    jslink((play, 'value'), (slider, 'value'))
+    
+    display(VBox([play]))
+    interact(update_plot, probe_index=slider)
+
+
+import matplotlib.patches as patches
+
+def draw_rectangle(ax, x_min, x_max, y_min, y_max):
+    rect = patches.Rectangle((x_min, y_min), x_max - x_min, y_max - y_min, linewidth=1, edgecolor='r', facecolor='none')
+    ax.add_patch(rect)
+
+def plot_objects_multiple(obj, extent=None, positions=None):
+    if len(obj.shape) == 2:
+        obj = np.expand_dims(obj, axis=0)
+    
+    N, Y, X = obj.shape  # N modes
+    
+    fig = plt.figure(figsize=(20+N, 7+N))
+    gs = plt.GridSpec(1, 2 * N, width_ratios=[9] * 2 * N)
+
+    for i in range(N):
+        abs_obj = np.abs(obj[i])
+        angle_obj = np.angle(obj[i])
+        
+        ax_abs = fig.add_subplot(gs[0, 2 * i])
+        im_abs = ax_abs.imshow(abs_obj, cmap='viridis', extent=extent)
+        fig.colorbar(im_abs, ax=ax_abs, orientation='vertical')
+        if extent is None:
+            ax_abs.set_ylabel('Y [pxls]')
+            ax_abs.set_xlabel('X [pxls]')
+        else:
+            ax_abs.set_ylabel('Y [m]')
+            ax_abs.set_xlabel('X [m]')
+        ax_abs.set_title(f'Mode {i+1} Magnitude')
+        
+        if positions is not None:
+            y_min, y_max = positions[:, 0].min(), positions[:, 0].max()
+            x_min, x_max = positions[:, 1].min(), positions[:, 1].max()
+
+            if extent is not None:
+                ymin_extent, ymax_extent = extent[2], extent[3]
+                xmin_extent, xmax_extent = extent[0], extent[1]
+                pixel_size_y = (ymax_extent - ymin_extent) / abs_obj.shape[0]
+                pixel_size_x = (xmax_extent - xmin_extent) / abs_obj.shape[1]
+
+                y_min = ymin_extent + y_min * pixel_size_y
+                y_max = ymin_extent + y_max * pixel_size_y
+                x_min = xmin_extent + x_min * pixel_size_x
+                x_max = xmin_extent + x_max * pixel_size_x
+
+            draw_rectangle(ax_abs, x_min, x_max, y_min, y_max)
+
+        ax_angle = fig.add_subplot(gs[0, 2 * i + 1])
+        im_angle = ax_angle.imshow(angle_obj, cmap='viridis', extent=extent)
+        fig.colorbar(im_angle, ax=ax_angle, orientation='vertical')
+        if extent is None:
+            ax_angle.set_ylabel('Y [pxls]')
+            ax_angle.set_xlabel('X [pxls]')
+        else:
+            ax_angle.set_ylabel('Y [m]')
+            ax_angle.set_xlabel('X [m]')
+        ax_angle.set_title(f'Mode {i+1} Phase')
+
+        if positions is not None:
+            draw_rectangle(ax_angle, x_min, x_max, y_min, y_max)
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_objects_interactive(objects, extent=None, positions=None):
+    """
+    Display an interactive plot to visualize different slices of multiple objects.
+
+    Parameters:
+    objects (ndarray): 4D complex-valued array with shape (M, N, Y, X) where M is the number of objects,
+                      N is the number of modes, Y and X are the dimensions of each mode.
+    extent (tuple): Extent of the plot for x and y axes. Default is None.
+    positions (ndarray): 2D array with shape (P, 2) containing the positions to draw the rectangle. Default is None.
+    """
+    num_objects = objects.shape[0]
+    from ipywidgets import interact, IntSlider, Play, jslink, VBox, HBox
+    from IPython.display import display
+
+    def update_plot(obj_index):
+        plot_objects_multiple(objects[obj_index], extent, positions)
+    
+    slider = IntSlider(min=0, max=num_objects-1, step=1, description='Probe Index')
+    play = Play(value=0, min=0, max=num_objects-1, step=1, interval=500)
+    jslink((play, 'value'), (slider, 'value'))
+    
+    display(HBox([play]))
+    interact(update_plot, obj_index=slider)

@@ -152,7 +152,7 @@ def restoration_ptycho_CAT(input_dict):
                     print("Using already restored flatfield being from: ", input_dict["flatfield"])
                     dic["flat"] = flatfield_forward_restoration(input_dict)
                 else:
-                    print("Flatfield being loaded from: ", input_dict["flatfield"])
+                    print("Flatfield loaded from: ", input_dict["flatfield"])
                     dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
         else:
             raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
@@ -279,7 +279,7 @@ def restoration_CAT(input_dict,method = 'IO'):
                     print("Using already restored flatfield being from: ", input_dict["flatfield"])
                     dic["flat"] = flatfield_forward_restoration(input_dict)
                 else:
-                    print("Flatfield being loaded from: ", input_dict["flatfield"])
+                    print("Flatfield loaded from: ", input_dict["flatfield"])
                     dic['flat'] = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :] # np.ones([3072, 3072])
         else:
             raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
