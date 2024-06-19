@@ -144,7 +144,7 @@ def restoration_ptycho_CAT(input_dict):
                 print("Using already restored flatfield: ", input_dict["posflat"])
                 input_dict["flatfield"] = input_dict["posflat"]
                 geometry_flat, project_flat = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
-                flat_backward = h5py.File(input_dict["flatfield"],'r')['entry/data'][()]
+                flat_backward = h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()]
                 dic["flat"] = pi540D.forward540D(flat_backward,  geometry_flat)
             else:
                 flat_path = input_dict["flatfield"]
@@ -163,7 +163,7 @@ def restoration_ptycho_CAT(input_dict):
             print("Using already restored mask: ", input_dict["posmask"])
             input_dict["mask"] = input_dict["posmask"]
             geometry_mask, project_mask = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
-            mask_backward = h5py.File(input_dict["flatfield"],'r')['entry/data'][()]
+            mask_backward = h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()]
             dic["mask"] = pi540D.forward540D(mask_backward,  geometry_mask)
         else:
             if input_dict["mask"] != '':    
