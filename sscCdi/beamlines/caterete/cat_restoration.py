@@ -101,7 +101,8 @@ def restoration_ptycho_CAT(input_dict):
 
     if input_dict["DP_center"] == []:
         input_dict["DP_center"] = [0,0]
-        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(input_dict,input_dict["dbeam"])
+        input_dict["save_path"] = ''
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(input_dict)
 
     if input_dict["using_direct_beam"]:
         print("Using direct beam to find center: ",input_dict["DP_center"])
@@ -140,19 +141,18 @@ def restoration_ptycho_CAT(input_dict):
             dic['flat'] = np.ones([detector_size, detector_size])
         elif input_dict["flatfield"] != '':    
           
-            if "posflat" in input_dict and input_dict["use_posflat"] == True:
+            if input_dict["use_posflat"] == True:
                 print("Using already restored flatfield: ", input_dict["posflat"])
                 input_dict["flatfield"] = input_dict["posflat"]
                 geometry_flat, project_flat = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
                 flat_backward = np.squeeze(h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()])
-                print('flat shape',flat_backward.shape)
                 dic["flat"] = pi540D.forward540D(flat_backward,  geometry_flat)
             else:
                 flat_path = input_dict["flatfield"]
                 flat_type = flat_path.rsplit(".")[-1]
 
                 if flat_type == "npy":
-                    print("Using already restored flatfield being from: ", input_dict["flatfield"])
+                    print("Using already restored flatfield from: ", input_dict["flatfield"])
                     dic["flat"] = flatfield_forward_restoration(input_dict)
                 else:
                     print("Flatfield loaded from: ", input_dict["flatfield"])
@@ -160,11 +160,11 @@ def restoration_ptycho_CAT(input_dict):
         else:
             raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
         
-        if "posmask" in input_dict and input_dict["use_posflat"] == True:
+        if input_dict["use_posmask"] == True:
             print("Using already restored mask: ", input_dict["posmask"])
             input_dict["mask"] = input_dict["posmask"]
             geometry_mask, project_mask = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
-            mask_backward = np.squeeze(h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()])
+            mask_backward = np.squeeze(h5py.File(input_dict["mask"],'r')['entry/data/data'][()])
             dic["mask"] = pi540D.forward540D(mask_backward,  geometry_mask)
         else:
             if input_dict["mask"] != '':    
@@ -224,7 +224,7 @@ def restoration_CAT(input_dict,method = 'IO'):
 
     if input_dict["DP_center"] == []:
         input_dict["DP_center"] = [0,0]
-        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(input_dict)
 
     if input_dict['using_direct_beam']: # if center coordinates are obtained from dbeam image at raw diffraction pattern; distance in mm
             input_dict['DP_center'][1], input_dict['DP_center'][0] = opt540D.mapping540D( input_dict['DP_center'][1], input_dict['DP_center'][0], pi540D.dictionary540D(input_dict["detector_distance"]*1000, {'geo': 'nonplanar', 'opt': True, 'mode': 'virtual'} ))
@@ -357,19 +357,29 @@ def restoration_CAT(input_dict,method = 'IO'):
     return DPs
 
 
-def get_DP_center_from_dbeam(dic,path):
-    dic['data_path'] = [path]
-    dbeam_restored = np.squeeze(restoration_CAT(dic,method = 'IO'))
-    max_y, max_x = get_center_coordinate_from_integrated_dbeam(dbeam_restored)
+def get_DP_center_from_dbeam(input_dict):
+
+    dbeam = read_hdf5(input_dict["dbeam"])[()][0, 0, :, :]
+    mask = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
+    flat = read_hdf5(input_dict["flatfield"])[()][0, 0, :, :]
+
+    flat[np.isnan(flat)] = -1
+    flat[flat == 0] = -1 # null points at flatfield are indication of bad points
+    dbeam = dbeam * np.squeeze(flat) # apply flatfield
+    dbeam[np.squeeze(flat)==-1] = -1 # null values in both the data and in the flat will be disconsidered
+    dbeam[np.abs(np.squeeze(mask)) == 1] = -1 # apply mask
+
+    max_y, max_x = get_center_coordinate_from_integrated_dbeam(dbeam)
+    print('Center of center found at: ',max_y, max_x )
     return max_y, max_x
 
 def get_center_coordinate_from_integrated_dbeam(dbeam_restored,plot=False):
 
     sumx = dbeam_restored.sum(0)
-    maxx = np.where(sumx==sumx.max())
+    maxx = np.where(sumx==sumx.max())[0]
 
     sumy = dbeam_restored.sum(1)
-    maxy = np.where(sumy==sumy.max())
+    maxy = np.where(sumy==sumy.max())[0]
 
     if plot:
         fig, ax = plt.subplots(dpi=300)
@@ -377,4 +387,4 @@ def get_center_coordinate_from_integrated_dbeam(dbeam_restored,plot=False):
         ax.plot(dbeam_restored.sum(1))
         ax.grid()
         
-    return maxy,maxx
+    return maxy[0],maxx[0]
