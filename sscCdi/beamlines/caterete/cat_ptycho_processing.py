@@ -58,6 +58,8 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             folder_number = folder_numbers_list[file_number_index]
             acquisitions_folder = folder_names_list[file_number_index]
 
+            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, filename)
+
             print(f"\nReading diffraction data for angle #{file_number}")
             event_start("Read restored data")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
@@ -101,6 +103,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             event_stop()
 
             """ Call Ptychography """
+            savepath = input_dict["hdf5_output"]
             input_dict["hdf5_output"] = None # use None so call_ptychography does not save the output. We shall save it in the CATERETE format ahead
             obj, probe, corrected_positions, input_dict, error  = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
 
@@ -116,11 +119,13 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             """ Save single frame of object and probe to temporary folder"""
 
             event_start("Save ptychography results")
-
-            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, filename)
-            create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
-            save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
-            print('Results saved at: ',input_dict["hdf5_output"])
+            print(savepath)
+            create_parent_folder(savepath) # create parent folder to output file if it does not exist
+            if input_dict['save_restored_data']:
+                save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error,restored_data=DPs)
+            else:
+                save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
+            print('Results saved at: ',savepath)
             print('.................................................................................................................')
             event_stop() # save numpy ptychography files
 
@@ -182,7 +187,7 @@ def get_unique_filename(output_path, file_number_index, filename):
     
     return file_path
 
-def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
+def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error,restored_data=None):
 
     with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
 
@@ -231,6 +236,9 @@ def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error):
                     h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
                 else:
                     h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+
+        if restored_data is not None:
+            h5file["recon"].create_dataset('restored_data',data=restored_data) 
 
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
