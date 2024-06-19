@@ -140,7 +140,7 @@ def restoration_ptycho_CAT(input_dict):
             dic['flat'] = np.ones([detector_size, detector_size])
         elif input_dict["flatfield"] != '':    
           
-            if "posflat" in input_dict:
+            if "posflat" in input_dict and input_dict["use_posflat"] == True:
                 print("Using already restored flatfield: ", input_dict["posflat"])
                 input_dict["flatfield"] = input_dict["posflat"]
                 geometry_flat, project_flat = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
@@ -159,7 +159,7 @@ def restoration_ptycho_CAT(input_dict):
         else:
             raise ValueError(f'Problem loading flatfield: {input_dict["flatfield"] }')
         
-        if "posmask" in input_dict:
+        if "posmask" in input_dict and input_dict["use_posflat"] == True:
             print("Using already restored mask: ", input_dict["posmask"])
             input_dict["mask"] = input_dict["posmask"]
             geometry_mask, project_mask = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
