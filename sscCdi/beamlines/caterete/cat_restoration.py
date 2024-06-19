@@ -101,7 +101,7 @@ def restoration_ptycho_CAT(input_dict):
 
     if input_dict["DP_center"] == []:
         input_dict["DP_center"] = [0,0]
-        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(dic,input_dict["dbeam"])
+        input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(input_dict,input_dict["dbeam"])
 
     if input_dict["using_direct_beam"]:
         print("\t Using direct beam to find center: ",input_dict["DP_center"])
@@ -143,7 +143,9 @@ def restoration_ptycho_CAT(input_dict):
             if "posflat" in input_dict:
                 print("Using already restored flatfield: ", input_dict["posflat"])
                 input_dict["flatfield"] = input_dict["posflat"]
-                dic["flat"] = flatfield_forward_restoration(input_dict)
+                geometry_flat, project_flat = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
+                flat_backward = h5py.File(input_dict["flatfield"],'r')['entry/data'][()]
+                dic["flat"] = pi540D.forward540D(flat_backward,  geometry_flat)
             else:
                 flat_path = input_dict["flatfield"]
                 flat_type = flat_path.rsplit(".")[-1]
@@ -160,7 +162,9 @@ def restoration_ptycho_CAT(input_dict):
         if "posmask" in input_dict:
             print("Using already restored mask: ", input_dict["posmask"])
             input_dict["mask"] = input_dict["posmask"]
-            dic["mask"] = flatfield_forward_restoration(input_dict,name="mask")
+            geometry_mask, project_mask = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
+            mask_backward = h5py.File(input_dict["flatfield"],'r')['entry/data'][()]
+            dic["mask"] = pi540D.forward540D(mask_backward,  geometry_mask)
         else:
             if input_dict["mask"] != '':    
                 dic['mask'] = read_hdf5(input_dict["mask"])[()][0, 0, :, :]
