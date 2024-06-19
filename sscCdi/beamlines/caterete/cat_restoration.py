@@ -86,7 +86,7 @@ def restoration_ptycho_CAT(input_dict):
 
     if input_dict['projections'] != []:
         filepaths, filenames, folders_name, folders_number = select_specific_angles(input_dict['projections'], filepaths_list,  filenames_list, folder_names_list, folder_numbers_list)
-        print(f"\tUsing {len(filenames)} of {len(filenames_list)} angle(s)")
+        print(f"Using {len(filenames)} of {len(filenames_list)} angle(s)")
     else:
         filepaths, filenames, folders_number, folders_name  = filepaths_list, filenames_list, folder_numbers_list, folder_names_list
     
@@ -104,9 +104,9 @@ def restoration_ptycho_CAT(input_dict):
         input_dict["DP_center"][0], input_dict["DP_center"][1] = get_DP_center_from_dbeam(input_dict,input_dict["dbeam"])
 
     if input_dict["using_direct_beam"]:
-        print("\t Using direct beam to find center: ",input_dict["DP_center"])
+        print("Using direct beam to find center: ",input_dict["DP_center"])
         input_dict["DP_center"][1], input_dict["DP_center"][0] = opt540D.mapping540D( input_dict["DP_center"][1], input_dict["DP_center"][0], project)
-        print("\t\t New center: ",input_dict["DP_center"])
+        print("New center: ",input_dict["DP_center"])
 
     dic = {} # dictionary for restoration function
     dic['path']     = filepaths
@@ -144,7 +144,8 @@ def restoration_ptycho_CAT(input_dict):
                 print("Using already restored flatfield: ", input_dict["posflat"])
                 input_dict["flatfield"] = input_dict["posflat"]
                 geometry_flat, project_flat = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
-                flat_backward = h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()]
+                flat_backward = np.squeeze(h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()])
+                print('flat shape',flat_backward.shape)
                 dic["flat"] = pi540D.forward540D(flat_backward,  geometry_flat)
             else:
                 flat_path = input_dict["flatfield"]
@@ -163,7 +164,7 @@ def restoration_ptycho_CAT(input_dict):
             print("Using already restored mask: ", input_dict["posmask"])
             input_dict["mask"] = input_dict["posmask"]
             geometry_mask, project_mask = Geometry(  input_dict["detector_distance"]*1000,  susp = input_dict["suspect_border_pixels"],  fill = input_dict["fill_blanks"],  scale = input_dict["scale"]  ) # distance in milimeters
-            mask_backward = h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()]
+            mask_backward = np.squeeze(h5py.File(input_dict["flatfield"],'r')['entry/data/data'][()])
             dic["mask"] = pi540D.forward540D(mask_backward,  geometry_mask)
         else:
             if input_dict["mask"] != '':    
