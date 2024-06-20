@@ -818,21 +818,23 @@ def probe_model_fzp(wavelength,
                     probe_diameter,
                     probe_normalize,
                     upsample = 10):
-    """
-    Compute the initial probe model for a Fresnel zone plate (FZP) system.
 
+    """
     Args:
         wavelength (float): Wavelength of the probe in meters.
-        grid_shape (int or list): Shape of the grid, either an int (for a square grid) or a list [int, int] for rectangular grid.
+        grid_shape (int or list of int): Shape of the grid, either an int (for a square grid) or a list [int, int] for a rectangular grid.
         pixel_size_object (float): Size of a pixel in the object plane in meters.
-        beam_radius (float): Radius of the beam in meters.
+        beam_type (str): Type of the beam, either 'gaussian' or 'disc'.
         distance_sample_fzpf (float): Distance between the sample and the focus of the FZP in meters.
         fzp_diameter (float): Diameter of the FZP in meters.
         fzp_outer_zone_width (float): Width of the outermost zone of the FZP in meters.
         beamstopper_diameter (float): Diameter of the beamstopper in meters.
+        probe_diameter (float): Diameter of the probe in meters.
+        probe_normalize (bool): Whether to normalize the probe.
+        upsample (int, optional): Upsampling factor for the grid. Default is 10.
 
     Returns:
-        initial_probe (array): The initial probe after applying the FZP and beamstopper.
+        initial_probe (numpy.ndarray): The initial probe after applying the FZP and beamstopper.
     """
     
     # FZP focus
@@ -849,8 +851,6 @@ def probe_model_fzp(wavelength,
     grid_shape[1] = int(grid_shape[1]*upsample)
 
     # define a common sampling grid 
-    ## x = np.linspace(0,grid_shape[0],grid_shape[0])*pixel_size_object
-    ## y = np.linspace(0,grid_shape[1],grid_shape[1])*pixel_size_object
     x = np.linspace(-grid_shape[0]//2,(grid_shape[0]+1)//2,grid_shape[0])*pixel_size_object
     y = np.linspace(-grid_shape[1]//2,(grid_shape[1]+1)//2,grid_shape[0])*pixel_size_object
     x, y = np.meshgrid(x, y)
@@ -873,14 +873,12 @@ def probe_model_fzp(wavelength,
     ## beamstopper transfer function
     if beamstopper_diameter>0:
         # define the beamstopper mask 
-        # beamstopper = 1-((x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2 <= (beamstopper_diameter/2)**2).astype(float)
         beamstopper = 1.0-(x**2 + y**2 <= (beamstopper_diameter/2)**2).astype(float)
 
         # apply beamstopper mask to w
         w = w*beamstopper
 
     # generate the fzp transfer function
-    # r2 = (x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2
     r2 =  x**2 + y**2
     # transfer_fzp = np.exp(1j*np.pi*r2/(wavelength*fzp_f))
     transfer_fzp = np.exp(-1j*np.pi*r2/(wavelength*fzp_f))
