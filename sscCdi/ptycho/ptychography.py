@@ -490,9 +490,13 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
             obj = obj.astype(np.complex64)
             probe = probe.astype(np.complex64)
-        else:
-            sys.exit('Please select a proper algorithm! Selected: ', algo_inputs["algorithm"])
 
+        else:
+            sys.exit('Please select a proper algorithm! Selected: ', algo_inputs["algorithms"])
+
+        if counter != len(input_dict['algorithms'].keys()) and plot == True:
+            plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+            
         error = np.concatenate((error,algo_error),axis=0)
 
     return obj, probe, error, corrected_positions
