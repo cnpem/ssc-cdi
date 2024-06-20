@@ -106,6 +106,7 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             savepath = input_dict["hdf5_output"]
             input_dict["hdf5_output"] = None # use None so call_ptychography does not save the output. We shall save it in the CATERETE format ahead
             obj, probe, corrected_positions, input_dict, error  = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
+            input_dict["hdf5_output"] = savepath # return original name
 
             if corrected_positions is not None:
                 corrected_positions_list.append(corrected_positions[:,0,0:2])
@@ -119,13 +120,12 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             """ Save single frame of object and probe to temporary folder"""
 
             event_start("Save ptychography results")
-            print(savepath)
-            create_parent_folder(savepath) # create parent folder to output file if it does not exist
+            create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
             if input_dict['save_restored_data']:
                 save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error,restored_data=DPs)
             else:
                 save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
-            print('Results saved at: ',savepath)
+            print('Results saved at: ',input_dict["hdf5_output"])
             print('.................................................................................................................')
             event_stop() # save numpy ptychography files
 

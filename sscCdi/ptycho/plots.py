@@ -591,3 +591,147 @@ def plot_objects_interactive(objects, extent=None, positions=None):
     
     display(HBox([play]))
     interact(update_plot, obj_index=slider)
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+from scipy.optimize import curve_fit
+import ipywidgets as widgets
+from IPython.display import display
+
+def fresnel_propagate(complex_beam, wavelength, z, dx):
+    k = 2 * np.pi / wavelength  # Wavenumber
+    N, M = complex_beam.shape  # Size of the input field
+    Lx = N * dx  # Physical size of the field in the x direction
+    Ly = M * dx  # Physical size of the field in the y direction
+    
+    # Frequency coordinates
+    fx = np.fft.fftfreq(N, d=dx)
+    fy = np.fft.fftfreq(M, d=dx)
+    FX, FY = np.meshgrid(fx, fy)
+    
+    # Fourier transform of the initial field
+    complex_beam_ft = np.fft.fft2(complex_beam)
+    
+    # Fresnel transfer function
+    H = np.exp(1j * k * z) * np.exp(-1j * np.pi * wavelength * z * (FX**2 + FY**2))
+    
+    # Multiply the transfer function with the Fourier transformed field
+    Uz_ft = complex_beam_ft * H
+    
+    # Inverse Fourier transform to get the propagated field
+    Uz = np.fft.ifft2(Uz_ft)
+    
+    return Uz
+
+def propagate_and_slice(complex_beam, wavelength, dz, dz_range, dx, slice_idx=None, direction='vertical'):
+    z_steps = int(dz_range / dz)  # Number of steps in each direction
+    slice_z = np.linspace(-dz_range, dz_range, 2 * z_steps + 1)
+    slice_I = np.zeros((complex_beam.shape[0], 2 * z_steps + 1))
+
+    Uz_slices = []
+    for i, z in enumerate(slice_z):
+        print(f'Propagating beam to slice at z={z:.5f}', end='\r')
+        Uz = fresnel_propagate(complex_beam, wavelength, z, dx)
+        Uz_slices.append(Uz)
+        
+        if direction == 'horizontal':
+            if slice_idx is None:
+                slice_idx = complex_beam.shape[0] // 2
+            slice_I[:, i] = np.abs(Uz[slice_idx, :])**2  # Take the central slice in x
+        elif direction == 'vertical':
+            if slice_idx is None:
+                slice_idx = complex_beam.shape[1] // 2
+            slice_I[:, i] = np.abs(Uz[:, slice_idx])**2  # Take the central slice in y
+        else:
+            raise ValueError('Select correct slice direction')
+                
+    return slice_z, slice_I, Uz_slices
+
+def plot_caustic(complex_beam,wavelength, dz, dz_range, dx,direction='vertical'):
+    def gaussian(z, a, z0, w):
+        """Gaussian function for fitting."""
+        return a * np.exp(-2 * (z - z0)**2 / w**2)
+
+
+    N = complex_beam.shape[0]
+    x = np.linspace(-N//2, N//2, N+1)*dx*1e6
+    y = np.linspace(-N//2, N//2, N+1)*dx*1e6
+    X, Y = np.meshgrid(x, y)
+
+    slice_z, slice_I, Uz_slices = propagate_and_slice(complex_beam, wavelength, dz, dz_range, dx, direction=direction)
+    slice_z_mm = slice_z * 1e3  # Convert z to millimeters
+
+    fig = plt.figure(figsize=(25, 6))
+    gs = gridspec.GridSpec(1, 3)
+
+    # Plot the original transversal slice
+    ax1 = plt.subplot(gs[0])
+    cax1 = ax1.imshow(np.abs(complex_beam)**2, extent=[x.min(), x.max(), y.min(), y.max()], cmap='cividis')
+    ax1.set_title('Initial Beam Intensity')
+    ax1.set_xlabel('x (µm)')
+    ax1.set_ylabel('y (µm)')
+    fig.colorbar(cax1, ax=ax1, orientation='vertical', label='Intensity')
+
+    from matplotlib.colors import LogNorm
+    # Plot the longitudinal slice
+    ax2 = plt.subplot(gs[1])
+    cax2 = ax2.imshow(slice_I, extent=[slice_z_mm.min(), slice_z_mm.max(), x.min(), x.max()], aspect='auto', cmap='cividis')
+    ax2.set_title('Longitudinal Beam Intensity')
+    ax2.set_xlabel('Propagation direction z (mm)')
+    if direction == 'vertical':
+        ax2.set_ylabel('Transverse direction y (µm)')
+    elif direction == 'horizontal':
+        ax2.set_ylabel('Transverse direction x (µm)')
+    fig.colorbar(cax2, ax=ax2, orientation='vertical', label='Intensity')
+    line = ax2.axvline(x=0, color='r', linestyle='--')
+
+    # Create a third plot
+    ax3 = plt.subplot(gs[2])
+    ax3.set_title('XY Slice at Selected z')
+    ax3.set_xlabel('x (µm)')
+    ax3.set_ylabel('y (µm)')
+    cax3 = ax3.imshow(np.abs(complex_beam)**2, extent=[x.min(), x.max(), y.min(), y.max()], cmap='cividis')
+    fig.colorbar(cax3, ax=ax3, orientation='vertical', label='Intensity')
+
+    # Slider widget for selecting the z slice
+    slider_z = widgets.FloatSlider(
+        value=0,
+        min=slice_z_mm.min(),
+        max=slice_z_mm.max(),
+        step=dz * 1e3,
+        description='z (mm)',
+        continuous_update=False
+    )
+
+    # Range slider for selecting vmax and vmin
+    range_slider = widgets.FloatRangeSlider(
+        value=[slice_I.min(), slice_I.max()],
+        min=slice_I.min(),
+        max=slice_I.max(),
+        step=(slice_I.max() - slice_I.min()) / 100,
+        description='MinMax',
+        continuous_update=False
+    )
+
+    def update_plot(z, intensity_range):
+        idx = (np.abs(slice_z_mm - z)).argmin()
+        Uz = Uz_slices[idx]
+        
+        # Update the third plot
+        cax3.set_data(np.abs(Uz)**2)
+        ax3.set_title(f'XY Slice at z = {z:.3f} mm')
+        
+        # Update the vertical line in the second plot
+        line.set_xdata(z)
+        
+        # Update the color limits for the second plot
+        cax2.set_clim(*intensity_range)
+        
+        fig.canvas.draw_idle()
+
+    widgets.interactive(update_plot, z=slider_z, intensity_range=range_slider)
+    display(slider_z, range_slider)
+    plt.show()
