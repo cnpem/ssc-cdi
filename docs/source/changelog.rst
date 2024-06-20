@@ -13,6 +13,24 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.10.0] - 2024-06-20
+--------------------
+
+Added
+~~~~~
+- Added option for initial guess using model of a Fresnel Zone Plate
+- A module of user friendly plots has been added to Ptychography
+- Added option to use restored flatfield and mask in CAT ptycho pipeline
+
+Changed
+~~~~~
+- New version of input dictionary. Calls have been organized and simplified
+- Unification of Python and CUDA algorithms
+
+Documentation
+~~~~~
+- Part of the documentation has been updated
+
 [0.9.6] - 2024-05-29
 --------------------
 
