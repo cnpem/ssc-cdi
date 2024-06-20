@@ -289,6 +289,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
     probe = initial_probe
 
+    print('probe.shappppppe = ', probe.shape)
+
+    print("initial_probe.shape = ", initial_probe.shape)
+
     if initial_obj is None:
         initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
     obj = initial_obj
@@ -573,21 +577,26 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
             ft = np.fft.fftshift(np.fft.fft2(np.fft.fftshift(DPs_avg)))
             probe = np.sqrt(np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(ft))))
         elif input_dict['initial_probe']['probe'] == 'fzp':
-            wavelength = input_dict['initial_probe']['wavelength']
-            pixel_size_object = input_dict['initial_probe']['pixel_size_object']
-            beam_radius = input_dict['initial_probe']['beam_radius']
-            distance_sample_fzp = input_dict['initial_probe']['distance_sample_fzp']
+            wavelength = input_dict['wavelength']
+            pixel_size_object = input_dict['object_pixel']
+            beam_type = input_dict['initial_probe'].get('beam_type','disc')
+            distance_sample_fzpf = input_dict['initial_probe']['distance_sample_fzpf']
             fzp_diameter = input_dict['initial_probe']['fzp_diameter']
             fzp_outer_zone_width = input_dict['initial_probe']['fzp_outer_zone_width']
-            beamstopper_diameter = input_dict['initial_probe']['beamstopper_diameters']
+            beamstopper_diameter = input_dict['initial_probe']['beamstopper_diameter']
+            probe_diameter = input_dict['initial_probe'].get('probe_diameter',fzp_diameter)  
+            probe_normalize = input_dict['initial_probe'].get('probe_normalize',False)
             probe = probe_model_fzp(wavelength = wavelength,
                                     grid_shape = 2*input_dict["detector_ROI_radius"],
                                     pixel_size_object = pixel_size_object , 
-                                    beam_radius =  beam_radius,
-                                    distance_sample_fzp = distance_sample_fzp,
+                                    beam_type =  beam_type,
+                                    distance_sample_fzpf = distance_sample_fzpf,
                                     fzp_diameter = fzp_diameter,
                                     fzp_outer_zone_width = fzp_outer_zone_width,
-                                    beamstopper_diameter = beamstopper_diameter)
+                                    beamstopper_diameter = beamstopper_diameter,
+                                    probe_diameter = probe_diameter,
+                                    probe_normalize = probe_normalize
+                                    )
         else:
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
@@ -806,20 +815,23 @@ def set_object_shape(object_padding, DP_shape, probe_positions):
 def probe_model_fzp(wavelength, 
                     grid_shape,
                     pixel_size_object, 
-                    beam_radius,
-                    distance_sample_fzp,
+                    beam_type,
+                    distance_sample_fzpf,
                     fzp_diameter,
                     fzp_outer_zone_width,
-                    beamstopper_diameter):
+                    beamstopper_diameter,
+                    probe_diameter,
+                    probe_normalize,
+                    upsample = 10):
     """
     Compute the initial probe model for a Fresnel zone plate (FZP) system.
 
     Args:
         wavelength (float): Wavelength of the probe in meters.
-        grid_shape (int or tuple): Shape of the grid, either an int (for a square grid) or a tuple (int, int) for rectangular grid.
+        grid_shape (int or list): Shape of the grid, either an int (for a square grid) or a list [int, int] for rectangular grid.
         pixel_size_object (float): Size of a pixel in the object plane in meters.
         beam_radius (float): Radius of the beam in meters.
-        distance_sample_fzp (float): Distance between the sample and the FZP in meters.
+        distance_sample_fzpf (float): Distance between the sample and the focus of the FZP in meters.
         fzp_diameter (float): Diameter of the FZP in meters.
         fzp_outer_zone_width (float): Width of the outermost zone of the FZP in meters.
         beamstopper_diameter (float): Diameter of the beamstopper in meters.
@@ -831,33 +843,67 @@ def probe_model_fzp(wavelength,
     # FZP focus
     fzp_f = fzp_diameter*fzp_outer_zone_width/wavelength      
 
-    # handle grid_shape being int or (int,int) or something else
+    # handle grid_shape being int or [int,int] or something else
     if isinstance(grid_shape, int):
-        grid_shape = (grid_shape,grid_shape)
-    elif isinstance(grid_shape, (list, tuple)) is False or len(grid_shape) != 2:
+        grid_shape = [grid_shape,grid_shape]
+    elif isinstance(grid_shape, (list, list)) is False or len(grid_shape) != 2:
         raise ValueError("grid_shape must be an int or a list/tuple of two integers.")
         
+    # upsample grid 
+    grid_shape[0] = int(grid_shape[0]*upsample)
+    grid_shape[1] = int(grid_shape[1]*upsample)
+
     # define a common sampling grid 
-    x = np.linspace(0,grid_shape[0],grid_shape[1])*pixel_size_object
-    y = np.linspace(0,grid_shape[1],grid_shape[1])*pixel_size_object
+    ## x = np.linspace(0,grid_shape[0],grid_shape[0])*pixel_size_object
+    ## y = np.linspace(0,grid_shape[1],grid_shape[1])*pixel_size_object
+    x = np.linspace(-grid_shape[0]//2,(grid_shape[0]+1)//2,grid_shape[0])*pixel_size_object
+    y = np.linspace(-grid_shape[1]//2,(grid_shape[1]+1)//2,grid_shape[0])*pixel_size_object
     x, y = np.meshgrid(x, y)
     
     # distances: z1 = d(fzp, fzp_f) and z2 = d(fzp_f, obj)   
-    z1 = -fzp_f 
-    z2 = distance_sample_fzp 
+    z1 = 0                             # -fzp_f 
+    z2 = fzp_f + distance_sample_fzpf  # distance_sample_fzpf 
     
-    # define a gaussian wavefront 
-    sigma = beam_radius/(2*np.sqrt(2*np.log(2))) # full width at half maximum 
-    gaussian = np.exp(-((x-(grid_shape[0]/2)*pixel_size_object )**2 + (y-(grid_shape[1]/2)*pixel_size_object  ) **2) / (2 * sigma**2))
-    
+
+    if beam_type=="gaussian": 
+        # define a gaussian wavefront
+        sigma = (probe_diameter/2) / (2*np.sqrt(2*np.log(2))) # full width at half maximum
+        w = np.exp(-(x**2 + y**2)/(2*sigma**2))
+    elif beam_type=="disc":
+        # define a disc wavefront 
+        w = (x**2 + y**2 <= (probe_diameter/2)**2).astype(float) 
+    else:  
+        raise ValueError("Invalid beam_type. Must be either 'gaussian' or 'disc'.")
+
+    ## beamstopper transfer function
+    if beamstopper_diameter>0:
+        # define the beamstopper mask 
+        # beamstopper = 1-((x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2 <= (beamstopper_diameter/2)**2).astype(float)
+        beamstopper = 1.0-(x**2 + y**2 <= (beamstopper_diameter/2)**2).astype(float)
+
+        # apply beamstopper mask to w
+        w = w*beamstopper
+
     # generate the fzp transfer function
-    r2 = (x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2
-    transfer_fzp = np.exp(1j*np.pi*r2/(wavelength*fzp_f))
+    # r2 = (x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2
+    r2 =  x**2 + y**2
+    # transfer_fzp = np.exp(1j*np.pi*r2/(wavelength*fzp_f))
+    transfer_fzp = np.exp(-1j*np.pi*r2/(wavelength*fzp_f))
+    
     
     # compute the initial probe 
-    initial_probe = fresnel_propagator_cone_beam(gaussian*transfer_fzp,wavelength,pixel_size_object,z2,z1)
-    
-    # define the beamstopper mask 
-    beamstopper = 1-((x-(grid_shape[0]/2)*pixel_size_object)**2 + (y-(grid_shape[1]/2)*pixel_size_object)**2 <= np.pi*(beamstopper_diameter/2)**2).astype(float)
-    
-    return initial_probe*beamstopper
+    w = fresnel_propagator_cone_beam(w*transfer_fzp,wavelength,pixel_size_object,z2,z1)
+
+
+    # crop grid 
+    start_y = (grid_shape[0] - int(grid_shape[0]/upsample))//2
+    start_x = (grid_shape[1] - int(grid_shape[1]/upsample))//2
+    end_y = start_y + int(grid_shape[0]/upsample)
+    end_x = start_x + int(grid_shape[1]/upsample) 
+    w = w[start_y:end_y,start_x:end_x]
+
+    # normalize if needed
+    if probe_normalize is True:
+        w = w*np.sqrt(grid_shape[0]*grid_shape[1]/np.sum(np.abs(w)**2,axis=(0,1)));
+
+    return np.expand_dims(w,axis=0)
