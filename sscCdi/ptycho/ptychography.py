@@ -157,7 +157,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
     print(f'Data shape: {DPs.shape}')
-    print(f"Initial object shape: {input_dict['object_shape']}")
     print(f"Initial probe shape: {DPs[0].shape}")
 
     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
@@ -178,7 +177,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     if "object_shape" not in input_dict:
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
-
+    
     if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
 
     if input_dict['hdf5_output'] is not None:
@@ -288,10 +287,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     if initial_probe is None:
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
     probe = initial_probe
-
-    print('probe.shappppppe = ', probe.shape)
-
-    print("initial_probe.shape = ", initial_probe.shape)
 
     if initial_obj is None:
         initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
