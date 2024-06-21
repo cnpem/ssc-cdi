@@ -1,0 +1,647 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structPOptAlgorithm" kind="struct" language="C++" prot="public">
+    <compoundname>POptAlgorithm</compoundname>
+    <includes refid="ptycho_8hpp" local="no">ptycho.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structPOptAlgorithm_1abec0db9e1f00d5267327d02da5161d19" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; int &gt;</type>
+        <definition>std::vector&lt;int&gt; POptAlgorithm::gpus</definition>
+        <argsstring></argsstring>
+        <name>gpus</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="29" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="29" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a96bb15bd81f718c72d585c8ed611eab9" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; <ref refid="ptycho_8hpp_1a2441dd3c983498585f5d3713eb2bdec7" kindref="member">RoiArray</ref> * &gt;</type>
+        <definition>std::vector&lt;RoiArray*&gt; POptAlgorithm::rois</definition>
+        <argsstring></argsstring>
+        <name>rois</name>
+        <briefdescription>
+<para>List of ROIs with exact same length as their corresponding scattering patterns. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="31" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="31" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a506d977d84492238546e64d7b2f38f01" prot="public" static="no" mutable="no">
+        <type>cMImage *</type>
+        <definition>cMImage* POptAlgorithm::object</definition>
+        <argsstring></argsstring>
+        <name>object</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Current object estimate. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="32" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1aa0bb2bf38b8e6e0126ff0e21fb7203d6" prot="public" static="no" mutable="no">
+        <type>cMImage *</type>
+        <definition>cMImage* POptAlgorithm::probe</definition>
+        <argsstring></argsstring>
+        <name>probe</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Current probe estimate. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="33" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a9ebbe9246bb2540b461b66067396ac0e" prot="public" static="no" mutable="no">
+        <type>cMImage *</type>
+        <definition>cMImage* POptAlgorithm::exitwave</definition>
+        <argsstring></argsstring>
+        <name>exitwave</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Temporary exitwave estimates to be amplitude projected. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="34" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="34" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a7927b2f881d02a9170c59b1e387050ed" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::rfactors</definition>
+        <argsstring></argsstring>
+        <name>rfactors</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>GPU Buffer for the error metric. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="35" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="35" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1aab95c3d5ca720cbb59c2a9dbfa508013" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::objectsupport</definition>
+        <argsstring></argsstring>
+        <name>objectsupport</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>List of object supports to be applied. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="37" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="37" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a7c1b1cc6f0a305a74b9bba62fc2bdb62" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::probesupport</definition>
+        <argsstring></argsstring>
+        <name>probesupport</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Support for the probe with the same shape as the probe itself. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="38" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="38" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1aacca83621286aadbdc45a53527862069" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; float &gt;</type>
+        <definition>std::vector&lt;float&gt; POptAlgorithm::SupportSizes</definition>
+        <argsstring></argsstring>
+        <name>SupportSizes</name>
+        <briefdescription>
+<para>Normalization vector for the object support. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="39" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="39" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a968ce12fa5071c8ac0480f3a2f30e4d8" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::sigmask</definition>
+        <argsstring></argsstring>
+        <name>sigmask</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Scattering intensity masks in the range [0,1], for partial amplitude projection. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="41" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="41" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a5e893d0230778059ce7fc29a3f549094" prot="public" static="no" mutable="no">
+        <type>bool</type>
+        <definition>bool POptAlgorithm::bCenterProbe</definition>
+        <argsstring></argsstring>
+        <name>bCenterProbe</name>
+        <initializer>= true</initializer>
+        <briefdescription>
+<para>Currently unused. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="42" column="10" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1af5208a1e588a5db1bfd7866b49c29189" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::I0</definition>
+        <argsstring></argsstring>
+        <name>I0</name>
+        <briefdescription>
+<para>Initial probe norm ||P||^2. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="44" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="44" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ad2cd46aefc388e690475a466352dd00f" prot="public" static="no" mutable="no">
+        <type><ref refid="classPropagator" kindref="compound">Propagator</ref> *</type>
+        <definition>Propagator* POptAlgorithm::propagator[16]</definition>
+        <argsstring>[16]</argsstring>
+        <name>propagator</name>
+        <briefdescription>
+<para>List of propagators to be used in the amplitude projection. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="46" column="16" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="46" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1acad5f2c1d1066b5397b71034372a9421" prot="public" static="no" mutable="no">
+        <type><ref refid="classPropagator" kindref="compound">Propagator</ref> *</type>
+        <definition>Propagator* POptAlgorithm::probepropagator</definition>
+        <argsstring></argsstring>
+        <name>probepropagator</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para><ref refid="classPropagator" kindref="compound">Propagator</ref> to be used before applying a support to the probe. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="47" column="16" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="47" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" prot="public" static="no" mutable="no">
+        <type>dim3</type>
+        <definition>dim3 POptAlgorithm::difpadshape</definition>
+        <argsstring></argsstring>
+        <name>difpadshape</name>
+        <briefdescription>
+<para>Shape of all scattering intensities. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="49" column="10" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="49" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1af999996bdd95576dfe05569db6be3b53" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::probef1</definition>
+        <argsstring></argsstring>
+        <name>probef1</name>
+        <initializer>= 1</initializer>
+        <briefdescription>
+<para>Fresnel number to be applied by probepropagator. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="50" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="50" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a8ec4655eee89ffd8bf45f8779d6ba098" prot="public" static="no" mutable="no">
+        <type>float *</type>
+        <definition>float* POptAlgorithm::cpudifpads</definition>
+        <argsstring></argsstring>
+        <name>cpudifpads</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Copy of difpads&apos; memory location passed to the algorithm. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="52" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="52" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a6e67c74cbab8c6ab4ff705aadb4f745d" prot="public" static="no" mutable="no">
+        <type>complex *</type>
+        <definition>complex* POptAlgorithm::cpuobject</definition>
+        <argsstring></argsstring>
+        <name>cpuobject</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Copy of the object&apos;s memory location passed to the algorithm. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="53" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="53" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ad14397ce6f4c85f02a060a4ddd1d5992" prot="public" static="no" mutable="no">
+        <type>complex *</type>
+        <definition>complex* POptAlgorithm::cpuprobe</definition>
+        <argsstring></argsstring>
+        <name>cpuprobe</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Copy of the probe&apos;s memory location passed to the algorithm. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="54" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="54" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a756b6b85c939871d321128435a279dfb" prot="public" static="no" mutable="no">
+        <type><ref refid="structROI" kindref="compound">ROI</ref> *</type>
+        <definition>ROI* POptAlgorithm::cpurois</definition>
+        <argsstring></argsstring>
+        <name>cpurois</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Copy of the rois&apos; memory location passed to the algorithm. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="55" column="9" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="55" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1abfd36af46d12deaded7d6ebb8e122242" prot="public" static="no" mutable="no">
+        <type>float *</type>
+        <definition>float* POptAlgorithm::cpurfact</definition>
+        <argsstring></argsstring>
+        <name>cpurfact</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Copy of the output error metric&apos;s memory location passed to the algorithm. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="56" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="56" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1aaba1f69047dd13bbbca184679c973c1d" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; int &gt;</type>
+        <definition>std::vector&lt;int&gt; POptAlgorithm::roibatch_offset</definition>
+        <argsstring></argsstring>
+        <name>roibatch_offset</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="58" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="58" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a536fe6af4356d89078241dbf8dbb6b64" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t POptAlgorithm::singlebatchsize</definition>
+        <argsstring></argsstring>
+        <name>singlebatchsize</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="59" column="12" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="59" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a3b7ba09622974d03379e1028946e6111" prot="public" static="no" mutable="no">
+        <type>size_t</type>
+        <definition>size_t POptAlgorithm::multibatchsize</definition>
+        <argsstring></argsstring>
+        <name>multibatchsize</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="60" column="12" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="60" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a2278546d425d8708f7d5282439d541f2" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int POptAlgorithm::geometricsteps</definition>
+        <argsstring></argsstring>
+        <name>geometricsteps</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="61" column="9" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="61" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ac24fac966485161d3bef7599ee42d679" prot="public" static="no" mutable="no">
+        <type>int</type>
+        <definition>int POptAlgorithm::total_num_rois</definition>
+        <argsstring></argsstring>
+        <name>total_num_rois</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="63" column="9" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="63" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ade9e24797a0b051d27502f3148230018" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::object_div</definition>
+        <argsstring></argsstring>
+        <name>object_div</name>
+        <briefdescription>
+<para>Denominator in the object augmented projector / LS-gradient preconditioner. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="65" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="65" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a4d304204018e1fe000740b0468d74566" prot="public" static="no" mutable="no">
+        <type>cMImage *</type>
+        <definition>cMImage* POptAlgorithm::object_acc</definition>
+        <argsstring></argsstring>
+        <name>object_acc</name>
+        <briefdescription>
+<para>Accumulator in the object augmented projector / LS-gradient preconditioner. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="66" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="66" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a110d4fbd5c20c09a2044f8c7f5dd1876" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::probe_div</definition>
+        <argsstring></argsstring>
+        <name>probe_div</name>
+        <briefdescription>
+<para>Denominator in the probe augmented projector / LS-gradient preconditioner. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="68" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="68" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ae4a5ff5d2466dc0a8b59c4d65be2cc6b" prot="public" static="no" mutable="no">
+        <type>cMImage *</type>
+        <definition>cMImage* POptAlgorithm::probe_acc</definition>
+        <argsstring></argsstring>
+        <name>probe_acc</name>
+        <briefdescription>
+<para>Accumulator in the probe augmented projector / LS-gradient preconditioner. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="69" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="69" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a8dfd13763eaa2664e0f711bdf78435c2" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::objmomentum</definition>
+        <argsstring></argsstring>
+        <name>objmomentum</name>
+        <initializer>= 0.95f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="72" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="72" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a36890b4c11b6e9ea9d0013acfa8015de" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::probemomentum</definition>
+        <argsstring></argsstring>
+        <name>probemomentum</name>
+        <initializer>= 0.9f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="73" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="73" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a28af23f00cd500b58e7145aeb57a16e2" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::objstep</definition>
+        <argsstring></argsstring>
+        <name>objstep</name>
+        <initializer>= 1.0f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="75" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="75" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ab26d95672cf1bdb420e2edb86df59565" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::probestep</definition>
+        <argsstring></argsstring>
+        <name>probestep</name>
+        <initializer>= 1.0f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="76" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="76" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a84777c02e5be6e5a84906bf7ba0da62a" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::probereg</definition>
+        <argsstring></argsstring>
+        <name>probereg</name>
+        <initializer>= 0.01f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="78" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="78" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a0432e54095f9ef861d69ef7db2020bcc" prot="public" static="no" mutable="no">
+        <type>float</type>
+        <definition>float POptAlgorithm::objreg</definition>
+        <argsstring></argsstring>
+        <name>objreg</name>
+        <initializer>= 0.01f</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="79" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="79" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a89393de4a5e66a2339b813512828c6a0" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::background</definition>
+        <argsstring></argsstring>
+        <name>background</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="81" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="81" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ad42ddbe8feb45a84c8b9dff9a834019b" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* POptAlgorithm::bkgaccum</definition>
+        <argsstring></argsstring>
+        <name>bkgaccum</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="82" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="82" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1ab543ac443007610201ae30c23e6ad7a5" prot="public" static="no" mutable="no">
+        <type>rImage *</type>
+        <definition>rImage* POptAlgorithm::bkgmomentum</definition>
+        <argsstring></argsstring>
+        <name>bkgmomentum</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="83" column="12" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="83" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPOptAlgorithm_1a0768eceb552480788fa78044e3cd401c" prot="public" static="no" mutable="no">
+        <type>float *</type>
+        <definition>float* POptAlgorithm::cpubackground</definition>
+        <argsstring></argsstring>
+        <name>cpubackground</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="85" column="11" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="85" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Base class for ptychography algorithms. Holds most of the relevant information and data. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="2">
+        <label>ROI</label>
+        <link refid="structROI"/>
+      </node>
+      <node id="1">
+        <label>POptAlgorithm</label>
+        <link refid="structPOptAlgorithm"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>cpurois</edgelabel>
+        </childnode>
+        <childnode refid="3" relation="usage">
+          <edgelabel>propagator</edgelabel>
+          <edgelabel>probepropagator</edgelabel>
+        </childnode>
+      </node>
+      <node id="3">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+    </collaborationgraph>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" line="28" column="20" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp" bodystart="28" bodyend="86"/>
+    <listofallmembers>
+      <member refid="structPOptAlgorithm_1a89393de4a5e66a2339b813512828c6a0" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>background</name></member>
+      <member refid="structPOptAlgorithm_1a5e893d0230778059ce7fc29a3f549094" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>bCenterProbe</name></member>
+      <member refid="structPOptAlgorithm_1ad42ddbe8feb45a84c8b9dff9a834019b" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>bkgaccum</name></member>
+      <member refid="structPOptAlgorithm_1ab543ac443007610201ae30c23e6ad7a5" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>bkgmomentum</name></member>
+      <member refid="structPOptAlgorithm_1a0768eceb552480788fa78044e3cd401c" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpubackground</name></member>
+      <member refid="structPOptAlgorithm_1a8ec4655eee89ffd8bf45f8779d6ba098" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpudifpads</name></member>
+      <member refid="structPOptAlgorithm_1a6e67c74cbab8c6ab4ff705aadb4f745d" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpuobject</name></member>
+      <member refid="structPOptAlgorithm_1ad14397ce6f4c85f02a060a4ddd1d5992" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpuprobe</name></member>
+      <member refid="structPOptAlgorithm_1abfd36af46d12deaded7d6ebb8e122242" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpurfact</name></member>
+      <member refid="structPOptAlgorithm_1a756b6b85c939871d321128435a279dfb" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>cpurois</name></member>
+      <member refid="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>difpadshape</name></member>
+      <member refid="structPOptAlgorithm_1a9ebbe9246bb2540b461b66067396ac0e" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>exitwave</name></member>
+      <member refid="structPOptAlgorithm_1a2278546d425d8708f7d5282439d541f2" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>geometricsteps</name></member>
+      <member refid="structPOptAlgorithm_1abec0db9e1f00d5267327d02da5161d19" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>gpus</name></member>
+      <member refid="structPOptAlgorithm_1af5208a1e588a5db1bfd7866b49c29189" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>I0</name></member>
+      <member refid="structPOptAlgorithm_1a3b7ba09622974d03379e1028946e6111" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>multibatchsize</name></member>
+      <member refid="structPOptAlgorithm_1a506d977d84492238546e64d7b2f38f01" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>object</name></member>
+      <member refid="structPOptAlgorithm_1a4d304204018e1fe000740b0468d74566" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>object_acc</name></member>
+      <member refid="structPOptAlgorithm_1ade9e24797a0b051d27502f3148230018" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>object_div</name></member>
+      <member refid="structPOptAlgorithm_1aab95c3d5ca720cbb59c2a9dbfa508013" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>objectsupport</name></member>
+      <member refid="structPOptAlgorithm_1a8dfd13763eaa2664e0f711bdf78435c2" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>objmomentum</name></member>
+      <member refid="structPOptAlgorithm_1a0432e54095f9ef861d69ef7db2020bcc" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>objreg</name></member>
+      <member refid="structPOptAlgorithm_1a28af23f00cd500b58e7145aeb57a16e2" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>objstep</name></member>
+      <member refid="structPOptAlgorithm_1aa0bb2bf38b8e6e0126ff0e21fb7203d6" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probe</name></member>
+      <member refid="structPOptAlgorithm_1ae4a5ff5d2466dc0a8b59c4d65be2cc6b" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probe_acc</name></member>
+      <member refid="structPOptAlgorithm_1a110d4fbd5c20c09a2044f8c7f5dd1876" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probe_div</name></member>
+      <member refid="structPOptAlgorithm_1af999996bdd95576dfe05569db6be3b53" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probef1</name></member>
+      <member refid="structPOptAlgorithm_1a36890b4c11b6e9ea9d0013acfa8015de" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probemomentum</name></member>
+      <member refid="structPOptAlgorithm_1acad5f2c1d1066b5397b71034372a9421" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probepropagator</name></member>
+      <member refid="structPOptAlgorithm_1a84777c02e5be6e5a84906bf7ba0da62a" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probereg</name></member>
+      <member refid="structPOptAlgorithm_1ab26d95672cf1bdb420e2edb86df59565" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probestep</name></member>
+      <member refid="structPOptAlgorithm_1a7c1b1cc6f0a305a74b9bba62fc2bdb62" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>probesupport</name></member>
+      <member refid="structPOptAlgorithm_1ad2cd46aefc388e690475a466352dd00f" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>propagator</name></member>
+      <member refid="structPOptAlgorithm_1a7927b2f881d02a9170c59b1e387050ed" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>rfactors</name></member>
+      <member refid="structPOptAlgorithm_1aaba1f69047dd13bbbca184679c973c1d" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>roibatch_offset</name></member>
+      <member refid="structPOptAlgorithm_1a96bb15bd81f718c72d585c8ed611eab9" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>rois</name></member>
+      <member refid="structPOptAlgorithm_1a968ce12fa5071c8ac0480f3a2f30e4d8" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>sigmask</name></member>
+      <member refid="structPOptAlgorithm_1a536fe6af4356d89078241dbf8dbb6b64" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>singlebatchsize</name></member>
+      <member refid="structPOptAlgorithm_1aacca83621286aadbdc45a53527862069" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>SupportSizes</name></member>
+      <member refid="structPOptAlgorithm_1ac24fac966485161d3bef7599ee42d679" prot="public" virt="non-virtual"><scope>POptAlgorithm</scope><name>total_num_rois</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

@@ -23,7 +23,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     detector_distance = inputs['detector_distance']
     distance_focus_sample  = inputs['distance_sample_focus']
     fresnel_regime = inputs["fresnel_regime"]
-    probe_support  = inputs["probe_support"] 
+    probe_support  = inputs["probe_support_array"] 
 
     if fresnel_regime == True:
         pass
@@ -92,7 +92,7 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
    
     print('\n')    
 
-    return obj.get(), probe_modes.get(), error.get()
+    return obj[0].get(), probe_modes.get(), error.get()
 
 def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p):
 

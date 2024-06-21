@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structPosCorrection" kind="struct" language="C++" prot="public">
+    <compoundname>PosCorrection</compoundname>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structPosCorrection_1ae58ec8cf60cc084f449a7318af2c92cd" prot="public" static="no" mutable="no">
+        <type>rMImage *</type>
+        <definition>rMImage* PosCorrection::errorcounter</definition>
+        <argsstring></argsstring>
+        <name>errorcounter</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" line="73" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" bodystart="73" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPosCorrection_1a49df06a34af1a452b67681555b511ec2" prot="public" static="no" mutable="no">
+        <type><ref refid="structPOptAlgorithm" kindref="compound">POptAlgorithm</ref> *</type>
+        <definition>POptAlgorithm* PosCorrection::ptycho</definition>
+        <argsstring></argsstring>
+        <name>ptycho</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" line="74" column="19" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" bodystart="74" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="structPosCorrection_1ad6a0258542cc0177ce8e8f082618177c" prot="public" static="no" mutable="no">
+        <type>const bool</type>
+        <definition>const bool PosCorrection::isGradPm</definition>
+        <argsstring></argsstring>
+        <name>isGradPm</name>
+        <initializer>= true</initializer>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" line="75" column="16" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" bodystart="75" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Implements positioning correction on top of Alternated Projections. Currently does not work well with background retrieval. </para>
+    </detaileddescription>
+    <collaborationgraph>
+      <node id="3">
+        <label>ROI</label>
+        <link refid="structROI"/>
+      </node>
+      <node id="2">
+        <label>POptAlgorithm</label>
+        <link refid="structPOptAlgorithm"/>
+        <childnode refid="3" relation="usage">
+          <edgelabel>cpurois</edgelabel>
+        </childnode>
+        <childnode refid="4" relation="usage">
+          <edgelabel>propagator</edgelabel>
+          <edgelabel>probepropagator</edgelabel>
+        </childnode>
+      </node>
+      <node id="1">
+        <label>PosCorrection</label>
+        <link refid="structPosCorrection"/>
+        <childnode refid="2" relation="usage">
+          <edgelabel>ptycho</edgelabel>
+        </childnode>
+      </node>
+      <node id="4">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+    </collaborationgraph>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" line="72" column="1" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu" bodystart="71" bodyend="76"/>
+    <listofallmembers>
+      <member refid="structPosCorrection_1ae58ec8cf60cc084f449a7318af2c92cd" prot="public" virt="non-virtual"><scope>PosCorrection</scope><name>errorcounter</name></member>
+      <member refid="structPosCorrection_1ad6a0258542cc0177ce8e8f082618177c" prot="public" virt="non-virtual"><scope>PosCorrection</scope><name>isGradPm</name></member>
+      <member refid="structPosCorrection_1a49df06a34af1a452b67681555b511ec2" prot="public" virt="non-virtual"><scope>PosCorrection</scope><name>ptycho</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

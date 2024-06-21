@@ -39,7 +39,7 @@ build_docs:
   stage: build
   script:
     - cd docs
-    - make all
+    - make html  # Use 'make html' to build HTML documentation
   tags:
     - x86_64
     - docker

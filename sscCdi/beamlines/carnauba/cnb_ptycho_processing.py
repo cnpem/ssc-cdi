@@ -4,7 +4,7 @@ import h5py, os
 
 """ sscCdi relative imports"""
 
-from ...ptycho.ptychography import call_CUDA_ptychography, set_object_shape, set_object_pixel_size
+from ...ptycho.ptychography import set_object_shape, set_object_pixel_size
 from ...misc import add_to_hdf5_group
 
 def cnb_ptychography(input_dict,DPs):
@@ -115,7 +115,7 @@ def read_cnb_probe_positions(input_dict,sinogram_shape):
         positions_pixels (array): array with probe positions in pixels
     """    
     positions_mm = read_position_metadata(input_dict)
-    input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
+    input_dict['object_pixel'] = set_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],sinogram_shape[1],binning=input_dict["binning"]) 
     positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
     return positions_pixels
 

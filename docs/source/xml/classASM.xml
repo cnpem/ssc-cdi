@@ -1,0 +1,96 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classASM" kind="class" language="C++" prot="public">
+    <compoundname>ASM</compoundname>
+    <basecompoundref refid="classFraunhoffer" prot="public" virt="non-virtual">Fraunhoffer</basecompoundref>
+    <includes refid="propagator_8hpp" local="no">propagator.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classASM_1a736856045f336def50793eb25109bb87" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void ASM::Propagate</definition>
+        <argsstring>(complex *owave, complex *iwave, dim3 shape, float amount) override</argsstring>
+        <name>Propagate</name>
+        <reimplements refid="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7">Propagate</reimplements>
+        <param>
+          <type>complex *</type>
+          <declname>owave</declname>
+        </param>
+        <param>
+          <type>complex *</type>
+          <declname>iwave</declname>
+        </param>
+        <param>
+          <type>dim3</type>
+          <declname>shape</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>amount</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Applies propagation to given pointers. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="51" column="18" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu" bodystart="87" bodyend="92"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Implements the angular spectrum method (<ref refid="classASM" kindref="compound">ASM</ref>) propagator. Amount is the pixel-fresnel number f1 = pixel**2 / (distance<itemizedlist>
+<listitem><para>wavelength). </para>
+</listitem></itemizedlist>
+</para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="3">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+      <node id="2">
+        <label>Fraunhoffer</label>
+        <link refid="classFraunhoffer"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>ASM</label>
+        <link refid="classASM"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="3">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+      <node id="2">
+        <label>Fraunhoffer</label>
+        <link refid="classFraunhoffer"/>
+        <childnode refid="3" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="1">
+        <label>ASM</label>
+        <link refid="classASM"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="49" column="29" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="49" bodyend="52"/>
+    <listofallmembers>
+      <member refid="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221" prot="public" virt="virtual"><scope>ASM</scope><name>Append</name></member>
+      <member refid="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" prot="public" virt="non-virtual"><scope>ASM</scope><name>dims</name></member>
+      <member refid="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" prot="public" virt="non-virtual"><scope>ASM</scope><name>Fraunhoffer</name></member>
+      <member refid="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" prot="public" virt="non-virtual"><scope>ASM</scope><name>plans</name></member>
+      <member refid="classASM_1a736856045f336def50793eb25109bb87" prot="public" virt="virtual"><scope>ASM</scope><name>Propagate</name></member>
+      <member refid="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" prot="public" virt="non-virtual"><scope>ASM</scope><name>workarea</name></member>
+      <member refid="classFraunhoffer_1af7dd6a16e3011a54af884cb4ee1a6217" prot="public" virt="non-virtual"><scope>ASM</scope><name>~Fraunhoffer</name></member>
+      <member refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" prot="public" virt="virtual"><scope>ASM</scope><name>~Propagator</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

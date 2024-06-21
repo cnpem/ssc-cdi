@@ -13,7 +13,7 @@ The **ssc-cdi** package currently performs Ptycography and Ptycho-tomography rec
 
 Some examples are provided to ease the initial use. Enjoy!
 
-**Authors and acknowledgments**
+**Authors and contributors**
 
 - Yuri R. Tonin (yuri.tonin@lnls.br)
 - Alan Z. Peixinho (alan.peixinho@lnls.br)

@@ -17,7 +17,9 @@ from .unwrap import remove_phase_gradient, unwrap_in_parallel
 ####################### SORTING ###################################
 
 def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
-    """ Sorting script to reorder sinogram frames by angle, instead of acquisition order
+    """
+     
+    Sorting script to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
         object (ndarray): 3d sinogram to be sorted
@@ -28,6 +30,7 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
     Returns:
         sorted_object
         sorted_angles
+
     """    
 
     start = time.time()
@@ -56,8 +59,6 @@ def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,updated_objec
         ordered_object_filepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
         ordered_angles_filepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
 
-    Returns:
-        _type_: _description_
     """    
 
 
@@ -92,7 +93,9 @@ def sort_angles(angles):
     return sorted_angles 
 
 def reorder_slices_low_to_high_angle(object, rois):
-    """ Reorder sinogram according to the sorted angles array
+    """ 
+    
+    Reorder sinogram according to the sorted angles array
 
     Args:
         object (ndarray): sinogram to be sorted
@@ -100,7 +103,9 @@ def reorder_slices_low_to_high_angle(object, rois):
 
     Returns:
         sorted_object (array): sinogram sorted by angle
+
     """
+
     sorted_object = np.zeros_like(object)
 
     for k in range(object.shape[0]): # reorder slices from lowest to highest angle
@@ -125,6 +130,7 @@ def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepat
 
     Returns:
         cropped volume 
+
     """    
 
     
@@ -147,7 +153,8 @@ def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepat
 ######################### UNWRAP #################################################
 
 def unwrap_sinogram(sinogram,unwrapped_savepath=''):
-    """ Calls unwrapping algorithms in multiple processes for the sinogram frames
+    """ 
+    Calls unwrapping algorithms in multiple processes for the sinogram frames
     """
     start = time.time()
 
@@ -180,12 +187,12 @@ def tomo_equalize3D(tomo,remove_outliers=3,threshold=20,local_offset=[],mask=[],
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "reconstruction_filepath"
-                "tomo_remove_outliers"
-                "tomo_threshold"
-                "tomo_local_offset"
-                "eq_reconstruction_filepath"
+        keys:
+        "reconstruction_filepath"
+        "tomo_remove_outliers"
+        "tomo_threshold"
+        "tomo_local_offset"
+        "eq_reconstruction_filepath"
 
     """
     start = time.time()
@@ -221,35 +228,39 @@ def remove_outliers(data,sigma):
 
     Returns:
         data (array): sinogram slice with filtered values
+    
     """
+
     mean, std = np.mean(data), np.std(data)
     data = np.where(data > mean + sigma*std,0,data)
     data = np.where(data < mean - sigma*std,0,data)
     return data
 
 def equalize_frame(dic,frame):
-    """ Performs a series of processing steps over a 2D array, namely:
+    """
+    Performs a series of processing steps over a 2D array, namely:
 
-        1) Removes a gradient (i.e. the phase ramp) for the image as a whole
-        2) Makes any NaN values null
-        3) Removes outlier values above/below a certain sigma
-        4) Removes the global offset of the array, making the smallest value null
-        5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
+    1. Removes a gradient (i.e. the phase ramp) for the image as a whole
+    2. Makes any NaN values null
+    3. Removes outlier values above/below a certain sigma
+    4. Removes the global offset of the array, making the smallest value null
+    5. Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "equalize_invert": boolean
-                "equalize_remove_phase_gradient": boolean
-                "equalize_ROI"
-                "equalize_remove_phase_gradient_iterations"
-                "equalize_local_offset"
-                "equalize_set_min_max"
-                "equalize_non_negative"
+        keys:
+        "equalize_invert" (boolean): Description of this key
+        "equalize_remove_phase_gradient" (boolean): Description of this key
+        "equalize_ROI" (type): Description of this key
+        "equalize_remove_phase_gradient_iterations" (type): Description of this key
+        "equalize_local_offset" (type): Description of this key
+        "equalize_set_min_max" (type): Description of this key
+        "equalize_non_negative" (type): Description of this key
         frame (array): 2D image/frame to be equalized
 
     Returns:
-        frame (array): equalized frame
+        array: equalized frame
+
     """
 
     if dic["equalize_invert"] == True:
@@ -298,16 +309,19 @@ def equalize_frame(dic,frame):
     return frame
 
 def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,roi=[],cpus=1,iterations=1,min_max=(),remove_negative_values=False,remove_offset=False):
-    """ Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
+    """ 
+    
+    Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
 
     Args:
         sinogram (array): sinogram to be equalized
         dic (dict): dictionary of inputs
-            keys:
-                "CPUs": number of CPUs
+        keys:
+        "CPUs": number of CPUs
 
     Returns:
         equalized_sinogram: equalized sinogram
+
     """
 
     dic = {}
@@ -393,7 +407,6 @@ def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),met
     return equalized_sinogram
 
 
-
 def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_size=1e-6, initial_guess = (0,0,0)):
     
     init_a, init_b, init_c = initial_guess
@@ -448,7 +461,9 @@ def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_si
 
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
-    """ Filters outliers in the tomogram
+    """ 
+    
+    Filters outliers in the tomogram
 
     Args:
         equalized_tomogram (array): 3D reconstructed volume from tomographic algorithm
@@ -460,6 +475,7 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
     Returns:
         equalized_tomogram (array): 3D equalized tomogram
+
     """
     
     if threshold != 0:
@@ -538,22 +554,22 @@ def wiggle_sinogram_alignment(dic,object,angles,save=True):
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "ordered_angles_filepath"
-                "wiggle_sinogram_selection"
-                "bad_frames_before_wiggle"
-                "project_angles_to_regular_grid": boolean
-                "step_percentage"
-                "wiggle_cmas_filepath"
-                "wiggle_sinogram_filepath"
+        keys:
+        "ordered_angles_filepath"
+        "wiggle_sinogram_selection"
+        "bad_frames_before_wiggle"
+        "project_angles_to_regular_grid": boolean
+        "step_percentage"
+        "wiggle_cmas_filepath"
+        "wiggle_sinogram_filepath"
             
     Returns:
         dic (dict): updated dictionary of inputs 
-            updated keys:
-                "n_of_used_angles" : if projected angles, set number of used angles
-                "n_of_original_angles"
-                "projected_angles_filepath": if projected angles, set filepath
-                "wiggle_ctr_of_mas"
+        "n_of_used_angles" : if projected angles, set number of used angles
+        "n_of_original_angles"
+        "projected_angles_filepath": if projected angles, set filepath
+        "wiggle_ctr_of_mas"
+
     """
 
     start = time.time()
@@ -589,10 +605,10 @@ def preview_angle_projection(dic,sinogram,angles):
 
     Args:
         dic (dict): dictionary with necessary parameters
-            keys:
-                "ordered_angles_filepath"
-                "wiggle_sinogram_selection"
-                "step_percentage"
+        keys:
+        "ordered_angles_filepath"
+        "wiggle_sinogram_selection"
+        "step_percentage"
     """    
 
     print("Simulating projection of angles to regular grid...")
@@ -617,7 +633,8 @@ def preview_angle_projection(dic,sinogram,angles):
     print('Projected Angles         :', projected_angles.shape[0])
 
 def angle_grid_organize( original_frames, angles, percentage = 100 ):
-    """ Given non-regular steps between rotation angles, this function projects angles to regular grid and pad it to run from 0 to 180 degrees. 
+    """ 
+    Given non-regular steps between rotation angles, this function projects angles to regular grid and pad it to run from 0 to 180 degrees. 
     
     Args:
         original_frames (array): sinogram
@@ -629,6 +646,7 @@ def angle_grid_organize( original_frames, angles, percentage = 100 ):
        selected_indices: list of indexes indicating if frame at that positions was nulled or valid
        padding_frames_counter (int): number of frames padded before and after sinogram to account for angles from 0 to 180 degrees
        angles_array (array): projected angles array
+
     """
     
     angles_list = []
@@ -685,7 +703,8 @@ def angle_grid_organize( original_frames, angles, percentage = 100 ):
     return projected_frames, selected_indices, padding_frames_counter, angles_array 
 
 def make_bad_frame_null(bad_list, sinogram):
-    """ Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
+    """
+     Null frames of interest, listed in "bad_frames_before_wiggle" dic variable
 
     Args:
         bad_list (list): list of bad frames to be nulled
@@ -693,25 +712,29 @@ def make_bad_frame_null(bad_list, sinogram):
 
     Returns:
         siogram (array): updated sinogram, with nulled frames
+
     """
     for k in bad_list:
         sinogram[k,:,:] = 0
     return sinogram
 
 def wiggle(dic, sinogram):
-    """ Calls wiggle algorithm in both direction and return the aligned sinogram as well as the center-of_mass coordinates for alignment after 3D tomographic recon by slices.
+    """ 
+    Calls wiggle algorithm in both direction and return the aligned sinogram as well as the center-of_mass coordinates for alignment after 3D tomographic recon by slices.
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "CPUs"
-                "wiggle_reference_frame"
+        keys:
+        "CPUs"
+        "wiggle_reference_frame"
         sinogram (array): sinogram containing misaligned frames
 
     Returns:
         aligned_sinogram: updated sinogram after alignment
         wiggle_cmas: center of mass coordinates to be used for final alignment, after 3D tomographic reconstruction by slices
+    
     """
+
     temp_tomogram, shift_vertical = sscRaft.get_wiggle( sinogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
     print('\tFinished vertical wiggle. Starting horizontal wiggle...')
     aligned_sinogram, shift_horizontal, wiggle_cmas_temp = sscRaft.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
@@ -757,8 +780,8 @@ def tomography(dic, sinogram,save=True):
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "reconstruction_filepath"
+        keys:
+        "reconstruction_filepath"
         sinogram (array): sinogram
 
     Returns:
@@ -777,7 +800,8 @@ def tomography(dic, sinogram,save=True):
     return reconstruction3D
 
 def automatic_regularization(sino, L=0.001):
-    """ Applies regularization according to: https://doi.org/10.1016/j.rinam.2019.100088
+    """
+    Applies regularization according to: https://doi.org/10.1016/j.rinam.2019.100088
 
     Args:
         sino (array): aligned sinogram frame
@@ -785,7 +809,9 @@ def automatic_regularization(sino, L=0.001):
 
     Returns:
         D (array): regularized frame
+    
     """
+
     a = 1
     R = sino.shape[1]
     V = sino.shape[0]
@@ -804,7 +830,8 @@ def automatic_regularization(sino, L=0.001):
     return D
 
 def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
-    """ Save or load wiggle ctr of mass
+    """ 
+    Save or load wiggle ctr of mass
 
     Args:
         path (str): path to ctr of mass
@@ -813,6 +840,7 @@ def save_or_load_wiggle_ctr_mass(path,wiggle_cmass = [[],[]],save=True):
 
     Returns:
         int: flag if saved or ctr of mass
+    
     """    
     
     if save:
@@ -832,6 +860,7 @@ def add_plot_suffix_to_file(path):
 
     Returns:
         str: path with plot suffix
+
     """    
 
     first_part = path.split(".")[0]
@@ -839,7 +868,8 @@ def add_plot_suffix_to_file(path):
     return first_part + "_PLOT." + second_part
 
 def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
-    """ Get and save downsampled sinogram
+    """ 
+    Get and save downsampled sinogram
 
     Args:
         sinogram (array): sinogram
@@ -848,6 +878,7 @@ def get_and_save_downsampled_sinogram(sinogram,path,downsampling=4):
 
     Returns:
         donwsampled_sinogram (array): downsampled sinogram
+
     """    
 
     downsampled_sinogram = sinogram[:,::downsampling,::downsampling]
@@ -870,28 +901,31 @@ def check_sinogram_shape(sinogram):
     return sinogram
 
 def call_sscRaft(dic, sinogram,save=True):
-    """ Performs tomography
+    """
+    Performs tomography
+
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "ordered_angles_filepath"
-                "using_wiggle": boolean
-                "wiggle_cmas_filepath"
-                "wiggle_ctr_of_mas"
-                "project_angles_to_regular_grid"
-                "algorithm_dic"
-                    keys:
-                        "angles"
-                        "nangles"
-                        "reconSize"
-                        "algorithm"
-                        "tomooffset"
-                        "is360"
-                "automatic_regularization"
+        keys:
+        "ordered_angles_filepath"
+        "using_wiggle": boolean
+        "wiggle_cmas_filepath"
+        "wiggle_ctr_of_mas"
+        "project_angles_to_regular_grid"
+        "algorithm_dic"
+        keys:
+        "angles"
+        "nangles"
+        "reconSize"
+        "algorithm"
+        "tomooffset"
+        "is360"
+        "automatic_regularization"
         sinogram (array): sinogram
 
     Returns:
         reconstruction3D (array): tomographic volume
+
     """
 
 
@@ -975,12 +1009,14 @@ def phase_derivative_hilbert_transform(sinogram,pixel_size=1):
 ####################### PLOT ###########################################
 
 def plot_histograms(recon3D, equalized_tomogram,bins=300):
-    """ Histogram plot funcion
+    """ 
+    Histogram plot funcion
 
     Args:
         recon3D (array): unequalized tomogram
         equalized_tomogram (array): equalized tomogram
         bins (int, optional): histogram bin number. Defaults to 300.
+        
     """    
     recon_hist = recon3D.flatten()
     equalized_hist = equalized_tomogram.flatten()

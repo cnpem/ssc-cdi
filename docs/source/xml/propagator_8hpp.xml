@@ -1,0 +1,130 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="propagator_8hpp" kind="file" language="C++">
+    <compoundname>propagator.hpp</compoundname>
+    <includes local="no">cufft.h</includes>
+    <includes local="no">vector</includes>
+    <includes local="yes">types.hpp</includes>
+    <includedby refid="propagator_8cu" local="no">/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu</includedby>
+    <includedby refid="ptycho_8hpp" local="no">/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp</includedby>
+    <incdepgraph>
+      <node id="2">
+        <label>cufft.h</label>
+      </node>
+      <node id="1">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp</label>
+        <link refid="propagator_8hpp"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>vector</label>
+      </node>
+      <node id="4">
+        <label>types.hpp</label>
+      </node>
+    </incdepgraph>
+    <invincdepgraph>
+      <node id="8">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/ptycho.cu</label>
+        <link refid="ptycho_8cu"/>
+      </node>
+      <node id="4">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu</label>
+        <link refid="glim_8cu"/>
+      </node>
+      <node id="5">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu</label>
+        <link refid="main_8cu"/>
+      </node>
+      <node id="7">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/poscorrection.cu</label>
+        <link refid="poscorrection_8cu"/>
+      </node>
+      <node id="6">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/pie.cu</label>
+        <link refid="pie_8cu"/>
+      </node>
+      <node id="1">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp</label>
+        <link refid="propagator_8hpp"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="3" relation="include">
+        </childnode>
+      </node>
+      <node id="9">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/raar.cu</label>
+        <link refid="raar_8cu"/>
+      </node>
+      <node id="3">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/ptycho.hpp</label>
+        <link refid="ptycho_8hpp"/>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="2">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu</label>
+        <link refid="propagator_8cu"/>
+      </node>
+    </invincdepgraph>
+    <innerclass refid="classPropagator" prot="public">Propagator</innerclass>
+    <innerclass refid="classFraunhoffer" prot="public">Fraunhoffer</innerclass>
+    <innerclass refid="classASM" prot="public">ASM</innerclass>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#include<sp/>&lt;cufft.h&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;vector&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&quot;types.hpp&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="6"><highlight class="normal"></highlight></codeline>
+<codeline lineno="9"><highlight class="keyword">using</highlight><highlight class="normal"><sp/>std::vector;</highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="14" refid="classPropagator" refkind="compound"><highlight class="keyword">class<sp/></highlight><highlight class="normal"><ref refid="classPropagator" kindref="compound">Propagator</ref><sp/>{</highlight></codeline>
+<codeline lineno="15"><highlight class="normal"><sp/><sp/><sp/></highlight><highlight class="keyword">public</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="19"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="classPropagator_1ac8149f9492abab7ae463d1380f8369fe" kindref="member">Propagate</ref>(complex*<sp/>owave,<sp/>complex*<sp/>iwave,<sp/>dim3<sp/>shape,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>amount)<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="23"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="classPropagator_1a30c6a2be469682f6e30f8a038f4c9ade" kindref="member">Append</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3&amp;<sp/>shape)<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="24" refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/><ref refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" kindref="member">~Propagator</ref>(){};</highlight></codeline>
+<codeline lineno="25"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight></codeline>
+<codeline lineno="30" refid="classFraunhoffer" refkind="compound"><highlight class="keyword">class<sp/></highlight><highlight class="normal"><ref refid="classFraunhoffer" kindref="compound">Fraunhoffer</ref><sp/>:<sp/></highlight><highlight class="keyword">public</highlight><highlight class="normal"><sp/><ref refid="classPropagator" kindref="compound">Propagator</ref><sp/>{</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"><sp/><sp/><sp/></highlight><highlight class="keyword">public</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="32" refid="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;dim3&gt;<sp/><ref refid="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" kindref="member">dims</ref>;<sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight></codeline>
+<codeline lineno="33" refid="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>std::vector&lt;cufftHandle&gt;<sp/><ref refid="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" kindref="member">plans</ref>;<sp/><sp/></highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7" kindref="member">Propagate</ref>(complex*<sp/>owave,<sp/>complex*<sp/>iwave,<sp/>dim3<sp/>shape,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>amount)<sp/></highlight><highlight class="keyword">override</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="36"><highlight class="normal"></highlight></codeline>
+<codeline lineno="37" refid="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" kindref="member">Fraunhoffer</ref>(){};</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="classFraunhoffer_1af7dd6a16e3011a54af884cb4ee1a6217" kindref="member">~Fraunhoffer</ref>()<sp/></highlight><highlight class="keyword">override</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"></highlight></codeline>
+<codeline lineno="40"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221" kindref="member">Append</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3&amp;<sp/>shape)<sp/></highlight><highlight class="keyword">override</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"></highlight></codeline>
+<codeline lineno="42" refid="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" refkind="member"><highlight class="normal"><sp/><sp/><sp/><sp/>cImage*<sp/><ref refid="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" kindref="member">workarea</ref><sp/>=<sp/></highlight><highlight class="keyword">nullptr</highlight><highlight class="normal">;<sp/><sp/></highlight></codeline>
+<codeline lineno="43"><highlight class="normal">};</highlight></codeline>
+<codeline lineno="44"><highlight class="normal"></highlight></codeline>
+<codeline lineno="49" refid="classASM" refkind="compound"><highlight class="keyword">class<sp/></highlight><highlight class="normal"><ref refid="classASM" kindref="compound">ASM</ref><sp/>:<sp/></highlight><highlight class="keyword">public</highlight><highlight class="normal"><sp/><ref refid="classFraunhoffer" kindref="compound">Fraunhoffer</ref><sp/>{</highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/></highlight><highlight class="keyword">public</highlight><highlight class="normal">:</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">virtual</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="classASM_1a736856045f336def50793eb25109bb87" kindref="member">Propagate</ref>(complex*<sp/>owave,<sp/>complex*<sp/>iwave,<sp/>dim3<sp/>shape,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>amount)<sp/></highlight><highlight class="keyword">override</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="52"><highlight class="normal">};</highlight></codeline>
+    </programlisting>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp"/>
+  </compounddef>
+</doxygen>

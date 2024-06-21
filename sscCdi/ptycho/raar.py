@@ -20,7 +20,7 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
     distance_focus_sample  = inputs['distance_sample_focus']
     n_of_modes = inputs["incoherent_modes"]
     fresnel_regime = inputs["fresnel_regime"]
-    probe_support  = inputs["probe_support"] 
+    probe_support  = inputs["probe_support_array"] 
 
     if fresnel_regime == True:
         pass

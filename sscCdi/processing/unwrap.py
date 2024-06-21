@@ -164,18 +164,19 @@ def equalize_frame(dic,frame):
 
     Args:
         dic (dict): dictionary of inputs
-            keys:
-                "equalize_invert": boolean
-                "equalize_remove_phase_gradient": boolean
-                "equalize_ROI"
-                "equalize_remove_phase_gradient_iterations"
-                "equalize_local_offset"
-                "equalize_set_min_max"
-                "equalize_non_negative"
+        keys:
+        "equalize_invert": boolean
+        "equalize_remove_phase_gradient": boolean
+        "equalize_ROI"
+        "equalize_remove_phase_gradient_iterations"
+        "equalize_local_offset"
+        "equalize_set_min_max"
+        "equalize_non_negative"
         frame (array): 2D image/frame to be equalized
 
     Returns:
         frame (array): equalized frame
+        
     """
 
     if dic["equalize_invert"] == True:
