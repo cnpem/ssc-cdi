@@ -354,7 +354,7 @@ def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,ro
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
-        results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        results = list(tqdm(executor.map(equalize_frame_partial,sinogram),total=n_frames))
         for counter, result in enumerate(results):
             # minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
             equalized_sinogram[counter,:,:] = result
