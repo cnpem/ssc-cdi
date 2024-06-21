@@ -34,12 +34,13 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         initial_probe (ndarray, optional): Initial guess for probe of shape (M, Y, X), where M is the number of probe modes. 
             If None, will use the input in "input_dict" to determine the initial probe. Defaults to None.
         input_dict (dict): Dictionary of inputs required for Ptychography.
-
+            
     Returns:
-        obj: Object matrix
-        probe: Probe matrix
+        obj: object matrix
+        probe: probe matrix
+        corrected_positions: None, except if AP_PC_CUDA is used
+        input_dict: updated input dictionary
         error: Error metric along iterations
-        positions: None, except if AP_PC_CUDA is used
 
     Example of input_dict::
 
