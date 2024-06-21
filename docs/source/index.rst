@@ -34,6 +34,7 @@ Some examples are provided to ease the initial use. Enjoy!
    install
    examples
    public
+   private
    changelog
 
 Indices and tables

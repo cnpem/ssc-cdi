@@ -36,123 +36,122 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict (dict): Dictionary of inputs required for Ptychography.
 
     Returns:
-            - obj: Object matrix
-            - probe: Probe matrix
-            - error: Error metric along iterations
-            - positions: None, except if AP_PC_CUDA is used
+        obj: Object matrix
+        probe: Probe matrix
+        error: Error metric along iterations
+        positions: None, except if AP_PC_CUDA is used
 
-    Example:
-        Example of input_dict::
+    Example of input_dict::
 
-            input_dict = {
-                "hdf5_output": './output.h5',  # Path to hdf5 file to contain all outputs
-                'CPUs': 32,  # Number of CPUs to use in parallel execution
-                'GPUs': [0],  # List of GPU indices (e.g. [0,1,2])
-                "fresnel_regime": False,  # Only available for Python engines
-                'energy': 6,  # Energy in keV
-                'detector_distance': 13,  # Distance in meters
-                'distance_sample_focus': 0,  # Distance in meters between sample and focus or pinhole
-                'detector_pixel_size': 55e-6,  # Detector pixel size in meters
-                'binning': 1,  # Binning factor. Must be an even number. If 1, no binning occurs.
-                'position_rotation': 0,  # Rotation angle in radians to correct for misalignment
-                'object_padding': 0,  # Number of pixels to add around the object matrix
-                'incoherent_modes': 1,  # Number of incoherent modes to use
+        input_dict = {
+            "hdf5_output": './output.h5',  # Path to hdf5 file to contain all outputs
+            'CPUs': 32,  # Number of CPUs to use in parallel execution
+            'GPUs': [0],  # List of GPU indices (e.g. [0,1,2])
+            "fresnel_regime": False,  # Only available for Python engines
+            'energy': 6,  # Energy in keV
+            'detector_distance': 13,  # Distance in meters
+            'distance_sample_focus': 0,  # Distance in meters between sample and focus or pinhole
+            'detector_pixel_size': 55e-6,  # Detector pixel size in meters
+            'binning': 1,  # Binning factor. Must be an even number. If 1, no binning occurs.
+            'position_rotation': 0,  # Rotation angle in radians to correct for misalignment
+            'object_padding': 0,  # Number of pixels to add around the object matrix
+            'incoherent_modes': 1,  # Number of incoherent modes to use
 
-                'probe_support': {"type": "circular",  "radius": 1000,  "center_y": 0, "center_x": 0} , # support to be applied to the probe matrix after probe update. Options are:
-                                                                                                        # - {"type": "circular",  "radius": 300,  "center_y": 0, "center_x": 0} (0,0) is the center of the image
-                                                                                                        # - {"type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0} 
-                                                                                                        # - {"type": "array",  "data": myArray}
+            'probe_support': {"type": "circular",  "radius": 1000,  "center_y": 0, "center_x": 0} , # support to be applied to the probe matrix after probe update. Options are:
+                                                                                                    # - {"type": "circular",  "radius": 300,  "center_y": 0, "center_x": 0} (0,0) is the center of the image
+                                                                                                    # - {"type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0} 
+                                                                                                    # - {"type": "array",  "data": myArray}
 
 
-                "initial_obj": {"obj": 'random'},     # 2d array. Initial guess for the object. Options are:
-                                                    # - {"obj": my2darray}, numpy array 
-                                                    # - {"obj": 'path/to/numpyFile.npy'}, path to .npy, 
-                                                    # - {"obj": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                                                    # - {"obj": 'random'}, random matrix with values between 0 and 1
-                                                    # - {"obj": 'constant'}, constant matrix of 1s
+            "initial_obj": {"obj": 'random'},     # 2d array. Initial guess for the object. Options are:
+                                                # - {"obj": my2darray}, numpy array 
+                                                # - {"obj": 'path/to/numpyFile.npy'}, path to .npy, 
+                                                # - {"obj": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                                                # - {"obj": 'random'}, random matrix with values between 0 and 1
+                                                # - {"obj": 'constant'}, constant matrix of 1s
 
-                'initial_probe': { "probe": 'fzp', # creates initial guess based on modelled FZP
-                                'beam_type': 'disc',  # 'disc' or 'gaussian'                 
-                                'distance_sample_fzpf': 2.9e-3, # distance between sample and fzp focus        
-                                'fzp_diameter': 50e-6,               
-                                'fzp_outer_zone_width': 50e-9,     
-                                'beamstopper_diameter': 20e-6,  # beamstopper placed before fzp. if 0, no beamstopper used      
-                                'probe_diameter': 50e-6, # if not included, will use the same diameter s the fzp
-                                'probe_normalize':False},  # normalizes fzp probe at end        
-                                # - {"probe": my2darray}, numpy array 
-                                # - {"probe": 'path/to/numpyFile.npy'}, path to .npy, 
-                                # - {"probe": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                                # - {"probe": 'random'}, random matrix with values between 0 and 1
-                                # - {"probe": 'constant'}, constant matrix of 1s
-                                # - {"probe": 'inverse'}, matrix of the Inverse Fourier Transform of the mean of DPs.
-                                # - {"probe": 'circular', "radius": 100, "distance":0},  circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method 
+            'initial_probe': { "probe": 'fzp', # creates initial guess based on modelled FZP
+                            'beam_type': 'disc',  # 'disc' or 'gaussian'                 
+                            'distance_sample_fzpf': 2.9e-3, # distance between sample and fzp focus        
+                            'fzp_diameter': 50e-6,               
+                            'fzp_outer_zone_width': 50e-9,     
+                            'beamstopper_diameter': 20e-6,  # beamstopper placed before fzp. if 0, no beamstopper used      
+                            'probe_diameter': 50e-6, # if not included, will use the same diameter s the fzp
+                            'probe_normalize':False},  # normalizes fzp probe at end        
+                            # - {"probe": my2darray}, numpy array 
+                            # - {"probe": 'path/to/numpyFile.npy'}, path to .npy, 
+                            # - {"probe": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
+                            # - {"probe": 'random'}, random matrix with values between 0 and 1
+                            # - {"probe": 'constant'}, constant matrix of 1s
+                            # - {"probe": 'inverse'}, matrix of the Inverse Fourier Transform of the mean of DPs.
+                            # - {"probe": 'circular', "radius": 100, "distance":0},  circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method 
 
-                'algorithms': {  # Algorithms to be used
-                    '1': {
-                        'name': 'RAAR_python',
-                        'iterations': 50,
-                        'regularization_object': 0.01,
-                        'regularization_probe': 0.01,
-                        'step_object': 1.0,
-                        'step_probe': 1.0,
-                    },
-                    '2': {
-                        'name': 'ePIE_python',
-                        'iterations': 20,
-                        'regularization_object': 0.25,
-                        'regularization_probe': 0.5,
-                        'step_object': 0.5,
-                        'step_probe': 1,
-                        'use_mPIE': False,
-                        'mPIE_friction_obj': 0.9,
-                        'mPIE_friction_probe': 0.99,
-                        'mPIE_momentum_counter': 10,
-                    },
-                    '3': {
-                        'name':'RAAR',
-                        'iterations': 100,
-                        'beta': 0.9,
-                        'step_object': 1.0,
-                        'step_probe': 1.0,
-                        'regularization_object': 0.01,
-                        'regularization_probe': 0.01,
-                        'momentum_obj': 0.0,
-                        'momentum_probe': 0.0,
-                        'batch': 64
-                    },
-                    '4': {
-                        'name':'AP_PC',
-                        'iterations': 100,
-                        'step_object': 0.9,
-                        'step_probe': 0.9,
-                        'regularization_object': 0.001,
-                        'regularization_probe': 0.001,
-                        'momentum_obj': 0.5,
-                        'momentum_probe': 0.5,
-                        'batch': 64,
-                    },
-                    '5': {
-                        'name':'AP',
-                        'iterations': 50,
-                        'step_object': 1.0,
-                        'step_probe': 1.0,
-                        'regularization_object': 0.01,
-                        'regularization_probe': 0.01,
-                        'momentum_obj': 0.5,
-                        'momentum_probe': 0.5,
-                        'batch': 64,
-                    },
-                    '6': {
-                        'name':'PIE',
-                        'iterations': 50,
-                        'step_object': 1.0,
-                        'step_probe': 1.0,
-                        'regularization_object': 0.5,
-                        'regularization_probe': 0.5,
-                        'momentum_obj': 0.5,
-                        'momentum_probe': 0.5,
-                        'batch': 64,
-                    }
+            'algorithms': {  # Algorithms to be used
+                '1': {
+                    'name': 'RAAR_python',
+                    'iterations': 50,
+                    'regularization_object': 0.01,
+                    'regularization_probe': 0.01,
+                    'step_object': 1.0,
+                    'step_probe': 1.0,
+                },
+                '2': {
+                    'name': 'ePIE_python',
+                    'iterations': 20,
+                    'regularization_object': 0.25,
+                    'regularization_probe': 0.5,
+                    'step_object': 0.5,
+                    'step_probe': 1,
+                    'use_mPIE': False,
+                    'mPIE_friction_obj': 0.9,
+                    'mPIE_friction_probe': 0.99,
+                    'mPIE_momentum_counter': 10,
+                },
+                '3': {
+                    'name':'RAAR',
+                    'iterations': 100,
+                    'beta': 0.9,
+                    'step_object': 1.0,
+                    'step_probe': 1.0,
+                    'regularization_object': 0.01,
+                    'regularization_probe': 0.01,
+                    'momentum_obj': 0.0,
+                    'momentum_probe': 0.0,
+                    'batch': 64
+                },
+                '4': {
+                    'name':'AP_PC',
+                    'iterations': 100,
+                    'step_object': 0.9,
+                    'step_probe': 0.9,
+                    'regularization_object': 0.001,
+                    'regularization_probe': 0.001,
+                    'momentum_obj': 0.5,
+                    'momentum_probe': 0.5,
+                    'batch': 64,
+                },
+                '5': {
+                    'name':'AP',
+                    'iterations': 50,
+                    'step_object': 1.0,
+                    'step_probe': 1.0,
+                    'regularization_object': 0.01,
+                    'regularization_probe': 0.01,
+                    'momentum_obj': 0.5,
+                    'momentum_probe': 0.5,
+                    'batch': 64,
+                },
+                '6': {
+                    'name':'PIE',
+                    'iterations': 50,
+                    'step_object': 1.0,
+                    'step_probe': 1.0,
+                    'regularization_object': 0.5,
+                    'regularization_probe': 0.5,
+                    'momentum_obj': 0.5,
+                    'momentum_probe': 0.5,
+                    'batch': 64,
+                }
                 }
             }
     """
@@ -791,9 +790,9 @@ def set_object_shape(object_padding, DP_shape, probe_positions):
 
     Args:
         input_dict (dict): input dictionary of CATERETE beamline loaded from json and modified along the code
-            keys:
-                "object_padding": number of pixels to pad in the border of the object array.
-                "object_shape": object size/shape
+        keys:
+        "object_padding": number of pixels to pad in the border of the object array.
+        "object_shape": object size/shape
         DP_shape (tuple): shape of the diffraction patterns array
         probe_positions (numpy array): array os probe positiions in pixels
 
