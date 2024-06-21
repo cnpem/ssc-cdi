@@ -2,32 +2,30 @@ Installation
 =============
 
 Requirements
-**********************
+********************************************
 
-This package requires: 
 
-Python3 and CUDA.
+This package requires a machine with NVIDIA CUDA installed. 
 
-Besides standard Python packages, the following need to be installed:
-
-    - tqdm
-    - scikit-image
-
+To make use of all its functionalities, you will also need to install two other packages from the Sirius Scientific Group: 
+    - sscRaft 
+    - sscPimega
 
 Installation using LNLS network
-**********************
+********************************************
 
-If you are connected to LNLS/CNPEM network or using one of our cluster machines, you can simply install using our internal pip server:
+
+If you are connected to LNLS/CNPEM network or using one of its cluster machines, you can simply install using our internal pip server:
 
 .. code-block:: bash
 
     pip install sscCdi
 
-If you want to install a specific version, say 0.6.0 do it like
+If you want to install a specific version, say 0.10.0 do it like
 
 .. code-block:: bash
 
-    pip install sscCdi==0.6.0
+    pip install sscCdi==0.10.0
 
 If you intend to make use of an older version, make sure to uninstall any recent version by running:
 
@@ -37,9 +35,10 @@ If you intend to make use of an older version, make sure to uninstall any recent
 
 
 Instalattion from source code 
-**********************
+********************************************
 
-To install sscCdi using the source code, enter ssc-cdi folder and install via pip install:
+
+To install sscCdi using the source code:
 
 .. code-block:: bash
 

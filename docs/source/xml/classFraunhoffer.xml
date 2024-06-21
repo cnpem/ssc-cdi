@@ -1,0 +1,179 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classFraunhoffer" kind="class" language="C++" prot="public">
+    <compoundname>Fraunhoffer</compoundname>
+    <basecompoundref refid="classPropagator" prot="public" virt="non-virtual">Propagator</basecompoundref>
+    <derivedcompoundref refid="classASM" prot="public" virt="non-virtual">ASM</derivedcompoundref>
+    <includes refid="propagator_8hpp" local="no">propagator.hpp</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; dim3 &gt;</type>
+        <definition>std::vector&lt;dim3&gt; Fraunhoffer::dims</definition>
+        <argsstring></argsstring>
+        <name>dims</name>
+        <briefdescription>
+<para>vector containing all propagation shapes. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="32" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="32" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" prot="public" static="no" mutable="no">
+        <type>std::vector&lt; cufftHandle &gt;</type>
+        <definition>std::vector&lt;cufftHandle&gt; Fraunhoffer::plans</definition>
+        <argsstring></argsstring>
+        <name>plans</name>
+        <briefdescription>
+<para>vector containing all cufftPlans for each proapagation shape. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="33" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="33" bodyend="-1"/>
+      </memberdef>
+      <memberdef kind="variable" id="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" prot="public" static="no" mutable="no">
+        <type>cImage *</type>
+        <definition>cImage* Fraunhoffer::workarea</definition>
+        <argsstring></argsstring>
+        <name>workarea</name>
+        <initializer>= nullptr</initializer>
+        <briefdescription>
+<para>Temporary storage for cufft&apos;s plans. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="42" column="12" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="42" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Fraunhoffer::Propagate</definition>
+        <argsstring>(complex *owave, complex *iwave, dim3 shape, float amount) override</argsstring>
+        <name>Propagate</name>
+        <reimplements refid="classPropagator_1ac8149f9492abab7ae463d1380f8369fe">Propagate</reimplements>
+        <reimplementedby refid="classASM_1a736856045f336def50793eb25109bb87">Propagate</reimplementedby>
+        <param>
+          <type>complex *</type>
+          <declname>owave</declname>
+        </param>
+        <param>
+          <type>complex *</type>
+          <declname>iwave</declname>
+        </param>
+        <param>
+          <type>dim3</type>
+          <declname>shape</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>amount</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Applies propagation to given pointers. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="35" column="18" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu" bodystart="43" bodyend="61"/>
+      </memberdef>
+      <memberdef kind="function" id="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Fraunhoffer::Fraunhoffer</definition>
+        <argsstring>()</argsstring>
+        <name>Fraunhoffer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="37" column="5" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="37" bodyend="37"/>
+      </memberdef>
+      <memberdef kind="function" id="classFraunhoffer_1af7dd6a16e3011a54af884cb4ee1a6217" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type></type>
+        <definition>Fraunhoffer::~Fraunhoffer</definition>
+        <argsstring>() override</argsstring>
+        <name>~Fraunhoffer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="38" column="5" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu" bodystart="63" bodyend="70"/>
+      </memberdef>
+      <memberdef kind="function" id="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221" prot="public" static="no" const="no" explicit="no" inline="no" virt="virtual">
+        <type>void</type>
+        <definition>void Fraunhoffer::Append</definition>
+        <argsstring>(const dim3 &amp;shape) override</argsstring>
+        <name>Append</name>
+        <reimplements refid="classPropagator_1a30c6a2be469682f6e30f8a038f4c9ade">Append</reimplements>
+        <param>
+          <type>const dim3 &amp;</type>
+          <declname>shape</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Makes &quot;shape&quot; a new possible propagation plan. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="40" column="18" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/propagator.cu" bodystart="4" bodyend="37"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Implements the fraunhoffer propagator (2D-FFT). Sign of &quot;amount&quot; implies FORWARD and REVERSE propagations. </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="2">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+      <node id="1">
+        <label>Fraunhoffer</label>
+        <link refid="classFraunhoffer"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>ASM</label>
+        <link refid="classASM"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <collaborationgraph>
+      <node id="2">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+      <node id="1">
+        <label>Fraunhoffer</label>
+        <link refid="classFraunhoffer"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </collaborationgraph>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="30" column="36" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="30" bodyend="43"/>
+    <listofallmembers>
+      <member refid="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221" prot="public" virt="virtual"><scope>Fraunhoffer</scope><name>Append</name></member>
+      <member refid="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" prot="public" virt="non-virtual"><scope>Fraunhoffer</scope><name>dims</name></member>
+      <member refid="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" prot="public" virt="non-virtual"><scope>Fraunhoffer</scope><name>Fraunhoffer</name></member>
+      <member refid="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" prot="public" virt="non-virtual"><scope>Fraunhoffer</scope><name>plans</name></member>
+      <member refid="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7" prot="public" virt="virtual"><scope>Fraunhoffer</scope><name>Propagate</name></member>
+      <member refid="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" prot="public" virt="non-virtual"><scope>Fraunhoffer</scope><name>workarea</name></member>
+      <member refid="classFraunhoffer_1af7dd6a16e3011a54af884cb4ee1a6217" prot="public" virt="non-virtual"><scope>Fraunhoffer</scope><name>~Fraunhoffer</name></member>
+      <member refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" prot="public" virt="virtual"><scope>Fraunhoffer</scope><name>~Propagator</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

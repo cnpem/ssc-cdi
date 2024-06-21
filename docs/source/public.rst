@@ -1,49 +1,9 @@
 Python Codes
 ==============
 
-To be added. Brief overview of the package.
+The most useful functions of the sscCdi packages are documented with docstring and listed here.
 
-----
-
-.. Carnaúba module
-.. *********************
-
-.. CNB ptycho module
-.. ----------------------------
-
-.. .. automodule:: sscCdi.carnauba.cnb_ptycho_processing
-..     :members:
-
-.. CNB restoration module
-.. ----------------------------
-
-.. .. automodule:: sscCdi.carnauba.cnb_restoration
-..     :members:
-
-
-.. Cateretê module
-.. *********************
-
-.. CAT ptycho module
-.. ----------------------------
-
-.. .. automodule:: sscCdi.caterete.cat_ptycho_processing
-..     :members:
-
-.. CAT restoration module
-.. ----------------------------
-
-.. .. automodule:: sscCdi.caterete.cat_restoration
-..     :members:
-
-
-.. CAT tomography module
-.. ----------------------------
-
-.. .. automodule:: sscCdi.caterete.cat_tomo_processing
-..     :members:
-
-
+---
 
 Ptychography module
 *********************
@@ -75,14 +35,7 @@ Propagation module
 Tomography module
 *********************
 
-.. automodule:: sscCdi.tomo.tomo_processing
-    :members:
-
-
-Jupyter module
-*********************
-
-.. automodule:: sscCdi.jupyter
+.. automodule:: sscCdi.processing.tomo_processing
     :members:
 
 Miscellaneous module

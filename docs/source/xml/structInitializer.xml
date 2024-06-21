@@ -1,0 +1,43 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="structInitializer" kind="struct" language="C++" prot="public">
+    <compoundname>Initializer</compoundname>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="structInitializer_1a7c6c773e821ac8125a842b46e0af706d" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Initializer::Initializer</definition>
+        <argsstring>()</argsstring>
+        <name>Initializer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" line="198" column="5" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" bodystart="198" bodyend="201"/>
+      </memberdef>
+      <memberdef kind="function" id="structInitializer_1add39a548b1e5405e938e786f069191e1" prot="public" static="no" const="no" explicit="no" inline="yes" virt="non-virtual">
+        <type></type>
+        <definition>Initializer::~Initializer</definition>
+        <argsstring>()</argsstring>
+        <name>~Initializer</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" line="202" column="5" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" bodystart="202" bodyend="210"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" line="197" column="1" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/main.cu" bodystart="196" bodyend="211"/>
+    <listofallmembers>
+      <member refid="structInitializer_1a7c6c773e821ac8125a842b46e0af706d" prot="public" virt="non-virtual"><scope>Initializer</scope><name>Initializer</name></member>
+      <member refid="structInitializer_1add39a548b1e5405e938e786f069191e1" prot="public" virt="non-virtual"><scope>Initializer</scope><name>~Initializer</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

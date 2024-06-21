@@ -422,7 +422,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict["energy"])
-    input_dict = set_object_pixel_size(input_dict,DP_size) 
+    input_dict['object_pixel'] = set_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DP_size,binning=input_dict["binning"]) 
+
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 
     return probe_positions, angle

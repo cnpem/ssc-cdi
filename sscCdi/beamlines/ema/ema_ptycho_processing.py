@@ -118,7 +118,7 @@ def read_ema_probe_positions(input_dict,sinogram_shape):
         input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
     
     positions_mm = read_position_metadata(input_dict)
-    input_dict = set_object_pixel_size(input_dict,sinogram_shape[1]) 
+    input_dict['object_pixel'] = set_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],sinogram_shape[1],binning=input_dict["binning"]) 
     positions_pixels = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], positions_mm)
 
     return positions_pixels

@@ -444,95 +444,87 @@ def delete_temporary_folders(input_dict):
     if os.path.isdir(input_dict["temporary_output_recons"]): os.rmdir(input_dict["temporary_output_recons"])
     if os.path.isdir(input_dict["temporary_output"]): os.rmdir(input_dict["temporary_output"])
 
-@log_event
-def slice_visualizer(data,axis=0,type='',title='',cmap='viridis',aspect_ratio='auto',norm="normalize",vmin=None,vmax=None):
-    """
+def update_slice_visualizer(obj, extent=None, cmap='viridis', vmin=None, vmax=None, norm=None, figsize=(10, 7), title=''):
+    if len(obj.shape) == 2:
+        obj = np.expand_dims(obj, axis=0)
+    
+    N, Y, X = obj.shape  # N modes
+    
+    fig = plt.figure(figsize=figsize)
+    gs = plt.GridSpec(1, N, width_ratios=[9] * N)
 
-    data (ndarray): real valued data
-    axis (int): slice direction
-    """
-
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.colors as colors
-    import matplotlib.cm
-
-    import ipywidgets as widgets
-    from ipywidgets import fixed
-
-    def get_vol_slice(volume, axis, frame):
-        selection = [slice(None)]*3
-        selection[axis] = frame
-        frame_data = volume[(*selection,)]
-        if type == '':
-            pass
-        elif type == 'real':
-            frame_data = np.real(frame_data)
-        elif type == 'imag':
-            frame_data = np.imag(frame_data)
-        elif type == 'amplitude' or type =='abs':
-            frame_data = np.abs(frame_data)
-        elif type == 'phase' or type == 'angle':
-            frame_data = np.angle(frame_data)
-        return frame_data
-
-    def get_colornorm(frame, vmin,vmax, norm):
-        if norm == None:
-            return None
-        elif norm == "normalize":
-            if vmin is not None or vmax is not None:
-                return colors.Normalize(vmin=vmin, vmax=vmax)
-            else:
-                return colors.Normalize(vmin=frame.min(), vmax=frame.max())
-        elif norm == "LogNorm":
-            return colors.LogNorm()
+    for i in range(N):
+        ax = fig.add_subplot(gs[0, i])
+        im = ax.imshow(obj[i], cmap=cmap, extent=extent, vmin=vmin, vmax=vmax, norm=norm)
+        fig.colorbar(im, ax=ax, orientation='vertical')
+        if extent is None:
+            ax.set_ylabel('Y [pxls]')
+            ax.set_xlabel('X [pxls]')
         else:
-            raise ValueError("Invalid norm value: {}".format(norm))
+            ax.set_ylabel('Y [m]')
+            ax.set_xlabel('X [m]')
+        ax.set_title(f'{title}')
 
+    plt.tight_layout()
+    plt.show()
 
-    output = widgets.Output()
-    with output:
-        volume_slice = get_vol_slice(data, axis=0, frame=0)
-        figure, ax = plt.subplots(dpi=100)
-        ax.imshow(volume_slice, cmap='gray')
-        figure.canvas.draw_idle()
-        figure.canvas.header_visible = False
-        colorbar = plt.colorbar( matplotlib.cm.ScalarMappable( norm=colors.SymLogNorm(1,vmin=np.min(volume_slice),vmax=np.max(volume_slice)), cmap=cmap))
-        plt.show()
+@log_event
+def slice_visualizer(objects, extent=None, plot_type='magnitude', cmap='viridis', use_log_norm=False, figsize=(10, 7), title=''):
+    """
+    Display an interactive plot to visualize different slices of multiple objects.
 
+    Parameters:
+        objects (ndarray): 4D complex-valued array with shape (M, N, Y, X) where M is the number of objects,
+                        N is the number of modes, Y and X are the dimensions of each mode.
+        extent (tuple): Extent of the plot for x and y axes. Default is None.
+        plot_type (str): Type of plot to display. Options are 'real', 'imag', 'amplitude', 'phase', or 'magnitude'. Default is 'magnitude'.
+        cmap (str): Colormap for imshow. Default is 'viridis'.
+        use_log_norm (bool): Whether to use LogNorm for the norm parameter in imshow. Default is False.
+        figsize (tuple): Size of the figure. Default is (10, 7).
+        title (str): Title for the imshow plot. Default is ''.
+    """
+    if np.iscomplexobj(objects):
+        if plot_type == 'real' or plot_type == 'r':
+            objects = np.real(objects)
+        elif plot_type == 'imag' or plot_type == 'imaginary' or plot_type == 'i':
+            objects = np.imag(objects)
+        elif plot_type == 'amplitude' or plot_type == 'abs' or plot_type == 'magnitude':
+            objects = np.abs(objects)
+        elif plot_type == 'phase' or plot_type == 'angle':
+            objects = np.angle(objects)
+        else:
+            objects = np.abs(objects)  # Default to magnitude if no valid plot_type is provided
 
-    def update_imshow(figure,subplot,frame_number,axis=0,title="",cmap='gray',norm=None,aspect_ratio=''):
-        subplot.clear()
+    num_objects = objects.shape[0]
+    from ipywidgets import interact, IntSlider, Play, jslink, FloatRangeSlider, HBox
+    from IPython.display import display
 
-        volume_slice = get_vol_slice(data, axis, frame_number)
-        colornorm = get_colornorm(volume_slice, vmin,vmax, norm)
-        im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm)
+    vmin = objects.min()
+    vmax = objects.max()
 
-        if title != "":
-            subplot.set_title(f'{title}')
-        figure.canvas.draw_idle()
+    norm = LogNorm(vmin=vmin, vmax=vmax) if use_log_norm else None
 
-        if aspect_ratio != '':
-            subplot.set_aspect(aspect_ratio)
+    def update_plot(obj_index, value_range):
+        vmin, vmax = value_range
+        norm = LogNorm(vmin=vmin, vmax=vmax) if use_log_norm else None
+        update_slice_visualizer(objects[obj_index], extent, cmap, vmin, vmax, norm, figsize, title)
+    
+    slider = IntSlider(min=0, max=num_objects-1, step=1, description='Slice #')
+    play = Play(value=0, min=0, max=num_objects-1, step=1, interval=500)
+    jslink((play, 'value'), (slider, 'value'))
 
-        colorbar.update_normal(im)
+    range_slider = FloatRangeSlider(value=[vmin, vmax], min=vmin, max=vmax, step=(vmax-vmin)/100, description='Color Range')
 
-
-    slider_layout = widgets.Layout(width='25%')
-    selection_slider = widgets.IntSlider(min=0,max=data.shape[axis],step=1, description="Slice",value=0,layout=slider_layout)
-
-    selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis]//2
-    widgets.interactive_output(update_imshow, {'figure':fixed(figure),'title':fixed(title),'subplot':fixed(ax),'axis':fixed(axis), 'cmap':fixed(cmap), 'norm':fixed(norm),'aspect_ratio':fixed(aspect_ratio),'frame_number': selection_slider})
-    box = widgets.VBox([selection_slider,output])
-
-    return box
+    display(HBox([play]))
+    interact(update_plot, obj_index=slider, value_range=range_slider)
 
 def amplitude_and_phase_slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
     """
-    data (ndarray): complex valued data
-    pixel_values (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
-    axis (int): slice direction
-    extent (tuple): extent of the images in the format (xmin, xmax, ymin, ymax)
+    Parameters:
+        data (ndarray): complex valued data
+        pixel_values (ndarray): 2D array of pixel values with shape (N, 2), where the first column is Y and the second column is X
+        axis (int): slice direction
+        extent (tuple): extent of the images in the format (xmin, xmax, ymin, ymax)
     """
 
     import numpy as np
@@ -973,10 +965,11 @@ def print_h5_tree(name, obj):
     Print the structure of the HDF5 file.
     
     Parameters:
-    name : str
-        The name of the current group or dataset.
-    obj : h5py.Group or h5py.Dataset
-        The current group or dataset object.
+        name : str
+            The name of the current group or dataset.
+        obj : h5py.Group or h5py.Dataset
+            The current group or dataset object.
+
     """
     if isinstance(obj, h5py.Group):
         print(f"{name}/ (Group)")
@@ -990,8 +983,9 @@ def list_h5_file_tree(file_path):
     List the tree structure of an HDF5 file.
     
     Parameters:
-    file_path : str
-        The path to the HDF5 file.
+        file_path : str
+            The path to the HDF5 file.
+
     """
     with h5py.File(file_path, 'r') as h5file:
         print_h5_tree("/", h5file)

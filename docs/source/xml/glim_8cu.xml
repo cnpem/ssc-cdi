@@ -1,0 +1,556 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="glim_8cu" kind="file" language="C++">
+    <compoundname>glim.cu</compoundname>
+    <includes refid="ptycho_8hpp" local="yes">ptycho.hpp</includes>
+    <includes local="no">common/logger.hpp</includes>
+    <includes local="no">common/utils.hpp</includes>
+    <incdepgraph>
+      <node id="1">
+        <label>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu</label>
+        <link refid="glim_8cu"/>
+        <childnode refid="2" relation="include">
+        </childnode>
+        <childnode refid="10" relation="include">
+        </childnode>
+        <childnode refid="11" relation="include">
+        </childnode>
+      </node>
+      <node id="5">
+        <label>common/complex.hpp</label>
+      </node>
+      <node id="8">
+        <label>cufft.h</label>
+      </node>
+      <node id="7">
+        <label>propagator.hpp</label>
+        <link refid="propagator_8hpp"/>
+        <childnode refid="8" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="9" relation="include">
+        </childnode>
+      </node>
+      <node id="4">
+        <label>vector</label>
+      </node>
+      <node id="11">
+        <label>common/utils.hpp</label>
+      </node>
+      <node id="10">
+        <label>common/logger.hpp</label>
+      </node>
+      <node id="2">
+        <label>ptycho.hpp</label>
+        <link refid="ptycho_8hpp"/>
+        <childnode refid="3" relation="include">
+        </childnode>
+        <childnode refid="4" relation="include">
+        </childnode>
+        <childnode refid="5" relation="include">
+        </childnode>
+        <childnode refid="6" relation="include">
+        </childnode>
+        <childnode refid="7" relation="include">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>cstddef</label>
+      </node>
+      <node id="9">
+        <label>types.hpp</label>
+      </node>
+      <node id="6">
+        <label>common/types.hpp</label>
+      </node>
+    </incdepgraph>
+      <sectiondef kind="func">
+      <memberdef kind="function" id="glim_8cu_1a8d4daceb323256469196633426c8e859" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>__global__ void</type>
+        <definition>__global__ void KGLExitwave</definition>
+        <argsstring>(GArray&lt; complex &gt; exitwave, const GArray&lt; complex &gt; probe, const GArray&lt; complex &gt; object, const GArray&lt; ROI &gt; rois)</argsstring>
+        <name>KGLExitwave</name>
+        <param>
+          <type>GArray&lt; complex &gt;</type>
+          <declname>exitwave</declname>
+        </param>
+        <param>
+          <type>const GArray&lt; complex &gt;</type>
+          <declname>probe</declname>
+        </param>
+        <param>
+          <type>const GArray&lt; complex &gt;</type>
+          <declname>object</declname>
+        </param>
+        <param>
+          <type>const GArray&lt; <ref refid="structROI" kindref="compound">ROI</ref> &gt;</type>
+          <declname>rois</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="6" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="6" bodyend="25"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1a69032373905c1f0f252d632abda96fe3" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>__global__ void</type>
+        <definition>__global__ void KGLPs</definition>
+        <argsstring>(const GArray&lt; complex &gt; probe, GArray&lt; complex &gt; object_acc, GArray&lt; float &gt; object_div, const GArray&lt; complex &gt; p_pm, const GArray&lt; ROI &gt; rois)</argsstring>
+        <name>KGLPs</name>
+        <param>
+          <type>const GArray&lt; complex &gt;</type>
+          <declname>probe</declname>
+        </param>
+        <param>
+          <type>GArray&lt; complex &gt;</type>
+          <declname>object_acc</declname>
+        </param>
+        <param>
+          <type>GArray&lt; float &gt;</type>
+          <declname>object_div</declname>
+        </param>
+        <param>
+          <type>const GArray&lt; complex &gt;</type>
+          <declname>p_pm</declname>
+        </param>
+        <param>
+          <type>const GArray&lt; <ref refid="structROI" kindref="compound">ROI</ref> &gt;</type>
+          <declname>rois</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="27" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="27" bodyend="53"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1a94979faf67dabe7dc1d40e7e9ff35eb8" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>__global__ void</type>
+        <definition>__global__ void KApplySupport</definition>
+        <argsstring>(GArray&lt; complex &gt; img, GArray&lt; float &gt; support, complex constant_value)</argsstring>
+        <name>KApplySupport</name>
+        <param>
+          <type>GArray&lt; complex &gt;</type>
+          <declname>img</declname>
+        </param>
+        <param>
+          <type>GArray&lt; float &gt;</type>
+          <declname>support</declname>
+        </param>
+        <param>
+          <type>complex</type>
+          <declname>constant_value</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="55" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="55" bodyend="63"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1ae6665768898313d181d9c50cd38a6684" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void ApplySupport</definition>
+        <argsstring>(cImage &amp;img, rImage &amp;support, std::vector&lt; float &gt; &amp;SupportSizes)</argsstring>
+        <name>ApplySupport</name>
+        <param>
+          <type>cImage &amp;</type>
+          <declname>img</declname>
+        </param>
+        <param>
+          <type>rImage &amp;</type>
+          <declname>support</declname>
+        </param>
+        <param>
+          <type>std::vector&lt; float &gt; &amp;</type>
+          <declname>SupportSizes</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="66" column="6" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="66" bodyend="71"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1a36e51ccd5aff171d0844107499c407f9" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void GLimRun</definition>
+        <argsstring>(GLim &amp;glim, int iterations)</argsstring>
+        <name>GLimRun</name>
+        <param>
+          <type><ref refid="structGLim" kindref="compound">GLim</ref> &amp;</type>
+          <declname>glim</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>iterations</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="73" column="6" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="73" bodyend="180"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1aef6b619830608e386b0bfb0655011be0" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void GLimProjectProbe</definition>
+        <argsstring>(GLim &amp;glim, int section)</argsstring>
+        <name>GLimProjectProbe</name>
+        <param>
+          <type><ref refid="structGLim" kindref="compound">GLim</ref> &amp;</type>
+          <declname>glim</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>section</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="183" column="6" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="183" bodyend="185"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1a0612533b823e68af91aedcf9d7c79dac" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type><ref refid="structGLim" kindref="compound">GLim</ref> *</type>
+        <definition>GLim* CreateGLim</definition>
+        <argsstring>(float *difpads, const dim3 &amp;difshape, complex *probe, const dim3 &amp;probeshape, complex *object, const dim3 &amp;objshape, ROI *rois, int numrois, int batchsize, float *rfact, const std::vector&lt; int &gt; &amp;gpus, float *objsupp, float *probesupp, int numobjsupp, float *sigmask, int geometricsteps, float *background, float probef1, float step_obj, float step_probe, float reg_obj, float reg_probe)</argsstring>
+        <name>CreateGLim</name>
+        <param>
+          <type>float *</type>
+          <declname>difpads</declname>
+        </param>
+        <param>
+          <type>const dim3 &amp;</type>
+          <declname>difshape</declname>
+        </param>
+        <param>
+          <type>complex *</type>
+          <declname>probe</declname>
+        </param>
+        <param>
+          <type>const dim3 &amp;</type>
+          <declname>probeshape</declname>
+        </param>
+        <param>
+          <type>complex *</type>
+          <declname>object</declname>
+        </param>
+        <param>
+          <type>const dim3 &amp;</type>
+          <declname>objshape</declname>
+        </param>
+        <param>
+          <type><ref refid="structROI" kindref="compound">ROI</ref> *</type>
+          <declname>rois</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>numrois</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>batchsize</declname>
+        </param>
+        <param>
+          <type>float *</type>
+          <declname>rfact</declname>
+        </param>
+        <param>
+          <type>const std::vector&lt; int &gt; &amp;</type>
+          <declname>gpus</declname>
+        </param>
+        <param>
+          <type>float *</type>
+          <declname>objsupp</declname>
+        </param>
+        <param>
+          <type>float *</type>
+          <declname>probesupp</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>numobjsupp</declname>
+        </param>
+        <param>
+          <type>float *</type>
+          <declname>sigmask</declname>
+        </param>
+        <param>
+          <type>int</type>
+          <declname>geometricsteps</declname>
+        </param>
+        <param>
+          <type>float *</type>
+          <declname>background</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>probef1</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>step_obj</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>step_probe</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>reg_obj</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>reg_probe</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="187" column="6" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="187" bodyend="201"/>
+      </memberdef>
+      <memberdef kind="function" id="glim_8cu_1a0fd2fbf2ef23a7d9c8bdd81e5c7e1f75" prot="public" static="no" const="no" explicit="no" inline="no" virt="non-virtual">
+        <type>void</type>
+        <definition>void DestroyGLim</definition>
+        <argsstring>(GLim *&amp;glim)</argsstring>
+        <name>DestroyGLim</name>
+        <param>
+          <type><ref refid="structGLim" kindref="compound">GLim</ref> *&amp;</type>
+          <declname>glim</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" line="203" column="6" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu" bodystart="203" bodyend="206"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline lineno="1"><highlight class="preprocessor">#include<sp/>&quot;<ref refid="ptycho_8hpp" kindref="compound">ptycho.hpp</ref>&quot;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="2"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;common/logger.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="3"><highlight class="normal"></highlight><highlight class="preprocessor">#include<sp/>&lt;common/utils.hpp&gt;</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="4"><highlight class="normal"></highlight></codeline>
+<codeline lineno="5"><highlight class="normal"></highlight><highlight class="keyword">extern</highlight><highlight class="normal"><sp/></highlight><highlight class="stringliteral">&quot;C&quot;</highlight><highlight class="normal"><sp/>{</highlight></codeline>
+<codeline lineno="6"><highlight class="normal">__global__<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1a8d4daceb323256469196633426c8e859" kindref="member">KGLExitwave</ref>(GArray&lt;complex&gt;<sp/>exitwave,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;complex&gt;<sp/>probe,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;complex&gt;<sp/></highlight><highlight class="keywordtype">object</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="7"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;ROI&gt;<sp/>rois)<sp/>{</highlight></codeline>
+<codeline lineno="8"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idx<sp/>=<sp/>blockIdx.x<sp/>*<sp/>blockDim.x<sp/>+<sp/>threadIdx.x;</highlight></codeline>
+<codeline lineno="9"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(idx<sp/>&gt;=<sp/>probe.shape.x)<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="10"><highlight class="normal"></highlight></codeline>
+<codeline lineno="11"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idy<sp/>=<sp/>blockIdx.y<sp/>*<sp/>blockDim.y<sp/>+<sp/>threadIdx.y;</highlight></codeline>
+<codeline lineno="12"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idz<sp/>=<sp/>blockIdx.z;</highlight></codeline>
+<codeline lineno="13"><highlight class="normal"></highlight></codeline>
+<codeline lineno="14"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>p<sp/>=<sp/>0;<sp/>p<sp/>&lt;<sp/>rois.shape.x;<sp/>p++)<sp/><sp/></highlight><highlight class="comment">//<sp/>for<sp/>each<sp/>flyscan<sp/>point</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="15"><highlight class="normal"><sp/><sp/>{</highlight></codeline>
+<codeline lineno="16"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>objposx<sp/>=<sp/>idx<sp/>+<sp/>(int)rois(idz,<sp/>0,<sp/>p).x;</highlight></codeline>
+<codeline lineno="17"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>objposy<sp/>=<sp/>idy<sp/>+<sp/>(int)rois(idz,<sp/>0,<sp/>p).y;</highlight></codeline>
+<codeline lineno="18"><highlight class="normal"></highlight></codeline>
+<codeline lineno="19"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>complex&amp;<sp/>obj<sp/>=<sp/>object(objposy,<sp/>objposx);</highlight></codeline>
+<codeline lineno="20"><highlight class="normal"></highlight></codeline>
+<codeline lineno="21"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>m<sp/>=<sp/>0;<sp/>m<sp/>&lt;<sp/>probe.shape.z;<sp/>m++)<sp/><sp/></highlight><highlight class="comment">//<sp/>for<sp/>each<sp/>incoherent<sp/>mode</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="22"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>exitwave(m<sp/>+<sp/>probe.shape.z<sp/>*<sp/>p<sp/>+<sp/>rois.shape.x<sp/>*<sp/>probe.shape.z<sp/>*<sp/>idz,</highlight></codeline>
+<codeline lineno="23"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>idy,<sp/>idx)<sp/>=<sp/>obj<sp/>*<sp/>probe(m,<sp/>idy,<sp/>idx);</highlight></codeline>
+<codeline lineno="24"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="25"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="26"><highlight class="normal"></highlight></codeline>
+<codeline lineno="27"><highlight class="normal">__global__<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1a69032373905c1f0f252d632abda96fe3" kindref="member">KGLPs</ref>(</highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;complex&gt;<sp/>probe,<sp/>GArray&lt;complex&gt;<sp/>object_acc,<sp/>GArray&lt;float&gt;<sp/>object_div,</highlight></codeline>
+<codeline lineno="28"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;complex&gt;<sp/>p_pm,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>GArray&lt;ROI&gt;<sp/>rois)<sp/>{</highlight></codeline>
+<codeline lineno="29"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idx<sp/>=<sp/>blockIdx.x<sp/>*<sp/>blockDim.x<sp/>+<sp/>threadIdx.x;</highlight></codeline>
+<codeline lineno="30"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(idx<sp/>&gt;=<sp/>probe.shape.x)<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="31"><highlight class="normal"></highlight></codeline>
+<codeline lineno="32"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idy<sp/>=<sp/>blockIdx.y<sp/>*<sp/>blockDim.y<sp/>+<sp/>threadIdx.y;</highlight></codeline>
+<codeline lineno="33"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>idz<sp/>=<sp/>blockIdx.z;</highlight></codeline>
+<codeline lineno="34"><highlight class="normal"></highlight></codeline>
+<codeline lineno="35"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>p<sp/>=<sp/>0;<sp/>p<sp/>&lt;<sp/>rois.shape.x;<sp/>p++)<sp/><sp/></highlight><highlight class="comment">//<sp/>for<sp/>each<sp/>flyscan<sp/>point</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="36"><highlight class="normal"><sp/><sp/>{</highlight></codeline>
+<codeline lineno="37"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>objposx<sp/>=<sp/>idx<sp/>+<sp/>(int)rois(idz,<sp/>0,<sp/>p).x;</highlight></codeline>
+<codeline lineno="38"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>objposy<sp/>=<sp/>idy<sp/>+<sp/>(int)rois(idz,<sp/>0,<sp/>p).y;</highlight></codeline>
+<codeline lineno="39"><highlight class="normal"></highlight></codeline>
+<codeline lineno="40"><highlight class="normal"><sp/><sp/><sp/><sp/>complex<sp/>objacc<sp/>=<sp/>complex(0);</highlight></codeline>
+<codeline lineno="41"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>objdiv<sp/>=<sp/>0;</highlight></codeline>
+<codeline lineno="42"><highlight class="normal"></highlight></codeline>
+<codeline lineno="43"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>m<sp/>=<sp/>0;<sp/>m<sp/>&lt;<sp/>probe.shape.z;<sp/>m++)<sp/><sp/></highlight><highlight class="comment">//<sp/>for<sp/>each<sp/>incoherent<sp/>mode</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="44"><highlight class="normal"><sp/><sp/><sp/><sp/>{</highlight></codeline>
+<codeline lineno="45"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>complex&amp;<sp/>cprobe<sp/>=<sp/>probe(m,<sp/>idy,<sp/>idx);</highlight></codeline>
+<codeline lineno="46"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>objacc<sp/>+=<sp/>p_pm(m<sp/>+<sp/>probe.shape.z<sp/>*<sp/>p<sp/>+<sp/>rois.shape.x<sp/>*<sp/>probe.shape.z<sp/>*<sp/>blockIdx.z,<sp/>idy,<sp/>idx)<sp/>*<sp/>cprobe.conj();</highlight></codeline>
+<codeline lineno="47"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>objdiv<sp/>+=<sp/>cprobe.abs2();</highlight></codeline>
+<codeline lineno="48"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="49"><highlight class="normal"></highlight></codeline>
+<codeline lineno="50"><highlight class="normal"><sp/><sp/><sp/><sp/>atomicAdd(&amp;object_acc(objposy,<sp/>objposx),<sp/>objacc<sp/>/<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">(probe.shape.x<sp/>*<sp/>probe.shape.y));</highlight></codeline>
+<codeline lineno="51"><highlight class="normal"><sp/><sp/><sp/><sp/>atomicAdd(&amp;object_div(objposy,<sp/>objposx),<sp/>objdiv);</highlight></codeline>
+<codeline lineno="52"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="53"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="54"><highlight class="normal"></highlight></codeline>
+<codeline lineno="55"><highlight class="normal">__global__<sp/></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1a94979faf67dabe7dc1d40e7e9ff35eb8" kindref="member">KApplySupport</ref>(GArray&lt;complex&gt;<sp/>img,<sp/>GArray&lt;float&gt;<sp/>support,<sp/>complex<sp/>constant_value)<sp/>{</highlight></codeline>
+<codeline lineno="56"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>idx<sp/>=<sp/>threadIdx.x<sp/>+<sp/>blockIdx.x<sp/>*<sp/>blockDim.x;</highlight></codeline>
+<codeline lineno="57"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>idy<sp/>=<sp/>blockIdx.y;</highlight></codeline>
+<codeline lineno="58"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>idz<sp/>=<sp/>blockIdx.z;</highlight></codeline>
+<codeline lineno="59"><highlight class="normal"></highlight></codeline>
+<codeline lineno="60"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(idx<sp/>&gt;=<sp/>img.shape.x)<sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="61"><highlight class="normal"></highlight></codeline>
+<codeline lineno="62"><highlight class="normal"><sp/><sp/>img(idz,<sp/>idy,<sp/>idx)<sp/>=<sp/>img(idz,<sp/>idy,<sp/>idx)<sp/>*<sp/>(1.0f<sp/>-<sp/>support(idy,<sp/>idx))<sp/>+<sp/>constant_value<sp/>*<sp/>support(idy,<sp/>idx);</highlight></codeline>
+<codeline lineno="63"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="64"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="65"><highlight class="normal"></highlight></codeline>
+<codeline lineno="66"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1ae6665768898313d181d9c50cd38a6684" kindref="member">ApplySupport</ref>(cImage&amp;<sp/>img,<sp/>rImage&amp;<sp/>support,<sp/>std::vector&lt;float&gt;&amp;<sp/>SupportSizes)<sp/>{</highlight></codeline>
+<codeline lineno="67"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>z<sp/>=<sp/>0;<sp/>z<sp/>&lt;<sp/>support.sizez<sp/>&amp;&amp;<sp/>z<sp/>&lt;<sp/>SupportSizes.size();<sp/>z++)<sp/>{</highlight></codeline>
+<codeline lineno="68"><highlight class="normal"><sp/><sp/><sp/><sp/>complex<sp/>dotproduct<sp/>=<sp/>img.dot(support)<sp/>/<sp/>SupportSizes[z];</highlight></codeline>
+<codeline lineno="69"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="glim_8cu_1a94979faf67dabe7dc1d40e7e9ff35eb8" kindref="member">KApplySupport</ref>&lt;&lt;&lt;img.ShapeBlock(),<sp/>img.ShapeThread()&gt;&gt;&gt;(img,<sp/>GArray&lt;float&gt;(support,<sp/>dim3(0,<sp/>0,<sp/>z)),<sp/>dotproduct);</highlight></codeline>
+<codeline lineno="70"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="71"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="72"><highlight class="normal"></highlight></codeline>
+<codeline lineno="73"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1a36e51ccd5aff171d0844107499c407f9" kindref="member">GLimRun</ref>(<ref refid="structGLim" kindref="compound">GLim</ref>&amp;<sp/>glim,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>iterations)<sp/>{</highlight></codeline>
+<codeline lineno="74"><highlight class="normal"><sp/><sp/>ssc_info(</highlight><highlight class="stringliteral">&quot;Starting<sp/>Alternate<sp/>Projections.&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="75"><highlight class="normal"></highlight></codeline>
+<codeline lineno="76"><highlight class="normal"><sp/><sp/>ssc_event_start(</highlight><highlight class="stringliteral">&quot;GLim<sp/>Run&quot;</highlight><highlight class="normal">,<sp/>{</highlight></codeline>
+<codeline lineno="77"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ssc_param_int(</highlight><highlight class="stringliteral">&quot;iter&quot;</highlight><highlight class="normal">,<sp/>iterations),</highlight></codeline>
+<codeline lineno="78"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ssc_param_int(</highlight><highlight class="stringliteral">&quot;difpadshape.x&quot;</highlight><highlight class="normal">,<sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal">)glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>-&gt;<ref refid="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" kindref="member">difpadshape</ref>.x),</highlight></codeline>
+<codeline lineno="79"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ssc_param_int(</highlight><highlight class="stringliteral">&quot;difpadshape.y&quot;</highlight><highlight class="normal">,<sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal">)glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>-&gt;<ref refid="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" kindref="member">difpadshape</ref>.y),</highlight></codeline>
+<codeline lineno="80"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ssc_param_int(</highlight><highlight class="stringliteral">&quot;difpadshape.z&quot;</highlight><highlight class="normal">,<sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal">)glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>-&gt;<ref refid="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" kindref="member">difpadshape</ref>.z)</highlight></codeline>
+<codeline lineno="81"><highlight class="normal"><sp/><sp/><sp/><sp/>});</highlight></codeline>
+<codeline lineno="82"><highlight class="normal"></highlight></codeline>
+<codeline lineno="83"><highlight class="normal"><sp/><sp/><ref refid="structPOptAlgorithm" kindref="compound">POptAlgorithm</ref>&amp;<sp/>ptycho<sp/>=<sp/>*glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>;</highlight></codeline>
+<codeline lineno="84"><highlight class="normal"></highlight></codeline>
+<codeline lineno="85"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>time0<sp/>=<sp/>ssc_time();</highlight></codeline>
+<codeline lineno="86"><highlight class="normal"></highlight></codeline>
+<codeline lineno="87"><highlight class="normal"><sp/><sp/>ptycho.object-&gt;Set(0);</highlight></codeline>
+<codeline lineno="88"><highlight class="normal"><sp/><sp/>cImage<sp/>objvelocity(ptycho.object-&gt;Shape());</highlight></codeline>
+<codeline lineno="89"><highlight class="normal"><sp/><sp/>cImage<sp/>probevelocity(ptycho.probe-&gt;Shape());</highlight></codeline>
+<codeline lineno="90"><highlight class="normal"><sp/><sp/>objvelocity.SetGPUToZero();</highlight></codeline>
+<codeline lineno="91"><highlight class="normal"><sp/><sp/>probevelocity.SetGPUToZero();</highlight></codeline>
+<codeline lineno="92"><highlight class="normal"></highlight></codeline>
+<codeline lineno="93"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3<sp/>difpadshape<sp/>=<sp/>ptycho.difpadshape;</highlight></codeline>
+<codeline lineno="94"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>ngpus<sp/>=<sp/><ref refid="ptycho_8hpp_1ad52670044f5598683c76426564e3e8de" kindref="member">ptycho_num_gpus</ref>(ptycho);</highlight></codeline>
+<codeline lineno="95"><highlight class="normal"></highlight></codeline>
+<codeline lineno="96"><highlight class="normal"><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>iter<sp/>=<sp/>0;<sp/>iter<sp/>&lt;<sp/>iterations;<sp/>iter++)<sp/>{</highlight></codeline>
+<codeline lineno="97"><highlight class="normal"><sp/><sp/><sp/><sp/>ssc_event_start(</highlight><highlight class="stringliteral">&quot;GLim<sp/>iter&quot;</highlight><highlight class="normal">,<sp/>{<sp/>ssc_param_int(</highlight><highlight class="stringliteral">&quot;iter&quot;</highlight><highlight class="normal">,<sp/>iter)<sp/>});</highlight></codeline>
+<codeline lineno="98"><highlight class="normal"></highlight></codeline>
+<codeline lineno="99"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">bool</highlight><highlight class="normal"><sp/>bIterProbe<sp/>=<sp/>(ptycho.probemomentum<sp/>&gt;=<sp/>0);<sp/><sp/></highlight><highlight class="comment">//<sp/>&amp;<sp/>(iter<sp/>&gt;<sp/>iterations/20);</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="100"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.rfactors-&gt;SetGPUToZero();</highlight></codeline>
+<codeline lineno="101"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.object_acc-&gt;SetGPUToZero();</highlight></codeline>
+<codeline lineno="102"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.object_div-&gt;SetGPUToZero();</highlight></codeline>
+<codeline lineno="103"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.probe_acc-&gt;SetGPUToZero();</highlight></codeline>
+<codeline lineno="104"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.probe_div-&gt;SetGPUToZero();</highlight></codeline>
+<codeline lineno="105"><highlight class="normal"></highlight></codeline>
+<codeline lineno="106"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(iter<sp/>&lt;<sp/>2)<sp/>{</highlight></codeline>
+<codeline lineno="107"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>objvelocity.SetGPUToZero();</highlight></codeline>
+<codeline lineno="108"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>probevelocity.SetGPUToZero();</highlight></codeline>
+<codeline lineno="109"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="110"><highlight class="normal"></highlight></codeline>
+<codeline lineno="111"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>num_batches<sp/>=<sp/><ref refid="ptycho_8hpp_1a97ec95d785a25d7a7ad2bac4ed1ff5ba" kindref="member">ptycho_num_batches</ref>(ptycho);</highlight></codeline>
+<codeline lineno="112"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>batch_idx<sp/>=<sp/>0;<sp/>batch_idx<sp/>&lt;<sp/>num_batches;<sp/>batch_idx++)<sp/>{</highlight></codeline>
+<codeline lineno="113"><highlight class="normal"></highlight></codeline>
+<codeline lineno="114"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">unsigned</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>difpad_batch_zsize<sp/>=<sp/><ref refid="ptycho_8hpp_1a7c407959761feaf187a9876422f155a2" kindref="member">ptycho_cur_batch_zsize</ref>(ptycho,<sp/>batch_idx);</highlight></codeline>
+<codeline lineno="115"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>difpad_idx<sp/>=<sp/>batch_idx<sp/>*<sp/><ref refid="ptycho_8hpp_1a29e6ab2719a0f15f98956fbf7e113115" kindref="member">ptycho_batch_size</ref>(ptycho);</highlight></codeline>
+<codeline lineno="116"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>*difpad_batch_ptr<sp/>=<sp/>ptycho.cpudifpads<sp/>+</highlight></codeline>
+<codeline lineno="117"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>difpad_idx<sp/>*<sp/>difpadshape.x<sp/>*<sp/>difpadshape.y;</highlight></codeline>
+<codeline lineno="118"><highlight class="normal"></highlight></codeline>
+<codeline lineno="119"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>TODO:<sp/>improve<sp/>so<sp/>we<sp/>can<sp/>avoid<sp/>reallocating<sp/>arrays<sp/>every<sp/>iteration,</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="120"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="comment">//<sp/>if<sp/>we<sp/>need<sp/>a<sp/>speedup</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="121"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>rMImage<sp/>cur_difpad(difpad_batch_ptr,</highlight></codeline>
+<codeline lineno="122"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>difpadshape.x,<sp/>difpadshape.y,<sp/>difpad_batch_zsize,</highlight></codeline>
+<codeline lineno="123"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">false</highlight><highlight class="normal">,<sp/>ptycho.gpus,<sp/>MemoryType::EAllocGPU);</highlight></codeline>
+<codeline lineno="124"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>g<sp/>=<sp/>0;<sp/>g<sp/>&lt;<sp/>ngpus;<sp/>g++)<sp/>{</highlight></codeline>
+<codeline lineno="125"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/></highlight><highlight class="keywordtype">size_t</highlight><highlight class="normal"><sp/>difpadsizez<sp/>=<sp/>(*ptycho.rois[batch_idx])[g].sizez;</highlight></codeline>
+<codeline lineno="126"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(difpadsizez<sp/>&gt;<sp/>0)<sp/>{</highlight></codeline>
+<codeline lineno="127"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>SetDevice(ptycho.gpus,<sp/>g);</highlight></codeline>
+<codeline lineno="128"><highlight class="normal"></highlight></codeline>
+<codeline lineno="129"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>dim3<sp/>blk<sp/>=<sp/>ptycho.exitwave-&gt;ShapeBlock();</highlight></codeline>
+<codeline lineno="130"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>blk.z<sp/>=<sp/>difpadsizez;</highlight></codeline>
+<codeline lineno="131"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>dim3<sp/>thr<sp/>=<sp/>ptycho.exitwave-&gt;ShapeThread();</highlight></codeline>
+<codeline lineno="132"><highlight class="normal"></highlight></codeline>
+<codeline lineno="133"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>Image2D&lt;ROI&gt;&amp;<sp/>ptr_roi<sp/>=<sp/>*ptycho.rois[batch_idx]-&gt;arrays[g];</highlight></codeline>
+<codeline lineno="134"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>KGLExitwave&lt;&lt;&lt;blk,<sp/>thr&gt;&gt;&gt;(*ptycho.exitwave-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="135"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.probe-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="136"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.object-&gt;arrays[g],<sp/>ptr_roi);</highlight></codeline>
+<codeline lineno="137"><highlight class="normal"></highlight></codeline>
+<codeline lineno="138"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="ptycho_8cu_1ad878deb8a9ac1ae105af1be65e74e3de" kindref="member">project_reciprocal_space</ref>(ptycho,<sp/>cur_difpad.arrays[g],<sp/>g,<sp/>glim.<ref refid="structGLim_1a46ed39a7d23fb49b99f781dfada791f4" kindref="member">isGradPm</ref>);</highlight></codeline>
+<codeline lineno="139"><highlight class="normal"></highlight></codeline>
+<codeline lineno="140"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>KGLPs&lt;&lt;&lt;blk,<sp/>thr&gt;&gt;&gt;(*ptycho.probe-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="141"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.object_acc-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="142"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.object_div-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="143"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.exitwave-&gt;arrays[g],<sp/>ptr_roi);</highlight></codeline>
+<codeline lineno="144"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="145"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="146"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(bIterProbe)<sp/><ref refid="glim_8cu_1aef6b619830608e386b0bfb0655011be0" kindref="member">GLimProjectProbe</ref>(glim,<sp/>batch_idx);</highlight></codeline>
+<codeline lineno="147"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="148"><highlight class="normal"></highlight></codeline>
+<codeline lineno="149"><highlight class="normal"><sp/><sp/><sp/><sp/>ssc_debug(</highlight><highlight class="stringliteral">&quot;Syncing<sp/>OBJ<sp/>and<sp/>setting<sp/>RF&quot;</highlight><highlight class="normal">);</highlight></codeline>
+<codeline lineno="150"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(ptycho.objmomentum<sp/>&gt;=<sp/>0)</highlight></codeline>
+<codeline lineno="151"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ptycho.object-&gt;WeightedLerpSync(</highlight></codeline>
+<codeline lineno="152"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.object_acc,<sp/>*ptycho.object_div,</highlight></codeline>
+<codeline lineno="153"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ptycho.objstep,<sp/>ptycho.objmomentum,</highlight></codeline>
+<codeline lineno="154"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>objvelocity,<sp/>ptycho.objreg);</highlight></codeline>
+<codeline lineno="155"><highlight class="normal"></highlight></codeline>
+<codeline lineno="156"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(ptycho.objectsupport<sp/>!=<sp/></highlight><highlight class="keyword">nullptr</highlight><highlight class="normal">)<sp/>{</highlight></codeline>
+<codeline lineno="157"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">for</highlight><highlight class="normal"><sp/>(</highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>g<sp/>=<sp/>0;<sp/>g<sp/>&lt;<sp/>ngpus;<sp/>g++)<sp/>{</highlight></codeline>
+<codeline lineno="158"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>SetDevice(ptycho.gpus,<sp/>g);</highlight></codeline>
+<codeline lineno="159"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="glim_8cu_1ae6665768898313d181d9c50cd38a6684" kindref="member">ApplySupport</ref>(*ptycho.object-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="160"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>*ptycho.objectsupport-&gt;arrays[g],</highlight></codeline>
+<codeline lineno="161"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ptycho.SupportSizes);</highlight></codeline>
+<codeline lineno="162"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="163"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="164"><highlight class="normal"></highlight></codeline>
+<codeline lineno="165"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="ptycho_8cu_1a3760b1da2405731ddcbe4728535475fc" kindref="member">ApplyProbeUpdate</ref>(ptycho,<sp/>probevelocity,<sp/>ptycho.probestep,<sp/>ptycho.probemomentum,<sp/>ptycho.probereg);</highlight></codeline>
+<codeline lineno="166"><highlight class="normal"></highlight></codeline>
+<codeline lineno="167"><highlight class="normal"><sp/><sp/><sp/><sp/>ptycho.cpurfact[iter]<sp/>=<sp/>sqrtf(ptycho.rfactors-&gt;SumCPU());</highlight></codeline>
+<codeline lineno="168"><highlight class="normal"></highlight></codeline>
+<codeline lineno="169"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">if</highlight><highlight class="normal"><sp/>(iter<sp/>%<sp/>10<sp/>==<sp/>0)<sp/>{</highlight></codeline>
+<codeline lineno="170"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>ssc_info(format(</highlight><highlight class="stringliteral">&quot;iter<sp/>{}/{}<sp/>error<sp/>=<sp/>{}&quot;</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="171"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>iter,<sp/>iterations,<sp/>ptycho.cpurfact[iter]));</highlight></codeline>
+<codeline lineno="172"><highlight class="normal"><sp/><sp/><sp/><sp/>}</highlight></codeline>
+<codeline lineno="173"><highlight class="normal"></highlight></codeline>
+<codeline lineno="174"><highlight class="normal"><sp/><sp/><sp/><sp/>ssc_event_stop();<sp/></highlight><highlight class="comment">//<sp/>GLim<sp/>iter</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="175"><highlight class="normal"><sp/><sp/>}</highlight></codeline>
+<codeline lineno="176"><highlight class="normal"></highlight></codeline>
+<codeline lineno="177"><highlight class="normal"><sp/><sp/>ssc_event_stop();<sp/></highlight><highlight class="comment">//<sp/>GLim<sp/>Run</highlight><highlight class="normal"></highlight></codeline>
+<codeline lineno="178"><highlight class="normal"><sp/><sp/></highlight><highlight class="keyword">auto</highlight><highlight class="normal"><sp/>time1<sp/>=<sp/>ssc_time();</highlight></codeline>
+<codeline lineno="179"><highlight class="normal"><sp/><sp/>ssc_info(format(</highlight><highlight class="stringliteral">&quot;End<sp/>AP:<sp/>{}<sp/>ms&quot;</highlight><highlight class="normal">,<sp/>ssc_diff_time(time0,<sp/>time1)));</highlight></codeline>
+<codeline lineno="180"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="181"><highlight class="normal"></highlight></codeline>
+<codeline lineno="182"><highlight class="normal"></highlight></codeline>
+<codeline lineno="183"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1aef6b619830608e386b0bfb0655011be0" kindref="member">GLimProjectProbe</ref>(<ref refid="structGLim" kindref="compound">GLim</ref>&amp;<sp/>glim,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>section)<sp/>{</highlight></codeline>
+<codeline lineno="184"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="ptycho_8cu_1a298859823914cec4625ac4a405426582" kindref="member">ProjectPhiToProbe</ref>(*glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>,<sp/>section,<sp/>*glim.<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>-&gt;<ref refid="structPOptAlgorithm_1a9ebbe9246bb2540b461b66067396ac0e" kindref="member">exitwave</ref>,<sp/></highlight><highlight class="keyword">true</highlight><highlight class="normal">,<sp/>glim.<ref refid="structGLim_1a46ed39a7d23fb49b99f781dfada791f4" kindref="member">isGradPm</ref>);</highlight></codeline>
+<codeline lineno="185"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="186"><highlight class="normal"></highlight></codeline>
+<codeline lineno="187"><highlight class="normal"><ref refid="structGLim" kindref="compound">GLim</ref>*<sp/><ref refid="glim_8cu_1a0612533b823e68af91aedcf9d7c79dac" kindref="member">CreateGLim</ref>(</highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>difpads,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3&amp;<sp/>difshape,<sp/>complex*<sp/>probe,<sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3&amp;<sp/>probeshape,<sp/>complex*<sp/></highlight><highlight class="keywordtype">object</highlight><highlight class="normal">,</highlight></codeline>
+<codeline lineno="188"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>dim3&amp;<sp/>objshape,<sp/><ref refid="structROI" kindref="compound">ROI</ref>*<sp/>rois,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>numrois,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>batchsize,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>rfact,</highlight></codeline>
+<codeline lineno="189"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keyword">const</highlight><highlight class="normal"><sp/>std::vector&lt;int&gt;&amp;<sp/>gpus,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>objsupp,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>probesupp,<sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>numobjsupp,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>sigmask,</highlight></codeline>
+<codeline lineno="190"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">int</highlight><highlight class="normal"><sp/>geometricsteps,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal">*<sp/>background,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>probef1,</highlight></codeline>
+<codeline lineno="191"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>step_obj,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>step_probe,</highlight></codeline>
+<codeline lineno="192"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>reg_obj,<sp/></highlight><highlight class="keywordtype">float</highlight><highlight class="normal"><sp/>reg_probe)<sp/>{</highlight></codeline>
+<codeline lineno="193"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="structGLim" kindref="compound">GLim</ref>*<sp/>glim<sp/>=<sp/></highlight><highlight class="keyword">new</highlight><highlight class="normal"><sp/><ref refid="structGLim" kindref="compound">GLim</ref>;</highlight></codeline>
+<codeline lineno="194"><highlight class="normal"><sp/><sp/><sp/><sp/>glim-&gt;<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref><sp/>=</highlight></codeline>
+<codeline lineno="195"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><ref refid="ptycho_8cu_1ac6d77be77215d1df299307ef6a2175dc" kindref="member">CreatePOptAlgorithm</ref>(difpads,<sp/>difshape,<sp/>probe,<sp/>probeshape,</highlight></codeline>
+<codeline lineno="196"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/></highlight><highlight class="keywordtype">object</highlight><highlight class="normal">,<sp/>objshape,<sp/>rois,<sp/>numrois,<sp/>batchsize,<sp/>rfact,</highlight></codeline>
+<codeline lineno="197"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>gpus,<sp/>objsupp,<sp/>probesupp,<sp/>numobjsupp,<sp/>sigmask,<sp/>geometricsteps,<sp/>background,<sp/>probef1,</highlight></codeline>
+<codeline lineno="198"><highlight class="normal"><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/><sp/>step_obj,<sp/>step_probe,<sp/>reg_obj,<sp/>reg_probe);</highlight></codeline>
+<codeline lineno="199"><highlight class="normal"></highlight></codeline>
+<codeline lineno="200"><highlight class="normal"><sp/><sp/><sp/><sp/></highlight><highlight class="keywordflow">return</highlight><highlight class="normal"><sp/>glim;</highlight></codeline>
+<codeline lineno="201"><highlight class="normal">}</highlight></codeline>
+<codeline lineno="202"><highlight class="normal"></highlight></codeline>
+<codeline lineno="203"><highlight class="normal"></highlight><highlight class="keywordtype">void</highlight><highlight class="normal"><sp/><ref refid="glim_8cu_1a0fd2fbf2ef23a7d9c8bdd81e5c7e1f75" kindref="member">DestroyGLim</ref>(<ref refid="structGLim" kindref="compound">GLim</ref>*&amp;<sp/>glim)<sp/>{</highlight></codeline>
+<codeline lineno="204"><highlight class="normal"><sp/><sp/><sp/><sp/><ref refid="ptycho_8cu_1a5b112da7aae5c2cf748894fffcca3056" kindref="member">DestroyPOptAlgorithm</ref>(glim-&gt;<ref refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kindref="member">ptycho</ref>);</highlight></codeline>
+<codeline lineno="205"><highlight class="normal"><sp/><sp/><sp/><sp/>glim<sp/>=<sp/></highlight><highlight class="keyword">nullptr</highlight><highlight class="normal">;</highlight></codeline>
+<codeline lineno="206"><highlight class="normal">}</highlight></codeline>
+    </programlisting>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src/glim.cu"/>
+  </compounddef>
+</doxygen>

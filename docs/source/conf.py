@@ -18,15 +18,15 @@ sys.path.insert(0, os.path.abspath('../..')) # add scripts folder
 # -- Project information -----------------------------------------------------
 
 project = 'ssc-cdi'
-copyright = '2023, Sirius Scientific Computing Group'
+copyright = '2024, Sirius Scientific Computing Group'
 author = 'Sirius Scientific Computing Group'
 
 # The full version, including alpha/beta/rc tags
-release = '0.6.11'
+release = '0.10.0'
 
 # -- General configuration ---------------------------------------------------
 
-autodoc_mock_imports = ["sscPtycho","ipywidgets"] # list all modules to be ignored during compilation of the html 
+autodoc_mock_imports = ["sscCdi.lib", "ipywidgets"] # Add any other dependencies causing issues
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
