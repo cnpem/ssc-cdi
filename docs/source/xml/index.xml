@@ -1,3 +1,225 @@
 <?xml version='1.0' encoding='UTF-8' standalone='no'?>
-<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.9.1" xml:lang="en-US">
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.8.17">
+  <compound refid="classASM" kind="class"><name>ASM</name>
+    <member refid="classASM_1a736856045f336def50793eb25109bb87" kind="function"><name>Propagate</name></member>
+  </compound>
+  <compound refid="classFraunhoffer" kind="class"><name>Fraunhoffer</name>
+    <member refid="classFraunhoffer_1a8135fcddf654324f33d7a872925f993a" kind="variable"><name>dims</name></member>
+    <member refid="classFraunhoffer_1aee9c993c6551a6d7c26df8e035bc0c27" kind="variable"><name>plans</name></member>
+    <member refid="classFraunhoffer_1a7d3e591358abae08be401c85497c7751" kind="variable"><name>workarea</name></member>
+    <member refid="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7" kind="function"><name>Propagate</name></member>
+    <member refid="classFraunhoffer_1a970ed66f6c66784026a7486734c4cccf" kind="function"><name>Fraunhoffer</name></member>
+    <member refid="classFraunhoffer_1af7dd6a16e3011a54af884cb4ee1a6217" kind="function"><name>~Fraunhoffer</name></member>
+    <member refid="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221" kind="function"><name>Append</name></member>
+  </compound>
+  <compound refid="structGLim" kind="struct"><name>GLim</name>
+    <member refid="structGLim_1a8380dd0d1b45c249f8e0f15b216b8557" kind="variable"><name>ptycho</name></member>
+    <member refid="structGLim_1a46ed39a7d23fb49b99f781dfada791f4" kind="variable"><name>isGradPm</name></member>
+  </compound>
+  <compound refid="structInitializer" kind="struct"><name>Initializer</name>
+    <member refid="structInitializer_1a7c6c773e821ac8125a842b46e0af706d" kind="function"><name>Initializer</name></member>
+    <member refid="structInitializer_1add39a548b1e5405e938e786f069191e1" kind="function"><name>~Initializer</name></member>
+  </compound>
+  <compound refid="structPie" kind="struct"><name>Pie</name>
+    <member refid="structPie_1a9c1042be5ded02971640e92ddf44c911" kind="variable"><name>ptycho</name></member>
+    <member refid="structPie_1a36aef3a7ee4e24bdefab937387442d99" kind="variable"><name>isGradPm</name></member>
+  </compound>
+  <compound refid="structPOptAlgorithm" kind="struct"><name>POptAlgorithm</name>
+    <member refid="structPOptAlgorithm_1abec0db9e1f00d5267327d02da5161d19" kind="variable"><name>gpus</name></member>
+    <member refid="structPOptAlgorithm_1a96bb15bd81f718c72d585c8ed611eab9" kind="variable"><name>rois</name></member>
+    <member refid="structPOptAlgorithm_1a506d977d84492238546e64d7b2f38f01" kind="variable"><name>object</name></member>
+    <member refid="structPOptAlgorithm_1aa0bb2bf38b8e6e0126ff0e21fb7203d6" kind="variable"><name>probe</name></member>
+    <member refid="structPOptAlgorithm_1a9ebbe9246bb2540b461b66067396ac0e" kind="variable"><name>exitwave</name></member>
+    <member refid="structPOptAlgorithm_1a7927b2f881d02a9170c59b1e387050ed" kind="variable"><name>rfactors</name></member>
+    <member refid="structPOptAlgorithm_1aab95c3d5ca720cbb59c2a9dbfa508013" kind="variable"><name>objectsupport</name></member>
+    <member refid="structPOptAlgorithm_1a7c1b1cc6f0a305a74b9bba62fc2bdb62" kind="variable"><name>probesupport</name></member>
+    <member refid="structPOptAlgorithm_1aacca83621286aadbdc45a53527862069" kind="variable"><name>SupportSizes</name></member>
+    <member refid="structPOptAlgorithm_1a968ce12fa5071c8ac0480f3a2f30e4d8" kind="variable"><name>sigmask</name></member>
+    <member refid="structPOptAlgorithm_1a5e893d0230778059ce7fc29a3f549094" kind="variable"><name>bCenterProbe</name></member>
+    <member refid="structPOptAlgorithm_1af5208a1e588a5db1bfd7866b49c29189" kind="variable"><name>I0</name></member>
+    <member refid="structPOptAlgorithm_1ad2cd46aefc388e690475a466352dd00f" kind="variable"><name>propagator</name></member>
+    <member refid="structPOptAlgorithm_1acad5f2c1d1066b5397b71034372a9421" kind="variable"><name>probepropagator</name></member>
+    <member refid="structPOptAlgorithm_1a92c4b4ea6b38caeb8e254aa30d48317b" kind="variable"><name>difpadshape</name></member>
+    <member refid="structPOptAlgorithm_1af999996bdd95576dfe05569db6be3b53" kind="variable"><name>probef1</name></member>
+    <member refid="structPOptAlgorithm_1a8ec4655eee89ffd8bf45f8779d6ba098" kind="variable"><name>cpudifpads</name></member>
+    <member refid="structPOptAlgorithm_1a6e67c74cbab8c6ab4ff705aadb4f745d" kind="variable"><name>cpuobject</name></member>
+    <member refid="structPOptAlgorithm_1ad14397ce6f4c85f02a060a4ddd1d5992" kind="variable"><name>cpuprobe</name></member>
+    <member refid="structPOptAlgorithm_1a756b6b85c939871d321128435a279dfb" kind="variable"><name>cpurois</name></member>
+    <member refid="structPOptAlgorithm_1abfd36af46d12deaded7d6ebb8e122242" kind="variable"><name>cpurfact</name></member>
+    <member refid="structPOptAlgorithm_1aaba1f69047dd13bbbca184679c973c1d" kind="variable"><name>roibatch_offset</name></member>
+    <member refid="structPOptAlgorithm_1a536fe6af4356d89078241dbf8dbb6b64" kind="variable"><name>singlebatchsize</name></member>
+    <member refid="structPOptAlgorithm_1a3b7ba09622974d03379e1028946e6111" kind="variable"><name>multibatchsize</name></member>
+    <member refid="structPOptAlgorithm_1a2278546d425d8708f7d5282439d541f2" kind="variable"><name>geometricsteps</name></member>
+    <member refid="structPOptAlgorithm_1ac24fac966485161d3bef7599ee42d679" kind="variable"><name>total_num_rois</name></member>
+    <member refid="structPOptAlgorithm_1ade9e24797a0b051d27502f3148230018" kind="variable"><name>object_div</name></member>
+    <member refid="structPOptAlgorithm_1a4d304204018e1fe000740b0468d74566" kind="variable"><name>object_acc</name></member>
+    <member refid="structPOptAlgorithm_1a110d4fbd5c20c09a2044f8c7f5dd1876" kind="variable"><name>probe_div</name></member>
+    <member refid="structPOptAlgorithm_1ae4a5ff5d2466dc0a8b59c4d65be2cc6b" kind="variable"><name>probe_acc</name></member>
+    <member refid="structPOptAlgorithm_1a8dfd13763eaa2664e0f711bdf78435c2" kind="variable"><name>objmomentum</name></member>
+    <member refid="structPOptAlgorithm_1a36890b4c11b6e9ea9d0013acfa8015de" kind="variable"><name>probemomentum</name></member>
+    <member refid="structPOptAlgorithm_1a28af23f00cd500b58e7145aeb57a16e2" kind="variable"><name>objstep</name></member>
+    <member refid="structPOptAlgorithm_1ab26d95672cf1bdb420e2edb86df59565" kind="variable"><name>probestep</name></member>
+    <member refid="structPOptAlgorithm_1a84777c02e5be6e5a84906bf7ba0da62a" kind="variable"><name>probereg</name></member>
+    <member refid="structPOptAlgorithm_1a0432e54095f9ef861d69ef7db2020bcc" kind="variable"><name>objreg</name></member>
+    <member refid="structPOptAlgorithm_1a89393de4a5e66a2339b813512828c6a0" kind="variable"><name>background</name></member>
+    <member refid="structPOptAlgorithm_1ad42ddbe8feb45a84c8b9dff9a834019b" kind="variable"><name>bkgaccum</name></member>
+    <member refid="structPOptAlgorithm_1ab543ac443007610201ae30c23e6ad7a5" kind="variable"><name>bkgmomentum</name></member>
+    <member refid="structPOptAlgorithm_1a0768eceb552480788fa78044e3cd401c" kind="variable"><name>cpubackground</name></member>
+  </compound>
+  <compound refid="structPosCorrection" kind="struct"><name>PosCorrection</name>
+    <member refid="structPosCorrection_1ae58ec8cf60cc084f449a7318af2c92cd" kind="variable"><name>errorcounter</name></member>
+    <member refid="structPosCorrection_1a49df06a34af1a452b67681555b511ec2" kind="variable"><name>ptycho</name></member>
+    <member refid="structPosCorrection_1ad6a0258542cc0177ce8e8f082618177c" kind="variable"><name>isGradPm</name></member>
+  </compound>
+  <compound refid="classPropagator" kind="class"><name>Propagator</name>
+    <member refid="classPropagator_1ac8149f9492abab7ae463d1380f8369fe" kind="function"><name>Propagate</name></member>
+    <member refid="classPropagator_1a30c6a2be469682f6e30f8a038f4c9ade" kind="function"><name>Append</name></member>
+    <member refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" kind="function"><name>~Propagator</name></member>
+  </compound>
+  <compound refid="structRAAR" kind="struct"><name>RAAR</name>
+    <member refid="structRAAR_1a880063ae295e76c0944db229b10663d6" kind="variable"><name>ptycho</name></member>
+    <member refid="structRAAR_1a1b569a3ce99dbca5f888895c4c8c64d2" kind="variable"><name>phistack</name></member>
+    <member refid="structRAAR_1aa8378cbd3569222923ff0305d9030dbf" kind="variable"><name>isGradPm</name></member>
+    <member refid="structRAAR_1a2026eecf9b498277249fcdc5295f0847" kind="variable"><name>wavefront</name></member>
+    <member refid="structRAAR_1ae9ee13d51aaa5be9847c90098b28d07f" kind="variable"><name>beta</name></member>
+  </compound>
+  <compound refid="structROI" kind="struct"><name>ROI</name>
+    <member refid="structROI_1aeeb35d1907fcdd6019624d91a943ea8b" kind="variable"><name>x</name></member>
+    <member refid="structROI_1aa1c5dc105fd5f5017fe5b4e1eb471f6a" kind="variable"><name>y</name></member>
+    <member refid="structROI_1af576a847556336ea0d85af23a661a55c" kind="variable"><name>exptime</name></member>
+    <member refid="structROI_1a69a2289009ab76d9cc92f2b0e1c6393b" kind="variable"><name>I0</name></member>
+  </compound>
+  <compound refid="propagator_8hpp" kind="file"><name>propagator.hpp</name>
+  </compound>
+  <compound refid="ptycho_8hpp" kind="file"><name>ptycho.hpp</name>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fff" kind="enum"><name>NoiseModel</name></member>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fffa92e2a876702d06925b281147586486b9" kind="enumvalue"><name>EUCLID</name></member>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fffa37a2f93fd56db2dd5f74780e8bca23b3" kind="enumvalue"><name>GAUSS</name></member>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fffa92a9a9519a6a4f5edd0b2694fe1c9122" kind="enumvalue"><name>POISSON</name></member>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fffabb4784231ff45108ee20bad16e4a2e8c" kind="enumvalue"><name>DEAD</name></member>
+    <member refid="ptycho_8hpp_1a85d257ca7965c110ed39911452d19fffa516a2342953891f249b58ff1c3943723" kind="enumvalue"><name>MIXED</name></member>
+    <member refid="ptycho_8hpp_1a2441dd3c983498585f5d3713eb2bdec7" kind="typedef"><name>RoiArray</name></member>
+    <member refid="ptycho_8hpp_1a21d9c6942860f777da21bac01cb5cd1c" kind="function"><name>sq</name></member>
+    <member refid="ptycho_8hpp_1a5d0e3f4192830fa314a9b15975d8bb2f" kind="function"><name>IndexRois</name></member>
+    <member refid="ptycho_8hpp_1a97ec95d785a25d7a7ad2bac4ed1ff5ba" kind="function"><name>ptycho_num_batches</name></member>
+    <member refid="ptycho_8hpp_1ad52670044f5598683c76426564e3e8de" kind="function"><name>ptycho_num_gpus</name></member>
+    <member refid="ptycho_8hpp_1a84db02ad465b040943703c8bfa2de0ff" kind="function"><name>ptycho_num_modes</name></member>
+    <member refid="ptycho_8hpp_1a7c407959761feaf187a9876422f155a2" kind="function"><name>ptycho_cur_batch_zsize</name></member>
+    <member refid="ptycho_8hpp_1a29e6ab2719a0f15f98956fbf7e113115" kind="function"><name>ptycho_batch_size</name></member>
+    <member refid="ptycho_8hpp_1a1911ebcdd9be52014b087a48f65625fe" kind="function"><name>ptycho_cur_batch_gpu_zsize</name></member>
+    <member refid="ptycho_8hpp_1a6dbc166eb113b0bb3d8fd4db5a21fab4" kind="function"><name>ProjectProbe</name></member>
+    <member refid="ptycho_8hpp_1a8f83c3b33c93ae2f6a80911674f7c9a1" kind="function"><name>project_reciprocal_space</name></member>
+    <member refid="ptycho_8hpp_1ab256bbc9d29fadf078222578dc77c0a7" kind="function"><name>DestroyPOptAlgorithm</name></member>
+    <member refid="ptycho_8hpp_1a5e498e311a9f047b1fa83e808a5e7577" kind="function"><name>CreatePOptAlgorithm</name></member>
+    <member refid="ptycho_8hpp_1a58f3c3cd01384b311517f1be519e4d81" kind="function"><name>ProjectPhiToProbe</name></member>
+    <member refid="ptycho_8hpp_1a1e79a213447a667128a958e4383d2f7d" kind="function"><name>ApplyProbeUpdate</name></member>
+    <member refid="ptycho_8hpp_1ae6665768898313d181d9c50cd38a6684" kind="function"><name>ApplySupport</name></member>
+    <member refid="ptycho_8hpp_1ae1b9df742b633f0babaef337af8b7ae9" kind="function"><name>CreateRAAR</name></member>
+    <member refid="ptycho_8hpp_1a63413b7b0c2a5b36b5595ff9a23ce9af" kind="function"><name>DestroyRAAR</name></member>
+    <member refid="ptycho_8hpp_1a753690d19a69c7db210d14439c0d56cf" kind="function"><name>RAARRun</name></member>
+    <member refid="ptycho_8hpp_1a4f6cf0259cde9fbaad6212c802c64874" kind="function"><name>RAARProjectProbe</name></member>
+    <member refid="ptycho_8hpp_1a3ef2e472fc5918a16aaffc614254bd71" kind="function"><name>RAARApplyObjectUpdate</name></member>
+    <member refid="ptycho_8hpp_1a6f84a4b01057c3125c53c508e08bdd6a" kind="function"><name>RAARApplyProbeUpdate</name></member>
+    <member refid="ptycho_8hpp_1a8d4daceb323256469196633426c8e859" kind="function"><name>KGLExitwave</name></member>
+    <member refid="ptycho_8hpp_1a69032373905c1f0f252d632abda96fe3" kind="function"><name>KGLPs</name></member>
+    <member refid="ptycho_8hpp_1acc7afe1428c039847929f5f49777b1b9" kind="function"><name>k_project_reciprocal_space</name></member>
+    <member refid="ptycho_8hpp_1adf1e12ecffa95a1063f52c4d501f67a9" kind="function"><name>GLimRun</name></member>
+    <member refid="ptycho_8hpp_1a0612533b823e68af91aedcf9d7c79dac" kind="function"><name>CreateGLim</name></member>
+    <member refid="ptycho_8hpp_1a0fd2fbf2ef23a7d9c8bdd81e5c7e1f75" kind="function"><name>DestroyGLim</name></member>
+    <member refid="ptycho_8hpp_1aef6b619830608e386b0bfb0655011be0" kind="function"><name>GLimProjectProbe</name></member>
+    <member refid="ptycho_8hpp_1ad3eaf7b0e0d7a760572bb4a385d128d8" kind="function"><name>CreatePie</name></member>
+    <member refid="ptycho_8hpp_1a0c41d92a50ebf6984862d474545e5a34" kind="function"><name>DestroyPie</name></member>
+    <member refid="ptycho_8hpp_1ad47895342ed5f0c3d83376afa2e576ce" kind="function"><name>PieRun</name></member>
+  </compound>
+  <compound refid="glim_8cu" kind="file"><name>glim.cu</name>
+    <member refid="glim_8cu_1a8d4daceb323256469196633426c8e859" kind="function"><name>KGLExitwave</name></member>
+    <member refid="glim_8cu_1a69032373905c1f0f252d632abda96fe3" kind="function"><name>KGLPs</name></member>
+    <member refid="glim_8cu_1a94979faf67dabe7dc1d40e7e9ff35eb8" kind="function"><name>KApplySupport</name></member>
+    <member refid="glim_8cu_1ae6665768898313d181d9c50cd38a6684" kind="function"><name>ApplySupport</name></member>
+    <member refid="glim_8cu_1a36e51ccd5aff171d0844107499c407f9" kind="function"><name>GLimRun</name></member>
+    <member refid="glim_8cu_1aef6b619830608e386b0bfb0655011be0" kind="function"><name>GLimProjectProbe</name></member>
+    <member refid="glim_8cu_1a0612533b823e68af91aedcf9d7c79dac" kind="function"><name>CreateGLim</name></member>
+    <member refid="glim_8cu_1a0fd2fbf2ef23a7d9c8bdd81e5c7e1f75" kind="function"><name>DestroyGLim</name></member>
+  </compound>
+  <compound refid="main_8cu" kind="file"><name>main.cu</name>
+    <member refid="main_8cu_1a29b1f85f7344fe5fa75bf4ff6ae4aac0" kind="variable"><name>accessEnabled</name></member>
+    <member refid="main_8cu_1a4b1e304ff82fcb194c5396c285f9ddf1" kind="variable"><name>init</name></member>
+    <member refid="main_8cu_1ae66f6b31b5ad750f1fe042a706a4e3d4" kind="function"><name>main</name></member>
+    <member refid="main_8cu_1a7901e14f413d2c19f8add5823d90d855" kind="function"><name>EnablePeerToPeer</name></member>
+    <member refid="main_8cu_1a6355ae1c07dad5b070db411cd9f9dbd6" kind="function"><name>DisablePeerToPeer</name></member>
+    <member refid="main_8cu_1ac034eeceabbdc2b1f6842383fefca05f" kind="function"><name>glcall</name></member>
+    <member refid="main_8cu_1a05329080d70d159786daebc16241e286" kind="function"><name>piecall</name></member>
+    <member refid="main_8cu_1a18169326e33aaab8d5c9cff5bc5d4b1a" kind="function"><name>raarcall</name></member>
+    <member refid="main_8cu_1a5d5a0c1ac1384b740a567e391a24eaa0" kind="function"><name>_fhandler</name></member>
+    <member refid="main_8cu_1a44c56a5229184dc85679d32920473c14" kind="function"><name>_setHandler</name></member>
+  </compound>
+  <compound refid="pie_8cu" kind="file"><name>pie.cu</name>
+    <member refid="pie_8cu_1ad3eaf7b0e0d7a760572bb4a385d128d8" kind="function"><name>CreatePie</name></member>
+    <member refid="pie_8cu_1a0c41d92a50ebf6984862d474545e5a34" kind="function"><name>DestroyPie</name></member>
+    <member refid="pie_8cu_1aa4e6fc08a00ec96c3cd8bd0ea1d65663" kind="function"><name>k_pie_wavefront_calc</name></member>
+    <member refid="pie_8cu_1a72ae3bdb83d34f52d79bf09a6b5c0b2b" kind="function"><name>k_pie_update_probe</name></member>
+    <member refid="pie_8cu_1a63785598fc08ddacd58802a0d2ff5ab5" kind="function"><name>k_pie_update_object</name></member>
+    <member refid="pie_8cu_1a6a7f0eae60d63ab225a52baa5f554254" kind="function"><name>range_array</name></member>
+    <member refid="pie_8cu_1a53e99669c1d68c75f1a3b65a305b00d1" kind="function"><name>shuffle_array</name></member>
+    <member refid="pie_8cu_1ad47895342ed5f0c3d83376afa2e576ce" kind="function"><name>PieRun</name></member>
+  </compound>
+  <compound refid="poscorrection_8cu" kind="file"><name>poscorrection.cu</name>
+    <member refid="poscorrection_8cu_1a6d57534aa87af8f7b632aa8f9a698c27" kind="function"><name>KSideExitwave</name></member>
+    <member refid="poscorrection_8cu_1a1d2a190e28333ef598c606dbd42bf472" kind="function"><name>KComputeError</name></member>
+    <member refid="poscorrection_8cu_1a80b8c07259c49828d3ca4c6575523606" kind="function"><name>CreatePosCorrection</name></member>
+    <member refid="poscorrection_8cu_1a04b0935ad377b2584ae1bea34152a11c" kind="function"><name>PosCorrectionApplyProbeUpdate</name></member>
+    <member refid="poscorrection_8cu_1a02a39371a68aa76181b9f8f13af84003" kind="function"><name>PosCorrectionProjectProbe</name></member>
+    <member refid="poscorrection_8cu_1a06fd91abbe4422f224bc6d23292a0962" kind="function"><name>DestroyPosCorrection</name></member>
+    <member refid="poscorrection_8cu_1a8b64d4df680b8175dc949ae1fc2234e2" kind="function"><name>PosCorrectionApplyProbeUpdate</name></member>
+    <member refid="poscorrection_8cu_1ad13bbaaabe8e6ee3c38bcd49436443f2" kind="function"><name>PosCorrectionRun</name></member>
+    <member refid="poscorrection_8cu_1a20eb54ed5163a7a128b57a89d757c397" kind="function"><name>poscorrcall</name></member>
+  </compound>
+  <compound refid="propagator_8cu" kind="file"><name>propagator.cu</name>
+    <member refid="propagator_8cu_1ad1d043fd874fabc92bfc14b3b71257fa" kind="function"><name>dim3EQ</name></member>
+    <member refid="propagator_8cu_1a23f2d4c356f6967523fcc57a50a47033" kind="function"><name>KApplyASM</name></member>
+  </compound>
+  <compound refid="ptycho_8cu" kind="file"><name>ptycho.cu</name>
+    <member refid="ptycho_8cu_1a4a8c6f0201de7bccf6e037ed753da4de" kind="function"><name>KProjectPhiToProbe</name></member>
+    <member refid="ptycho_8cu_1a4da1e759b690c7f8a367d0624f5eaab0" kind="function"><name>KProjectPhiToProbe</name></member>
+    <member refid="ptycho_8cu_1a298859823914cec4625ac4a405426582" kind="function"><name>ProjectPhiToProbe</name></member>
+    <member refid="ptycho_8cu_1a56c0632588ec47e287a6398368ceb7fc" kind="function"><name>ProjectPhiToProbe&lt; complex &gt;</name></member>
+    <member refid="ptycho_8cu_1a521bcc16a4fddac813e303a422e23cd7" kind="function"><name>ProjectPhiToProbe&lt; complex16 &gt;</name></member>
+    <member refid="ptycho_8cu_1a7901e14f413d2c19f8add5823d90d855" kind="function"><name>EnablePeerToPeer</name></member>
+    <member refid="ptycho_8cu_1a6355ae1c07dad5b070db411cd9f9dbd6" kind="function"><name>DisablePeerToPeer</name></member>
+    <member refid="ptycho_8cu_1ab258760e7cc02ace89258a7460e9e0d8" kind="function"><name>k_project_reciprocal_space</name></member>
+    <member refid="ptycho_8cu_1a5d0e3f4192830fa314a9b15975d8bb2f" kind="function"><name>IndexRois</name></member>
+    <member refid="ptycho_8cu_1ad878deb8a9ac1ae105af1be65e74e3de" kind="function"><name>project_reciprocal_space</name></member>
+    <member refid="ptycho_8cu_1a3760b1da2405731ddcbe4728535475fc" kind="function"><name>ApplyProbeUpdate</name></member>
+    <member refid="ptycho_8cu_1a5b112da7aae5c2cf748894fffcca3056" kind="function"><name>DestroyPOptAlgorithm</name></member>
+    <member refid="ptycho_8cu_1ac6d77be77215d1df299307ef6a2175dc" kind="function"><name>CreatePOptAlgorithm</name></member>
+  </compound>
+  <compound refid="raar_8cu" kind="file"><name>raar.cu</name>
+    <member refid="raar_8cu_1a6909cff96414cf30bf88ae967221d7ab" kind="function"><name>k_RAAR_reflect_Rspace</name></member>
+    <member refid="raar_8cu_1a9cef09bbc9b73a30a0171ddf35dad326" kind="function"><name>k_RAAR_wavefront_update</name></member>
+    <member refid="raar_8cu_1afb2337cdad7e52e151d7153db3ecaa17" kind="function"><name>KRAAR_ObjPs</name></member>
+    <member refid="raar_8cu_1ae1b9df742b633f0babaef337af8b7ae9" kind="function"><name>CreateRAAR</name></member>
+    <member refid="raar_8cu_1a63413b7b0c2a5b36b5595ff9a23ce9af" kind="function"><name>DestroyRAAR</name></member>
+    <member refid="raar_8cu_1a181f09e1ced3753368a2619b2db58841" kind="function"><name>RAARProjectProbe</name></member>
+    <member refid="raar_8cu_1a3ef2e472fc5918a16aaffc614254bd71" kind="function"><name>RAARApplyObjectUpdate</name></member>
+    <member refid="raar_8cu_1a6f84a4b01057c3125c53c508e08bdd6a" kind="function"><name>RAARApplyProbeUpdate</name></member>
+    <member refid="raar_8cu_1a3588957c2d3f959c192b2fcf2ae3594f" kind="function"><name>init_wavefront</name></member>
+    <member refid="raar_8cu_1a5d561d117c49a8d76137081a17b0d58e" kind="function"><name>RAARRun</name></member>
+  </compound>
+  <compound refid="radon_8cu" kind="file"><name>radon.cu</name>
+    <member refid="radon_8cu_1a598a3330b3c21701223ee0ca14316eca" kind="define"><name>PI</name></member>
+    <member refid="radon_8cu_1a195b88eb50177f8466002ab62e38f038" kind="define"><name>TPBXr</name></member>
+    <member refid="radon_8cu_1af4194f05865197dd364a01eb80866c8d" kind="define"><name>TPBYr</name></member>
+    <member refid="radon_8cu_1a7388ebd75a04fca9b48b4bdcf2f0d3e3" kind="define"><name>TPBE</name></member>
+    <member refid="radon_8cu_1a8c0a8efe9e55f2a7d47f2980d13b3043" kind="function"><name>radon_kernel</name></member>
+    <member refid="radon_8cu_1a425e5dc3c445f3f5b9a7235d3a167448" kind="function"><name>radon_local_kernel</name></member>
+    <member refid="radon_8cu_1afceb9f29e58b630142638342c56416c0" kind="function"><name>radonp_gpu</name></member>
+    <member refid="radon_8cu_1ace638e5c8a7067035660427b9311f1a4" kind="function"><name>radonp_ray</name></member>
+    <member refid="radon_8cu_1aa9d29d3fa381e50d272bd87c8c230f73" kind="function"><name>radonp_local_gpu</name></member>
+  </compound>
+  <compound refid="dir_7f72761faf76ad5b97d7f36c114afa29" kind="dir"><name>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda</name>
+  </compound>
+  <compound refid="dir_7bad8fb98241d550a9a3ae4d977e523a" kind="dir"><name>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc</name>
+  </compound>
+  <compound refid="dir_ea391df6eff8c05a1d61fc70822e6d3c" kind="dir"><name>/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/src</name>
+  </compound>
 </doxygenindex>

@@ -228,28 +228,29 @@ def remove_outliers(data,sigma):
     return data
 
 def equalize_frame(dic,frame):
-    """ Performs a series of processing steps over a 2D array, namely:
+    """
+    Performs a series of processing steps over a 2D array, namely:
 
-        1) Removes a gradient (i.e. the phase ramp) for the image as a whole
-        2) Makes any NaN values null
-        3) Removes outlier values above/below a certain sigma
-        4) Removes the global offset of the array, making the smallest value null
-        5) Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
+    1. Removes a gradient (i.e. the phase ramp) for the image as a whole
+    2. Makes any NaN values null
+    3. Removes outlier values above/below a certain sigma
+    4. Removes the global offset of the array, making the smallest value null
+    5. Removes a local offset of the array, subtracting the mean value of a desired region from the entire array
 
     Args:
         dic (dict): dictionary of inputs
             keys:
-                "equalize_invert": boolean
-                "equalize_remove_phase_gradient": boolean
-                "equalize_ROI"
-                "equalize_remove_phase_gradient_iterations"
-                "equalize_local_offset"
-                "equalize_set_min_max"
-                "equalize_non_negative"
+                "equalize_invert" (boolean): Description of this key
+                "equalize_remove_phase_gradient" (boolean): Description of this key
+                "equalize_ROI" (type): Description of this key
+                "equalize_remove_phase_gradient_iterations" (type): Description of this key
+                "equalize_local_offset" (type): Description of this key
+                "equalize_set_min_max" (type): Description of this key
+                "equalize_non_negative" (type): Description of this key
         frame (array): 2D image/frame to be equalized
 
     Returns:
-        frame (array): equalized frame
+        array: equalized frame
     """
 
     if dic["equalize_invert"] == True:
@@ -547,11 +548,10 @@ def wiggle_sinogram_alignment(dic,object,angles,save=True):
             
     Returns:
         dic (dict): updated dictionary of inputs 
-            updated keys:
-                "n_of_used_angles" : if projected angles, set number of used angles
-                "n_of_original_angles"
-                "projected_angles_filepath": if projected angles, set filepath
-                "wiggle_ctr_of_mas"
+        "n_of_used_angles" : if projected angles, set number of used angles
+        "n_of_original_angles"
+        "projected_angles_filepath": if projected angles, set filepath
+        "wiggle_ctr_of_mas"
     """
 
     start = time.time()
