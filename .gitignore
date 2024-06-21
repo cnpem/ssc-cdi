@@ -6,6 +6,7 @@ docs/*
 !docs/Makefile
 !docs/README.md
 !docs/source/
+!docs/requirements.txt
 **/__pycache__/
 dist/*
 build/*
