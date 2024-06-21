@@ -39,7 +39,6 @@ build_docs:
   stage: build
   script:
     - cd docs
-    - pip install -r requirements.txt  # Ensure dependencies are installed
     - make html  # Use 'make html' to build HTML documentation
   tags:
     - x86_64
