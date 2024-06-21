@@ -21,8 +21,8 @@ classifiers=[
     'Programming Language :: Python :: 3.0', 'Programming Language :: C', 'Programming Language :: C++'
 ]
 authors = [
-  {name = "Giovanni Baraldi"}
-  {name = "Yuri Tonin", email = "yuri.tonin@lnls.br"}
+  {name = "Giovanni Baraldi"},
+  {name = "Yuri Tonin", email = "yuri.tonin@lnls.br"},
   {name = "Camila Lages", email = "camila.lages@lnls.br"},
   {name = "Alan Peixinho", email = "alan.peixinho@lnls.br"},
   {name = "Paola Ferraz", email = "paola.ferraz@lnls.br"},
@@ -41,7 +41,7 @@ dependencies = [
     'tqdm',
     'ipywidgets',
     'SharedArray',
-    'cupy',
+    'cupy'
 ]
 
 [tool.setuptools]
