@@ -2,6 +2,10 @@ import os, sys, json
 import h5py
 import numpy as np
 from scipy.ndimage import gaussian_filter
+from datetime import datetime
+import glob
+import h5py
+from datetime import datetime
 
 """ sscCdi relative imports"""
 from ...misc import create_directory_if_doesnt_exist, delete_files_if_not_empty_directory, estimate_memory_usage, add_to_hdf5_group, wavelength_meters_from_energy_keV, list_files_in_folder, select_specific_angles
@@ -42,29 +46,27 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
     frame_index = input_dict["projections"]
     corrected_positions_list = []
 
-    # defining flag for multiple initial probe and/or objects from previous ptycho
-    run_again     = input_dict["mult_obj_probe"]["run_again"]
-    initial_obj   = input_dict["mult_obj_probe"]["mult_obj"]
-    initial_probe = input_dict["mult_obj_probe"]["mult_probe"]
-
-    if strategy == "serial":
+    if strategy == "serial": #TODO: implement second parallel strategy
 
         event_start("Read and reconstruct", {"num_of_files": len(filenames)})
 
         for file_number_index, filename in enumerate(filenames):
-            if frame_index == []:
+            if frame_index == []: 
                 file_number = file_number_index
             else:
                 file_number = frame_index[file_number_index]
             folder_number = folder_numbers_list[file_number_index]
             acquisitions_folder = folder_names_list[file_number_index]
 
-            print(f"\nReading diffraction data for angle: {file_number}")
+            input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, filename)
+
+            print(f"\nReading diffraction data for angle #{file_number}")
             event_start("Read restored data")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
                 DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
+
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
             event_stop() # read restored data
 
@@ -76,16 +78,15 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                     DPs = DPs[:,0::np.abs(input_dict["binning"]),0::np.abs(input_dict["binning"])]
                     input_dict["binning"] = np.abs(input_dict["binning"])
                     
-                if DPs.shape[1] % 2 != 0: # make shape even
+                if DPs.shape[1] % 2 != 0: # make shape even 
                     DPs = DPs[:,0:-1,:]
                 if DPs.shape[2] % 2 != 0:    
                     DPs = DPs[:,:,0:-1]
 
-            if 'save_restored_data' in input_dict:
+            if input_dict['save_restored_data'] == True:
                 event_start("Save numpy file restored data")
                 print(f"Saving restored diffraction patterns...")
-                if input_dict['save_restored_data'] == True:
-                    np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
+                np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
                 event_stop() # save restored data
 
             print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
@@ -94,70 +95,38 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             """ Read positions """
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
+            input_dict["rotation_angle"] = angle
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
-            if file_number_index == 0:
-                input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
-                sinogram = np.zeros((total_number_of_angles,input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64)
+            input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
 
-                if input_dict["incoherent_modes"] < 1:
-                    incoherent_modes = 1
-                else:
-                    incoherent_modes = input_dict["incoherent_modes"]
-                probes = np.zeros((total_number_of_angles,incoherent_modes,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-
-                print(f"\tInitial object shape: {sinogram.shape}\t Initial probe shape: {probes.shape}")
-
-                size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-                estimated_size_for_all_DPs = len(filepaths)*size_of_single_restored_DP
-                print(f"\tEstimated size for {len(filepaths)} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-
-            run_ptycho = np.any(probe_positions) # check if probe_positions == null matrix. If so, won't run current iteration
             event_stop()
 
             """ Call Ptychography """
-            if not run_ptycho:
-                print(f'\t\tWARNING: Frame #{(folder_number,file_number)} being nulled because number of positions did not match number of diffraction patterns!')
-                input_dict['ignored_scans'].append((folder_number,file_number))
-                sinogram[file_number_index, :, :]  = np.zeros((input_dict["object_shape"][0],input_dict["object_shape"][1]),dtype=np.complex64) # add null frame to sinogram
-                probes[file_number_index, :, :, :] = np.zeros((1,DPs.shape[-2],DPs.shape[-1]),dtype=np.complex64)
-                angle = np.array([file_number_index,1,angle,angle*180/np.pi])
-            else:
-                sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
+            savepath = input_dict["hdf5_output"]
+            input_dict["hdf5_output"] = None # use None so call_ptychography does not save the output. We shall save it in the CATERETE format ahead
+            obj, probe, corrected_positions, input_dict, error  = call_ptychography(input_dict,DPs,probe_positions) # run ptycho
+            input_dict["hdf5_output"] = savepath # return original name
 
-                if corrected_positions is not None:
-                    corrected_positions_list.append(corrected_positions[:,0,0:2])
-                angle = np.array([file_number_index,0,angle,angle*180/np.pi])
+            if corrected_positions is not None:
+                corrected_positions_list.append(corrected_positions[:,0,0:2])
+            angle = np.array([file_number_index,0,angle,angle*180/np.pi])
 
-            if run_again:
-                print("Second ptycho run")
-                if initial_obj and initial_probe:
-                    print("Running with multiple initial objects and probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :], initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_probe:
-                    print("Running with multiple initial probes")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_probe=probes[file_number_index, :, :]) # run ptycho
-                elif initial_obj:
-                    print("Running with multiple initial objects")
-                    sinogram[file_number_index, :, :], probes[file_number_index, :, :], error, corrected_positions = call_ptychography(input_dict,DPs,probe_positions,initial_obj=sinogram[file_number_index, :, :]) # run ptycho
-                if corrected_positions is not None:
-                    corrected_positions_list[file_number_index] = corrected_positions[:,0,0:2]
+
+            if corrected_positions is not None:
+                        corrected_positions = corrected_positions[:,0,0:2]
+                        corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
 
             """ Save single frame of object and probe to temporary folder"""
 
-            event_start("Save numpy ptychography files")
-
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_object.npy"),sinogram[file_number_index])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_probe.npy"),probes[file_number_index])
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_angle.npy"),angle)
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_positions.npy"),np.expand_dims(probe_positions,axis=0))
-            np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_error.npy"),error)
-
-            if corrected_positions is not None:
-                corrected_positions = corrected_positions[:,0,0:2]
-                corrected_positions[:,[0,1]] = corrected_positions[:,[1,0]]
-                np.save(os.path.join(input_dict["temporary_output_recons"],f"{file_number:04d}_corrected_positions.npy"),np.expand_dims(corrected_positions,axis=0))
-
+            event_start("Save ptychography results")
+            create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
+            if input_dict['save_restored_data']:
+                save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error,restored_data=DPs)
+            else:
+                save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
+            print('Results saved at: ',input_dict["hdf5_output"])
+            print('.................................................................................................................')
             event_stop() # save numpy ptychography files
 
         event_stop() # read and reconstruct
@@ -169,12 +138,117 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
         else:
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
         event_stop() # clean restoration data
+        
 
-    plot_iteration_error(error)
-    if corrected_positions is not None:
-        plot_ptycho_corrected_scan_points(probe_positions,corrected_positions)
+def create_parent_folder(file_path):
+    """
+    Create the parent folder of the specified file path if it does not exist.
+    
+    Parameters:
+    file_path : str
+        The path of the file for which to create the parent directory.
+    """
+    parent_folder = os.path.dirname(file_path)
+    if not os.path.exists(parent_folder):
+        os.makedirs(parent_folder, exist_ok=True)
+        print(f"Created directory: {parent_folder}")
+    else:
+        # print(f"Directory already exists: {parent_folder}")
+        pass
 
-    return input_dict, sinogram, probes, probe_positions
+def get_unique_filename(output_path, file_number_index, filename):
+    """
+    Generate a unique filename by adding a prefix containing the date and time in YYMMDDHHMMSS format.
+    
+    Parameters:
+    output_path : str
+        The base output directory.
+    file_number_index : int
+        The index used to create the subdirectory.
+    filename : str
+        The base filename without the extension.
+    
+    Returns:
+    str
+        A unique file path.
+    """
+    # Construct the base directory path
+    base_path = os.path.join(output_path, f"{file_number_index:06d}")
+    
+    # Ensure the base directory exists
+    if not os.path.exists(base_path):
+        os.makedirs(base_path, exist_ok=True)
+    
+    # Generate the current date and time string
+    date_time_str = datetime.now().strftime("%y%m%d%H%M")
+    
+    # Construct the new filename with the prefix
+    file_path = os.path.join(base_path, f"{date_time_str}_{filename}")
+    
+    return file_path
+
+def save_h5_output(input_dict,obj, probe, positions,corrected_positions, error,restored_data=None):
+
+    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
+
+        h5file.create_group("recon")
+        h5file.create_group("metadata")
+
+        h5file["metadata"].create_dataset('datetime',data=input_dict['datetime']) 
+        h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
+        h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
+        h5file["metadata"].create_dataset('distance_sample_focus',data=input_dict['distance_sample_focus']) 
+        h5file["metadata"].create_dataset('detector_pixel_microns',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('object_pixel_meters',data=input_dict['object_pixel']) 
+        h5file["metadata"].create_dataset('cpus',data=input_dict['CPUs']) 
+        h5file["metadata"].create_dataset('binning',data=input_dict['binning']) 
+        h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
+        h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
+        h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
+        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+        h5file["metadata"].create_dataset('rotation_angle',data=input_dict['rotation_angle']) 
+
+        # lists, tuples, arrays
+        h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
+        h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
+
+        h5file.create_group(f'metadata/probe_support')
+        for key in input_dict['probe_support']: # save input probe
+            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
+
+        h5file.create_group(f'metadata/initial_obj')
+        for key in input_dict['initial_obj']: # save input probe
+            h5file[f'metadata/initial_obj'].create_dataset(key,data=input_dict['initial_obj'][key])
+
+        h5file.create_group(f'metadata/initial_probe')
+        for key in input_dict['initial_probe']: # save input probe
+            h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
+        
+        for key in input_dict['algorithms']: # save algorithms used
+            h5file.create_group(f'metadata/algorithms/{key}')
+            for subkey in input_dict['algorithms'][key]:
+                if subkey == 'initial_obj':
+                   h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                   h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]['obj'])
+                elif subkey == 'initial_probe':
+                    h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                    h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
+                else:
+                    h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+
+        if restored_data is not None:
+            h5file["recon"].create_dataset('restored_data',data=restored_data) 
+
+        h5file["recon"].create_dataset('object',data=obj) 
+        h5file["recon"].create_dataset('probe',data=probe) 
+        h5file["recon"].create_dataset('positions',data=positions)
+        h5file["recon"].create_dataset('probe_support_array',data=input_dict['probe_support_array'])
+        if corrected_positions is not None:
+            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
+        h5file["recon"].create_dataset('error',data=error) 
+
+    h5file.close()
 
 
 ##### ##### ##### #####                  DATA PREPARATION                 ##### ##### ##### ##### ##### 
@@ -189,8 +263,7 @@ def define_paths(input_dict):
     Returns:
         input_dict: updated input dictionary
     """
-    if 'PreviewGCC' not in input_dict: input_dict['PreviewGCC'] = [False,""] # flag to save previews of interest only to GCC, not to the beamline user
-    
+
     #=========== Set Parameters and Folders =====================
     print('\tProposal path: ',input_dict['data_folder'] )
     print('\tAcquisition folder: ',input_dict["acquisition_folders"][0])
@@ -198,11 +271,13 @@ def define_paths(input_dict):
     import sscCdi
     input_dict["versions"] = f"sscCdi={sscCdi.__version__}"
 
+    if "use_posflat" not in input_dict:
+        input_dict["use_posflat"] = True
+
     beamline_outputs_path = os.path.join(input_dict['data_folder'].rsplit('/',3)[0], 'proc','recons',input_dict["acquisition_folders"][0]) # standard folder chosen by CAT for their outputs
     print("\tOutput path:", beamline_outputs_path)
     input_dict["output_path"]  = os.path.join(beamline_outputs_path)
     input_dict["temporary_output"]  = os.path.join(input_dict["output_path"],'temp')
-    input_dict["temporary_output_recons"]  = os.path.join(input_dict["output_path"],'recons')
 
     create_output_directories(input_dict) # create all output directories of interest
     delete_files_if_not_empty_directory(input_dict["temporary_output"])
@@ -227,14 +302,19 @@ def define_paths(input_dict):
         input_dict["flatfield"] = os.path.join(input_dict['data_folder'] ,images_folder,'flat.hdf5')
     input_dict["mask"]          = os.path.join(input_dict['data_folder'] ,images_folder,'mask.hdf5')
     input_dict["empty"]         = os.path.join(input_dict['data_folder'] ,images_folder,'empty.hdf5')
+    input_dict["dbeam"]         = os.path.join(input_dict['data_folder'] ,images_folder,'dbeam.hdf5')
+
+    posflat_path = os.path.join(input_dict['data_folder'] ,images_folder,'posflat.hdf5')
+    if os.path.exists(posflat_path): # restored flatfield
+        input_dict["posflat"] = posflat_path
+
+    posmask_path = os.path.join(input_dict['data_folder'] ,images_folder,'posmask.hdf5')
+    if os.path.exists(posflat_path): # restored mask
+        input_dict["posmask"] = posmask_path        
 
     input_dict["datetime"] = get_datetime(input_dict)
 
     input_dict["hdf5_output"] = os.path.join(input_dict["output_path"],input_dict["datetime"]+".hdf5") # create output hdf5 file
-    hdf5_output = h5py.File(input_dict["hdf5_output"], "w")
-    hdf5_output.create_group("recon")
-    hdf5_output.create_group("log")
-    hdf5_output.create_group("frc")
 
     return input_dict
 
@@ -267,7 +347,6 @@ def create_output_directories(input_dict):
     if input_dict["output_path"] != "": # if no path is given, create directory
         create_directory_if_doesnt_exist(input_dict["output_path"])
         create_directory_if_doesnt_exist(input_dict["temporary_output"])
-        create_directory_if_doesnt_exist(input_dict["temporary_output_recons"])
 
 
 
@@ -327,7 +406,7 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
 
             positions_x, positions_y = rotate_coordinate_system(input_dict["position_rotation"],positions_x, positions_y) # rotate whole coordinate system (correct misalignment of scan and detector axes)
 
-            #TODO: rolate relative angle between scan x and y positions
+            #TODO: rotate relative angle between scan x and y positions
 
             probe_positions.append([positions_y, positions_x])
 
@@ -343,7 +422,8 @@ def read_probe_positions(input_dict, acquisitions_folder,measurement_file, sinog
         probe_positions = np.zeros((n_of_DPs-1, 2))
 
     input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict["energy"])
-    input_dict = set_object_pixel_size(input_dict,DP_size) 
+    input_dict['object_pixel'] = set_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DP_size,binning=input_dict["binning"]) 
+
     probe_positions = convert_probe_positions_meters_to_pixels(input_dict["object_padding"],input_dict["object_pixel"], probe_positions)
 
     return probe_positions, angle
@@ -583,10 +663,10 @@ def calculate_FRC(img, input_dict):
     resolution = 1e9*input_dict["object_pixel"]/halfbit
     print(f"\tResolution via halfbit criterion: {resolution:.2f} nm")
 
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
-    add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','img',img)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','filtered_img',wimg)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','halfbit',halfbit)
+    # add_to_hdf5_group(input_dict["hdf5_output"],'frc','resolution',resolution)
 
 
 def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/caterete/apps/gcc-jupyter/inputs/"):
@@ -604,3 +684,251 @@ def save_input_dictionary(input_dict,folder_path = "/ibira/lnls/beamlines/catere
     json.dump(input_dict, out_file, indent = 3)
     out_file.close()
     return filepath
+
+
+
+def extract_datetime_from_filename(filename):
+    """
+    Extract datetime from the filename.
+    
+    Parameters:
+    filename : str
+        The filename containing the datetime substring.
+    
+    Returns:
+    datetime
+        The datetime object parsed from the filename.
+    """
+    # Extract the datetime substring (first 10 characters of the filename)
+    datetime_str = os.path.basename(filename)[:10]
+    # Parse the datetime substring to a datetime object
+    return datetime.strptime(datetime_str, '%y%m%d%H%M')
+
+def get_most_recent_file(folder_path):
+    """
+    Get the most recently created HDF5 file based on the datetime in the filename.
+    
+    Parameters:
+    folder_path : str
+        Path to the folder.
+    
+    Returns:
+    str
+        Path to the most recently created HDF5 file.
+    """
+    # Get a list of all HDF5 files in the folder
+    hdf5_files = glob.glob(os.path.join(folder_path, '*.hdf5'))
+    
+    # Check if there are any HDF5 files in the folder
+    if not hdf5_files:
+        return None
+    
+    # Find the most recent file based on the datetime in the filename
+    most_recent_file = max(hdf5_files, key=extract_datetime_from_filename)
+    
+    return most_recent_file
+
+def read_hdf5_file_metadata(file_path):
+    """
+    Read metadata and dataset shapes from an HDF5 file.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error_shape (tuple): The shape of the error dataset.
+        - obj_shape (tuple): The shape of the object dataset.
+        - positions_shape (tuple): The shape of the positions dataset.
+        - probe_shape (tuple): The shape of the probe dataset.
+        - probe_support_array_shape (tuple): The shape of the probe support array dataset.
+        - rotation_angle (float): The rotation angle.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Get shapes of specific datasets
+        error_shape = f["recon/error"].shape
+        obj_shape = f["recon/object"].shape
+        positions_shape = f["recon/positions"].shape
+        probe_shape = f["recon/probe"].shape
+        probe_support_array_shape = f["recon/probe_support_array"].shape
+        rotation_angle = f["metadata/rotation_angle"][()]
+    
+    return metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape, rotation_angle
+
+def read_and_crop_hdf5_file(file_path, target_shapes, mode):
+    """
+    Read and crop or append datasets from an HDF5 file to specified shapes.
+
+    Parameters:
+    file_path : str
+        The path to the HDF5 file.
+    target_shapes : dict
+        Dictionary containing target shapes for cropping or appending.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata (dict): The metadata dictionary.
+        - error (numpy.ndarray): The processed error array.
+        - obj (numpy.ndarray): The processed object array.
+        - positions (numpy.ndarray): The processed positions array.
+        - probe (numpy.ndarray): The processed probe array.
+        - probe_support_array (numpy.ndarray): The processed probe support array.
+        - rotation_angle (float): The rotation angle.
+    """
+    metadata = {}
+    
+    with h5py.File(file_path, 'r') as f:
+        # Read metadata into a dictionary
+        def read_group(group, path=""):
+            for key, item in group.items():
+                if isinstance(item, h5py.Group):
+                    read_group(item, path + key + "/")
+                elif isinstance(item, h5py.Dataset):
+                    metadata[path + key] = item[()]
+        
+        read_group(f["metadata"])
+        
+        # Read and process specific datasets into numpy arrays
+        datasets = {}
+        datasets['error'] = f["recon/error"][()]
+        datasets['obj'] = f["recon/object"][()]
+        datasets['positions'] = f["recon/positions"][()]
+        datasets['probe'] = f["recon/probe"][()]
+        datasets['probe_support_array'] = f["recon/probe_support_array"][()]
+        rotation_angle = f["metadata/rotation_angle"][()]
+
+        processed_datasets = {}
+        for key, data in datasets.items():
+            target_shape = target_shapes[key]
+            if mode == 'crop':
+                slices = tuple(slice(0, min(s, t)) for s, t in zip(data.shape, target_shape))
+                processed_datasets[key] = data[slices]
+            elif mode == 'append':
+                processed_datasets[key] = np.zeros(target_shape, dtype=data.dtype)
+                slices = tuple(slice(0, s) for s in data.shape)
+                processed_datasets[key][slices] = data
+        
+    return (metadata, processed_datasets['error'], processed_datasets['obj'],
+            processed_datasets['positions'], processed_datasets['probe'], 
+            processed_datasets['probe_support_array'], rotation_angle)
+
+def read_ptychography_results(base_path, mode='crop', selected_folders=None):
+    """
+    Read the most recent HDF5 files in each folder named by 6-digit integers and aggregate the data.
+
+    Parameters:
+    base_path : str
+        Path to the base directory containing the folders.
+    mode : str
+        Mode of operation, either 'crop' or 'append'.
+    selected_folders : list of int, optional
+        List of integers specifying which folders to read. If None, all folders are read.
+
+    Returns:
+    tuple
+        A tuple containing:
+        - metadata_dict (dict): Dictionary of all metadata, keyed by folder names.
+        - error_array (numpy.ndarray): Aggregated error arrays.
+        - obj_array (numpy.ndarray): Aggregated object arrays.
+        - positions_array (numpy.ndarray): Aggregated positions arrays.
+        - probe_array (numpy.ndarray): Aggregated probe arrays.
+        - probe_support_array_array (numpy.ndarray): Aggregated probe support arrays.
+        - angles_array (numpy.ndarray): Aggregated rotation angles.
+    """
+    if selected_folders is not None:
+        selected_folders = [f"{i:06d}" for i in selected_folders]
+        folder_pattern = [os.path.join(base_path, f) for f in selected_folders]
+    else:
+        folder_pattern = glob.glob(os.path.join(base_path, '[0-9]' * 6))
+    
+    # Sort folders in increasing order
+    folder_pattern.sort()
+    
+    metadata_dict = {}
+    error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes = [], [], [], [], []
+    rotation_angles = []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error_shape, obj_shape, positions_shape, probe_shape, probe_support_array_shape, rotation_angle = read_hdf5_file_metadata(most_recent_file)
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            error_shapes.append(error_shape)
+            obj_shapes.append(obj_shape)
+            positions_shapes.append(positions_shape)
+            probe_shapes.append(probe_shape)
+            probe_support_array_shapes.append(probe_support_array_shape)
+            rotation_angles.append(rotation_angle)
+    
+    if mode == 'crop':
+        target_shapes = {
+            'error': tuple(map(min, zip(*error_shapes))),
+            'obj': tuple(map(min, zip(*obj_shapes))),
+            'positions': tuple(map(min, zip(*positions_shapes))),
+            'probe': tuple(map(min, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(min, zip(*probe_support_array_shapes)))
+        }
+    elif mode == 'append':
+        target_shapes = {
+            'error': tuple(map(max, zip(*error_shapes))),
+            'obj': tuple(map(max, zip(*obj_shapes))),
+            'positions': tuple(map(max, zip(*positions_shapes))),
+            'probe': tuple(map(max, zip(*probe_shapes))),
+            'probe_support_array': tuple(map(max, zip(*probe_support_array_shapes)))
+        }
+
+    # Print warnings if cropping or appending occurs
+    for shape, target_shape, name in zip([error_shapes, obj_shapes, positions_shapes, probe_shapes, probe_support_array_shapes], 
+                                         [target_shapes['error'], target_shapes['obj'], target_shapes['positions'], target_shapes['probe'], target_shapes['probe_support_array']],
+                                         ["error", "object", "positions", "probe", "probe_support_array"]):
+        if any(s != target_shape for s in shape):
+            if mode == 'crop':
+                print(f"Warning: Cropping {name} datasets to the minimum shape {target_shape}.")
+            elif mode == 'append':
+                print(f"Warning: Appending zeros to {name} datasets to the maximum shape {target_shape}.")
+
+    # Read and process datasets to the target shapes
+    errors, objs, positions, probes, probe_support_arrays = [], [], [], [], []
+    
+    for folder in folder_pattern:
+        most_recent_file = get_most_recent_file(folder)
+        if most_recent_file:
+            metadata, error, obj, pos, probe, probe_support_array, rotation_angle = read_and_crop_hdf5_file(  most_recent_file, target_shapes, mode )
+            folder_name = os.path.basename(folder)
+            
+            metadata_dict[folder_name] = metadata
+            errors.append(error)
+            objs.append(obj)
+            positions.append(pos)
+            probes.append(probe)
+            probe_support_arrays.append(probe_support_array)
+
+    # Convert lists to numpy arrays with an additional dimension
+    error_array = np.array(errors)
+    obj_array = np.array(objs)
+    positions_array = np.array(positions)
+    probe_array = np.array(probes)
+    probe_support_array_array = np.array(probe_support_arrays)
+    angles_array = np.array(rotation_angles)
+    
+    return obj_array, probe_array, positions_array, probe_support_array_array, error_array, metadata_dict, angles_array

@@ -73,7 +73,7 @@ def define_CAT_tomo_paths(dic):
     Args:
         dic (dict): dictionary of inputs  
             keys:
-                "sinogram_path": sinogram path
+                "output_folder": folder containing dataset path
                 "contrast_type": contrast type
                 "output_folder": path for output files
 
@@ -95,8 +95,7 @@ def define_CAT_tomo_paths(dic):
                 "eq_reconstruction_filepath"
     """
 
-    dic["output_folder"] = dic["sinogram_path"].rsplit('/',1)[0]
-    dic["filename"]    = os.path.join(dic["sinogram_path"].rsplit('/',1)[1].split('.')[0]+'_'+dic["contrast_type"])
+    dic["filename"]    = os.path.basename(os.path.normpath(dic["output_folder"]))
     dic["temp_folder"] = os.path.join(dic["output_folder"],'temp')
     dic["ordered_angles_filepath"]       = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles.h5')
     dic["projected_angles_filepath"]     = os.path.join(dic["temp_folder"],f'{dic["filename"]}_ordered_angles_projected.h5')

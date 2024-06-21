@@ -11,7 +11,7 @@ BUILDDIR      = build
 all: out doxygen html
 
 out:
-	mkdir -p build
+	mkdir -p $(BUILDDIR)
 
 doxygen:
 	doxygen doxyconf
@@ -20,12 +20,14 @@ example:
 	cd ../ && python3 setup.py install --user --cuda && cd docs/
 	@for j in example/*.py; do python3 $$j; done
 
-	
+html:
+	$(SPHINXBUILD) -b html $(SOURCEDIR) $(BUILDDIR)/html $(SPHINXOPTS)
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile all
+.PHONY: help Makefile all html
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).

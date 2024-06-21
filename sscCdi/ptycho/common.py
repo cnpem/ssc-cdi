@@ -57,13 +57,23 @@ def get_magnitude_error(diffractions_patterns,wavefronts,inputs):
     error_numerator = 0
     error_denominator = 0
     for DP, wave in zip(diffractions_patterns,wavefronts):
-        wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
-        intensity = cp.abs(wave_at_detector)**2
+        DP = np.squeeze(DP)
         
-        error_numerator += cp.sum(cp.abs(DP-intensity))
-        error_denominator += cp.sum(cp.abs(DP))
+        wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
+        intensity = cp.abs(wave_at_detector)[0]
+        intensity[DP<0] = -1
+        error_numerator += cp.sum((DP-intensity)**2) 
+        error_denominator += cp.sum(DP+1)
 
-    return error_numerator/error_denominator 
+    return error_numerator/error_denominator/np.prod(diffractions_patterns[0].shape)
+
+    # for DP, wave in zip(diffractions_patterns,wavefronts):
+    #     wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
+    #     intensity = cp.abs(wave_at_detector)**2
+        
+    #     error_numerator += poisson_log_likelihood(DP, intensity)
+
+    # return error_numerator
 
 
 def apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel):
@@ -76,3 +86,66 @@ def apply_probe_support(probe_modes,probe_support,distance_focus_sample,waveleng
         for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
             probe_modes[i] = fresnel_propagator_cone_beam(mode,wavelength,obj_pixel,distance_focus_sample)
     return probe_modes
+
+
+def poisson_log_likelihood(y, lambda_pred):
+    """
+    Calculate the negative Poisson log likelihood.
+    
+    Parameters:
+    y : array-like
+        Observed counts.
+    lambda_pred : array-like
+        Predicted mean counts from the model.
+    
+    Returns:
+    float
+        Negative Poisson log likelihood.
+    """
+    np = cp.get_array_module(y)  
+
+    # Ensuring y and lambda_pred are numpy arrays
+    y = np.array(y)
+    lambda_pred = np.array(lambda_pred)
+    
+    # Calculate each component of the log likelihood
+    log_likelihood = y * np.log(lambda_pred) - lambda_pred - np.log(np.arange(1, y.max() + 1)).sum()
+    
+    # Sum the log likelihoods and take the negative
+    nll = -np.sum(log_likelihood)
+    
+    return nll/np.sum(y)
+
+def gaussian_log_likelihood(y, mu, sigma2=0.1):
+    """
+    Calculate the negative Gaussian log likelihood.
+    
+    Parameters:
+    y : array-like
+        Observed values.
+    mu : array-like
+        Predicted mean values.
+    sigma2 : float
+        Variance of the Gaussian distribution.
+    
+    Returns:
+    float
+        Negative Gaussian log likelihood.
+    """
+
+    np = cp.get_array_module(y)  
+
+    # Ensure y and mu are numpy arrays
+    y = np.array(y)
+    mu = np.array(mu)
+    
+    # Number of observations
+    N = len(y)
+    
+    # Calculate each component of the log likelihood
+    log_likelihood = -0.5 * N * np.log(2 * np.pi * sigma2) - (0.5 / sigma2) * np.sum((y - mu) ** 2)
+    
+    # Take the negative of the log likelihood
+    nll = -log_likelihood
+    
+    return nll

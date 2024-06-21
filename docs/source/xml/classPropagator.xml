@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.8.17">
+  <compounddef id="classPropagator" kind="class" language="C++" prot="public" abstract="yes">
+    <compoundname>Propagator</compoundname>
+    <derivedcompoundref refid="classFraunhoffer" prot="public" virt="non-virtual">Fraunhoffer</derivedcompoundref>
+    <includes refid="propagator_8hpp" local="no">propagator.hpp</includes>
+      <sectiondef kind="public-func">
+      <memberdef kind="function" id="classPropagator_1ac8149f9492abab7ae463d1380f8369fe" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void Propagator::Propagate</definition>
+        <argsstring>(complex *owave, complex *iwave, dim3 shape, float amount)=0</argsstring>
+        <name>Propagate</name>
+        <reimplementedby refid="classFraunhoffer_1a6fbc9cc78fcff2cd1531861f474e83d7">Propagate</reimplementedby>
+        <reimplementedby refid="classASM_1a736856045f336def50793eb25109bb87">Propagate</reimplementedby>
+        <param>
+          <type>complex *</type>
+          <declname>owave</declname>
+        </param>
+        <param>
+          <type>complex *</type>
+          <declname>iwave</declname>
+        </param>
+        <param>
+          <type>dim3</type>
+          <declname>shape</declname>
+        </param>
+        <param>
+          <type>float</type>
+          <declname>amount</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Applies propagation to given pointers. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="19" column="18"/>
+      </memberdef>
+      <memberdef kind="function" id="classPropagator_1a30c6a2be469682f6e30f8a038f4c9ade" prot="public" static="no" const="no" explicit="no" inline="no" virt="pure-virtual">
+        <type>void</type>
+        <definition>virtual void Propagator::Append</definition>
+        <argsstring>(const dim3 &amp;shape)=0</argsstring>
+        <name>Append</name>
+        <reimplementedby refid="classFraunhoffer_1a03eeacf2d4d7f62043e30eb665e41221">Append</reimplementedby>
+        <param>
+          <type>const dim3 &amp;</type>
+          <declname>shape</declname>
+        </param>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+<para>Makes &quot;shape&quot; a new possible propagation plan. </para>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="23" column="18"/>
+      </memberdef>
+      <memberdef kind="function" id="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" prot="public" static="no" const="no" explicit="no" inline="yes" virt="virtual">
+        <type></type>
+        <definition>virtual Propagator::~Propagator</definition>
+        <argsstring>()</argsstring>
+        <name>~Propagator</name>
+        <briefdescription>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="24" column="13" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="24" bodyend="24"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>Base propagator interface. </para>
+    </detaileddescription>
+    <inheritancegraph>
+      <node id="1">
+        <label>Propagator</label>
+        <link refid="classPropagator"/>
+      </node>
+      <node id="2">
+        <label>Fraunhoffer</label>
+        <link refid="classFraunhoffer"/>
+        <childnode refid="1" relation="public-inheritance">
+        </childnode>
+      </node>
+      <node id="3">
+        <label>ASM</label>
+        <link refid="classASM"/>
+        <childnode refid="2" relation="public-inheritance">
+        </childnode>
+      </node>
+    </inheritancegraph>
+    <location file="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" line="14" column="17" bodyfile="/ibira/lnls/labs/tepui/home/yuri.tonin/ssc-cdi/cuda/inc/propagator.hpp" bodystart="14" bodyend="25"/>
+    <listofallmembers>
+      <member refid="classPropagator_1a30c6a2be469682f6e30f8a038f4c9ade" prot="public" virt="pure-virtual"><scope>Propagator</scope><name>Append</name></member>
+      <member refid="classPropagator_1ac8149f9492abab7ae463d1380f8369fe" prot="public" virt="pure-virtual"><scope>Propagator</scope><name>Propagate</name></member>
+      <member refid="classPropagator_1ae850e70fcc95e619c363536f89c75b3e" prot="public" virt="virtual"><scope>Propagator</scope><name>~Propagator</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>
