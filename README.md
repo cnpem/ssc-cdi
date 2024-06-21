@@ -4,10 +4,12 @@
 ## Description
 
 **ssc-cdi** is a package by the Sirius Scientific Computing group. It currently performs:
-	- Ptychography
-	- Ptycho-tomography pre-processing
 
-High-level level functionality is written in Python, whereas some of the low-level algorithm are be accelerated by C or CUDA codes. 
+	- Ptychography
+
+	- Ptycho-tomography pre-processing (sorting, cropping, unwrapping, phase-ramp removal)
+
+High-level level functionality is written in Python, whereas some of the low-level algorithms are be accelerated with CUDA.
 
 ## Installation
 
@@ -15,7 +17,7 @@ python3 -m pip install . --user
 
 ## Usage
 
-See the example notebooks in the examples folder
+See examples/ folder for Python notebooks that show how to use package. 
 
 ## Support
 
@@ -35,7 +37,7 @@ For support in **ssc-cdi**, contact the Scientific Computing group via [gcc@lnls
 
 	Yuri R. Tonin (yuri.tonin@lnls.br)
 
-## Former contributors
+Former contributors
 
 	Julia C. Carvalho (julia.carvalho@lnls.br)
 

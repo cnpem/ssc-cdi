@@ -4,7 +4,6 @@ Installation
 Requirements
 ********************************************
 
-
 This package requires a machine with NVIDIA CUDA installed. 
 
 To make use of all its functionalities, you will also need to install two other packages from the Sirius Scientific Group: 
