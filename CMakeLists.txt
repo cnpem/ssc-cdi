@@ -19,6 +19,14 @@ if (OPENMP_FOUND)
     set (CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-fopenmp")
 endif()
 
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.13.0
+)
+
+FetchContent_MakeAvailable(spdlog)
+
 find_package(CUDAToolkit)
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
@@ -27,14 +35,10 @@ include_directories(
 ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 )
 
-set(ssccommons_SOURCE_DIR ./externals/ssc-commons)
-add_subdirectory(${ssccommons_SOURCE_DIR})
-
 include_directories(
     cuda/inc
-    ${ssccommons_SOURCE_DIR}/cuda/inc
-    ${ssccommons_SOURCE_DIR}/cuda/inc/common
-    ${ssccommons_SOURCE_DIR}/cuda/inc/common10
+    cuda/inc/common
+    cuda/inc/common10
 )
 
 # suppress annoying warning to allow header function definition
@@ -43,11 +47,5 @@ include_directories(
 file(GLOB_RECURSE CDI_SRC cuda/src/*.c*)
 
 add_library(ssccdi SHARED ${CDI_SRC})
-target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} ssccommons_shared CUDA::cufft CUDA::cudart)
+target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart)
 install(TARGETS ssccdi LIBRARY DESTINATION ${PROJECT_NAME}/lib)
-set_target_properties(ssccdi PROPERTIES INSTALL_RPATH "$ORIGIN") # look for binaries in same path (to link sscommons)
-
-install(TARGETS ssccommons_wrapper LIBRARY DESTINATION ${PROJECT_NAME}/lib)
-install(TARGETS ssccommons_shared LIBRARY DESTINATION ${PROJECT_NAME}/lib)
-target_link_libraries(ssccommons_wrapper PUBLIC ssccommons_shared)
-set_target_properties(ssccommons_wrapper PROPERTIES INSTALL_RPATH "$ORIGIN") # look for binaries in same path (to link sscommons)

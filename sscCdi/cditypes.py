@@ -567,3 +567,9 @@ def PosCorrection(obj: np.ndarray,
                        bkgptr, c_float(probef1))
 
     return obj, probe, rfactor, rois[:,0,0:2]
+
+def log_start(level="error"):
+    libcdi.ssc_log_start(ctypes.c_char_p(level.encode('UTF-8')))
+
+def log_stop():
+    libcdi.ssc_log_stop()

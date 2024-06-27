@@ -203,13 +203,6 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
   ssc_debug("Starting PosCorrectionRun.");
 
-  ssc_event_start("Position Correction Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)poscorr.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)poscorr.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)poscorr.ptycho->difpadshape.z)
-    });
-
   POptAlgorithm& ptycho = *poscorr.ptycho;
 
   auto time0 = ssc_time();
@@ -225,7 +218,6 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
 
   for (int iter = 0; iter < iterations; iter++) {
     ssc_debug(format("Start PosCorr iteration: {}", iter));
-    ssc_event_start("PosCorr iter", { ssc_param_int("iter", iter) });
 
     // std::cout << iter << std::endl;
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
@@ -303,10 +295,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
                     iter, iterations, ptycho.cpurfact[iter]));
     }
 
-    ssc_event_stop(); // PosCorr iter
   }
-
-  ssc_event_stop(); //Position Correction Run
 
   auto time1 = ssc_time();
   ssc_info(format("End GL: {} ms", ssc_diff_time(time0, time1)));

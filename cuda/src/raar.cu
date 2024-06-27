@@ -204,13 +204,6 @@ void init_wavefront(RAAR& raar) {
 void RAARRun(RAAR& raar, int iterations) {
     ssc_info("Starting RAAR iteration.");
 
-    ssc_event_start("RAAR Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)raar.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)raar.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)raar.ptycho->difpadshape.z)
-    });
-
     const dim3 probeshape = raar.ptycho->probe->Shape();
 
     init_wavefront(raar);
@@ -230,7 +223,6 @@ void RAARRun(RAAR& raar, int iterations) {
     const dim3 difpadshape = raar.ptycho->difpadshape;
 
     for (int iter = 0; iter < iterations; iter++) {
-        ssc_event_start("Raar iter", { ssc_param_int("iter", iter) });
 
         raar.ptycho->rfactors->SetGPUToZero();
         raar.ptycho->object_acc->SetGPUToZero();
@@ -306,12 +298,10 @@ void RAARRun(RAAR& raar, int iterations) {
                         iter, iterations, raar.ptycho->cpurfact[iter]));
         }
 
-        ssc_event_stop(); //RAAR iter
     }
 
     auto time1 = ssc_time();
     ssc_info(format("End RAAR iteration: {} ms", ssc_diff_time(time0, time1)));
 
-    ssc_event_stop(); // RAAR Run
 }
 
