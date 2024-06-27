@@ -4,8 +4,6 @@ import os, h5py
 from matplotlib.colors import hsv_to_rgb
 from ipywidgets import IntSlider, FloatRangeSlider, VBox, HBox, Dropdown, Checkbox, Play, jslink, Layout
 
-from . import log_event
-
 def miqueles_colormap(img):
     """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
 
@@ -468,7 +466,6 @@ def update_slice_visualizer(obj, extent=None, cmap='viridis', vmin=None, vmax=No
     plt.tight_layout()
     plt.show()
 
-@log_event
 def slice_visualizer(objects, extent=None, plot_type='magnitude', cmap='viridis', use_log_norm=False, figsize=(10, 7), title=''):
     """
     Display an interactive plot to visualize different slices of multiple objects.

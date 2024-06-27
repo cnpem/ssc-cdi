@@ -10,11 +10,8 @@ from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
 from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
-from .. import log_event
-
 random.seed(0)
 
-@log_event
 def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     """
     Call Ptychography algorithms. Options are:
@@ -494,7 +491,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             probe = probe.astype(np.complex64)
 
         else:
-            sys.exit('Please select a proper algorithm! Selected: ', algo_inputs["algorithms"])
+            sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
 
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))

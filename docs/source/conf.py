@@ -26,7 +26,11 @@ release = '0.10.0'
 
 # -- General configuration ---------------------------------------------------
 
-autodoc_mock_imports = ["sscCdi.lib", "ipywidgets"] # Add any other dependencies causing issues
+autodoc_mock_imports = [
+    "sscCdi.lib", "ipywidgets", "cupy",
+    "SharedArray", "numpy", "h5py", "tqdm", "matplotlib",
+    "IPython", "scipy", "skimage", "sscRaft"
+] # Add any other dependencies causing issues
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
