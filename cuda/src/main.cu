@@ -59,7 +59,7 @@ extern "C"
 {
     void glcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1)
+            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1)
     {
         ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -69,7 +69,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
             gl->ptycho->objmomentum = objbeta;
             gl->ptycho->probemomentum = probebeta;
@@ -85,7 +85,6 @@ extern "C"
             void* cpuprobe, int psizex, int psizez,
             void* cpudif, int dsizex,
             void* cpurois, int numrois,
-            void* sigmask,
             int numiter,
             int* cpugpus, int ngpus,
             float* rfactors,
@@ -118,7 +117,7 @@ extern "C"
                 batchsize, rfactors,
                 gpus, objsupport,
                 probesupport, numobjsupport,
-                (float*)sigmask, geometricsteps, background, probef1,
+                geometricsteps, background, probef1,
                 step_object, step_probe,
                 reg_obj, reg_probe);
 
@@ -129,7 +128,7 @@ extern "C"
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1, float raarbeta)
+            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float* background, float probef1, float raarbeta)
     {
         ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -139,7 +138,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probemomentum = probebeta;

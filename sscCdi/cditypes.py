@@ -43,7 +43,7 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float
     ]
@@ -52,7 +52,7 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float, c_float
     ]
@@ -61,14 +61,14 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         ctypes.c_void_p, c_float
     ]
     libcdi.poscorrcall.restype = None
     libcdi.piecall.argtypes = [
         ctypes.c_void_p, c_int, c_int, ctypes.c_void_p, c_int, c_int,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_int,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_float, c_float, c_float,
         c_float
     ]
@@ -162,7 +162,6 @@ def PIE(obj: np.ndarray,
             beta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
-            sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
             bkg (ndarray, optional): The 2D background inital guess. Defaults to None.
             probef1 (float, optional): Fresnel number F1. Defaults to None.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
@@ -216,13 +215,10 @@ def PIE(obj: np.ndarray,
     rfactor = np.zeros(iterations, dtype=np.float32)
     rfactor, rfactorptr, _ = ctypes_array(rfactor)
 
-    sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmask, sigmaskptr, _ = ctypes_array(sigmask)
-
     time0 = time()
 
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez,
-                   difpadsptr, dsizex, roisptr, numrois, sigmaskptr,
+                   difpadsptr, dsizex, roisptr, numrois,
                    c_int(iterations), devicesptr, ndevices, rfactorptr,
                    c_float(step_obj), c_float(step_probe),
                    c_float(reg_obj), c_float(reg_probe))
@@ -242,7 +238,6 @@ def RAAR(obj: np.ndarray,
          batch: int = 16,
          objsupp: Optional[np.ndarray] = None,
          probesupp: Optional[np.ndarray] = None,
-         sigmask: Optional[np.ndarray] = None,
          step_obj: float = 0.5,
          step_probe: float = 0.5,
          reg_obj: float = 1e-3,
@@ -262,7 +257,6 @@ def RAAR(obj: np.ndarray,
             batch (int, optional): Size . Defaults to 16.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
-            sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             bkg (ndarray, optional): The 2D background inital guess. Defaults to None.
             probef1 (float, optional): Fresnel number F1. Defaults to None.
@@ -314,9 +308,6 @@ def RAAR(obj: np.ndarray,
     rfactor = np.zeros(iterations, dtype=np.float32)
     rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
-    sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
-
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
@@ -344,7 +335,7 @@ def RAAR(obj: np.ndarray,
                     osizey, dsizex, roisptr, numrois, c_int(batch),
                     c_int(iterations), ndevices, devicesptr, rfactorptr,
                     c_float(objbeta), c_float(probebeta), nummodes,
-                    objsuppptr, probesuppptr, numobjsupport, sigmaskptr,
+                    objsuppptr, probesuppptr, numobjsupport,
                     c_int(flyscansteps),
                     c_float(step_obj), c_float(step_probe),
                     c_float(reg_obj), c_float(reg_probe),
@@ -364,7 +355,6 @@ def AP(obj: np.ndarray,
        batch: int = 16,
        objsupp: Optional[np.ndarray] = None,
        probesupp: Optional[np.ndarray] = None,
-       sigmask: Optional[np.ndarray] = None,
        step_obj: float = 0.5,
        step_probe: float = 0.5,
        reg_obj: float = 1e-3,
@@ -385,7 +375,6 @@ def AP(obj: np.ndarray,
             batch (int, optional): Size . Defaults to 16.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
-            sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             bkg (ndarray, optional): The 2D background inital guess. Defaults to None.
             probef1 (float, optional): Fresnel number F1. Defaults to None.
@@ -435,9 +424,6 @@ def AP(obj: np.ndarray,
     rfactor = np.zeros(iterations, dtype=np.float32)
     rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
-    sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
-
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
@@ -453,7 +439,7 @@ def AP(obj: np.ndarray,
                   osizey, dsizex, roisptr, numrois, c_int(batch),
                   c_int(iterations), ndevices, devicesptr, rfactorptr,
                   c_float(objbeta), c_float(probebeta), nummodes, objsuppptr,
-                  probesuppptr, numobjsupport, sigmaskptr, c_int(flyscansteps),
+                  probesuppptr, numobjsupport, c_int(flyscansteps),
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe), bkgptr,
                   c_float(probef1))
@@ -471,7 +457,6 @@ def PosCorrection(obj: np.ndarray,
                   batch: int,
                   objsupp: Optional[np.ndarray] = None,
                   probesupp: Optional[np.ndarray] = None,
-                  sigmask: Optional[np.ndarray] = None,
                   step_obj: float = 0.5,
                   step_probe: float = 0.5,
                   reg_obj: float = 1e-3,
@@ -492,7 +477,6 @@ def PosCorrection(obj: np.ndarray,
             batch (int, optional): Size . Defaults to 16.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
-            sigmask (int ndarray, optional): Mask for invalid pixels . Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             bkg (ndarray, optional): The 2D background inital guess. Defaults to None.
             probef1 (float, optional): Fresnel number F1. Defaults to None.
@@ -542,9 +526,6 @@ def PosCorrection(obj: np.ndarray,
     rfactor = np.zeros(iterations, dtype=np.float32)
     rfactor,rfactorptr, _ = ctypes_array(rfactor)
 
-    sigmask = np.ones(difpads.shape[-2:], dtype=np.float32)
-    sigmask,sigmaskptr, _ = ctypes_array(sigmask)
-
     nummodes = psizez
 
     flyscansteps = int(rois.shape[1])
@@ -560,7 +541,7 @@ def PosCorrection(obj: np.ndarray,
                        osizey, dsizex, roisptr, numrois, c_int(batch),
                        c_int(iterations), ndevices, devicesptr, rfactorptr,
                        c_float(objbeta), c_float(probebeta), nummodes,
-                       objsuppptr, probesuppptr, numobjsupport, sigmaskptr,
+                       objsuppptr, probesuppptr, numobjsupport,
                        c_int(flyscansteps),
                        c_float(step_obj), c_float(step_probe),
                        c_float(reg_obj),c_float(reg_probe),

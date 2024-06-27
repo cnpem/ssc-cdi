@@ -16,7 +16,6 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         int batchsize, float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        float* sigmask,  // TODO: can we remove sigmask, geometricsteps, background and probef1?
         int geometricsteps, float* background,
         float probef1, float step_object, float step_probe, float reg_obj,
         float reg_probe) {
@@ -29,7 +28,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             batchsize, rfact,
             gpus,
             objsupp, probesupp, numobjsupp,
-            sigmask, geometricsteps,
+            geometricsteps,
             background, probef1,
             step_object, step_probe, reg_obj, reg_probe);
 

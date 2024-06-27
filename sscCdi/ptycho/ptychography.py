@@ -381,7 +381,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         step_probe=algo_inputs['step_probe'],
                                                         reg_obj=algo_inputs['regularization_object'],
                                                         reg_probe=algo_inputs['regularization_probe'],
-                                                        sigmask=set_sigmask(DPs),
                                                         difpads=DPs,
                                                         obj=obj,
                                                         rois=probe_positions,
@@ -417,7 +416,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             step_probe=algo_inputs['step_probe'],
                                                             reg_obj=algo_inputs['regularization_object'],
                                                             reg_probe=algo_inputs['regularization_probe'],
-                                                            sigmask=set_sigmask(DPs),
                                                             rois=probe_positions,
                                                             difpads=DPs,
                                                             obj=obj,
@@ -451,9 +449,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     step_probe=algo_inputs['step_probe'],
                                                                     reg_obj=algo_inputs['regularization_object'],
                                                                     reg_probe=algo_inputs['regularization_probe'],
-                                                                    sigmask=set_sigmask(DPs),
                                                                     difpads=DPs,
-                                                                    obj=obj, 
+                                                                    obj=obj,
                                                                     rois=probe_positions,
                                                                     probe=probe,
                                                                     probesupp = algo_inputs['probe_support_array'],
@@ -515,20 +512,6 @@ def append_ones(probe_positions):
     probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
 
     return probe_positions
-    
-def set_sigmask(DPs):
-    """Create a mask for invalid pixels
-
-    Args:
-        DPs (array): measured diffraction patterns
-
-    Returns:
-        sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels. 0 for negative values
-    """
-    sigmask = np.ones(DPs[0].shape)
-    sigmask[DPs[0] < 0] = 0
-    return sigmask
-
 
 def set_initial_probe(input_dict, DPs, incoherent_modes):
     print('Creating initial probe...')
