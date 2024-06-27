@@ -38,7 +38,6 @@ struct POptAlgorithm {
     rMImage* probesupport = nullptr;   //!< Support for the probe with the same shape as the probe itself.
     std::vector<float> SupportSizes;   //!< Normalization vector for the object support.
 
-    rMImage* sigmask = nullptr;  //!< Scattering intensity masks in the range [0,1], for partial amplitude projection.
     bool bCenterProbe = true;    //!< Currently unused.
 
     float I0;  //!< Initial probe norm ||P||^2
@@ -134,7 +133,7 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho);
 POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
-                                   int numobjsupp, float* sigmask, int geometricsteps, float* background,
+                                   int numobjsupp, int geometricsteps, float* background,
                                    float probef1,
                                    float step_obj, float step_probe, float reg_obj, float reg_probe);
 
@@ -163,7 +162,7 @@ struct RAAR {
  * */
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
-                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
+                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  int geometricsteps, float* background, float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
@@ -191,7 +190,7 @@ __global__ void KGLPs(const GArray<complex> probe, GArray<complex> object_acc, G
                       const GArray<complex> p_pm, const GArray<ROI> rois);
 
 __global__ void k_project_reciprocal_space(GArray<complex> exitwave, const GArray<float> difpads, float* rfactors, size_t upsample,
-                    size_t nummodes, const GArray<float> sigmask, int geometricsteps, bool bIsGrad,
+                    size_t nummodes, int geometricsteps, bool bIsGrad,
                     const float* background, float* bkgaccum);
 }
 
@@ -207,7 +206,7 @@ void GLimRun(GLim& glim, int iter);
 
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
-                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
+                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  int geometricsteps, float* background, float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
@@ -229,7 +228,6 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        float* sigmask, //TODO: can we remove sigmask, geometricsteps, background and probef1?
         int geometricsteps, float* background,
         float probef1,
         float step_object, float step_probe,

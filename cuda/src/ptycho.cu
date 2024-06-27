@@ -98,8 +98,9 @@ extern "C" {
 
     __global__ void k_project_reciprocal_space(GArray<complex> exitwave,
             const GArray<float> difpads, float* rfactors,
-            size_t upsample, size_t nummodes, const GArray<float> _sigmask,
-            int geometricsteps, bool bIsGrad, const float* background,
+            size_t upsample, size_t nummodes,
+            int geometricsteps, bool bIsGrad,
+            const float* background,
             float* bkgaccum) {
         __shared__ float sh_rfactor[64];
 
@@ -137,12 +138,11 @@ extern "C" {
 
             if (bApplyBkg) wabs2 += sq(background[idy * difpads.shape.x + idx]);
 
-            atomicAdd(sh_rfactor + threadIdx.x % 64,
-                    sq(_sigmask(idy, idx)) * sq(sqrt_difpad - wabs2 * hexptaulambda2));
+            atomicAdd(sh_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs2 * hexptaulambda2));
 
             if (wabs2 > 0.0f) {
 
-                exit_wave_factor = (sqrt_difpad / wabs2 - 1) * _sigmask(idy, idx);
+                exit_wave_factor = (sqrt_difpad / wabs2 - 1);
                 if (bApplyBkg)
                     atomicAdd(bkgaccum + idy * difpads.shape.x + idx,
                             exit_wave_factor * background[idy * difpads.shape.x + idx]);
@@ -200,7 +200,7 @@ void project_reciprocal_space(POptAlgorithm &pt, rImage* difpad, int g, bool bIs
     const bool bApplyBkg = (pt.background != nullptr) & (pt.bkgaccum != nullptr);
 
     k_project_reciprocal_space<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.exitwave->arrays[g][0], *difpad, pt.rfactors->Ptr(g), upsample,
-            pt.probe->sizez, pt.sigmask->arrays[g][0], pt.geometricsteps, bIsGradPm,
+            pt.probe->sizez, pt.geometricsteps, bIsGradPm,
             bApplyBkg ? pt.background->arrays[g]->gpuptr : nullptr,
             bApplyBkg ? pt.bkgaccum->arrays[g]->gpuptr : nullptr);
 
@@ -286,8 +286,6 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
     ssc_debug("Dealloc rfactors.");
     delete ptycho.rfactors;
 
-    delete ptycho.sigmask;
-
     ssc_debug("Dealloc rois.");
     for (auto* roi : ptycho.rois) delete roi;
 
@@ -302,7 +300,7 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
 POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
             complex* _object, const dim3& objshape, ROI* _rois, int numrois, int batchsize,
             float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
-            int numobjsupp, float* _sigmask, int geometricsteps, float* background, float probef1,
+            int numobjsupp, int geometricsteps, float* background, float probef1,
             float step_obj, float step_probe,
             float reg_obj, float reg_probe) {
 
@@ -388,8 +386,6 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
                 }
                 ptycho->roibatch_offset.push_back(n / ngpus);
             }
-
-            if (_sigmask) ptycho->sigmask = new rMImage(_sigmask, dim3(difshape.x, difshape.y, 1), true, gpus);
 
             for (int g = 0; g < gpus.size(); g++) {
                 SetDevice(gpus, g);
