@@ -176,14 +176,14 @@ void GLimProjectProbe(GLim& glim, int section) {
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
-                 int geometricsteps, float* background, float probef1,
+                 int geometricsteps, float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     GLim* glim = new GLim;
     glim->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
-                gpus, objsupp, probesupp, numobjsupp, geometricsteps, background, probef1,
+                gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
                 step_obj, step_probe, reg_obj, reg_probe);
 
     return glim;
