@@ -1,9 +1,6 @@
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
 
-from .. import log_event
-
-@log_event
 def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
 
     # TODO: write numpy/cupy agnostic code for use both with cpus or gpus

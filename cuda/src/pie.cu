@@ -46,8 +46,6 @@ __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<com
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-    const int m = blockIdx.z * blockDim.z + threadIdx.z;
-
     if (idx >= probe.shape.x || idy >= probe.shape.y) return;
 
     const size_t objposx = (int) rois[0].x + idx;
@@ -140,13 +138,6 @@ void PieRun(Pie& pie, int iterations) {
     ssc_assert(ptycho_num_batches(*pie.ptycho), "This algorithm does not support MultiGPU.");
     ssc_assert(ptycho_batch_size(*pie.ptycho) == 1, "Batch > 1 is not supported for PIE.");
 
-    ssc_event_start("PieRun", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)pie.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)pie.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)pie.ptycho->difpadshape.z)
-    });
-
     const int gpu = 0;
 
     const int batch_size = 1;
@@ -170,7 +161,6 @@ void PieRun(Pie& pie, int iterations) {
     int random_idx[num_rois];
     range_array(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
-        ssc_event_start("iter", { ssc_param_int("iter", iter) });
         pie.ptycho->rfactors->SetGPUToZero();
 
         shuffle_array(random_idx, num_rois);
@@ -229,12 +219,9 @@ void PieRun(Pie& pie, int iterations) {
             ssc_info(format("iter {}/{} error = {}",
                         iter, iterations, pie.ptycho->cpurfact[iter]));
         }
-        ssc_event_stop(); // iter
     }
 
     auto time1 = ssc_time();
     ssc_info(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
-
-    ssc_event_stop();  // PieRun
 }
 

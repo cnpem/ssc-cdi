@@ -73,13 +73,6 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
 void GLimRun(GLim& glim, int iterations) {
   ssc_info("Starting Alternate Projections.");
 
-  ssc_event_start("GLim Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)glim.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)glim.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)glim.ptycho->difpadshape.z)
-    });
-
   POptAlgorithm& ptycho = *glim.ptycho;
 
   auto time0 = ssc_time();
@@ -94,7 +87,6 @@ void GLimRun(GLim& glim, int iterations) {
   const size_t ngpus = ptycho_num_gpus(ptycho);
 
   for (int iter = 0; iter < iterations; iter++) {
-    ssc_event_start("GLim iter", { ssc_param_int("iter", iter) });
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
     ptycho.rfactors->SetGPUToZero();
@@ -170,11 +162,8 @@ void GLimRun(GLim& glim, int iterations) {
         ssc_info(format("iter {}/{} error = {}",
                     iter, iterations, ptycho.cpurfact[iter]));
     }
-
-    ssc_event_stop(); // GLim iter
   }
 
-  ssc_event_stop(); // GLim Run
   auto time1 = ssc_time();
   ssc_info(format("End AP: {} ms", ssc_diff_time(time0, time1)));
 }

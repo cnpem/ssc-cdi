@@ -2,9 +2,6 @@ import sys
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
 
-from .. import log_event, event_start, event_stop
-
-@log_event
 def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
 
     # TODO: write numpy/cupy agnostic code for use both with cpus or gpus

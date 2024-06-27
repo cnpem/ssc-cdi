@@ -6,7 +6,7 @@ dist:
 	python3 -m build --wheel .
 
 install:
-	python3 -m pip install . --user
+	python3 -m pip install .
 
 clean:
 	rm -fr _skbuild/ *.egg-info/ dist/	*~
