@@ -16,9 +16,8 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         int batchsize, float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        int geometricsteps, float* background,
-        float probef1, float step_object, float step_probe, float reg_obj,
-        float reg_probe) {
+        int geometricsteps, float probef1, float step_object,
+        float step_probe, float reg_obj, float reg_probe) {
     Pie* pie = new Pie();
 
     pie->ptycho = CreatePOptAlgorithm(difpads, difshape,
@@ -29,7 +28,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             gpus,
             objsupp, probesupp, numobjsupp,
             geometricsteps,
-            background, probef1,
+            probef1,
             step_object, step_probe, reg_obj, reg_probe);
 
     return pie;
