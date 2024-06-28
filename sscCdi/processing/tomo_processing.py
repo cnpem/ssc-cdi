@@ -8,8 +8,6 @@ from concurrent.futures import ProcessPoolExecutor
 import concurrent.futures
 import scipy
 
-import sscRaft
-
 from ..misc import save_json_logfile_tomo, open_or_create_h5_dataset
 from .unwrap import remove_phase_gradient, unwrap_in_parallel
 
@@ -504,6 +502,8 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
 
 def adjust_rotation_axis(sinogram, angles,displacements=[0,10]):
 
+    import sscRaft
+
     fig, ax = plt.subplots(1,2,dpi=150)
     ax[0].imshow(np.abs(sinogram.sum(0)))
     ax[1].imshow(np.angle(sinogram.sum(0)))
@@ -733,6 +733,8 @@ def wiggle(dic, sinogram):
     
     """
 
+    import sscRaft
+
     temp_tomogram, shift_vertical = sscRaft.get_wiggle( sinogram, "vertical", dic["CPUs"], dic["wiggle_reference_frame"] )
     print('\tFinished vertical wiggle. Starting horizontal wiggle...')
     aligned_sinogram, shift_horizontal, wiggle_cmas_temp = sscRaft.get_wiggle( temp_tomogram, "horizontal", dic["CPUs"], dic["wiggle_reference_frame"] )
@@ -926,6 +928,7 @@ def call_sscRaft(dic, sinogram,save=True):
 
     """
 
+    import sscRaft
 
     sinogram = check_sinogram_shape(sinogram)
 
