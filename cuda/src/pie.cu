@@ -16,10 +16,8 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         int batchsize, float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        float* sigmask,  // TODO: can we remove sigmask, geometricsteps, background and probef1?
-        int geometricsteps, float* background,
-        float probef1, float step_object, float step_probe, float reg_obj,
-        float reg_probe) {
+        int geometricsteps, float probef1, float step_object,
+        float step_probe, float reg_obj, float reg_probe) {
     Pie* pie = new Pie();
 
     pie->ptycho = CreatePOptAlgorithm(difpads, difshape,
@@ -29,8 +27,8 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             batchsize, rfact,
             gpus,
             objsupp, probesupp, numobjsupp,
-            sigmask, geometricsteps,
-            background, probef1,
+            geometricsteps,
+            probef1,
             step_object, step_probe, reg_obj, reg_probe);
 
     return pie;
@@ -45,8 +43,6 @@ __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<com
         const GArray<complex> object, const ROI* rois) {
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
-
-    const int m = blockIdx.z * blockDim.z + threadIdx.z;
 
     if (idx >= probe.shape.x || idy >= probe.shape.y) return;
 
@@ -140,13 +136,6 @@ void PieRun(Pie& pie, int iterations) {
     ssc_assert(ptycho_num_batches(*pie.ptycho), "This algorithm does not support MultiGPU.");
     ssc_assert(ptycho_batch_size(*pie.ptycho) == 1, "Batch > 1 is not supported for PIE.");
 
-    ssc_event_start("PieRun", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)pie.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)pie.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)pie.ptycho->difpadshape.z)
-    });
-
     const int gpu = 0;
 
     const int batch_size = 1;
@@ -170,7 +159,6 @@ void PieRun(Pie& pie, int iterations) {
     int random_idx[num_rois];
     range_array(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
-        ssc_event_start("iter", { ssc_param_int("iter", iter) });
         pie.ptycho->rfactors->SetGPUToZero();
 
         shuffle_array(random_idx, num_rois);
@@ -229,12 +217,9 @@ void PieRun(Pie& pie, int iterations) {
             ssc_info(format("iter {}/{} error = {}",
                         iter, iterations, pie.ptycho->cpurfact[iter]));
         }
-        ssc_event_stop(); // iter
     }
 
     auto time1 = ssc_time();
     ssc_info(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
-
-    ssc_event_stop();  // PieRun
 }
 

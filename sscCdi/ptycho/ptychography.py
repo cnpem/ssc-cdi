@@ -10,11 +10,8 @@ from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
 from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
-from .. import log_event
-
 random.seed(0)
 
-@log_event
 def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     """
     Call Ptychography algorithms. Options are:
@@ -384,7 +381,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         step_probe=algo_inputs['step_probe'],
                                                         reg_obj=algo_inputs['regularization_object'],
                                                         reg_probe=algo_inputs['regularization_probe'],
-                                                        sigmask=set_sigmask(DPs),
                                                         difpads=DPs,
                                                         obj=obj,
                                                         rois=probe_positions,
@@ -420,7 +416,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             step_probe=algo_inputs['step_probe'],
                                                             reg_obj=algo_inputs['regularization_object'],
                                                             reg_probe=algo_inputs['regularization_probe'],
-                                                            sigmask=set_sigmask(DPs),
                                                             rois=probe_positions,
                                                             difpads=DPs,
                                                             obj=obj,
@@ -454,9 +449,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     step_probe=algo_inputs['step_probe'],
                                                                     reg_obj=algo_inputs['regularization_object'],
                                                                     reg_probe=algo_inputs['regularization_probe'],
-                                                                    sigmask=set_sigmask(DPs),
                                                                     difpads=DPs,
-                                                                    obj=obj, 
+                                                                    obj=obj,
                                                                     rois=probe_positions,
                                                                     probe=probe,
                                                                     probesupp = algo_inputs['probe_support_array'],
@@ -494,7 +488,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             probe = probe.astype(np.complex64)
 
         else:
-            sys.exit('Please select a proper algorithm! Selected: ', algo_inputs["algorithms"])
+            sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
 
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
@@ -518,20 +512,6 @@ def append_ones(probe_positions):
     probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
 
     return probe_positions
-    
-def set_sigmask(DPs):
-    """Create a mask for invalid pixels
-
-    Args:
-        DPs (array): measured diffraction patterns
-
-    Returns:
-        sigmask (array): 2D-array, same shape of a diffraction pattern, maps the invalid pixels. 0 for negative values
-    """
-    sigmask = np.ones(DPs[0].shape)
-    sigmask[DPs[0] < 0] = 0
-    return sigmask
-
 
 def set_initial_probe(input_dict, DPs, incoherent_modes):
     print('Creating initial probe...')

@@ -13,11 +13,8 @@ from ...ptycho.ptychography import call_ptychography, set_object_pixel_size, set
 from ...processing.restoration import binning_G_parallel
 from ...ptycho.plots import plot_iteration_error, plot_ptycho_corrected_scan_points
 
-from ... import event_start, event_stop, log_event
-
 ##### ##### ##### #####                  PTYCHOGRAPHY                 ##### ##### ##### ##### ##### 
 
-@log_event
 def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, filenames, folder_names_list, folder_numbers_list, strategy="serial"):
     """ 
     Read restored diffraction data, read probe positions, calculate object parameters, calls ptychography and returns recostruction arrays
@@ -48,8 +45,6 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
     if strategy == "serial": #TODO: implement second parallel strategy
 
-        event_start("Read and reconstruct", {"num_of_files": len(filenames)})
-
         for file_number_index, filename in enumerate(filenames):
             if frame_index == []: 
                 file_number = file_number_index
@@ -61,14 +56,12 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             input_dict["hdf5_output"] = get_unique_filename(input_dict["output_path"], file_number_index, filename)
 
             print(f"\nReading diffraction data for angle #{file_number}")
-            event_start("Read restored data")
             if len(input_dict["projections"]) > 1 or len(input_dict["projections"]) == 0: 
                 DPs = sscPimega.pi540D.ioGetM_Backward540D( restoration_dict, restored_data_info, file_number_index) # read restored DPs from temporary folder
             else:
                 DPs = sscPimega.pi540D.ioGet_Backward540D( restoration_dict, restored_data_info[0],restored_data_info[1])
 
             DPs = DPs.astype(np.float32) # convert from float64 to float32 to save memory
-            event_stop() # read restored data
 
             if np.abs(input_dict["binning"]) > 1:
                 print('Binning data...')
@@ -84,14 +77,10 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                     DPs = DPs[:,:,0:-1]
 
             if input_dict['save_restored_data'] == True:
-                event_start("Save numpy file restored data")
                 print(f"Saving restored diffraction patterns...")
                 np.save(os.path.join(input_dict['output_path'],f"{folder_number:03d}_restored_data.npy"),DPs)
-                event_stop() # save restored data
 
             print(f"\tFinished reading diffraction data! DPs shape: {DPs.shape}")
-
-            event_start("Ptycho preprocessing")
 
             """ Read positions """
             probe_positions, angle = read_probe_positions(input_dict, acquisitions_folder,filename , DPs.shape)
@@ -99,8 +88,6 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
             print(f"\tFinished reading probe positions. Shape: {probe_positions.shape}")
 
             input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, probe_positions)
-
-            event_stop()
 
             """ Call Ptychography """
             savepath = input_dict["hdf5_output"]
@@ -119,7 +106,6 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
 
             """ Save single frame of object and probe to temporary folder"""
 
-            event_start("Save ptychography results")
             create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
             if input_dict['save_restored_data']:
                 save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error,restored_data=DPs)
@@ -127,18 +113,13 @@ def cat_ptychography(input_dict,restoration_dict,restored_data_info, filepaths, 
                 save_h5_output(input_dict, obj, probe, probe_positions, corrected_positions, error)
             print('Results saved at: ',input_dict["hdf5_output"])
             print('.................................................................................................................')
-            event_stop() # save numpy ptychography files
 
-        event_stop() # read and reconstruct
-
-        event_start("clean restoration data")
         """ Clean restored DPs temporary data """
         if len(input_dict['projections']) == 1:
             sscPimega.pi540D.ioClean_Backward540D( restoration_dict, restored_data_info[0] )
         else:
             sscPimega.pi540D.ioCleanM_Backward540D( restoration_dict, restored_data_info )
-        event_stop() # clean restoration data
-        
+
 
 def create_parent_folder(file_path):
     """

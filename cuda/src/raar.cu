@@ -105,15 +105,15 @@ __global__ void KRAAR_ObjPs(const GArray<complex> object, const GArray<complex> 
 
 RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim3 &probeshape, complex *object,
                  const dim3 &objshape, ROI *rois, int numrois, int batchsize, float *rfact,
-                 const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp, float *sigmask,
-                 int geometricsteps, float *background, float probef1,
+                 const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp,
+                 int geometricsteps, float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     RAAR *raar = new RAAR();
 
     raar->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1,
+                            gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
                             step_obj, step_probe, reg_obj, reg_probe);
 
     const size_t wavefront_size = raar->ptycho->probe->size
@@ -204,13 +204,6 @@ void init_wavefront(RAAR& raar) {
 void RAARRun(RAAR& raar, int iterations) {
     ssc_info("Starting RAAR iteration.");
 
-    ssc_event_start("RAAR Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)raar.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)raar.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)raar.ptycho->difpadshape.z)
-    });
-
     const dim3 probeshape = raar.ptycho->probe->Shape();
 
     init_wavefront(raar);
@@ -230,7 +223,6 @@ void RAARRun(RAAR& raar, int iterations) {
     const dim3 difpadshape = raar.ptycho->difpadshape;
 
     for (int iter = 0; iter < iterations; iter++) {
-        ssc_event_start("Raar iter", { ssc_param_int("iter", iter) });
 
         raar.ptycho->rfactors->SetGPUToZero();
         raar.ptycho->object_acc->SetGPUToZero();
@@ -306,12 +298,10 @@ void RAARRun(RAAR& raar, int iterations) {
                         iter, iterations, raar.ptycho->cpurfact[iter]));
         }
 
-        ssc_event_stop(); //RAAR iter
     }
 
     auto time1 = ssc_time();
     ssc_info(format("End RAAR iteration: {} ms", ssc_diff_time(time0, time1)));
 
-    ssc_event_stop(); // RAAR Run
 }
 
