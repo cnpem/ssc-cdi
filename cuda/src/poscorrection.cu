@@ -28,7 +28,7 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
 	}
 }
 __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, const GArray<float> difpads,
-    const GArray<float> sigmask, const float* background, size_t nummodes)
+    const float* background, size_t nummodes)
 {
     __shared__ float sh_rfactor[64];
 
@@ -55,7 +55,7 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
-        atomicAdd(sh_rfactor + threadIdx.x%64, sigmask(idy,idx)*sq(sqrtf(difpad)-sqrtf(wabs2)));
+        atomicAdd(sh_rfactor + threadIdx.x%64, sq(sqrtf(difpad)-sqrtf(wabs2)));
     }
 
     __syncthreads();
@@ -79,7 +79,7 @@ struct PosCorrection
 PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
                                    complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
-                                   int numobjsupp, float* sigmask, int geometricsteps, float* background,
+                                   int numobjsupp, int geometricsteps,
                                    float probef1,
                                    float step_obj, float step_probe,
                                    float reg_obj, float reg_probe) {
@@ -88,7 +88,7 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
     poscorr->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
-                gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1,
+                gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
                 step_obj, step_probe, reg_obj, reg_probe);
     return poscorr;
 }
@@ -126,7 +126,6 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
     float const offx[] = {0,1,-1,0,0};
     float const offy[] = {0,0,0,1,-1};
 
-    const bool bApplyBkg = ptycho.background != nullptr;
     const size_t batchsize = ptycho.rois[0]->arrays[0]->sizez;
 
     const dim3 difpadshape = ptycho.difpadshape;
@@ -167,8 +166,7 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
                     KComputeError<<<blk,thr>>>(
                             poscorr.errorcounter->arrays[g]->gpuptr + batchsize*k,
                             *ptycho.exitwave->arrays[g], *cur_difpad.arrays[g],
-                            *ptycho.sigmask->arrays[g],
-                            bApplyBkg ? ptycho.background->arrays[g]->gpuptr : nullptr,
+                            nullptr,
                             ptycho.probe->sizez);
             }
         }
@@ -203,13 +201,6 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
   ssc_debug("Starting PosCorrectionRun.");
 
-  ssc_event_start("Position Correction Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)poscorr.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)poscorr.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)poscorr.ptycho->difpadshape.z)
-    });
-
   POptAlgorithm& ptycho = *poscorr.ptycho;
 
   auto time0 = ssc_time();
@@ -225,7 +216,6 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
 
   for (int iter = 0; iter < iterations; iter++) {
     ssc_debug(format("Start PosCorr iteration: {}", iter));
-    ssc_event_start("PosCorr iter", { ssc_param_int("iter", iter) });
 
     // std::cout << iter << std::endl;
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
@@ -303,10 +293,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
                     iter, iterations, ptycho.cpurfact[iter]));
     }
 
-    ssc_event_stop(); // PosCorr iter
   }
-
-  ssc_event_stop(); //Position Correction Run
 
   auto time1 = ssc_time();
   ssc_info(format("End GL: {} ms", ssc_diff_time(time0, time1)));
@@ -318,9 +305,9 @@ extern "C"
 {
 void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
 	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-	float* objsupport, float* probesupport, int numobjsupport, float* sigmask, int geometricsteps,
+	float* objsupport, float* probesupport, int numobjsupport, int geometricsteps,
     float step_obj, float step_probe, float reg_obj, float reg_probe,
-    float* background, float probef1)
+    float probef1)
 {
 	ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
             psizex, osizex, numrois, bsize, numiter));
@@ -332,7 +319,7 @@ void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osi
         IndexRois((ROI*)cpurois, numrois);
 
     PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, sigmask, geometricsteps, background, probef1, step_obj, step_probe, reg_obj, reg_probe);
+    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, probef1, step_obj, step_probe, reg_obj, reg_probe);
 
 	pk->ptycho->objmomentum = objbeta;
 	pk->ptycho->probemomentum = probebeta;

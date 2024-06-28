@@ -73,13 +73,6 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
 void GLimRun(GLim& glim, int iterations) {
   ssc_info("Starting Alternate Projections.");
 
-  ssc_event_start("GLim Run", {
-            ssc_param_int("iter", iterations),
-            ssc_param_int("difpadshape.x", (int)glim.ptycho->difpadshape.x),
-            ssc_param_int("difpadshape.y", (int)glim.ptycho->difpadshape.y),
-            ssc_param_int("difpadshape.z", (int)glim.ptycho->difpadshape.z)
-    });
-
   POptAlgorithm& ptycho = *glim.ptycho;
 
   auto time0 = ssc_time();
@@ -94,7 +87,6 @@ void GLimRun(GLim& glim, int iterations) {
   const size_t ngpus = ptycho_num_gpus(ptycho);
 
   for (int iter = 0; iter < iterations; iter++) {
-    ssc_event_start("GLim iter", { ssc_param_int("iter", iter) });
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
     ptycho.rfactors->SetGPUToZero();
@@ -170,11 +162,8 @@ void GLimRun(GLim& glim, int iterations) {
         ssc_info(format("iter {}/{} error = {}",
                     iter, iterations, ptycho.cpurfact[iter]));
     }
-
-    ssc_event_stop(); // GLim iter
   }
 
-  ssc_event_stop(); // GLim Run
   auto time1 = ssc_time();
   ssc_info(format("End AP: {} ms", ssc_diff_time(time0, time1)));
 }
@@ -186,15 +175,15 @@ void GLimProjectProbe(GLim& glim, int section) {
 
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
-                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp, float* sigmask,
-                 int geometricsteps, float* background, float probef1,
+                 const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
+                 int geometricsteps, float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     GLim* glim = new GLim;
     glim->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
-                gpus, objsupp, probesupp, numobjsupp, sigmask, geometricsteps, background, probef1,
+                gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
                 step_obj, step_probe, reg_obj, reg_probe);
 
     return glim;
