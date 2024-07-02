@@ -1,6 +1,7 @@
 #include "ptycho.hpp"
 #include <common/logger.hpp>
 #include <common/utils.hpp>
+#include <cstddef>
 
 extern "C" {
 __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,
@@ -100,19 +101,23 @@ void GLimRun(GLim& glim, int iterations) {
       probevelocity.SetGPUToZero();
     }
 
+
+    // TODO: improve so we can avoid reallocating arrays every iteration,
+    // if we need a speedup
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
+          false, ptycho.gpus, MemoryType::EAllocGPU);
+
     const size_t num_batches = ptycho_num_batches(ptycho);
     for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
-          const unsigned int difpad_batch_zsize = ptycho_cur_batch_zsize(ptycho, batch_idx);
+          const size_t difpad_batch_zsize = ptycho_cur_batch_zsize(ptycho, batch_idx);
           const size_t difpad_idx = batch_idx * ptycho_batch_size(ptycho);
           float *difpad_batch_ptr = ptycho.cpudifpads +
               difpad_idx * difpadshape.x * difpadshape.y;
 
-          // TODO: improve so we can avoid reallocating arrays every iteration,
-          // if we need a speedup
-          rMImage cur_difpad(difpad_batch_ptr,
-                  difpadshape.x, difpadshape.y, difpad_batch_zsize,
-                  false, ptycho.gpus, MemoryType::EAllocGPU);
+          cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
+          cur_difpad.LoadToGPU(difpad_batch_ptr);
+
           for (int g = 0; g < ngpus; g++) {
               const size_t difpadsizez = (*ptycho.rois[batch_idx])[g].sizez;
               if (difpadsizez > 0) {

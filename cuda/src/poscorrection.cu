@@ -130,17 +130,16 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
 
     const dim3 difpadshape = ptycho.difpadshape;
 
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
+            false, ptycho.gpus, MemoryType::EAllocGPU);
+
     const size_t num_batches = ptycho_num_batches(ptycho);
     for(int d = 0; d<num_batches; d++) {
         const size_t difpad_batch_zsize = ptycho_cur_batch_zsize(ptycho, d);
         const size_t difpad_idx = d * ptycho_batch_size(ptycho);
 
-        // TODO: improve so we can avoid reallocating arrays every iteration,
-        // if we need a speedup
-        rMImage cur_difpad(
-                    ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y,
-                    difpadshape.x, difpadshape.y, difpad_batch_zsize,
-                    false, ptycho.gpus, MemoryType::EAllocGPU);
+        cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
+        cur_difpad.LoadToGPU(ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y);
 
         poscorr.errorcounter->SetGPUToZero();
         ptycho.rois[d]->LoadFromGPU();
@@ -230,17 +229,16 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
       probevelocity.SetGPUToZero();
     }
 
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
+            false, ptycho.gpus, MemoryType::EAllocGPU);
+
     const size_t num_batches = ptycho.rois.size();
     for (int d = 0; d < num_batches; d++) {
       const unsigned int difpad_batch_zsize = ptycho.rois[d]->sizez;
       const size_t difpad_idx = d * ptycho.multibatchsize;
 
-      // TODO: improve so we can avoid reallocating arrays every iteration,
-      // if we need a speedup
-      rMImage cur_difpad(
-                ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y,
-                difpadshape.x, difpadshape.y, difpad_batch_zsize,
-                false, ptycho.gpus, MemoryType::EAllocGPU);
+      cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
+      cur_difpad.LoadToGPU(ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y);
 
       for (int g = 0; g < ptycho.gpus.size(); g++) {
           const size_t difpadsizez = ptycho_cur_batch_gpu_zsize(ptycho, d, g);
