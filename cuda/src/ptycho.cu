@@ -3,6 +3,8 @@
 #include <common/logger.hpp>
 #include <cmath>
 #include <cstddef>
+#include <cuda_runtime_api.h>
+#include <driver_types.h>
 
 #include "complex.hpp"
 #include "ptycho.hpp"
@@ -235,6 +237,8 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
     if (ptycho.probe_acc) delete ptycho.probe_acc;
     ptycho.probe_acc = nullptr;
 
+    cudaFreeHost(ptycho.cpudifpads);
+
     ssc_debug("Deallocating base algorithm.");
     for (int g = 0; g < ptycho.gpus.size(); g++) {
         ssc_debug(format("Dealloc propagator: {}", g));
@@ -314,6 +318,11 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
             ptycho->total_num_rois = numrois;
 
             ptycho->cpudifpads = _difpads;
+
+            size_t difpad_size = ptycho->difpadshape.x * ptycho->difpadshape.y * ptycho->difpadshape.z;
+            cudaMallocHost(&(ptycho->cpudifpads), difpad_size * sizeof(float));
+            cudaMemcpy(ptycho->cpudifpads, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
+
             ptycho->cpuprobe = _probe;
             ptycho->cpuobject = _object;
             ptycho->cpurois = _rois;
