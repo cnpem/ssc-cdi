@@ -6,6 +6,7 @@
 #ifndef _TYPES_H
 #define _TYPES_H
 
+#include <cstddef>
 #ifdef __CUDACC__
 #define restrict __restrict__
 #else
@@ -120,6 +121,7 @@ struct Image2D {
           sizey(_sizey),
           sizez(_sizez),
           size(_sizex * _sizey * _sizez),
+          capacity(_sizex * _sizey * _sizez),
           memorytype(memtype),
           gpuptr(nullptr),
           cpuptr(nullptr) {
@@ -183,6 +185,9 @@ struct Image2D {
 
     size_t size = 0;  //!< sizex*sizey*sizez
 
+    size_t capacity = 0; //true allocated size,\\
+                         // any resize should be < capacity
+
     Type* gpuptr = nullptr;  //!< Pointer in GPU Memory.
     Type* cpuptr = nullptr;  //!< Pointer in CPU Memory.
     /**
@@ -233,6 +238,18 @@ struct Image2D {
         dim3 shp = Shape();
         return dim3((size + blocksize - 1) / blocksize, 1, 1);
     };
+
+    void Resize(size_t x, size_t y, size_t z) {
+        size_t s = x * y * z;
+        if (s > capacity) {
+            ssc_error(format("This image cant be resized beyond its original capacity"));
+            exit(-1);
+        }
+        size = s;
+        sizex = x;
+        sizey = y;
+        sizez = z;
+    }
 
     void AllocGPU() {
         if (!gpuptr && bHasAllocGPU()) ssc_cuda_check(cudaMalloc((void**)&gpuptr, sizeof(Type) * size));
@@ -792,6 +809,7 @@ struct MImage : public MultiGPU {
           sizey(_sizey),
           sizez(_sizez),
           size(_sizex * _sizey * _sizez),
+          capacity(_sizex * _sizey * _sizez),
           bBroadcast(_bBroadcast),
           memorytype(memtype) {
         ssc_assert(gpus.size() <= 16, "Too many gpus!");
@@ -871,6 +889,54 @@ struct MImage : public MultiGPU {
     size_t sizey = 0;
     size_t sizez = 1;
     size_t size = 0;
+
+    size_t capacity = 0;
+
+    void Resize(size_t x, size_t y, size_t z) {
+
+        if (x == sizex && y == sizey && z == sizez)
+            return;
+
+        size_t s = x * y * z;
+        if (s > capacity) {
+            ssc_error("This Image cant be resized beyond its original capacity.");
+            exit(-1);
+        }
+
+        size = s;
+        sizex = x;
+        sizey = y;
+        sizez = z;
+
+        size_t zstep, zdistrib;
+
+        if (bBroadcast) {
+            zstep = 0;
+            zdistrib = sizez;
+        } else {
+            if (ngpus > sizez)
+                ssc_debug("Warning: More GPUs than slices!");
+            zstep = (sizez + ngpus - 1) / ngpus;
+            zdistrib = zstep;
+        }
+
+        for (int g = 0; g < ngpus; g++) {
+            if (zstep * (g + 1) > sizez) {
+                if (sizez > zstep * g)
+                    zdistrib = sizez - zstep * g;
+                else
+                    zdistrib = 1;
+            }
+
+            Set(g);
+
+            arrays[g]->Resize(sizex, sizey,
+                    sizez <= (zstep * g) ? 0 : zdistrib);
+            offsets[g] = sizex * sizey * zstep * g;
+        }
+
+
+    }
 
     void SetGPUToZero() { MGPULOOP(arrays[g]->SetGPUToZero();); };
     void Clamp(Type a, Type b) { MGPULOOP(arrays[g]->Clamp(a, b);); }
@@ -963,6 +1029,25 @@ struct MImage : public MultiGPU {
         ssc_assert(other.GetSize() >= GetSize() && other.sizez / other.ngpus >= sizez / ngpus,
                     "Destination will not fit!");
         MGPULOOP(arrays[g]->CopyTo(other.arrays[g][0]););
+    }
+
+    void LoadToGPU(Type* data) {
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            arrays[g]->CopyFrom(data + offsets[g]);
+        }
+    }
+
+    void LoadToGPU(Type* data, const size_t copysize) {
+        size_t rem_copysize = copysize;
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
+            if (gpu_copy_size <= 0)
+                return;
+            arrays[g]->CopyFrom(data + offsets[g], 0, gpu_copy_size);
+            rem_copysize -= gpu_copy_size;
+        }
     }
 
     void LoadToGPU() { MGPULOOP(arrays[g]->LoadToGPU();); }

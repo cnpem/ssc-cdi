@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.10.1] - 2024-06-28
+------------------------------
+
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~
+- Removed Sigmask parameter
+- Removed Background paramater
+
 [0.10.0] - 2024-06-20
 ------------------------------
 
