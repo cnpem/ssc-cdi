@@ -1,6 +1,10 @@
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <cstddef>
+#include <cuda_device_runtime_api.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
 #include <random>
 
 #include "complex.hpp"
@@ -78,7 +82,7 @@ __global__ void k_pie_update_probe(GArray<complex> object_box,
 
     const double obj_abs2_sum = obj.abs2() * num_modes;
 
-    const double denominator_p = (1.0 - reg_probe) * obj_abs2_sum + reg_probe * obj_abs2_max;
+    const double denominator_p = (1.0 - reg_probe) * obj_abs2_sum + reg_probe * (obj_abs2_max);
 
     //update probe
     for (int m = 0; m < num_modes; ++m) {
@@ -117,7 +121,7 @@ __global__ void k_pie_update_object(GArray<complex> object, GArray<complex> prob
         obj_delta += probe(m, idy, idx).conj() * delta_wavefront;
     }
 
-    const double denominator_o = (1.0 - reg_obj) * probe_abs2_sum + reg_obj * probe_abs2_max;
+    const double denominator_o = (1.0 - reg_obj) * probe_abs2_sum + reg_obj * (probe_abs2_max);
     object(objposy, objposx) += (step_obj * obj_delta) / denominator_o;
 }
 
@@ -129,6 +133,36 @@ void range_array(int* data, size_t n) {
 
 void shuffle_array(int *data, size_t n) {
     std::shuffle(data, data + n, std::default_random_engine());
+}
+
+//get maxAbs2 without bringing data to cpu
+__global__ void maxAbs2(complex *d_array, float *d_max, size_t size) {
+    __shared__ float sdata[1024];
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx == 0) {
+        *d_max = -FLT_MAX;
+    }
+
+    if (idx < size) {
+        sdata[tid] = d_array[idx].abs2();
+    } else {
+        sdata[tid] = -FLT_MAX;  // handle out of bounds
+    }
+    __syncthreads();
+
+    // Reduce in shared memory
+    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+        if (tid < s) {
+            sdata[tid] = fmaxf(sdata[tid], sdata[tid + s]);
+        }
+        __syncthreads();
+    }
+
+    if (tid == 0) {
+        atomicMax(reinterpret_cast<int*>(d_max), __float_as_int(sdata[0]));
+    }
 }
 
 void PieRun(Pie& pie, int iterations) {
@@ -146,13 +180,22 @@ void PieRun(Pie& pie, int iterations) {
 
     SetDevice(pie.ptycho->gpus, gpu);
 
-    cImage obj_box(probeshape);
+    cImage obj_box(probeshape, MemoryType::EAllocGPU);
 
     const int num_modes = ptycho_num_modes(*pie.ptycho);
 
     cImage wavefront_prev(*pie.ptycho->exitwave->arrays[0]);
 
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, batch_size,
+            false, pie.ptycho->gpus, MemoryType::EAllocGPU);
+
     auto time0 = ssc_time();
+
+    //float *obj_abs2_max;
+    //float *probe_abs2_max;
+
+    //cudaMalloc((void**)&obj_abs2_max, sizeof(float));
+    //cudaMalloc((void**)&probe_abs2_max, sizeof(float));
 
     // when (batchsize == 1) => (num_batches == num_rois)
     const size_t num_rois = ptycho_num_batches(*pie.ptycho);
@@ -168,11 +211,7 @@ void PieRun(Pie& pie, int iterations) {
             float* difpad_batch_ptr = pie.ptycho->cpudifpads +
                 random_pos_idx * difpadshape.x * difpadshape.y;
 
-            // TODO: improve so we can avoid reallocating arrays every iteration,
-            // if we need a speedup
-            rMImage cur_difpad(difpad_batch_ptr,
-                    difpadshape.x, difpadshape.y, batch_size, false,
-                    pie.ptycho->gpus, MemoryType::EAllocCPUGPU);
+            cur_difpad.LoadToGPU(difpad_batch_ptr);
 
             dim3 blk = pie.ptycho->exitwave->ShapeBlock();
             blk.z = batch_size;
@@ -193,16 +232,20 @@ void PieRun(Pie& pie, int iterations) {
             *wavefront /= float(probeshape.x * probeshape.y);
 
             const float probe_abs2_max = probe->maxAbs2();
+            const dim3 pos_offset(pie.ptycho->cpurois[random_pos_idx].x,
+                    pie.ptycho->cpurois[random_pos_idx].y, 0);
+            obj->CopyRoiTo(obj_box, pos_offset, probeshape);
+            const float obj_abs2_max = obj_box.maxAbs2();
+
+            //get max without going to CPU (will we need this to achieve full scalar???)
+            //maxAbs2<<<(obj_box.size + 1024 - 1) / 1024, 1024>>>(obj_box.gpuptr, obj_abs2_max, obj_box.size);
+            //maxAbs2<<<(probe->size + 1024 - 1) / 1024, 1024>>>(probe->gpuptr, probe_abs2_max, probe->size);
+
             k_pie_update_object<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
                     pie.ptycho->objreg,
                     pie.ptycho->objstep,
                     probe_abs2_max, rois);
-
-            const dim3 pos_offset(pie.ptycho->cpurois[random_pos_idx].x,
-                    pie.ptycho->cpurois[random_pos_idx].y, 0);
-            obj->CopyRoiTo(obj_box, pos_offset, probeshape);
-            const float obj_abs2_max = obj_box.maxAbs2();
 
             k_pie_update_probe<<<blk, thr>>>(obj_box, *obj, *probe,
                     *wavefront, wavefront_prev,
@@ -212,12 +255,15 @@ void PieRun(Pie& pie, int iterations) {
 
         }
 
-        pie.ptycho->cpurfact[iter] = sqrtf(pie.ptycho->rfactors->SumCPU());
+        pie.ptycho->cpurfact[iter] = sqrtf(pie.ptycho->rfactors->SumGPU());
         if (iter % 10 == 0) {
             ssc_info(format("iter {}/{} error = {}",
                         iter, iterations, pie.ptycho->cpurfact[iter]));
         }
     }
+
+    //cudaFree(obj_abs2_max);
+    //cudaFree(probe_abs2_max);
 
     auto time1 = ssc_time();
     ssc_info(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));

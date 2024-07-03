@@ -191,7 +191,7 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
 }
 
 void init_wavefront(RAAR& raar) {
-    for (auto *wavefront : raar.phistack) {
+    for (MImage<complex16> *wavefront : raar.phistack) {
         if (wavefront != nullptr) {
             wavefront->SetGPUToZero();
         }
@@ -222,6 +222,9 @@ void RAARRun(RAAR& raar, int iterations) {
 
     const dim3 difpadshape = raar.ptycho->difpadshape;
 
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, raar.ptycho->multibatchsize,
+                false, raar.ptycho->gpus, MemoryType::EAllocGPU);
+
     for (int iter = 0; iter < iterations; iter++) {
 
         raar.ptycho->rfactors->SetGPUToZero();
@@ -231,15 +234,13 @@ void RAARRun(RAAR& raar, int iterations) {
         const size_t num_batches = ptycho_num_batches(*raar.ptycho);
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
-          const unsigned int difpad_batch_zsize = raar.ptycho->rois[batch_idx]->sizez;
+          const size_t difpad_batch_zsize = raar.ptycho->rois[batch_idx]->sizez;
           const size_t global_idx = batch_idx * raar.ptycho->multibatchsize;
           float *difpad_batch_ptr = raar.ptycho->cpudifpads +
               global_idx * difpadshape.x * difpadshape.y;
 
-          // TODO: improve so we can avoid reallocating arrays every iteration,
-          // if we need a speedup
-          rMImage cur_difpad(difpad_batch_ptr, difpadshape.x, difpadshape.y, difpad_batch_zsize,
-                    false, raar.ptycho->gpus, MemoryType::EAllocGPU);
+          cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
+          cur_difpad.LoadToGPU(difpad_batch_ptr);
 
            const size_t ngpus = ptycho_num_gpus(*raar.ptycho);
            for (int gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
@@ -251,11 +252,13 @@ void RAARRun(RAAR& raar, int iterations) {
                 rImage* current_obj_div = raar.ptycho->object_div->arrays[gpu_idx];
                 cImage* current_obj_acc = raar.ptycho->object_acc->arrays[gpu_idx];
 
-                if (cur_difpad[gpu_idx].sizez > 0) {
+                const size_t cur_difpad_zsize = raar.ptycho->rois[batch_idx]->arrays[gpu_idx]->sizez;
+
+                if (cur_difpad_zsize > 0) {
                     SetDevice(raar.ptycho->gpus, gpu_idx);
 
                     dim3 blk = raar.ptycho->exitwave->ShapeBlock();
-                    blk.z = cur_difpad[gpu_idx].sizez;
+                    blk.z = cur_difpad_zsize;
                     dim3 thr = raar.ptycho->exitwave->ShapeThread();
 
                     ROI* ptr_roi = raar.ptycho->rois[batch_idx]->Ptr(gpu_idx);
@@ -277,21 +280,19 @@ void RAARRun(RAAR& raar, int iterations) {
 
         ssc_debug("Syncing OBJ");
         objvelocity.SetGPUToZero();
-        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg); // exchanging information here?
+        raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg);
 
         ssc_debug("Applying probe");
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            //for(int itt=0; itt<3; ++itt) {
             RAARApplyProbeUpdate(raar, probevelocity,
                     raar.ptycho->probestep, raar.ptycho->probemomentum, raar.ptycho->probereg); // updates in real space
             RAARApplyObjectUpdate(raar, objvelocity,
                     raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
-            //}
         }
 
-        raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumCPU()); // calculating error?
+        raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumGPU());
 
         if (iter % 10 == 0) {
             ssc_info(format("iter {}/{} error: {}",
