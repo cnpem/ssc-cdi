@@ -227,6 +227,25 @@ void DestroyPie(Pie*& pie);
 
 void PieRun(Pie& pie, int iterations);
 
+struct PosCorrection
+{
+    rMImage* errorcounter = nullptr;
+    POptAlgorithm* ptycho = nullptr;
+    const bool isGradPm = true;
+};
+
+PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
+                                   complex* object, const dim3& objshape, ROI* rois, int numrois, int batchsize,
+                                   float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
+                                   int numobjsupp, int geometricsteps,
+                                   float probef1,
+                                   float step_obj, float step_probe,
+                                   float reg_obj, float reg_probe);
+
+
+void DestroyPosCorrection(PosCorrection*& poscorr);
+
+void PosCorrectionRun(PosCorrection& poscorr, int iterations);
 
 /**
  * Noise model to use in the LS-Maximum Likelihood optimization.
