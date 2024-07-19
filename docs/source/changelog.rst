@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.10.2] - 2024-07-18
+------------------------------
+
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~
+- Changed slice visualizer function for CAT tomo pipeline
+
 [0.10.1] - 2024-06-28
 ------------------------------
 
