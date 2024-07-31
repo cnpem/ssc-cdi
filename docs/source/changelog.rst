@@ -13,6 +13,13 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.11.0] - 2024-07-31
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added Maximum likelihood algorithm for Ptychography in python using Cupy. It optimizes either with gradient descent or conjugate gradient.
+
 [0.10.2] - 2024-07-18
 ------------------------------
 
