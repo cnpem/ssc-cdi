@@ -8,6 +8,7 @@ from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavel
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
+from .ML import ML_cupy
 from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
 random.seed(0)
@@ -299,6 +300,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     probe_positions = positions.astype(np.int32)
     probe_positions = np.roll(probe_positions,shift=1,axis=1) # change from (Y,X) to (X,Y) for the algorithms
 
+    if np.any(probe_positions < 0):
+        raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")  
+
     if 'probe_support' in input_dict:
         input_dict["probe_support_array"] = get_probe_support(input_dict,probe.shape)
     else:
@@ -326,14 +330,17 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         algo_inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
         algo_inputs['distance'] = input_dict["detector_distance"]
-        algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] 
-        algo_inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
+        try:
+            algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object']
+        except:
+            print('No regularization for object')
+        try:
+            algo_inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
+        except:
+            print('No regularization for probe')
         algo_inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
         algo_inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
 
-        # POSITION CORRECTION. TO BE DONE.
-        algo_inputs['position_correction_beta'] = 0 # if 0, does not apply position correction
-        algo_inputs['beta'] = 1 # position correction beta value
         algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
         # algo_inputs['centralize_probe'] = False # not implemented 
 
@@ -349,10 +356,12 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             algo_inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
             algo_inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
             algo_inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
-            obj, probe, algo_error = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], algo_inputs)
+            
+            obj, probe, algo_error,probe_positions = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], algo_inputs)
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] 
             
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
@@ -360,6 +369,12 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
             obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],algo_inputs)
+
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
+            algo_inputs['optimizer'] = input_dict['algorithms'][str(counter)]['optimizer'] 
+            obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
+            probe[0] = new_probe
             
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
@@ -389,6 +404,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         params={'device': input_dict["GPUs"]},
                                                         probef1=input_dict['fresnel_number'])
             
+            corrected_positions = probe_positions.copy()
             algo_error = np.expand_dims(algo_error,axis=1)
 
             obj = obj.astype(np.complex64)
@@ -531,20 +547,17 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
 
         return probe
 
-
     type_of_initial_guess = detect_variable_type_of_guess(input_dict['initial_probe']["probe"])
 
     if type_of_initial_guess == 'standard':
         
         if input_dict['initial_probe']['probe'] == 'circular':
             probe = create_circular_mask(DP_shape,input_dict['initial_probe']["radius"])
-            probe = probe*np(1j*probe)
-            if input_dict['initial_probe'][2] != 0: # propagate probe 
-                probe = fresnel_propagator_cone_beam(probe, input_dict['wavelength'],input_dict['object_pixel'], input_dict["distance_sample_focus"])
-            else:
-                pass
+            probe = probe*np.exp(1j*probe)
+            if input_dict['initial_probe']['distance']!= 0: # propagate probe 
+                probe = fresnel_propagator_cone_beam(probe, input_dict['wavelength'],input_dict['object_pixel'], input_dict['initial_probe']['distance'])
         elif input_dict['initial_probe']['probe'] == 'cross':
-            cross_width_y, border, center_square_side = input_dict['initial_probe']["cross_width"],input_dict['initial_probe']["border_padding"],input_dict['initial_probe'][center_width]
+            cross_width_y, border, center_square_side = input_dict['initial_probe']["cross_width"],input_dict['initial_probe']["border_padding"],input_dict['initial_probe']['center_width']
             probe = create_cross_mask(DP_shape,cross_width_y, border, center_square_side)
         elif input_dict['initial_probe']['probe'] == 'constant':
             probe = np.ones(DP_shape)
@@ -584,12 +597,16 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
             probe = h5py.File(path,'r')['recon/probe'][()]
         elif os.path.splitext(path)[1] == '.npy':
             probe = np.load(path) # load guess from file
-    
     elif type_of_initial_guess == 'array':
+
         probe = input_dict['initial_probe']['probe']
-    
+
     else:
         raise ValueError(f"Select an appropriate initial guess for the probe:{input_dict['initial_probe']}")
+
+    if probe.ndim == 2:
+        probe = np.expand_dims(probe, axis=0)
+        print(f'A 2D probe array was given. Adding a third dimension to the probe array: {probe.shape}')
 
     probe = probe.astype(np.complex64)
 
