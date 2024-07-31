@@ -55,7 +55,8 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
-        atomicAdd(sh_rfactor + threadIdx.x%64, sq(sqrtf(difpad)-sqrtf(wabs2)));
+        const int sigmask = (difpad < 0);
+        atomicAdd(sh_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(difpad)-sqrtf(wabs2)));
     }
 
     __syncthreads();
