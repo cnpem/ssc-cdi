@@ -86,11 +86,18 @@ def ML_cupy(data, positions, initial_obj, initial_probe, algo_inputs):
     initial_obj = cp.array(initial_obj)
     initial_probe = cp.array(initial_probe)
 
+
+
     iterations = algo_inputs['iterations']
     step_o = algo_inputs['step_object']
     step_p = algo_inputs['step_probe']
     optimizer = algo_inputs['optimizer']
     probe_support = algo_inputs['probe_support_array']
+
+    if algo_inputs["fresnel_regime"] == True:
+        pass
+    else:
+        algo_inputs['source_distance'] = None
 
     if probe_support is not None:
         probe_support = cp.array(probe_support)
