@@ -331,7 +331,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         algo_inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
         algo_inputs['distance'] = input_dict["detector_distance"]
         try:
-            algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object']
+            algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] # try because it is not mandatory for ML algorithm
         except:
             print('No regularization for object')
         try:
@@ -404,7 +404,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         params={'device': input_dict["GPUs"]},
                                                         probef1=input_dict['fresnel_number'])
             
-            corrected_positions = probe_positions.copy()
             algo_error = np.expand_dims(algo_error,axis=1)
 
             obj = obj.astype(np.complex64)
