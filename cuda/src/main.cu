@@ -149,6 +149,34 @@ extern "C"
             ssc_info("End RAAR.");
         }
     }
+
+    void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
+            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
+            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps,
+            float step_obj, float step_probe, float reg_obj, float reg_probe,
+            float probef1)
+    {
+        ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
+                    psizex, osizex, numrois, bsize, numiter));
+        {
+            std::vector<int> gpus;
+            for(int g=0; g<ngpus; g++)
+                gpus.push_back(cpugpus[g]);
+
+            IndexRois((ROI*)cpurois, numrois);
+
+            PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
+                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, probef1, step_obj, step_probe, reg_obj, reg_probe);
+
+            pk->ptycho->objmomentum = objbeta;
+            pk->ptycho->probemomentum = probebeta;
+
+            PosCorrectionRun(*pk, numiter);
+            DestroyPosCorrection(pk);
+        }
+        ssc_info("End PosCorrection.");
+    }
+
 }
 
 
