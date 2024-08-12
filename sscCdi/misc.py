@@ -479,7 +479,7 @@ def update_slice_visualizer(obj, extent=None, cmap='viridis', vmin=None, vmax=No
     plt.tight_layout()
     plt.show()
 
-def slice_visualizer(objects, extent=None, plot_type='magnitude', cmap='viridis', use_log_norm=False, figsize=(10, 7), title=''):
+def slice_visualizer2(objects, extent=None, plot_type='magnitude', cmap='viridis', use_log_norm=False, figsize=(10, 7), title=''):
     """
     Display an interactive plot to visualize different slices of multiple objects.
 
@@ -527,6 +527,119 @@ def slice_visualizer(objects, extent=None, plot_type='magnitude', cmap='viridis'
 
     display(HBox([play]))
     interact(update_plot, obj_index=slider, value_range=range_slider)
+
+def slice_visualizer(data, axis=0, type='', title='', cmap='gray', aspect_ratio='', norm=None, vmin=None, vmax=None, show_ticks=True):
+    """
+    Deploy a visualizer for exploring different slices of a 3D volume data array interactively in Jupyter notebooks.
+
+    Parameters:
+    - data (ndarray): The 3D volume data to visualize.
+    - axis (int, optional): The axis along which the slices will be taken. Default is 0.
+    - type (str, optional): The type of data representation in the visualization. It can be one of the following:
+        - '': No transformation, displays the data as is.
+        - 'real': Displays the real part of complex data.
+        - 'imag': Displays the imaginary part of complex data.
+        - 'amplitude': Displays the amplitude of complex data.
+        - 'phase': Displays the phase of complex data.
+    - title (str, optional): The title of the visualization window. Default is an empty string.
+    - cmap (str, optional): The colormap used for rendering the slices. Default is 'gray'.
+    - aspect_ratio (str, optional): The aspect ratio of the plot. Can be a string (e.g., 'equal', 'auto') or a numeric value.
+    - norm (str, optional): The normalization of color scaling, it can be 'normalize', 'LogNorm', or None. Default is None.
+    - vmin (float, optional): The minimum data value for normalization. If None, it is automatically calculated from the data.
+    - vmax (float, optional): The maximum data value for normalization. If None, it is automatically calculated from the data.
+    - show_ticks (bool, optional): Whether to show tick labels on the image. Default is True.
+
+    Returns:
+    - box (ipywidgets.VBox): A VBox widget containing the visualization with an interactive slider to control the slice shown.
+
+    The function uses Matplotlib for plotting, ipywidgets for interactivity, and NumPy for data manipulation.
+    """
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as colors
+    import matplotlib.cm
+
+    import ipywidgets as widgets
+    from ipywidgets import fixed
+
+    def get_vol_slice(volume, axis, frame):
+        selection = [slice(None)]*3
+        selection[axis] = frame
+        frame_data = volume[(*selection,)]
+        if np.iscomplexobj(frame_data):
+            if type in ['real', 'r']:
+                frame_data = np.real(frame_data)
+            elif type in ['imag', 'imaginary', 'i']:
+                frame_data = np.imag(frame_data)
+            elif type in ['amplitude', 'abs', 'magnitude']:
+                frame_data = np.abs(frame_data)
+            elif type in ['phase', 'angle']:
+                frame_data = np.angle(frame_data)
+            else:
+                frame_data = np.abs(frame_data)  # Default to magnitude if no valid type is provided
+        return frame_data
+
+    def get_colornorm(frame, vmin, vmax, norm):
+        if norm is None:
+            return None
+        elif norm == "normalize":
+            return colors.Normalize(vmin=vmin if vmin is not None else frame.min(), vmax=vmax if vmax is not None else frame.max())
+        elif norm == "LogNorm":
+            return colors.LogNorm()
+        else:
+            raise ValueError("Invalid norm value: {}".format(norm))
+
+    output = widgets.Output()
+    with output:
+        volume_slice = get_vol_slice(data, axis=0, frame=0)
+        figure, ax = plt.subplots(dpi=100)
+        im = ax.imshow(volume_slice, cmap=cmap)
+        if not show_ticks:
+            ax.set_xticks([])
+            ax.set_yticks([])
+        figure.canvas.draw_idle()
+        figure.canvas.header_visible = False
+        colorbar = plt.colorbar(
+            matplotlib.cm.ScalarMappable(
+                norm=get_colornorm(volume_slice, vmin, vmax, norm),
+                cmap=cmap))
+        plt.show()
+
+    def update_imshow(figure, subplot, frame_number, axis=0, title="", cmap='gray', norm=None, aspect_ratio='', vmin=None, vmax=None, show_ticks=True):
+        subplot.clear()
+
+        volume_slice = get_vol_slice(data, axis, frame_number)
+        colornorm = get_colornorm(volume_slice, vmin, vmax, norm)
+        im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm)
+
+        if title != "":
+            subplot.set_title(f'{title}')
+        figure.canvas.draw_idle()
+
+        if aspect_ratio != '':
+            subplot.set_aspect(aspect_ratio)
+        
+        if not show_ticks:
+            subplot.set_xticks([])
+            subplot.set_yticks([])
+
+        colorbar.update_normal(im)
+
+    slider_layout = widgets.Layout(width='20%')
+    selection_slider = widgets.IntSlider(min=0, max=data.shape[axis], step=1, description="Slice", value=0, layout=slider_layout)
+    play = widgets.Play(min=0, max=data.shape[axis]-1, step=1, interval=500, description="Press play", layout=widgets.Layout(width='20%'))
+
+    widgets.jslink((play, 'value'), (selection_slider, 'value'))
+
+    selection_slider.max, selection_slider.value = data.shape[axis] - 1, data.shape[axis] // 2
+    widgets.interactive_output(update_imshow, {'figure': fixed(figure), 'title': fixed(title), 'subplot': fixed(ax), 'axis': fixed(axis), 'cmap': fixed(cmap), 'norm': fixed(norm), 'aspect_ratio': fixed(aspect_ratio), 'vmin': fixed(vmin), 'vmax': fixed(vmax), 'show_ticks': fixed(show_ticks), 'frame_number': selection_slider})
+    box = widgets.VBox([widgets.VBox([play,selection_slider]), output])
+
+    return box
+
+
+
 
 def amplitude_and_phase_slice_visualizer(data, pixel_values, axis=0, title='', cmap1='viridis', cmap2='hsv', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
     """

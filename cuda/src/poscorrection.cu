@@ -55,7 +55,8 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
-        atomicAdd(sh_rfactor + threadIdx.x%64, sq(sqrtf(difpad)-sqrtf(wabs2)));
+        const int sigmask = (difpad < 0);
+        atomicAdd(sh_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(difpad)-sqrtf(wabs2)));
     }
 
     __syncthreads();
@@ -65,15 +66,6 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
         atomicAdd(rfactors + blockIdx.z, sh_rfactor[0]);
 }
 
-/**
-* Implements positioning correction on top of Alternated Projections. Currently does not work well with background retrieval.
-* */
-struct PosCorrection
-{
-    rMImage* errorcounter = nullptr;
-    POptAlgorithm* ptycho = nullptr;
-    const bool isGradPm = true;
-};
 }
 
 PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
@@ -297,34 +289,3 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
   ssc_info(format("End GL: {} ms", ssc_diff_time(time0, time1)));
 }
 
-
-
-extern "C"
-{
-void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-	int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-	float* objsupport, float* probesupport, int numobjsupport, int geometricsteps,
-    float step_obj, float step_probe, float reg_obj, float reg_probe,
-    float probef1)
-{
-	ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
-            psizex, osizex, numrois, bsize, numiter));
-	{
-	std::vector<int> gpus;
-    for(int g=0; g<ngpus; g++)
-		gpus.push_back(cpugpus[g]);
-
-        IndexRois((ROI*)cpurois, numrois);
-
-    PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, probef1, step_obj, step_probe, reg_obj, reg_probe);
-
-	pk->ptycho->objmomentum = objbeta;
-	pk->ptycho->probemomentum = probebeta;
-
-	PosCorrectionRun(*pk, numiter);
-    DestroyPosCorrection(pk);
-    }
-	ssc_info("End PosCorrection.");
-}
-}

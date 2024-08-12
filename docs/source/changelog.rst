@@ -13,6 +13,27 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.11.1] - 2024-08-01
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixed bug for corrected positions coming out of AP_CUDA engine
+- Temporary fix for missing source_distance key in input dictionary
+
+[0.11.0] - 2024-07-31
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added Maximum likelihood algorithm for Ptychography in python using Cupy. It optimizes either with gradient descent or conjugate gradient.
+
+[0.10.2] - 2024-07-18
+------------------------------
+
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~
+- Changed slice visualizer function for CAT tomo pipeline
+
 [0.10.1] - 2024-06-28
 ------------------------------
 
