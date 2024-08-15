@@ -31,6 +31,10 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
 
     """    
 
+    if len(angles.shape) == 1:
+        numbering = np.linspace(0,angles.shape[0]-1,angles.shape[0])
+        angles = np.vstack((numbering,angles)).T
+
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
