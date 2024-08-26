@@ -27,8 +27,6 @@ For support in **ssc-cdi**, contact the Scientific Computing group via [gcc@lnls
 
 	Alan Z. Peixinho (alan.peixinho@lnls.br)
 
-	Camila F. A. Lages (camila.lages@lnls.br)
-
 	Eduardo X. Miqueles	(eduardo.miqueles@lnls.br)
 
 	Mauro B. Junior (mauro.brandao@lnls.br)
@@ -39,9 +37,12 @@ For support in **ssc-cdi**, contact the Scientific Computing group via [gcc@lnls
 
 Former contributors
 
-	Julia C. Carvalho (julia.carvalho@lnls.br)
+	Camila F. A. Lages
 
 	Giovanni L. Baraldi
+
+	Julia C. Carvalho (julia.carvalho@lnls.br)
+
 
 
 	
