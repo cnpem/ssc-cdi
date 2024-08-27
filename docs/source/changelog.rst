@@ -13,6 +13,11 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.11.2] - 2024-08-27
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixed bug for PIE when considering incoherent_modes > 1
 
 [0.11.1] - 2024-08-01
 ------------------------------
