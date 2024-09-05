@@ -1,17 +1,15 @@
 Academic License Agreement
 ==========================
 
- Introduction
-
 This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and Materials (CNPEM) (hereafter "LICENSOR") will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for academic, non-commercial purposes only (hereafter "LICENSE") to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM").
 
- Terms and Conditions of the LICENSE
+ Terms and Conditions of the LICENSE:
 
 1. LICENSOR grants to LICENSEE a royalty-free, non-exclusive license to use the PROGRAM for academic, non-commercial purposes, upon the terms and conditions hereinafter set out and until termination of this license as set forth below.
 
 2. LICENSEE acknowledges that the PROGRAM is a research tool still in the development stage. The PROGRAM is provided without any related services, improvements or warranties from LICENSOR and that the LICENSE is entered into in order to enable others to utilize the PROGRAM in their academic activities. It is the LICENSEE’s responsibility to ensure its proper use and the correctness of the results.
 
-3. THE PROGRAM IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF ANY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS. IN NO EVENT SHALL THE LICENSOR, THE AUTHORS OR THE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE PROGRAM OR THE USE OF THE PROGRAM OR OTHER DEALINGS IN THE PROGRAM.
+3. THE PROGRAM IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF PERFORMANCE, USE AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL THE LICENSOR, THE AUTHORS OR THE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE PROGRAM OR THE USE OF THE PROGRAM.
 
 4. LICENSEE agrees that it will use the PROGRAM and any modifications, improvements, or derivatives of the PROGRAM that the LICENSEE may create (collectively, "IMPROVEMENTS") solely for academic, non-commercial purposes and that any copy of the PROGRAM or derivatives thereof shall be distributed only under the same license as the PROGRAM. The terms "academic, non-commercial", as used in this Agreement, mean academic or other scholarly research which (a) is not undertaken for profit, or (b) is not intended to produce works, services, or data for commercial use, or (c) is neither conducted, nor funded, by a person or an entity engaged in the commercial use, application or exploitation of works similar to the PROGRAM.
 
@@ -25,7 +23,7 @@ This license agreement sets forth the terms and conditions under which the Brazi
 
 8. The LICENSE shall not be construed to confer any rights upon the LICENSEE by implication or otherwise except as specifically set forth herein.
 
-9. DISCLAIMER: LICENSEE shall be aware that Phase Focus Limited of Sheffield, UK has an international portfolio of patents and pending applications relating to ptychography, and that the PROGRAM may be capable of being used in circumstances which may fall within the claims of one or more of the Phase Focus patents (see https://www.phasefocus.com/patents). The LICENSOR explicitly declares that it will not indemnify the LICENSEE in the event that Phase Focus or any other third party initiates legal action against the LICENSEE due to the use of the PROGRAM. The LICENSOR shall not be held liable for any claims, damages, or losses arising from or related to the use of the PROGRAM. The LICENSEE is solely responsible for ensuring that their use of the PROGRAM does not infringe on any patents or intellectual property rights and must verify and address any potential patent claims independently.
+9. LICENSEE SHALL BE AWARE THAT PHASE FOCUS LIMITED OF SHEFFIELD, UK HAS AN INTERNATIONAL PORTFOLIO OF PATENTS AND PENDING APPLICATIONS RELATING TO PTYCHOGRAPHY, AND THAT THE PROGRAM MAY BE CAPABLE OF BEING USED IN CIRCUMSTANCES WHICH MAY FALL WITHIN THE CLAIMS OF ONE OR MORE OF THE PHASE FOCUS PATENTS (SEE HTTPS://WWW.PHASEFOCUS.COM/PATENTS). THE LICENSOR EXPLICITLY DECLARES THAT IT WILL NOT INDEMNIFY THE LICENSEE IN THE EVENT THAT PHASE FOCUS OR ANY OTHER THIRD PARTY INITIATES LEGAL ACTION AGAINST THE LICENSEE DUE TO THE USE OF THE PROGRAM. THE LICENSOR, THE AUTHORS OR THE COPYRIGHT HOLDERS SHALL NOT BE HELD LIABLE FOR ANY CLAIMS, DAMAGES, OR LOSSES ARISING FROM OR RELATED TO DEALINGS INVOLVING THE PROGRAM. THE LICENSOR MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THE MERCHANTABILITY OF THE PROGRAM. THE LICENSEE IS SOLELY RESPONSIBLE FOR ENSURING THAT THEIR USE OF THE PROGRAM DOES NOT INFRINGE ON ANY PATENTS COPYRIGHTS, TRADEMARKS, OR OTHER INTELLECTUAL PROPERTY RIGHTS AND MUST VERIFY AND ADDRESS ANY POTENTIAL PATENT CLAIMS INDEPENDENTLY.
 
 10. This Agreement shall be governed by the material laws of Brazil and any dispute arising out of this Agreement or use of the PROGRAM shall be brought before the courts of Brazil.
 
