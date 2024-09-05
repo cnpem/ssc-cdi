@@ -23,6 +23,10 @@ See examples/ folder for Python notebooks that show how to use package.
 
 For support in **ssc-cdi**, contact the Scientific Computing group via [gcc@lnls.br](mailto:gcc@lnls.br) or one of its members:
 
+## License
+
+See LICENSE file.
+
 ## Contributors
 
 	Alan Z. Peixinho (alan.peixinho@lnls.br)
