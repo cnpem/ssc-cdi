@@ -143,7 +143,6 @@ struct RAAR {
     POptAlgorithm* ptycho = nullptr;
     std::vector<hcMImage*> phistack;  //!< Stack of current exitwave estimates. can become very huge
     const bool isGradPm = false;
-    complex* wavefront = nullptr;
     float beta = 0.9f;
 };
 

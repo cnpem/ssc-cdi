@@ -118,7 +118,6 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
 
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
-    raar->wavefront = new complex[wavefront_size];
 
     const size_t num_batches = ptycho_num_batches(*raar->ptycho);
     for (int i = 0; i < num_batches; i++) {

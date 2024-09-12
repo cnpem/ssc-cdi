@@ -1050,6 +1050,25 @@ struct MImage : public MultiGPU {
         }
     }
 
+    void LoadFromGPU(Type* data) {
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            arrays[g]->CopyTo(data + offsets[g]);
+        }
+    }
+
+    void LoadFromGPU(Type* data, const size_t copysize) {
+        size_t rem_copysize = copysize;
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
+            if (gpu_copy_size <= 0)
+                return;
+            arrays[g]->CopyTo(data + offsets[g], 0, gpu_copy_size);
+            rem_copysize -= gpu_copy_size;
+        }
+    }
+
     void LoadToGPU() { MGPULOOP(arrays[g]->LoadToGPU();); }
     void LoadFromGPU() { MGPULOOP(arrays[g]->LoadFromGPU();); }
 
