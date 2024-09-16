@@ -1,3 +1,13 @@
+# Academic License Agreement:
+#
+# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
+#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
+# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
+#
+# For the complete LICENSE description see LICENSE file available within the root directory of this project.
+##################################################################################################################################################################
+
+
 import sys
 import cupy as cp
 from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support

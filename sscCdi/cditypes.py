@@ -1,4 +1,14 @@
-#We use the one encoding: utf8
+# Academic License Agreement:
+#
+# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
+#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
+# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
+#
+# For the complete LICENSE description see LICENSE file available within the root directory of this project.
+##################################################################################################################################################################
+
+
+# We use the one encoding: utf8
 import ctypes
 from ctypes import c_int, c_void_p, c_float
 import ctypes.util
