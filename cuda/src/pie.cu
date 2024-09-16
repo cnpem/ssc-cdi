@@ -177,6 +177,7 @@ void PieRun(Pie& pie, int iterations) {
     dim3 probeshape = pie.ptycho->probe->Shape();
     dim3 objectshape = pie.ptycho->object->Shape();
     dim3 difpadshape = pie.ptycho->difpadshape;
+    dim3 roishape = dim3(probeshape.x, probeshape.y, 1);
 
     SetDevice(pie.ptycho->gpus, gpu);
 
@@ -234,7 +235,7 @@ void PieRun(Pie& pie, int iterations) {
             const float probe_abs2_max = probe->maxAbs2();
             const dim3 pos_offset(pie.ptycho->cpurois[random_pos_idx].x,
                     pie.ptycho->cpurois[random_pos_idx].y, 0);
-            obj->CopyRoiTo(obj_box, pos_offset, probeshape);
+            obj->CopyRoiTo(obj_box, pos_offset, roishape);
             const float obj_abs2_max = obj_box.maxAbs2();
 
             //get max without going to CPU (will we need this to achieve full scalar???)
