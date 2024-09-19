@@ -36,7 +36,7 @@ ext = '.so'
 
 def load_library(lib, ext):
     _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lib + ext
-    print("ssc-cdi: Trying to load library:", _path)
+    #print("ssc-cdi: Trying to load library:", _path)
     try:
         lib = ctypes.CDLL(_path)
         return lib
