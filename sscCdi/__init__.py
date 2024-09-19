@@ -5,7 +5,7 @@ from ._version import __version__
 try:
     from .cditypes import *
     import atexit
-    log_start(level="error")
+    log_start(level="info")
     atexit.register(log_stop)
 
 except:
@@ -15,5 +15,3 @@ from .cditypes import *
 from .processing import *
 from .ptycho import *
 from .misc import *
-from .beamlines.gui_jupyter import *
-from .beamlines import *
