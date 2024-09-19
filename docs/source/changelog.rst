@@ -13,8 +13,6 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
-<<<<<<< HEAD
-=======
 
 [0.13.0] - 2024-09-19
 ------------------------------
@@ -23,7 +21,6 @@ Added
 - Initial merge of the 3d planewave CDI code. 
 
 
->>>>>>> merge_planewave
 [0.12.0] - 2024-09-19
 ------------------------------
 Changed
