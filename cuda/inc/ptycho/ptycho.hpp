@@ -46,6 +46,8 @@ struct POptAlgorithm {
     dim3 difpadshape;   //!< Shape of all scattering intensities.
     float probef1 = 1;  //!< Fresnel number to be applied by probepropagator.
 
+    float pixelsize_m, wavelength_m;
+
     float* cpudifpads = nullptr;   //!< Copy of difpads' memory location passed to the algorithm.
     complex* cpuobject = nullptr;  //!< Copy of the object's memory location passed to the algorithm.
     complex* cpuprobe = nullptr;   //!< Copy of the probe's memory location passed to the algorithm.
@@ -120,7 +122,8 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp,
-                                   float probef1, float step_obj, float step_probe, float reg_obj, float reg_probe);
+                                   float wavelength_m, float pixelsize_m, float distance_m,
+                                   float step_obj, float step_probe, float reg_obj, float reg_probe);
 
 
 template <typename dtype>
@@ -147,7 +150,7 @@ struct RAAR {
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
-                 float probef1,
+                 float wavelength_m, float pixelsize_m, float distance_m,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
 
@@ -190,7 +193,7 @@ void GLimRun(GLim& glim, int iter);
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
-                 float probef1,
+                 float wavelength_m, float pixelsize_m, float distance_m,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
 
@@ -211,7 +214,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        float probef1,
+        float wavelength_m, float pixelsize_m, float distance_m,
         float step_object, float step_probe,
         float reg_obj, float reg_probe);
 
@@ -231,7 +234,7 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
                                    complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp,
-                                   float probef1,
+                                   float wavelength_m, float pixelsize_m, float distance_m,
                                    float step_obj, float step_probe,
                                    float reg_obj, float reg_probe);
 

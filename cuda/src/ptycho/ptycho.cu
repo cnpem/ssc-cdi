@@ -273,7 +273,8 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
 POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
             complex* _object, const dim3& objshape, Position* _rois, int numrois, int batchsize,
             float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
-            int numobjsupp, float probef1,
+            int numobjsupp,
+            float wavelength_m, float pixelsize_m, float distance_m,
             float step_obj, float step_probe,
             float reg_obj, float reg_probe) {
 
@@ -283,7 +284,9 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
       ssc_debug("Initializing algorithm.");
             ssc_debug("Enabling P2P");
 
-            ptycho->probef1 = probef1;
+            ptycho->pixelsize_m = pixelsize_m;
+            ptycho->wavelength_m = wavelength_m;
+
             EnablePeerToPeer(ptycho->gpus);
 
             ptycho->objreg = reg_obj;
@@ -373,7 +376,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
             ssc_debug("Computing I0");
             SetDevice(gpus, 0);
             ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
-            ptycho->probepropagator = new ASM();
+            ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);
 
             ptycho->object_div = new rMImage(ptycho->object->Shape(), true, gpus);
             ptycho->object_acc = new cMImage(ptycho->object->Shape(), true, gpus);

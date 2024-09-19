@@ -16,7 +16,7 @@ class Propagator {
     /**
      * Applies propagation to given pointers.
      * */
-    virtual void Propagate(complex* owave, complex* iwave, dim3 shape, float amount) = 0;
+    virtual void Propagate(complex* owave, complex* iwave, dim3 shape, float distance) = 0;
     /**
      * Makes "shape" a new possible propagation plan.
      * */
@@ -47,6 +47,8 @@ class Fraunhoffer : public Propagator {
  * * wavelength).
  * */
 class ASM : public Fraunhoffer {
+    float wavelength_m, pixelsize_m;
    public:
+    ASM(float wavelength_m, float pixelsize_m);
     virtual void Propagate(complex* owave, complex* iwave, dim3 shape, float amount) override;
 };

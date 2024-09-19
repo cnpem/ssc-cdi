@@ -412,7 +412,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         probe=probe,
                                                         probesupp = algo_inputs['probe_support_array'],
                                                         params={'device': input_dict["GPUs"]},
-                                                        probef1=input_dict['fresnel_number'])
+                                                        wavelength_m=input_dict["wavelength"],
+                                                        pixelsize_m=input_dict["object_pixel"],
+                                                        distance_m=input_dict["distance_sample_focus"])
             
             algo_error = np.expand_dims(algo_error,axis=1)
 
@@ -447,7 +449,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             probe=probe,
                                                             probesupp = algo_inputs['probe_support_array'],
                                                             params={'device': input_dict["GPUs"]},
-                                                            probef1=input_dict['fresnel_number'])
+                                                            wavelength_m=input_dict["wavelength"],
+                                                            pixelsize_m=input_dict["object_pixel"],
+                                                            distance_m=input_dict["distance_sample_focus"])
+
                                 
             algo_error = np.expand_dims(algo_error,axis=1)
 
@@ -480,8 +485,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                                     probe=probe,
                                                                     probesupp = algo_inputs['probe_support_array'],
                                                                     params={'device': input_dict["GPUs"]},
-                                                                    probef1=input_dict['fresnel_number'])
-            
+                                                                    wavelength_m=input_dict["wavelength"],
+                                                                    pixelsize_m=input_dict["object_pixel"],
+                                                                    distance_m=input_dict["distance_sample_focus"])
+
             corrected_positions = probe_positions.copy()
             algo_error = np.expand_dims(algo_error,axis=1)
 

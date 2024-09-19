@@ -54,8 +54,8 @@ try:
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int,
-        c_float, c_float, c_float, c_float,
-        c_float
+        c_float, c_float, c_float,
+        c_float, c_float, c_float, c_float
     ]
     libcdi.glcall.restype = None
     libcdi.raarcall.argtypes = [
@@ -64,7 +64,7 @@ try:
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int,
         c_float, c_float, c_float, c_float,
-        c_float, c_float
+        c_float, c_float, c_float, c_float
     ]
     libcdi.raarcall.restype = None
     libcdi.poscorrcall.argtypes = [
@@ -73,7 +73,7 @@ try:
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int,
         c_float, c_float, c_float, c_float,
-        c_float
+        c_float, c_float, c_float
     ]
     libcdi.poscorrcall.restype = None
     libcdi.piecall.argtypes = [
@@ -225,7 +225,9 @@ def RAAR(obj: np.ndarray,
          step_probe: float = 0.5,
          reg_obj: float = 1e-3,
          reg_probe: float = 1e-3,
-         probef1: float = 0.0,
+         wavelength_m: float = 0.0,
+         pixelsize_m: float = 0.0,
+         distance_m: float = 0.0,
          params: dict = {}):
     """ Ptychography RAAR algorithm.
 
@@ -315,7 +317,8 @@ def RAAR(obj: np.ndarray,
                     objsuppptr, probesuppptr, numobjsupport,
                     c_float(step_obj), c_float(step_probe),
                     c_float(reg_obj), c_float(reg_probe),
-                    c_float(probef1), c_float(beta))
+                    c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m),
+                    c_float(beta))
 
     return obj, probe, rfactor, rois
 
@@ -335,7 +338,9 @@ def AP(obj: np.ndarray,
        step_probe: float = 0.5,
        reg_obj: float = 1e-3,
        reg_probe: float = 1e-3,
-       probef1: float = 0.0,
+       wavelength_m: float = 0.0,
+       pixelsize_m: float = 0.0,
+       distance_m: float = 0.0,
        params: dict = {}):
     """ Ptychography Alternate Projections algorithm.
 
@@ -413,7 +418,7 @@ def AP(obj: np.ndarray,
                   probesuppptr, numobjsupport, c_int(flyscansteps),
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe),
-                  c_float(probef1))
+                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
     return obj, probe, rfactor, rois
 
@@ -432,7 +437,9 @@ def PosCorrection(obj: np.ndarray,
                   step_probe: float = 0.5,
                   reg_obj: float = 1e-3,
                   reg_probe: float = 1e-3,
-                  probef1: float = 0.0,
+                  wavelength_m: float = 0.0,
+                  pixelsize_m: float = 0.0,
+                  distance_m: float = 0.0,
                   params: dict = {}):
     """ Ptychography algorithm for positions correction.
 
@@ -511,7 +518,7 @@ def PosCorrection(obj: np.ndarray,
                        c_int(flyscansteps),
                        c_float(step_obj), c_float(step_probe),
                        c_float(reg_obj),c_float(reg_probe),
-                       c_float(probef1))
+                       c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
     return obj, probe, rfactor, rois
 
