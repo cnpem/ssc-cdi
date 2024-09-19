@@ -148,7 +148,7 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
                     dim3 blk = ptycho.exitwave->ShapeBlock(); blk.z = difpadsizez;
                     dim3 thr = ptycho.exitwave->ShapeThread();
 
-                    Image2D<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
+                    Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
                     KSideExitwave<<<blk,thr>>>(*ptycho.exitwave->arrays[g],
                             *ptycho.probe->arrays[g],
                             *ptycho.object->arrays[g],
@@ -244,7 +244,7 @@ void PosCorrectionRun(PosCorrection& poscorr, int iterations) {
           blk.z = difpadsizez;
           dim3 thr = ptycho.exitwave->ShapeThread();
 
-          Image2D<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
+          Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
 
           KGLExitwave<<<blk, thr>>>(*ptycho.exitwave->arrays[g],
                   *ptycho.probe->arrays[g],

@@ -242,7 +242,7 @@ void RAARRun(RAAR& raar, int iterations) {
                 cImage* current_exit_wave = raar.ptycho->exitwave->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];
                 cImage* current_probe = raar.ptycho->probe->arrays[gpu_idx];
-                Image2D<complex16>* current_measurement = raar.phistack[batch_idx]->arrays[gpu_idx];
+                hcImage* current_measurement = raar.phistack[batch_idx]->arrays[gpu_idx];
                 rImage* current_obj_div = raar.ptycho->object_div->arrays[gpu_idx];
                 cImage* current_obj_acc = raar.ptycho->object_acc->arrays[gpu_idx];
 
