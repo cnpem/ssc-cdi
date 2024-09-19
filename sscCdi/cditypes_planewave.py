@@ -25,7 +25,7 @@ nthreads = multiprocessing.cpu_count()
 def load_library(lib, ext):
 #     try:
     _path = glob.glob(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lib + ext)
-    print("ssc-cdi: Trying to load library:", _path)
+    #print("ssc-cdi: Trying to load library:", _path)
     if isinstance(_path, list):
         _path = _path[0] 
     library = ctypes.CDLL(_path) 
