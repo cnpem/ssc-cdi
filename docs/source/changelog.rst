@@ -13,6 +13,14 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+
+[0.13.0] - 2024-09-19
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Initial merge of the 3d planewave CDI code. 
+
+
 [0.12.0] - 2024-09-19
 ------------------------------
 Changed
@@ -517,3 +525,4 @@ Added
 Changed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Changed number of possible GPUs for CAT interfaces for 5 at Cluster and 6 at Local since restructuring of the machines
+
