@@ -104,7 +104,6 @@ def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[c_void_p, list[c_int]]:
 
 def sanitize_rois(rois, obj, difpads, probe) -> np.ndarray:
 
-    import pdb; pdb.set_trace()
     rois = rois.astype('float32')
 
     if rois.shape[0] != difpads.shape[0]:

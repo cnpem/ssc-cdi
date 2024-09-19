@@ -127,7 +127,7 @@ void GLimRun(GLim& glim, int iterations) {
                   blk.z = difpadsizez;
                   dim3 thr = ptycho.exitwave->ShapeThread();
 
-                  Image2D<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
+                  Image<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
                   KGLExitwave<<<blk, thr>>>(*ptycho.exitwave->arrays[g],
                           *ptycho.probe->arrays[g],
                           *ptycho.object->arrays[g], ptr_roi);
