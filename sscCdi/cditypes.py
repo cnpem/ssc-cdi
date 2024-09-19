@@ -35,19 +35,19 @@ ext = '.so'
 
 
 def load_library(lib, ext):
-    _path = os.path.dirname(
-        os.path.abspath(__file__)) + os.path.sep + lib + ext
+    _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lib + ext
+    print("ssc-cdi: Trying to load library:", _path)
     try:
         lib = ctypes.CDLL(_path)
         return lib
-    except:
-        pass
+    except Exception as e:
+        print(f"ssc-cdi: Failed to load library {_path}: {e}")
     return None
-
 
 libcdi = load_library(_lib, ext)
 
 try:
+
 
     libcdi.glcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
