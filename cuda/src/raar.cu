@@ -11,7 +11,7 @@ extern "C" {
 /**
  * CUDA Kernel. Computes the real space reflector.
  * */
-__global__ void k_RAAR_reflect_Rspace(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,  const GArray<complex16> wavefront, const ROI *p_rois, float objbeta) {
+__global__ void k_RAAR_reflect_Rspace(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,  const GArray<complex16> wavefront, const Position *p_rois, float objbeta) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= probe.shape.x) return;
@@ -37,7 +37,7 @@ __global__ void k_RAAR_reflect_Rspace(GArray<complex> exitwave, const GArray<com
  * */
 __global__ void k_RAAR_wavefront_update(const GArray<complex> object, const GArray<complex> probe, GArray<complex> object_acc,
                         GArray<float> object_div, const GArray<complex> p_pm, GArray<complex16> phistack,
-                        const ROI *p_rois, float objbeta) {
+                        const Position *p_rois, float objbeta) {
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= probe.shape.x) return;
 
@@ -74,7 +74,7 @@ __global__ void k_RAAR_wavefront_update(const GArray<complex> object, const GArr
  * CUDA Kernel. Projects phistack to the object subspace.
  * */
 __global__ void KRAAR_ObjPs(const GArray<complex> object, const GArray<complex> probe,
-        const GArray<complex16> phistack, const GArray<ROI> rois,
+        const GArray<complex16> phistack, const GArray<Position> rois,
         GArray<complex> object_acc, GArray<float> object_div) {
     const int objidx = blockIdx.x * blockDim.x + threadIdx.x;
     if (objidx >= object.shape.x) return;
@@ -104,16 +104,16 @@ __global__ void KRAAR_ObjPs(const GArray<complex> object, const GArray<complex> 
 }
 
 RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim3 &probeshape, complex *object,
-                 const dim3 &objshape, ROI *rois, int numrois, int batchsize, float *rfact,
+                 const dim3 &objshape, Position *rois, int numrois, int batchsize, float *rfact,
                  const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp,
-                 int geometricsteps, float probef1,
+                 float probef1,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     RAAR *raar = new RAAR();
 
     raar->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
-                            gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
+                            gpus, objsupp, probesupp, numobjsupp, probef1,
                             step_obj, step_probe, reg_obj, reg_probe);
 
     const size_t wavefront_size = raar->ptycho->probe->size
@@ -121,7 +121,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
 
     const size_t num_batches = ptycho_num_batches(*raar->ptycho);
     for (int i = 0; i < num_batches; i++) {
-        size_t batchsize = raar->ptycho->rois[i]->arrays[0]->sizez;
+        size_t batchsize = raar->ptycho->positions[i]->arrays[0]->sizez;
         auto *newphistack =
             new hcMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,
                         batchsize * raar->ptycho->probe->sizez, true,
@@ -155,15 +155,15 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity, float stepsize, float m
     dim3 blk = raar.ptycho->object->ShapeBlock();
     dim3 thr = raar.ptycho->object->ShapeThread();
 
-    for (int section = 0; section < raar.ptycho->rois.size(); section++) {
+    for (int section = 0; section < raar.ptycho->positions.size(); section++) {
 
         for (int g = 0; g < raar.ptycho->gpus.size(); g++)
-            if (raar.ptycho->rois[section]->arrays[g]->sizez > 0) {
+            if (raar.ptycho->positions[section]->arrays[g]->sizez > 0) {
                 SetDevice(raar.ptycho->gpus, g);
 
                 KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0], raar.ptycho->probe->arrays[g][0],
                                           raar.phistack[section]->arrays[g][0],
-                                          raar.ptycho->rois[section]->arrays[g][0],
+                                          raar.ptycho->positions[section]->arrays[g][0],
                                           raar.ptycho->object_acc->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
 
             }
@@ -207,11 +207,6 @@ void RAARRun(RAAR& raar, int iterations) {
 
     init_wavefront(raar);
 
-    if (raar.ptycho->geometricsteps > 1) { // falta entender o que é geometricsteps
-        ssc_error("Error: RAAR does not support flyscan");
-        exit(-1); // termina o programa. Melhor seria subir o erro e python decidir o que fazer.
-    }
-
     cImage objvelocity(raar.ptycho->object->Shape()); // imagem complex com mesmo shape de object
     cImage probevelocity(raar.ptycho->probe->Shape());
     objvelocity.SetGPUToZero();
@@ -233,7 +228,7 @@ void RAARRun(RAAR& raar, int iterations) {
         const size_t num_batches = ptycho_num_batches(*raar.ptycho);
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
-          const size_t difpad_batch_zsize = raar.ptycho->rois[batch_idx]->sizez;
+          const size_t difpad_batch_zsize = raar.ptycho->positions[batch_idx]->sizez;
           const size_t global_idx = batch_idx * raar.ptycho->multibatchsize;
           float *difpad_batch_ptr = raar.ptycho->cpudifpads +
               global_idx * difpadshape.x * difpadshape.y;
@@ -251,7 +246,7 @@ void RAARRun(RAAR& raar, int iterations) {
                 rImage* current_obj_div = raar.ptycho->object_div->arrays[gpu_idx];
                 cImage* current_obj_acc = raar.ptycho->object_acc->arrays[gpu_idx];
 
-                const size_t cur_difpad_zsize = raar.ptycho->rois[batch_idx]->arrays[gpu_idx]->sizez;
+                const size_t cur_difpad_zsize = raar.ptycho->positions[batch_idx]->arrays[gpu_idx]->sizez;
 
                 if (cur_difpad_zsize > 0) {
                     SetDevice(raar.ptycho->gpus, gpu_idx);
@@ -260,7 +255,7 @@ void RAARRun(RAAR& raar, int iterations) {
                     blk.z = cur_difpad_zsize;
                     dim3 thr = raar.ptycho->exitwave->ShapeThread();
 
-                    ROI* ptr_roi = raar.ptycho->rois[batch_idx]->Ptr(gpu_idx);
+                    Position* ptr_roi = raar.ptycho->positions[batch_idx]->Ptr(gpu_idx);
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.beta);
 
