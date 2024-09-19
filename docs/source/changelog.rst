@@ -13,6 +13,12 @@ Types of changes:
  - *Security* in case of vulnerabilities.
  - *Documentation* added or modified documentation
 
+[0.12.0] - 2024-09-19
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Removed restoration module and beamline specific codes (pipelines) from sscCdi. These are now part of the ssc-cdi-apps package.
+
 [0.11.2] - 2024-08-27
 ------------------------------
 Fixed
