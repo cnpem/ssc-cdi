@@ -164,58 +164,6 @@ extern "C" {
   void methods(ssc_pwcdi_method *algorithms,
                          int nalgorithms);
 
-
-  // experimental
-  __global__ void linear_conv(cufftComplex *output_data,
-                              cufftComplex *input_data, 
-                              cufftComplex *kernel,
-                              int data_width, 
-                              int data_height, 
-                              int data_depth,
-                              int kernel_width,
-                              int kernel_height,
-                              int kernel_depth);
-
-  void test_linear_conv(cufftComplex *output_data,
-                        cufftComplex *input_data,
-                        cufftComplex *kernel,
-                        int data_width,
-                        int data_height,
-                        int data_depth,
-                        int kernel_width,
-                        int kernel_height,
-                        int kernel_depth);
-
-  void test_linear_conv_optimized(cufftComplex *output_data,
-                                  cufftComplex *input_data,
-                                  cufftComplex *kernel,
-                                  int data_width,
-                                  int data_height,
-                                  int data_depth,
-                                  int kernel_width,
-                                  int kernel_height,
-                                  int kernel_depth);
-
-
-  void separableConvolution3D(cufftComplex *output, 
-                              cufftComplex *input, 
-                              cufftComplex *kernel, 
-                              int width, 
-                              int height, 
-                              int depth, 
-                              int kernelLength);
-      
-  void m_test_linear_conv(cufftComplex *output, 
-                          cufftComplex *input, 
-                          cufftComplex *kernel, 
-                          int width, 
-                          int height, 
-                          int depth, 
-                          int kernelLength,
-                          int nGPUs,
-                          int *gpuIndexes);
-                          // ssc_gpus *gpus);
-
   
 #ifdef __cplusplus
 }
