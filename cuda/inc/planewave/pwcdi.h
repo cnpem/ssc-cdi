@@ -151,14 +151,16 @@ extern "C" {
   }ssc_pwcdi_method;
   
   
-  void pwcdi(char *outpath_real,
-                 char *finsup_path, 
-                 float *input,
-                 int *gpu,
-                 int ngpu,
-                 int nalgorithms,
-                 ssc_pwcdi_params params,
-                 ssc_pwcdi_method *algorithms);
+  void pwcdi(char* outpath_real, // this will be removed
+             char* finsup_path,  // this will be removed 
+            // cufftComplex* obj_output,
+            // short* finsup_output,
+             float* input,
+             int* gpu,
+             int ngpu,
+             int nalgorithms,
+             ssc_pwcdi_params params,
+             ssc_pwcdi_method* algorithms);
 
     
 #ifdef __cplusplus

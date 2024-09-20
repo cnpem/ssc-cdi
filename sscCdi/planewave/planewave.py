@@ -30,7 +30,15 @@ def pwcdi3d(data, dic):
     eps_zeroamp = dic.get('eps_zeroamp',0.001)
     outpath  = dic['output']
     
-    
+    # handle output 
+    # obj_output = np.zeros((N,N,N), dtype=np.complex64)  
+    # finsup_output = np.zeros((N,N,N), dtype=np.int16)
+    # b_obj_output = getPointer(obj_output.flatten(),
+    #                           dtype=np.complex64).ctypes.data_as(ctypes.POINTER(ctypes.c_complex64))
+    # b_finsup_output = getPointer(obj_output.flatten(),
+    #                              dtype=np.int16).ctypes.data_as(ctypes.POINTER(ctypes.c_int16))
+
+
     # handle initial object data (amplitude and phase)
     amplitude_obj_data = dic.get("amplitude_obj_data", None) 
     phase_obj_data = dic.get("phase_obj_data", None)
@@ -164,8 +172,10 @@ def pwcdi3d(data, dic):
     b_nalgo = ctypes.c_int(num_methods)
      
     # call the main pwcdi function   
-    libssccdi.pwcdi(b_outpath,
-                    b_finsup_path, 
+    libssccdi.pwcdi(b_outpath,           # this will be removed 
+                    b_finsup_path,       # this will be removed
+                    # b_obj_output,      # just added antes ou depois???/?????? 
+                    # b_finsup_output,   # just added 
                     b_data,
                     b_gpus,
                     b_ngpu,
@@ -174,4 +184,5 @@ def pwcdi3d(data, dic):
                     ALGO)
     
        
+    # return b_obj_output, b_finsup_output
  

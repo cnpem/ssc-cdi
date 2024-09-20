@@ -48,14 +48,16 @@ int sscAlgorithm2Index(char *name){
 }
 
 
-void pwcdi(char *outpath,
-            char *finsup_path, 
-            float *input,
-            int *gpu,
-            int ngpu,
-            int nalgorithms,
-            ssc_pwcdi_params params,
-            ssc_pwcdi_method *algorithms){
+void pwcdi(char* outpath,       // this will be removed 
+           char* finsup_path,   // this will be removed 
+           // cufftComplex* obj_output, 
+           // short* finsup_output,
+           float* input,
+           int* gpu,
+           int ngpu,
+           int nalgorithms,
+           ssc_pwcdi_params params,
+           ssc_pwcdi_method* algorithms){
   
   // set flag to enable zero copy access
   cudaSetDeviceFlags(cudaDeviceMapHost);
@@ -94,7 +96,6 @@ void pwcdi(char *outpath,
   }
 
   
-    
   char outpath_ampli[strlen(outpath)+7];
   char outpath_phase[strlen(outpath)+7];
   strcpy(outpath_ampli, outpath);

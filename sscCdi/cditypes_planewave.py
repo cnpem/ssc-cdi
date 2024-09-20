@@ -61,10 +61,12 @@ class SSC_PWCDI_PARAMS(ctypes.Structure):
     """A ssc_pwcdi_params C structure:"""
     _fields_ = [("amplitude_obj_data",ctypes.POINTER(ctypes.c_float)),
                 ("phase_obj_data",ctypes.POINTER(ctypes.c_float)),
-                ( "beta", ctypes.c_float ),
-                ( "timing", ctypes.c_int ),
-                ( "N", ctypes.c_int ),
-                ( "sthreads", ctypes.c_int ),
+                # ("obj_output", ctypes.POINTER(ctypes.c_complex64)),  # New field for complex output
+                # ("finsup_output", ctypes.POINTER(ctypes.c_int16)), # New field for short output
+                ("beta", ctypes.c_float ),
+                ("timing", ctypes.c_int ),
+                ("N", ctypes.c_int ),
+                ("sthreads", ctypes.c_int ),
                 ("pnorm", ctypes.c_int ),
                 ("radius", ctypes.c_float ),
                 ("sup_data", ctypes.POINTER(ctypes.c_float)),
@@ -84,7 +86,7 @@ class SSC_PWCDI_PARAMS(ctypes.Structure):
                 ("map_d_support", ctypes.c_bool),
                 ("swap_d_x", ctypes.c_bool)]
 
-class SSC_PWCDI_METHOD( ctypes.Structure ):
+class SSC_PWCDI_METHOD(ctypes.Structure):
     """A ssc_pwcdi_method C structure:"""
     _fields_ = [("name", ctypes.c_char_p),
                 ("iteration", ctypes.c_int),
@@ -94,12 +96,13 @@ class SSC_PWCDI_METHOD( ctypes.Structure ):
                 ("extraConstraintSubiter", ctypes.c_int),
                 ("initialExtraConstraintSubiter", ctypes.c_int)]
 
-
 def make_SSC_PWCDI_PARAMS( tupla ):
     """Make a ssc_pwcdi_params from a Python tuple """
       
     return SSC_PWCDI_PARAMS(tupla[0],                      # amplitude_obj_data
                             tupla[1],                      # phase_obj_data
+                            # tupla[2],                      # b_obj_output
+                            # tupla[3],                      # b_finsup_output                   
                             ctypes.c_float(tupla[2]),
                             ctypes.c_int(tupla[3]),
                             ctypes.c_int(tupla[4]),
@@ -111,7 +114,7 @@ def make_SSC_PWCDI_PARAMS( tupla ):
                             ctypes.c_float(tupla[10]),
                             ctypes.c_int(tupla[11]),
                             ctypes.c_int(tupla[12]),
-                            ctypes.c_bool(tupla[13]),      # sw_fftshift_gaussian
+                            ctypes.c_bool(tupla[13]),       # sw_fftshift_gaussian
                             ctypes.c_float(tupla[14]),
                             ctypes.c_float(tupla[15]),
                             ctypes.c_float(tupla[16]),
@@ -146,8 +149,7 @@ try:
                                  SSC_PWCDI_PARAMS,
                                  ctypes.POINTER(SSC_PWCDI_METHOD)]  
     libssccdi.pwcdi.restype  = None
-    libssccdi.methods.argtypes = [ctypes.POINTER(SSC_PWCDI_METHOD), ctypes.c_int]
-    libssccdi.methods.restype  = None
+
     
 except:
     print ('ssc-cdi: No plane-wave CDI 3D Functions compiled!!')
