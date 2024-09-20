@@ -39,7 +39,7 @@ dependencies = [
     'tqdm',
     'ipywidgets',
     'SharedArray',
-    'cupy'
+    'cupy==12.0'
 ]
 
 [tool.setuptools]
