@@ -10,7 +10,7 @@
 
 # We use the one encoding: utf8
 import ctypes
-from ctypes import c_int, c_void_p, c_float
+from ctypes import ArgumentError, c_int, c_void_p, c_float
 import ctypes.util
 import multiprocessing
 import os
@@ -35,45 +35,45 @@ ext = '.so'
 
 
 def load_library(lib, ext):
-    _path = os.path.dirname(
-        os.path.abspath(__file__)) + os.path.sep + lib + ext
+    _path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lib + ext
+    #print("ssc-cdi: Trying to load library:", _path)
     try:
         lib = ctypes.CDLL(_path)
         return lib
-    except:
-        pass
+    except Exception as e:
+        print(f"ssc-cdi: Failed to load library {_path}: {e}")
     return None
-
 
 libcdi = load_library(_lib, ext)
 
 try:
 
+
     libcdi.glcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, c_int,
-        c_float, c_float, c_float, c_float,
-        c_float
+        ctypes.c_void_p, c_int,
+        c_float, c_float, c_float,
+        c_float, c_float, c_float, c_float
     ]
     libcdi.glcall.restype = None
     libcdi.raarcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, c_int,
+        ctypes.c_void_p, c_int,
         c_float, c_float, c_float, c_float,
-        c_float, c_float
+        c_float, c_float, c_float, c_float
     ]
     libcdi.raarcall.restype = None
     libcdi.poscorrcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int, c_int,
+        ctypes.c_void_p, c_int,
         c_float, c_float, c_float, c_float,
-        c_float
+        c_float, c_float, c_float
     ]
     libcdi.poscorrcall.restype = None
     libcdi.piecall.argtypes = [
@@ -102,52 +102,28 @@ def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[c_void_p, list[c_int]]:
         return c_void_p(0), c_void_p(0), [c_int(0)]
     return ctypes_array(c)
 
-def append_ones(probe_positions):
-    """ Adjust shape and column order of positions array to be accepted by Giovanni's code
-
-    Args:
-        probe_positions (array): initial positions array in (PY,PX) shape
-
-    Returns:
-        probe_positions2 (array): rearranged probe positions array
-    """
-    zeros = np.zeros((probe_positions.shape[0],1))
-    probe_positions = np.concatenate((probe_positions,zeros),axis=1)
-    probe_positions = np.concatenate((probe_positions,zeros),axis=1) # concatenate columns to use Giovanni's ptychography code
-
-    return probe_positions
-
 def sanitize_rois(rois, obj, difpads, probe) -> np.ndarray:
 
     rois = rois.astype('float32')
 
     if rois.shape[0] != difpads.shape[0]:
-        print("Error:", difpads.shape[0], "difpads  v ", rois.shape[0],
+        raise ArgumentError("Error:", difpads.shape[0], "difpads  v ", rois.shape[0],
               " rois mismatch")
-        quit()
-    if rois.shape[-1] != 4:
-        print("Incorrect roi specification: shape=", rois.shape,
-              ' rois has 4 attribs: x,y,exptime,I0')
-        quit()
+    if rois.shape[-1] != 2:
+        raise ArgumentError("Incorrect positions specification: shape=", rois.shape,
+              ' rois has 2 attribs: x,y')
 
     if probe.shape[-1] % difpads.shape[-1] != 0 or probe.shape[
             -2] % difpads.shape[-2] != 0:
-        print("Error:", probe.shape, "probe  v ", difpads.shape,
+        raise ArgumentError("Error:", probe.shape, "probe  v ", difpads.shape,
               " difpads shape mismatch")
-        quit()
-    if len(rois.shape) == 2:
-        rois = rois[:, None]
 
-    for acqui in rois:
-        for roi in acqui:
-            if probe.shape[-1] + roi[0] > obj.shape[
-                    -1] or probe.shape[-2] + roi[1] > obj.shape[-2]:
-                print("Error: Roi", roi, "is outside object bounds:", roi, "+",
-                      probe.shape, "=", obj.shape)
-                quit()
-            elif roi[0] < 0 or roi[1] < 0:
-                print("Error: Roi", roi, "has negative indexing.")
-                quit()
+    for roi in rois:
+        if probe.shape[-1] + roi[0] > obj.shape[-1] or probe.shape[-2] + roi[1] > obj.shape[-2]:
+            raise ArgumentError("Error: Roi", roi, "is outside object bounds:", roi, "+",
+                  probe.shape, "=", obj.shape)
+        elif roi[0] < 0 or roi[1] < 0:
+            raise ArgumentError("Error: Roi", roi, "has negative indexing.")
     return rois
 
 
@@ -207,8 +183,6 @@ def PIE(obj: np.ndarray,
 
         """
 
-    rois = append_ones(rois)
-
     obj, objptr, (osizey, osizex) = ctypes_array(obj)
     probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
 
@@ -234,7 +208,7 @@ def PIE(obj: np.ndarray,
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
-    return obj, probe, rfactor, rois[:,0,0:2]
+    return obj, probe, rfactor, rois
 
 def RAAR(obj: np.ndarray,
          probe: np.ndarray,
@@ -251,7 +225,9 @@ def RAAR(obj: np.ndarray,
          step_probe: float = 0.5,
          reg_obj: float = 1e-3,
          reg_probe: float = 1e-3,
-         probef1: float = 0.0,
+         wavelength_m: float = 0.0,
+         pixelsize_m: float = 0.0,
+         distance_m: float = 0.0,
          params: dict = {}):
     """ Ptychography RAAR algorithm.
 
@@ -299,8 +275,6 @@ def RAAR(obj: np.ndarray,
 
         """
 
-    rois = append_ones(rois)
-
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -317,7 +291,6 @@ def RAAR(obj: np.ndarray,
 
     nummodes = psizez
 
-    flyscansteps = int(rois.shape[1])
 
     assert (probesupp.shape[-1] == probe.shape[-1] and
                 probesupp.shape[-2] == probe.shape[-2] and
@@ -342,12 +315,12 @@ def RAAR(obj: np.ndarray,
                     c_int(iterations), ndevices, devicesptr, rfactorptr,
                     c_float(objbeta), c_float(probebeta), nummodes,
                     objsuppptr, probesuppptr, numobjsupport,
-                    c_int(flyscansteps),
                     c_float(step_obj), c_float(step_probe),
                     c_float(reg_obj), c_float(reg_probe),
-                    c_float(probef1), c_float(beta))
+                    c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m),
+                    c_float(beta))
 
-    return obj, probe, rfactor, rois[:,0,0:2]
+    return obj, probe, rfactor, rois
 
 
 
@@ -365,7 +338,9 @@ def AP(obj: np.ndarray,
        step_probe: float = 0.5,
        reg_obj: float = 1e-3,
        reg_probe: float = 1e-3,
-       probef1: float = 0.0,
+       wavelength_m: float = 0.0,
+       pixelsize_m: float = 0.0,
+       distance_m: float = 0.0,
        params: dict = {}):
     """ Ptychography Alternate Projections algorithm.
 
@@ -412,8 +387,6 @@ def AP(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
-    rois = append_ones(rois)
-
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -445,9 +418,9 @@ def AP(obj: np.ndarray,
                   probesuppptr, numobjsupport, c_int(flyscansteps),
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe),
-                  c_float(probef1))
+                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
-    return obj, probe, rfactor, rois[:,0,0:2]
+    return obj, probe, rfactor, rois
 
 
 def PosCorrection(obj: np.ndarray,
@@ -464,7 +437,9 @@ def PosCorrection(obj: np.ndarray,
                   step_probe: float = 0.5,
                   reg_obj: float = 1e-3,
                   reg_probe: float = 1e-3,
-                  probef1: float = 0.0,
+                  wavelength_m: float = 0.0,
+                  pixelsize_m: float = 0.0,
+                  distance_m: float = 0.0,
                   params: dict = {}):
     """ Ptychography algorithm for positions correction.
 
@@ -511,8 +486,6 @@ def PosCorrection(obj: np.ndarray,
                 *``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
-    
-    rois = append_ones(rois)
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe,probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads,difpadsptr, (*_, dsizex) = ctypes_array(difpads)
@@ -545,9 +518,9 @@ def PosCorrection(obj: np.ndarray,
                        c_int(flyscansteps),
                        c_float(step_obj), c_float(step_probe),
                        c_float(reg_obj),c_float(reg_probe),
-                       c_float(probef1))
+                       c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
-    return obj, probe, rfactor, rois[:,0,0:2]
+    return obj, probe, rfactor, rois
 
 def log_start(level="error"):
     libcdi.ssc_log_start(ctypes.c_char_p(level.encode('UTF-8')))

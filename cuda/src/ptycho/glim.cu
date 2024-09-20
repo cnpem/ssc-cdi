@@ -5,7 +5,7 @@
 
 extern "C" {
 __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,
-                            const GArray<ROI> rois) {
+                            const GArray<Position> rois) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= probe.shape.x) return;
 
@@ -26,7 +26,7 @@ __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> prob
 }
 
 __global__ void KGLPs(const GArray<complex> probe, GArray<complex> object_acc, GArray<float> object_div,
-                      const GArray<complex> p_pm, const GArray<ROI> rois) {
+                      const GArray<complex> p_pm, const GArray<Position> rois) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= probe.shape.x) return;
 
@@ -119,7 +119,7 @@ void GLimRun(GLim& glim, int iterations) {
           cur_difpad.LoadToGPU(difpad_batch_ptr);
 
           for (int g = 0; g < ngpus; g++) {
-              const size_t difpadsizez = (*ptycho.rois[batch_idx])[g].sizez;
+              const size_t difpadsizez = (*ptycho.positions[batch_idx])[g].sizez;
               if (difpadsizez > 0) {
                   SetDevice(ptycho.gpus, g);
 
@@ -127,7 +127,7 @@ void GLimRun(GLim& glim, int iterations) {
                   blk.z = difpadsizez;
                   dim3 thr = ptycho.exitwave->ShapeThread();
 
-                  Image2D<ROI>& ptr_roi = *ptycho.rois[batch_idx]->arrays[g];
+                  Image<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
                   KGLExitwave<<<blk, thr>>>(*ptycho.exitwave->arrays[g],
                           *ptycho.probe->arrays[g],
                           *ptycho.object->arrays[g], ptr_roi);
@@ -179,16 +179,17 @@ void GLimProjectProbe(GLim& glim, int section) {
 }
 
 GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
-                 const dim3& objshape, ROI* rois, int numrois, int batchsize, float* rfact,
+                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
-                 int geometricsteps, float probef1,
+                 float wavelength_m, float pixelsize_m, float distance_m,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     GLim* glim = new GLim;
     glim->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
-                gpus, objsupp, probesupp, numobjsupp, geometricsteps, probef1,
+                gpus, objsupp, probesupp, numobjsupp,
+                wavelength_m, pixelsize_m, distance_m,
                 step_obj, step_probe, reg_obj, reg_probe);
 
     return glim;
