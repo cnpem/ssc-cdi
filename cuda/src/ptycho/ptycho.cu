@@ -10,7 +10,7 @@
 #include "ptycho.hpp"
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
-        const GArray<complex> object, const GArray<complex> exitwave, const GArray<ROI> rois,
+        const GArray<complex> object, const GArray<complex> exitwave, const GArray<Position> rois,
         bool bFTNorm, bool bIsGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -44,7 +44,7 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
 
 // the kernel code is replicated for complex16, for some reason cuda was not playing well with explicit instantiation on gpu kernels
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
-        const GArray<complex> object, const GArray<complex16> exitwave, const GArray<ROI> rois,
+        const GArray<complex> object, const GArray<complex16> exitwave, const GArray<Position> rois,
         bool bFTNorm, bool bIsGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -85,7 +85,7 @@ void ProjectPhiToProbe(POptAlgorithm& pt, int section, const MImage<dtype>& Phi,
         SetDevice(pt.gpus, g);
 
         KProjectPhiToProbe<<<blk, thr>>>(pt.probe->arrays[g][0], pt.probe_acc->Ptr(g), pt.probe_div->Ptr(g),
-                pt.object->arrays[g][0], Phi.arrays[g][0], pt.rois[section]->arrays[g][0], bNormalizeFFT, bIsGradPm);
+                pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0], bNormalizeFFT, bIsGradPm);
     }
 }
 
@@ -101,7 +101,7 @@ extern "C" {
     __global__ void k_project_reciprocal_space(GArray<complex> exitwave,
             const GArray<float> difpads, float* rfactors,
             size_t upsample, size_t nummodes,
-            int geometricsteps, bool bIsGrad) {
+            bool bIsGrad) {
         __shared__ float sh_rfactor[64];
 
         if (threadIdx.x < 64) sh_rfactor[threadIdx.x] = 0;
@@ -124,14 +124,13 @@ extern "C" {
             float wabs2 = 0.0f;
 
             for (int m = 0; m < nummodes; m++)
-                for (int f = 0; f < geometricsteps; f++)
                     for (int v = 0; v < upsample; v++)
                         for (int u = 0; u < upsample; u++)
-                            wabs2 += exitwave(geometricsteps * idz * nummodes + nummodes * f + m,
+                            wabs2 += exitwave(idz * nummodes + m,
                                     v + idy * upsample,
                                     u + idx * upsample).abs2();
 
-            wabs2 = sqrtf(wabs2 / geometricsteps) / upsample;
+            wabs2 = sqrtf(wabs2) / upsample;
 
             const float hexptaulambda2 = 1.0;
 
@@ -151,15 +150,14 @@ extern "C" {
         }
 
         for (int m = 0; m < nummodes; m++)
-            for (int f = 0; f < geometricsteps; f++)
                 for (int v = 0; v < upsample; v++)
                     for (int u = 0; u < upsample; u++) {
-                        complex ew = exitwave(geometricsteps * idz * nummodes + nummodes * f + m,
+                        complex ew = exitwave(idz * nummodes + m,
                                 v + idy * upsample,
                                 u + idx * upsample);
 
                         ew = ew * exit_wave_factor + exit_wave_addend; //possibly has to deal with nan or inf?
-                        exitwave(geometricsteps * idz * nummodes + nummodes * f + m,
+                        exitwave(idz * nummodes + m,
                                 v + idy * upsample,
                                 u + idx * upsample) = ew;
                     }
@@ -169,11 +167,6 @@ extern "C" {
         Reduction::KSharedReduce(sh_rfactor, 64);
         if (threadIdx.x == 0) atomicAdd(rfactors + blockIdx.y, sh_rfactor[0]);
     }
-}
-
-
-void IndexRois(ROI* rois, int numrois) {
-    for(int r=0; r<numrois; r++) rois[r].I0 = (float)r;
 }
 
 
@@ -190,7 +183,7 @@ void project_reciprocal_space(POptAlgorithm &pt, rImage* difpad, int g, bool bIs
     pt.exitwave->arrays[g]->FFTShift2();
 
     k_project_reciprocal_space<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.exitwave->arrays[g][0], *difpad, pt.rfactors->Ptr(g), upsample,
-            pt.probe->sizez, pt.geometricsteps, bIsGradPm);
+            pt.probe->sizez, bIsGradPm);
 
 
     pt.exitwave->arrays[g]->FFTShift2();
@@ -267,7 +260,7 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
     delete ptycho.rfactors;
 
     ssc_debug("Dealloc rois.");
-    for (auto* roi : ptycho.rois) delete roi;
+    for (auto* roi : ptycho.positions) delete roi;
 
     ssc_debug("Done.");
 
@@ -278,9 +271,10 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
 }
 
 POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
-            complex* _object, const dim3& objshape, ROI* _rois, int numrois, int batchsize,
+            complex* _object, const dim3& objshape, Position* _rois, int numrois, int batchsize,
             float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
-            int numobjsupp, int geometricsteps, float probef1,
+            int numobjsupp,
+            float wavelength_m, float pixelsize_m, float distance_m,
             float step_obj, float step_probe,
             float reg_obj, float reg_probe) {
 
@@ -290,7 +284,9 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
       ssc_debug("Initializing algorithm.");
             ssc_debug("Enabling P2P");
 
-            ptycho->probef1 = probef1;
+            ptycho->pixelsize_m = pixelsize_m;
+            ptycho->wavelength_m = wavelength_m;
+
             EnablePeerToPeer(ptycho->gpus);
 
             ptycho->objreg = reg_obj;
@@ -303,7 +299,6 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
             ptycho->difpadshape.z = difshape.z;
 
             const int ngpus = gpus.size();
-            ptycho->geometricsteps = geometricsteps;
             if (batchsize > 0) {
                 ptycho->singlebatchsize = batchsize;
                 ptycho->multibatchsize = batchsize * ngpus;
@@ -334,7 +329,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
                 ptycho->object = new cMImage(_object, objshape, true, gpus);
             ssc_debug("Alloc EW");
             ptycho->exitwave = new cMImage(probeshape.x, probeshape.y,
-                    ptycho->singlebatchsize * probeshape.z * geometricsteps, true, gpus);
+                    ptycho->singlebatchsize * probeshape.z, true, gpus);
 
             ssc_debug("Alloc Supports");
 
@@ -365,9 +360,9 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
                 ssc_debug(format("Creating DPGroup at: {} of {} at step {}" , n, numrois, batchsize));
                 if (numrois - n < batchsize)  // last batch
                 {
-                    ptycho->rois.push_back(new RoiArray(_rois + n * geometricsteps, geometricsteps, 1, numrois - n, false, gpus));
+                    ptycho->positions.push_back(new PositionArray(_rois + n, 1, 1, numrois - n, false, gpus));
                 } else {
-                    ptycho->rois.push_back(new RoiArray(_rois + n * geometricsteps, geometricsteps, 1, batchsize, false, gpus));
+                    ptycho->positions.push_back(new PositionArray(_rois + n, 1, 1, batchsize, false, gpus));
                 }
                 ptycho->roibatch_offset.push_back(n / ngpus);
             }
@@ -381,7 +376,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
             ssc_debug("Computing I0");
             SetDevice(gpus, 0);
             ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
-            ptycho->probepropagator = new ASM();
+            ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);
 
             ptycho->object_div = new rMImage(ptycho->object->Shape(), true, gpus);
             ptycho->object_acc = new cMImage(ptycho->object->Shape(), true, gpus);

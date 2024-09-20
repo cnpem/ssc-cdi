@@ -1,0 +1,207 @@
+#include <iostream>
+#include <math.h>
+
+#include "pwcdi.h"
+#include "fft.h"
+#include "gpus.h"
+#include "pwutils.h"
+
+extern "C"{
+  void er(ssc_pwcdi_plan *workspace,
+		  ssc_pwcdi_params *params,
+		  int globalIteration,
+		  int shrinkWrapSubiter,
+		  int initialShrinkWrapSubiter,
+		  int extraConstraint,
+		  int extraConstraintSubiter,
+		  int initialExtraConstraintSubiter){
+  	
+    if(workspace->gpus->ngpus==1){
+		// SINGLE-GPU CASE
+		
+			float total, time_projM, time_projS;
+			total = 0.0f;
+			cudaEvent_t start, stop;
+			cudaEventCreate(&start);
+			cudaEventCreate(&stop);
+		
+			const dim3 threadsPerBlock(tbx, tby, tbz);
+			const dim3 gridBlock(ceil((workspace->dimension + threadsPerBlock.x - 1)/threadsPerBlock.x),
+											     ceil((workspace->dimension + threadsPerBlock.y - 1)/threadsPerBlock.y),
+											     ceil((workspace->dimension + threadsPerBlock.z - 1)/threadsPerBlock.z));
+
+			// reminder: workspace->dx already contains the starting point
+		
+			for (int iter=0; iter<globalIteration; ++iter){
+		    // ===============================================
+		    // Operation: s_projection_M()
+		    
+		    checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[0]));
+
+        // set timer
+        if (workspace->timing){
+          cudaEventRecord(start);
+        }
+		    
+        // perform the projection onto the set M
+		    s_projection_M(workspace->plan_C2C,
+										   workspace->sgpu.d_y, //to
+										   workspace->sgpu.d_x, //from
+										   workspace->sgpu.d_signal,
+											 params->eps_zeroamp,
+										   workspace->dimension);
+
+
+		    if (workspace->timing){
+  		    cudaEventRecord(stop);
+  		    cudaEventSynchronize(stop);
+  		    cudaEventElapsedTime(&time_projM, start, stop);
+          fprintf(stdout,"ssc-cdi: Projection_M() time: %lf ms\n", time_projM);
+		    }
+		    
+		    // =====================
+		    // Operation: s_projection_S_only()
+        
+        // set timer
+        if (workspace->timing){
+		      cudaEventRecord(start);
+        }
+
+		    s_projection_S_only(workspace->plan_C2C,
+														workspace->sgpu.d_x,
+														workspace->sgpu.d_y,
+														workspace->sgpu.d_support,
+														extraConstraint,
+														workspace->dimension);
+		    
+        // stop time
+		    if (workspace->timing){
+  		    cudaEventRecord(stop);
+  		    cudaEventSynchronize(stop);
+  		    cudaEventElapsedTime(&time_projS, start, stop);
+          fprintf(stdout,"ssc-cdi: s_projection_S_only(): %lf ms\n", time_projS);
+		    }
+
+        // debug timers (at the end of the current ER iteration)
+		    if (workspace->timing){
+          total = total + (time_projM + time_projS);
+          fprintf(stdout,"ssc-cdi: Iteration %d takes %lf ms ** \n\n", iter, time_projM + time_projS);
+        }
+	
+
+	  	}
+
+      // debug timers (at the end of ER iterations)
+			if (workspace->timing){
+			  fprintf(stdout,"ssc-cdi: total time with ER iterations is %lf ms\n", total);	
+			}
+
+    }else{
+			// MULTI-GPU CASE
+			float total, time_projM, time_projS;
+			total = 0.0f;
+			cudaEvent_t start, stop;
+			cudaEventCreate(&start);
+			cudaEventCreate(&stop);
+		    
+			const size_t dim = workspace->nvoxels;
+			const int n_gpus =  workspace->gpus->ngpus;
+			const size_t perGPUDim = dim/n_gpus;
+
+			const dim3 threadsPerBlock(tbx*tby*tbz);
+			const dim3 gridBlock(ceil((perGPUDim + threadsPerBlock.x - 1)/threadsPerBlock.x));
+		    
+			// reminder: workspace->dx already contains the starting point
+		
+
+			for (int iter = 0; iter < globalIteration; ++iter){
+
+
+	    // ==========================================
+	    // operation: s_projection_M 
+    	 
+      // set timer 
+	    if (workspace->timing){
+	    	cudaEventRecord(start);
+	    }
+
+      // perform the s_projection_M
+			m_projection_M(workspace->plan_C2C,
+              		   workspace->mgpu.d_y, //to  
+              		   workspace->mgpu.d_x, // from  
+              		   workspace->mgpu.d_signal,
+              			 params->eps_zeroamp,
+              		   dim,
+              		   perGPUDim,
+              		   workspace->gpus,
+              		   workspace->host_swap,
+              		   workspace->timing);
+ 
+			
+      // stop timer
+	    if (workspace->timing){
+		    cudaEventRecord(stop);
+		    cudaEventSynchronize(stop);
+		    cudaEventElapsedTime(&time_projM, start, stop);
+	      fprintf(stdout,"ssc-cdi: m_projection_M() time: %lf ms\n", time_projM);
+      }
+
+	    // =============================== 
+	    // operation: m_projection_S_only
+
+      // set timer
+    	if (workspace->timing){	
+	    	cudaEventRecord(start);
+    	}
+
+      // perform the m_projection_S_only
+	    m_projection_S_only(workspace->mgpu.d_x, //to   
+													workspace->mgpu.d_y, //from (dz) depois d_x
+													workspace->mgpu.d_support,
+													extraConstraint,
+													dim,
+													perGPUDim,
+													workspace->gpus);
+
+      // stop timer 
+	    if (workspace->timing){
+		    cudaEventRecord(stop);
+		    cudaEventSynchronize(stop);
+		    cudaEventElapsedTime(&time_projS, start, stop);
+				fprintf(stdout,"ssc-cdi: m_projection_S_only(): %lf ms\n", time_projS);
+			}
+	
+	  
+
+	    // for (int i=0; i<n_gpus; i++){
+			// 	checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+			// 	checkCudaErrors(cudaMemcpyAsync(workspace->mgpu.d_x->descriptor->data[i],
+			// 								  								workspace->mgpu.d_z->descriptor->data[i],
+			// 																  perGPUDim*sizeof(cufftComplex), 
+			// 																  cudaMemcpyDeviceToDevice,
+			// 																  workspace->gpus->streams[i]));
+	    // }
+	    
+	    // for (int i = 0; i <n_gpus; i++){
+			// 	checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+			// 	checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
+	    // }
+
+     	
+	
+      // debug timers (at the end of the current ER iteration)
+	    if (workspace->timing){
+	      total = total + (time_projM + time_projS);
+	      fprintf(stdout,"ssc-cdi: Iteration %d takes %lf ms ** \n", iter, time_projM + time_projS);	
+      }
+	  }
+
+    // debug timers (at the end of ER iterations)
+		if (workspace->timing){
+	    fprintf(stdout,"ssc-cdi: total time with ER iterations is %lf ms\n", total);	
+	  }    
+  } 
+} 
+  
+} // extern "C"
+

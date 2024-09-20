@@ -19,7 +19,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(spdlog)
 
-find_package(CUDAToolkit)
+find_package(CUDAToolkit REQUIRED)
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
 
@@ -31,13 +31,18 @@ include_directories(
     cuda/inc
     cuda/inc/common
     cuda/inc/common10
+    cuda/inc/ptycho
+    cuda/inc/planewave
 )
 
 # suppress annoying warning to allow header function definition
 #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
+#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -Xcompiler -use_fast_math --ptxas-options=-v -c --compiler-options -fPIC -G")
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-file(GLOB_RECURSE CDI_SRC cuda/src/*.c*)
+file(GLOB_RECURSE CDI_SRC cuda/src/**/*.c*)
 
 add_library(ssccdi SHARED ${CDI_SRC})
-target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart)
+target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart m pthread)
+
 install(TARGETS ssccdi LIBRARY DESTINATION ${PROJECT_NAME}/lib)

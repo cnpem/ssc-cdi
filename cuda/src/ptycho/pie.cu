@@ -16,12 +16,12 @@
 Pie* CreatePie(float* difpads, const dim3& difshape,
         complex* probe, const dim3& probeshape,
         complex* object, const dim3& objshape,
-        ROI* rois, int numrois,
+        Position* rois, int numrois,
         int batchsize, float* rfact,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
-        int geometricsteps, float probef1, float step_object,
-        float step_probe, float reg_obj, float reg_probe) {
+        float wavelength_m, float pixelsize_m, float distance_m,
+        float step_object, float step_probe, float reg_obj, float reg_probe) {
     Pie* pie = new Pie();
 
     pie->ptycho = CreatePOptAlgorithm(difpads, difshape,
@@ -31,8 +31,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             batchsize, rfact,
             gpus,
             objsupp, probesupp, numobjsupp,
-            geometricsteps,
-            probef1,
+            wavelength_m, pixelsize_m, distance_m,
             step_object, step_probe, reg_obj, reg_probe);
 
     return pie;
@@ -44,7 +43,7 @@ void DestroyPie(Pie*& pie) {
 }
 
 __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<complex> probe,
-        const GArray<complex> object, const ROI* rois) {
+        const GArray<complex> object, const Position* rois) {
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -64,7 +63,7 @@ __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<com
 __global__ void k_pie_update_probe(GArray<complex> object_box,
         GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_probe, float step_probe, float obj_abs2_max, const ROI* rois) {
+        float reg_probe, float step_probe, float obj_abs2_max, const Position* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -96,7 +95,7 @@ __global__ void k_pie_update_probe(GArray<complex> object_box,
 
 __global__ void k_pie_update_object(GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_obj, float step_obj, float probe_abs2_max, const ROI* rois) {
+        float reg_obj, float step_obj, float probe_abs2_max, const Position* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -218,7 +217,7 @@ void PieRun(Pie& pie, int iterations) {
             blk.z = batch_size;
             dim3 thr = pie.ptycho->exitwave->ShapeThread();
 
-            ROI* rois = pie.ptycho->rois[random_pos_idx]->Ptr(gpu);
+            Position* rois = pie.ptycho->positions[random_pos_idx]->Ptr(gpu);
             cImage* probe = pie.ptycho->probe->arrays[gpu];
             cImage* obj = pie.ptycho->object->arrays[gpu];
             cImage* wavefront = pie.ptycho->exitwave->arrays[gpu];
