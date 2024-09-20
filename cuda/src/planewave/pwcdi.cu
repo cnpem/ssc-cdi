@@ -114,21 +114,6 @@ void pwcdi(char *outpath,
   // Free workspace 
   free_workspace(&workspace, &params);
 }
-
-void methods(ssc_pwcdi_method *sequence, int nalgorithms){
-  for (int i=0; i<nalgorithms; i++ ){
-    fprintf(stdout,"--- Operator[%d] --- \n",i);
-    fprintf(stdout," name: %s\n",sequence[i].name);
-    fprintf(stdout," iteration:  %d\n",sequence[i].iteration);
-    fprintf(stdout," shrinkWrapSubiter: %d\n",sequence[i].shrinkWrap);
-    fprintf(stdout," initialShrinkWrapSubiter: %d\n",sequence[i].initialShrinkWrapSubiter);
-    fprintf(stdout," extraConstraint: %d\n", sequence[i].extraConstraint);
-    fprintf(stdout," extraConstraintSubiter: %d\n", sequence[i].extraConstraintSubiter); 
-    fprintf(stdout," initialExtraConstraintSubiter: %d\n", sequence[i].initialExtraConstraintSubiter);
-  }
-}
-
-
  
 
 

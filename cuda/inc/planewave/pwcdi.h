@@ -160,11 +160,7 @@ extern "C" {
                  ssc_pwcdi_params params,
                  ssc_pwcdi_method *algorithms);
 
-  
-  void methods(ssc_pwcdi_method *algorithms,
-                         int nalgorithms);
-
-  
+    
 #ifdef __cplusplus
 }
 #endif
