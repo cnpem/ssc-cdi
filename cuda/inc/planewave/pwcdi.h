@@ -7,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdint.h>  // For uint8_t
 
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
@@ -79,7 +80,7 @@ extern "C" {
     cudaLibXtDesc *d_x, *d_y, *d_z;
     cudaLibXtDesc *d_x_lasterr;                               // only allocated if errType==ITER_DIFF 
     float **d_signal, **d_signal_host;  
-    short **d_support, **d_support_host;
+    uint8_t **d_support, **d_support_host;
     cufftComplex **d_gaussian;
     cufftComplex *d_x_swap; 
   }multi_t;
@@ -88,7 +89,7 @@ extern "C" {
     cufftComplex *d_x, *d_y, *d_z, *d_gaussian, *d_x_swap;
     cufftComplex *d_x_lasterr;                                // only allocated if errType==ITER_DIFF 
     float *d_signal, *d_signal_host;
-    short *d_support, *d_support_host;
+    uint8_t *d_support, *d_support_host;
   }single_t;
   
   typedef struct{
@@ -104,20 +105,18 @@ extern "C" {
     float *errs;
 
     cufftComplex *host_swap; // host swap variable for multi-gpu
-    short* host_swap_short;
+    uint8_t* host_swap_byte;
     
   }ssc_pwcdi_plan;
 
   typedef struct{
-    float* amplitude_obj_data;
-    float* phase_obj_data;
     float beta;
     int timing;
     int N;
     int sthreads;
     int pnorm;
     float radius;
-    float* sup_data;
+    uint8_t* sup_data;
     bool sup_positive_imag;
     float sw_threshold;
     int sw_iter_filter;
@@ -151,11 +150,10 @@ extern "C" {
   }ssc_pwcdi_method;
   
   
-  void pwcdi(char* outpath_real, // this will be removed
-             char* finsup_path,  // this will be removed 
-            // cufftComplex* obj_output,
-            // short* finsup_output,
-             float* input,
+  void pwcdi(cufftComplex* obj_output,  
+             uint8_t* finsup_output,        
+             float* data_input,        // inital data
+             cufftComplex* obj_input,  // initial object
              int* gpu,
              int ngpu,
              int nalgorithms,

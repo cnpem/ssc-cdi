@@ -382,7 +382,7 @@ extern "C"{
           // // fftshift the support computing it    
           fftshift<<<gridBlock, threadsPerBlock>>>((void *) workspace->sgpu.d_support,
                                                      workspace->dimension,
-                                                     SSC_DTYPE_SHORT);
+                                                     SSC_DTYPE_BYTE);
           cudaDeviceSynchronize();
           getLastCudaError("ssc-cdi: error / Kernel execution failed @ fftshift<<<.>>>\n");
 
@@ -989,8 +989,8 @@ extern "C"{
               // fftshift the support after computing it 
               m_fftshift(workspace->mgpu.d_support, 
                                     (size_t) cbrt((double)workspace->nvoxels), 
-                                    SSC_DTYPE_SHORT, 
-                                    workspace->host_swap_short,
+                                    SSC_DTYPE_BYTE, 
+                                    workspace->host_swap_byte,
                                     perGPUDim,
                                     workspace->gpus);
             }
@@ -1253,8 +1253,8 @@ extern "C"{
               // fftshift the support after computing it 
               m_fftshift(workspace->mgpu.d_support, 
                          (size_t) cbrt((double)workspace->nvoxels), 
-                         SSC_DTYPE_SHORT, 
-                         workspace->host_swap_short,
+                         SSC_DTYPE_BYTE, 
+                         workspace->host_swap_byte,
                          perGPUDim,
                          workspace->gpus);
             }

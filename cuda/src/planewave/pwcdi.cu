@@ -48,11 +48,10 @@ int sscAlgorithm2Index(char *name){
 }
 
 
-void pwcdi(char* outpath,       // this will be removed 
-           char* finsup_path,   // this will be removed 
-           // cufftComplex* obj_output, 
-           // short* finsup_output,
-           float* input,
+void pwcdi(cufftComplex* obj_output,  
+           uint8_t* finsup_output,     
+           float* data_input,
+           cufftComplex* obj_input,
            int* gpu,
            int ngpu,
            int nalgorithms,
@@ -62,17 +61,17 @@ void pwcdi(char* outpath,       // this will be removed
   // set flag to enable zero copy access
   cudaSetDeviceFlags(cudaDeviceMapHost);
 
+  // create workspace
   ssc_pwcdi_plan workspace;
  
   // Alloc workspace for FFT distribution.
   alloc_workspace(&workspace, &params, gpu, ngpu); //, nswap_host);
   
   // Set initial guess
-  set_input(&workspace, &params, input);
+  set_input(&workspace, &params, data_input, obj_input);
 
- 
   // Run through selected algorithms: 
-  for( int k=0; k<nalgorithms; k++){
+  for(int k=0; k<nalgorithms; k++){
     fprintf(stdout,
       "ssc-cdi: Running \t %s: \t %d iterations ( shrink-wrap step %d, starting at iteration %d)\n",
       algorithms[k].name,
@@ -95,22 +94,28 @@ void pwcdi(char* outpath,       // this will be removed
                                                              algorithms[k].initialExtraConstraintSubiter);
   }
 
-  
-  char outpath_ampli[strlen(outpath)+7];
-  char outpath_phase[strlen(outpath)+7];
-  strcpy(outpath_ampli, outpath);
-  strcpy(outpath_phase, outpath);
-  strcat(outpath_ampli,".ampli");
-  strcat(outpath_phase,".phase");
 
-  
-  // save amplitude and phase of the iteration variable
-  set_output(outpath_ampli, &params, &workspace, SSC_VARIABLE_ITER, AMPLITUDE);
-  set_output(outpath_phase, &params, &workspace, SSC_VARIABLE_ITER, PHASE);
-  
+  // copy final results to output 
+  get_output(obj_output, finsup_output, &workspace, &params);
 
-  // Get final support data (saves d_support)
-  set_output(finsup_path, &params, &workspace, SSC_VARIABLE_SUPP, AMPLITUDE);
+  // if the user wants to save the output in disk, this will be done in the python wrapper.
+  // Otherwise, use the following code to save the output in disk.
+  //char* outpath_real, // this will has to be passed by the python wrapper 
+  //char* finsup_path,  // this will has to be passed by the python wrapper
+
+  // char outpath_ampli[strlen(outpath)+7];
+  // char outpath_phase[strlen(outpath)+7];
+  // strcpy(outpath_ampli, outpath);
+  // strcpy(outpath_phase, outpath);
+  // strcat(outpath_ampli,".ampli");
+  // strcat(outpath_phase,".phase");
+
+  // // save amplitude and phase of the iteration variable
+  // set_output(outpath_ampli, &params, &workspace, SSC_VARIABLE_ITER, AMPLITUDE);
+  // set_output(outpath_phase, &params, &workspace, SSC_VARIABLE_ITER, PHASE);
+  
+  // // Get final support data (saves d_support)
+  // set_output(finsup_path, &params, &workspace, SSC_VARIABLE_SUPP, AMPLITUDE);
 
   // Free workspace 
   free_workspace(&workspace, &params);

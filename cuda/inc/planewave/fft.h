@@ -9,18 +9,19 @@
 #include <helper_functions.h>
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
+#include <stdint.h>  // For uint8_t
 
 
 #define SSC_DTYPE_CUFFTCOMPLEX 0
 #define SSC_DTYPE_FLOAT 1
-#define SSC_DTYPE_SHORT 2
+#define SSC_DTYPE_BYTE 2
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-  __global__ void synth_support_data_mgpu(short* support, 
+  __global__ void synth_support_data_mgpu(uint8_t* support, 
                                           int p, 
                                           float radius, 
                                           float x0, 
@@ -46,55 +47,55 @@ extern "C" {
 
   __global__ void update_with_support_extra(cufftComplex *a,
                                             cufftComplex *b,
-                                            short *c,
+                                            uint8_t *c,
                                             int extraConstraint,
                                             int dimension);
 
   __global__ void update_with_support_extra_mgpu(cufftComplex *a,
                                                  cufftComplex *b,
-                                                 short *c,
+                                                 uint8_t *c,
                                                  int extraConstraint,
                                                  size_t perGPUDim); 
 
   __global__ void multiply_support_extra_mgpu(cufftComplex *a, 
                                               cufftComplex *b, 
-                                              short *c, 
+                                              uint8_t *c, 
                                               int extraConstraint, 
                                               size_t perGPUDim);
 
   __global__ void multiply_support_extra(cufftComplex *a, 
                                          cufftComplex *b, 
-                                         short *c, 
+                                         uint8_t *c, 
                                          int extraConstraint, 
                                          int dimension);
 
   __global__ void update_with_support(cufftComplex *a, 
                                       cufftComplex *b, 
-                                      short *c, 
+                                      uint8_t *c, 
                                       int dimension);
     
   __global__ void update_with_support_mgpu(cufftComplex *a, 
                                            cufftComplex *b, 
-                                           short *c, 
+                                           uint8_t *c, 
                                            size_t perGPUDim);
 
   __global__ void multiply_support_mgpu(cufftComplex *a, 
                                         cufftComplex *b, 
-                                        short *c, 
+                                        uint8_t *c, 
                                         size_t perGPUDim);
 
   __global__ void multiply_support(cufftComplex *a, 
                                    cufftComplex *b, 
-                                   short *c, 
+                                   uint8_t *c, 
                                    int dimension);
   
   __global__ void set_dx(cufftComplex *a, 
-                         short *b, 
+                         uint8_t *b, 
                          float *m, 
                          int dimension);
     
   __global__ void set_dx_mgpu(cufftComplex *a, 
-                              short *b, 
+                              uint8_t *b, 
                               float *m, 
                               size_t perGPUdim);
 
@@ -195,14 +196,14 @@ extern "C" {
                                  size_t totalDim,
                                  size_t perGPUDim);
 
-  __global__ void update_support_sw_mgpu(short* supp, 
+  __global__ void update_support_sw_mgpu(uint8_t* supp, 
                                          cufftComplex *iter, 
                                          float threshold, 
                                          float globalMax, 
                                          float globalMin, 
                                          size_t perGPUDim);
 
-  __global__ void update_support_sw(short* supp, 
+  __global__ void update_support_sw(uint8_t* supp, 
                                     cufftComplex *iter, 
                                     float threshold, 
                                     float globalMax, 

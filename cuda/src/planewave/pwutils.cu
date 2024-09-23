@@ -1,5 +1,6 @@
 #include <iostream>
 #include <math.h>
+#include <stdint.h>  // For uint8_t
 
 #include "pwcdi.h"
 #include "fft.h"
@@ -79,10 +80,10 @@ extern "C" {
       // allocate d_support 
       if (params->map_d_support==false){
         // allocate d_support in VRAM GPU memory directly
-        checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_support, sizeof(short)*pow(workspace->dimension, 3)));
+        checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_support, sizeof(uint8_t)*pow(workspace->dimension, 3)));
       }else if (params->map_d_support==true){
         // allocate d_support as mapped host memory 
-        checkCudaErrors(cudaMallocHost((void**) &workspace->sgpu.d_support_host, sizeof(short)*pow(workspace->dimension, 3),cudaHostAllocMapped));
+        checkCudaErrors(cudaMallocHost((void**) &workspace->sgpu.d_support_host, sizeof(uint8_t)*pow(workspace->dimension, 3),cudaHostAllocMapped));
         checkCudaErrors(cudaHostGetDevicePointer((void **)&workspace->sgpu.d_support, (void *)workspace->sgpu.d_support_host, 0));    
       }
 
@@ -126,7 +127,7 @@ extern "C" {
       // -----------------
       // d_x, d_y, d_z - cufftComplex data type
       // d_signal      - float data type
-      // d_support     - short data type
+      // d_support     - uint8_t data type
       // plan_C2C      - ~ 3x cufftComplex data type
 
   
@@ -196,13 +197,13 @@ extern "C" {
       if (params->map_d_support==true){
  
         // allocate d_support in mapped host memory
-        hostalloc_status = cudaMallocHost((void**)&workspace->mgpu.d_support, n_gpus*sizeof(short*));
+        hostalloc_status = cudaMallocHost((void**)&workspace->mgpu.d_support, n_gpus*sizeof(uint8_t*));
 
         // allocate d_support_host as pinned host memory. After that, 
         // allocate a device pointer for d_signal containing a reference to d_support_host only. 
-        hostalloc_status = cudaMallocHost((void **)&workspace->mgpu.d_support_host, n_gpus*sizeof(short*));
+        hostalloc_status = cudaMallocHost((void **)&workspace->mgpu.d_support_host, n_gpus*sizeof(uint8_t*));
         for (int i=0; i<n_gpus; i++){
-           hostalloc_status =cudaMallocHost((void **)&workspace->mgpu.d_support_host[i], (size_t) (N*N*N*sizeof(short)/n_gpus), cudaHostAllocMapped);
+           hostalloc_status =cudaMallocHost((void **)&workspace->mgpu.d_support_host[i], (size_t) (N*N*N*sizeof(uint8_t)/n_gpus), cudaHostAllocMapped);
         }
         for (int i=0; i<n_gpus; i++){
           checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
@@ -214,19 +215,19 @@ extern "C" {
         }
       }else if(params->map_d_support==false){
         // allocate d_support directly in GPU memory
-        hostalloc_status = cudaMallocHost((void**)&workspace->mgpu.d_support, (size_t) (n_gpus*sizeof(short*)));
+        hostalloc_status = cudaMallocHost((void**)&workspace->mgpu.d_support, (size_t) (n_gpus*sizeof(uint8_t*)));
         for (int i=0; i<n_gpus; i++){
           checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i])); 
-          checkCudaErrors(cudaMalloc((void **)&(workspace->mgpu.d_support[i]),(size_t)N*N*N*sizeof(short)/n_gpus)); 
+          checkCudaErrors(cudaMalloc((void **)&(workspace->mgpu.d_support[i]),(size_t)N*N*N*sizeof(uint8_t)/n_gpus)); 
         }
         for (int i=0; i<n_gpus; ++i){
           checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
           checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
         }
       }
-      // workspace->mgpu.d_support  = (short**)calloc(n_gpus, sizeof(short*));
+      // workspace->mgpu.d_support  = (uint8_t**)calloc(n_gpus, sizeof(uint8_t*));
       // workspace->mgpu.d_gaussian = (cufftComplex**)calloc(n_gpus, sizeof(cufftComplex*));
-      // checkCudaErrors(cudaMalloc((void**)&workspace->mgpu.d_support, (size_t) (n_gpus*sizeof(short*))));
+      // checkCudaErrors(cudaMalloc((void**)&workspace->mgpu.d_support, (size_t) (n_gpus*sizeof(uint8_t*))));
     
 
       ///////////////////////////////////// 
@@ -234,9 +235,9 @@ extern "C" {
       // workspace->host_swap = (cufftComplex*)malloc(N*N*N*sizeof(cufftComplex));
       hostalloc_status = cudaMallocHost((void **)&workspace->host_swap, N*N*N*sizeof(cufftComplex));
 
-      // dynamic allocation: allocate host swap short variable 
-      // workspace->host_swap_short = (short*)malloc(N*N*N*sizeof(short));
-      hostalloc_status = cudaMallocHost((void **)&workspace->host_swap_short,N*N*N*sizeof(short));
+      // dynamic allocation: allocate host swap uint8_t variable 
+      // workspace->host_swap_byte = (uint8_t*)malloc(N*N*N*sizeof(uint8_t));
+      hostalloc_status = cudaMallocHost((void **)&workspace->host_swap_byte,N*N*N*sizeof(uint8_t));
 
       // allocate d_x_swap (host) or d_gaussian (device). If swap_d_x is false, then d_gaussian is an extra pointer in VRAM GPU 
       // memory. Otherwise, d_x will be stored in d_x_swap during the shrinkWrap operation. 
@@ -331,7 +332,7 @@ extern "C" {
 
       // free host swaps 
       cudaFreeHost(workspace->host_swap);
-      cudaFreeHost(workspace->host_swap_short);
+      cudaFreeHost(workspace->host_swap_byte);
 
       // free d_x_swap, if necessary 
       if (params->swap_d_x==true){
@@ -413,7 +414,7 @@ extern "C" {
   }
 
   
-  void synth_support_data(short *support, 
+  void synth_support_data(uint8_t *support, 
                           int dimension,
                           int p, 
                           float radius,  
@@ -525,13 +526,11 @@ extern "C" {
   
   void set_input(ssc_pwcdi_plan *workspace,
                  ssc_pwcdi_params *params,
-                 float *input){
-    //
-    // sets initial guess and .....
-    
-    
+                 float *input,
+                 cufftComplex *obj_input){
+ 
     // single GPU case 
-    if ( workspace->gpus->ngpus==1 ){ 
+    if (workspace->gpus->ngpus==1){ 
       float time;
       cudaEvent_t start, stop;
       cudaEventCreate(&start);
@@ -556,7 +555,7 @@ extern "C" {
 
       // TODO: speed-up here support_data() nested-loop function.
       // allocate host memory for the support  
-      short *hsupport = (short*) malloc(sizeof(short)*pow(workspace->dimension,3));
+      uint8_t *hsupport = (uint8_t*) malloc(sizeof(uint8_t)*pow(workspace->dimension,3));
 
       // choose whether to create a synthetic initial support or to load it from input
       if (params->sup_data == NULL){
@@ -568,7 +567,7 @@ extern "C" {
         printf("ssc-cdi: Using the initial support passed by dic['supinfo']['data']\n");
         // synth_support_data(hsupport, workspace->dimension, params->pnorm, params->radius, 0.0, 0.0, 0.0);
         for (int i=0; i<pow(workspace->dimension,3); i++){
-          *(hsupport+i) = (short) params->sup_data[i];
+          *(hsupport+i) = (uint8_t) params->sup_data[i];
         }
 
       }
@@ -576,7 +575,7 @@ extern "C" {
       // copy support data to GPU memory
       checkCudaErrors(cudaMemcpy(workspace->sgpu.d_support,
                                  hsupport,
-                                 pow(workspace->dimension, 3)*sizeof(short),
+                                 pow(workspace->dimension, 3)*sizeof(uint8_t),
                                  cudaMemcpyHostToDevice));
 
       // free host memory storing the support 
@@ -595,7 +594,8 @@ extern "C" {
       // inverting the input diffraction pattern. 
       cudaEventRecord(start);
 
-      if (params->amplitude_obj_data==NULL || params->phase_obj_data==NULL){
+      // if (params->amplitude_obj_data==NULL || params->phase_obj_data==NULL){
+      if (obj_input==NULL){
         printf("ssc-cdi: Creating initial object data from the diffraction pattern.\n");
         // d_signal is assumed to have the lowest frequency at (Nx/2,Ny/2,Nz/2) 
         // in the input, so we shift the lower frequencies to the borders.
@@ -635,25 +635,15 @@ extern "C" {
       }else{
         printf("ssc-cdi: Using initial object data from input parameters. \n");
 
-        cufftComplex *d_x_inputswap = (cufftComplex*) malloc(sizeof(cufftComplex)*pow(workspace->dimension,3));
-
-        float theta,sin,cos;
-        for (int i=0; i<pow(workspace->dimension,3); i++){
-          sincosf(params->phase_obj_data[i], &sin, &cos);
-
-          d_x_inputswap[i].x = params->amplitude_obj_data[i]*cos;
-          d_x_inputswap[i].y = params->amplitude_obj_data[i]*sin;
-        }
-
-        // copy support data to GPU memory
+        // copy d_x data to GPU memory
         checkCudaErrors(cudaMemcpy(workspace->sgpu.d_x,
-                                   d_x_inputswap,
+                                   obj_input,
                                    pow(workspace->dimension, 3)*sizeof(cufftComplex),
                                    cudaMemcpyHostToDevice));
         getLastCudaError("ssc-cdi: error / cudaMemcpyHostToDevice().\n");
 
         // free host memory storing the amplitude and phase initial data
-        free(d_x_inputswap);
+        // free(d_x_inputswap);
         // cudaFreeHost(d_x_inputswap);
         // getLastCudaError("ssc-cdi: error / cudaFreeHost().\n");
 
@@ -685,7 +675,7 @@ extern "C" {
       const dim3 threadsPerBlock(tbx*tby*tbz);
       const dim3 gridBlock (ceil((perGPUDim + threadsPerBlock.x - 1)/threadsPerBlock.x));
 
-      short* swap_support_short = (short*) malloc(sizeof(short)*workspace->nvoxels); // perGPUDim instead of workspace->nvoxels
+      uint8_t* swap_support_byte = (uint8_t*) malloc(sizeof(uint8_t)*workspace->nvoxels); // perGPUDim instead of workspace->nvoxels
 
       if(workspace->timing){
         cudaEventRecord(start);
@@ -736,18 +726,17 @@ extern "C" {
                                                                   true);
         }else{
           // load from input
-
           // create swap data to temporarily store the sup data (i think this is not necessary, as 
           // the sup data already is in sup_data)
 
           // convert params->sup_data[i*perGPUDim] to params->sup_data[(i+1)*perGPUDim]  
-          // (exclusive) from float to short
+          // (exclusive) from float to uint8_t
           for (int j=i*perGPUDim; j<(i+1)*perGPUDim; j++){
-            swap_support_short[j-i*perGPUDim] = (short) params->sup_data[j]; 
+            swap_support_byte[j-i*perGPUDim] = (uint8_t) params->sup_data[j]; 
           }
           checkCudaErrors(cudaMemcpy(workspace->mgpu.d_support[i], 
-                                     swap_support_short,
-                                     perGPUDim*sizeof(short),
+                                     swap_support_byte,
+                                     perGPUDim*sizeof(uint8_t),
                                      cudaMemcpyHostToDevice));
                                      // workspace->gpus->streams[i]));
         }
@@ -758,7 +747,7 @@ extern "C" {
       }
     
       // free swap variable
-      free(swap_support_short);
+      free(swap_support_byte);
 
       if(workspace->timing){
         cudaEventRecord(stop);
@@ -770,7 +759,8 @@ extern "C" {
       //--------------------------------------
       // initialize d_x
       //--------------------------------------
-      if (params->amplitude_obj_data == NULL || params->phase_obj_data == NULL){
+      // if (params->amplitude_obj_data == NULL || params->phase_obj_data == NULL){
+      if (obj_input==NULL){
         // use the inverted data as initial point 
         printf("ssc-cdi: Creating initial object data from the diffraction pattern.\n");
 
@@ -820,30 +810,24 @@ extern "C" {
         // // }
         // m_fftshift(workspace->mgpu.d_x, 
         //                 (size_t) cbrt((double)workspace->nvoxels), 
-        //                 SSC_DTYPE_SHORT, 
-        //                 workspace->host_swap_short,
+        //                 SSC_DTYPE_BYTE, 
+        //                 workspace->host_swap_byte,
         //                 perGPUDim,
         //                 workspace->gpus);
       }else{
         // load initial object data from input
         printf("ssc-cdi: Using initial object data from input parameters. \n");
 
-        float theta,sin,cos;
-        cufftComplex *d_x_inputswap = (cufftComplex*) malloc(sizeof(cufftComplex)*perGPUDim); // perGPUDim only. not pow(workspace->dimension,3));
+        // float theta,sin,cos;
+        // cufftComplex *d_x_inputswap = (cufftComplex*) malloc(sizeof(cufftComplex)*perGPUDim); // perGPUDim only. not pow(workspace->dimension,3));
 
-        for (int i = 0; i < n_gpus; i++){
+        for (int i=0; i<n_gpus; i++){
           checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
           
-          // temporarily store the real and imaginary phase for each element in the current slice of the volume
-          for (int j=i*perGPUDim; j<(i+1)*perGPUDim; j++){
-            sincosf(params->phase_obj_data[j], &sin, &cos);
-            d_x_inputswap[j-i*perGPUDim].x = (float) params->amplitude_obj_data[j]*cos;
-            d_x_inputswap[j-i*perGPUDim].y = (float) params->amplitude_obj_data[j]*sin;
-          }
-
           // copy to device 
           checkCudaErrors(cudaMemcpy(workspace->mgpu.d_x->descriptor->data[i], 
-                                     d_x_inputswap,
+                                    //  d_x_inputswap,
+                                     &(obj_input[i*perGPUDim]),
                                      perGPUDim*sizeof(cufftComplex),
                                      cudaMemcpyHostToDevice));
                                      // workspace->gpus->streams[i]));
@@ -851,7 +835,7 @@ extern "C" {
         }
 
         // free host memory storing the amplitude and phase initial data
-        free(d_x_inputswap);
+        // free(d_x_inputswap);
       }
     } 
   }
@@ -892,10 +876,10 @@ extern "C" {
     }
 
     if (param->variable == SSC_VARIABLE_SUPP){
-      short *input = (short*) param->input;
+      uint8_t *input = (uint8_t*) param->input;
       
       for(w=param->start; w<SSC_MIN(param->end, param->size); w++){
-        param->output[w] = (float) input[w];
+        param->output[w] = (uint8_t) input[w];
       }
     }
   
@@ -910,11 +894,10 @@ extern "C" {
                   ssc_pwcdi_plan *workspace,
                   int variable,
                   int complex_part){
-//
+    //
     // GPU operation: 
     // moving workspace->dx to host "result"
     //
-
 
     float time;
     cudaEvent_t start, stop;
@@ -922,7 +905,7 @@ extern "C" {
     cudaEventCreate(&stop);
     
     cufftComplex *result_c;
-    short *result_s;
+    uint8_t *result_s;
     
     if (variable == SSC_VARIABLE_ITER){
       result_c = (cufftComplex*) malloc(workspace->nvoxels*sizeof(cufftComplex));
@@ -942,8 +925,8 @@ extern "C" {
                                       workspace->mgpu.d_x,
                                       CUFFT_COPY_DEVICE_TO_HOST));
       }
-    }else if (variable == SSC_VARIABLE_SUPP){
-      result_s = (short*) malloc(workspace->nvoxels*sizeof(short));
+    }else if (variable==SSC_VARIABLE_SUPP){
+      result_s = (uint8_t*) malloc(workspace->nvoxels*sizeof(uint8_t));
       
       if (workspace->timing){ 
         cudaEventRecord(start);
@@ -953,7 +936,7 @@ extern "C" {
         // Single GPU case
         checkCudaErrors(cudaMemcpy(result_s,
                                    workspace->sgpu.d_support,
-                                   workspace->nvoxels*sizeof(short),
+                                   workspace->nvoxels*sizeof(uint8_t),
                                    cudaMemcpyDeviceToHost));
       }else{
         // Multi GPU case
@@ -964,7 +947,7 @@ extern "C" {
     
           checkCudaErrors(cudaMemcpy(&(result_s[i*perGPUDim]),
                                      workspace->mgpu.d_support[i], 
-                                     perGPUDim*sizeof(short),
+                                     perGPUDim*sizeof(uint8_t),
                                      cudaMemcpyDeviceToHost));
         }
 
@@ -1337,14 +1320,14 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
 // }
 
 
-// void m_fftshift_cufftcomplex(short** data, 
+// void m_fftshift_cufftcomplex(uint8_t** data, 
 //                               size_t dimension, 
 //                               int dtype, 
 //                               cufftComplex* host_swap,
 //                               size_t perGPUDim,
 //                               ssc_gpus* gpus){
 //   //
-//   // Currently this only works for dtype=SSC_DTYPE_SHORT data, since it is
+//   // Currently this only works for dtype=SSC_DTYPE_BYTE data, since it is
 //   // small enough to be performed in a single GPU. The SSC_DTYPE_COMPLEX
 //   // case should be handled in multiple GPUs.
 
@@ -1359,10 +1342,10 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
       
 
   
-//   // copy data (short**) to host_swap_short (short*)
+//   // copy data (uint8_t**) to host_swap_byte (uint8_t*)
 //   for (int i=0; i<n_gpus; i++){
 //     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-//     checkCudaErrors(cudaMemcpy((void*) &host_swap_short[i*perGPUDim], // Async
+//     checkCudaErrors(cudaMemcpy((void*) &host_swap_byte[i*perGPUDim], // Async
 //                                     (void*) data[i], 
 //                                     perGPUDim*sizeof(cufftComplex), 
 //                                     cudaMemcpyDeviceToHost)); 
@@ -1384,7 +1367,7 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
 //   for (int i=0; i<n_gpus; i++){
 //     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
 //     checkCudaErrors(cudaMemcpy((void*) data[i], //Async
-//                                     (void*) &host_swap_short[i*perGPUDim],
+//                                     (void*) &host_swap_byte[i*perGPUDim],
 //                                     perGPUDim*sizeof(cufftComplex), 
 //                                     cudaMemcpyHostToDevice));   
 //   }
@@ -1396,14 +1379,14 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
 
 
 
-void m_fftshift(short** data, 
+void m_fftshift(uint8_t** data, 
                 size_t dimension, 
                 int dtype, 
-                short* host_swap_short,
+                uint8_t* host_swap_byte,
                 size_t perGPUDim,
                 ssc_gpus* gpus){  
 
-  // Currently this only works for dtype=SSC_DTYPE_SHORT data, since it is
+  // Currently this only works for dtype=SSC_DTYPE_BYTE data, since it is
   // small enough to be performed in a single GPU. The SSC_DTYPE_COMPLEX
   // case should be handled in multiple GPUs.
 
@@ -1418,12 +1401,12 @@ void m_fftshift(short** data,
       
 
   
-  // copy data (short**) to host_swap_short (short*)
+  // copy data (uint8_t**) to host_swap_byte (uint8_t*)
   for (int i=0; i<n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-    checkCudaErrors(cudaMemcpy((void*) &host_swap_short[i*perGPUDim], // Async
+    checkCudaErrors(cudaMemcpy((void*) &host_swap_byte[i*perGPUDim], // Async
                                     (void*) data[i], 
-                                    perGPUDim*sizeof(short), 
+                                    perGPUDim*sizeof(uint8_t), 
                                     cudaMemcpyDeviceToHost));
                                     // gpus->streams[i])); // added this 
   }
@@ -1434,9 +1417,9 @@ void m_fftshift(short** data,
 
 
   // fftshift in a single GPU 
-  fftshift<<<gridBlock, threadsPerBlock>>>((void*) host_swap_short,
+  fftshift<<<gridBlock, threadsPerBlock>>>((void*) host_swap_byte,
                                            dimension,
-                                           SSC_DTYPE_SHORT);
+                                           SSC_DTYPE_BYTE);
   cudaDeviceSynchronize();
   getLastCudaError("ssc-cdi: error / Kernel execution failed @ fftshift<<<.>>>\n");
 
@@ -1444,8 +1427,8 @@ void m_fftshift(short** data,
   for (int i = 0; i < n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
     checkCudaErrors(cudaMemcpy((void*) data[i], //Async
-                                    (void*) &host_swap_short[i*perGPUDim],
-                                    perGPUDim*sizeof(short), 
+                                    (void*) &host_swap_byte[i*perGPUDim],
+                                    perGPUDim*sizeof(uint8_t), 
                                     cudaMemcpyHostToDevice));
                                     // gpus->streams[i])); // added this
      
@@ -1462,7 +1445,7 @@ void m_fftshift(short** data,
 
   void m_projection_S(cudaLibXtDesc* d_z,
                       cudaLibXtDesc* d_y,
-                      short** d_support,
+                      uint8_t** d_support,
                       int extraConstraint,
                       size_t totalDim,
                       size_t perGPUDim,
@@ -1482,13 +1465,13 @@ void m_fftshift(short** data,
         // project onto the support alone 
         update_with_support_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                                  (cufftComplex*) d_y->descriptor->data[i], //from
-                                                                 (short*) d_support[i], 
+                                                                 (uint8_t*) d_support[i], 
                                                                  perGPUDim); 
       }else{
         // project onto the support AND the phase constraint 
         update_with_support_extra_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                                        (cufftComplex*) d_y->descriptor->data[i], //from
-                                                                       (short*) d_support[i], 
+                                                                       (uint8_t*) d_support[i], 
                                                                        extraConstraint,
                                                                        perGPUDim); 
       }
@@ -1504,7 +1487,7 @@ void m_fftshift(short** data,
 
   void m_projection_S_only(cudaLibXtDesc* d_z,
                            cudaLibXtDesc* d_y,
-                           short** d_support,
+                           uint8_t** d_support,
                            int extraConstraint,
                            size_t totalDim,
                            size_t perGPUDim,
@@ -1589,7 +1572,7 @@ void m_fftshift(short** data,
   void s_projection_S(cufftHandle& plan_input,
                       cufftComplex* d_z,
                       cufftComplex* d_y,
-                      short* d_support,
+                      uint8_t* d_support,
                       int extraConstraint,
                       int dimension){
     //
@@ -1606,13 +1589,13 @@ void m_fftshift(short** data,
       // project onto the support alone 
       update_with_support<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                           (cufftComplex*) d_y,
-                                                          (short*) d_support,
+                                                          (uint8_t*) d_support,
                                                           dimension);
     }else{
       // project onto the support alone AND the phase constraint (extra constraint)
       update_with_support_extra<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                                 (cufftComplex*) d_y,
-                                                                (short*) d_support,
+                                                                (uint8_t*) d_support,
                                                                 extraConstraint,
                                                                 dimension);
     }
@@ -1625,7 +1608,7 @@ void m_fftshift(short** data,
   void s_projection_S_only(cufftHandle& plan_input,
                            cufftComplex* d_z,
                            cufftComplex* d_y,
-                           short* d_support,
+                           uint8_t* d_support,
                            int extraConstraint,
                            int dimension){
     //
@@ -1711,4 +1694,65 @@ void m_fftshift(short** data,
       getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_extraConstraint_mgpu<<<.>>>\n");
     }
   }
+
+
+  // Function to get output from object d_x and support d_support
+  void get_output(cufftComplex* obj_output, 
+                  uint8_t* finsup_output, 
+                  ssc_pwcdi_plan* workspace, 
+                  ssc_pwcdi_params* params){
+                    
+    if (workspace->gpus->ngpus>1){
+      // multi-GPU case
+      // copy d_x to obj_output
+      checkCudaErrors(cufftXtMemcpy(workspace->plan_C2C,
+                                    obj_output,
+                                    workspace->mgpu.d_x,
+                                    CUFFT_COPY_DEVICE_TO_HOST));
+
+      // copy d_support to finsup_output
+      const size_t perGPUDim = workspace->nvoxels/workspace->gpus->ngpus;
+
+      for (int i=0; i<workspace->gpus->ngpus; i++){
+        if (params->map_d_support){
+          // copy d_support_host to finsup_output
+          memcpy(&(finsup_output[i*perGPUDim]), workspace->mgpu.d_support_host[i], perGPUDim*sizeof(uint8_t));
+        }else{
+          // copy d_support to finsup_output
+          checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+          checkCudaErrors(cudaMemcpy(&(finsup_output[i*perGPUDim]),
+                                    workspace->mgpu.d_support[i], 
+                                    perGPUDim*sizeof(uint8_t),
+                                    cudaMemcpyDeviceToHost));
+        
+
+          // synchronize
+          for (int i=0; i<workspace->gpus->ngpus; ++i){
+            checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+            cudaDeviceSynchronize();
+          }
+        }
+      }
+    }else{
+      // single-GPU case
+      // copy d_x to obj_output
+      cudaMemcpy(obj_output, workspace->sgpu.d_x, workspace->nvoxels*sizeof(cufftComplex), cudaMemcpyDeviceToHost);
+          
+      if (params->map_d_support){
+        // copy d_support_host to finsup_output
+        memcpy(finsup_output, workspace->sgpu.d_support_host, workspace->nvoxels*sizeof(uint8_t));
+      }else{
+        // copy d_support to finsup_output
+        cudaMemcpy(finsup_output, workspace->sgpu.d_support, workspace->nvoxels*sizeof(uint8_t), cudaMemcpyDeviceToHost);
+      }
+    }
+  }
+
+
+
+
+
 }   // extern "C"
+
+
+ 

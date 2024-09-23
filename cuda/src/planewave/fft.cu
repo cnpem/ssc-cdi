@@ -1,9 +1,11 @@
+#include <stdint.h>  // For uint8_t
+
 #include "fft.h"
 #include "pwcdi.h"
 
 extern "C" {
 
-  __global__ void synth_support_data_mgpu(short* support,
+  __global__ void synth_support_data_mgpu(uint8_t* support,
                                           int p,
                                           float radius,
                                           float x0,
@@ -255,7 +257,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void update_with_support_extra(cufftComplex *a,
                                             cufftComplex *b,
-                                            short *c,
+                                            uint8_t *c,
                                             int extraConstraint,
                                             int dimension){
 
@@ -310,7 +312,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void update_with_support_extra_mgpu(cufftComplex *a,
                                                  cufftComplex *b,
-                                                 short *c,
+                                                 uint8_t *c,
                                                  int extraConstraint,
                                                  size_t perGPUDim){
 
@@ -363,7 +365,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void multiply_support_extra_mgpu(cufftComplex *a,
                                               cufftComplex *b,
-                                              short *c,
+                                              uint8_t *c,
                                               int extraConstraint,
                                               size_t perGPUDim){
   /**
@@ -389,7 +391,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to update and blend.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
    * @param extraConstraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
    * @param perGPUDim Size of the array segment allocated per GPU (total elements per GPU).
    *
@@ -444,7 +446,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void multiply_support_extra(cufftComplex *a,
                                          cufftComplex *b,
-                                         short *c,
+                                         uint8_t *c,
                                          int extraConstraint,
                                          int dimension){
   /**
@@ -468,7 +470,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to update and blend.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
    * @param extraConstraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
    * @param dimension Size of each dimension of the cubic array.
    *
@@ -529,7 +531,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   
   __global__ void update_with_support(cufftComplex *a,
                                       cufftComplex *b,
-                                      short *c,
+                                      uint8_t *c,
                                       int dimension){ 
    /**
    * @brief Updates a complex array `a` by performing the projection of the array `b` onto a support array `c`. This procedure is part of the 
@@ -547,7 +549,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to update and blend.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
    * @param dimension Size of each dimension of the cubic array.
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for the single GPU execution.
@@ -572,7 +574,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void update_with_support_mgpu(cufftComplex *a,
                                            cufftComplex *b,
-                                           short *c,
+                                           uint8_t *c,
                                            size_t perGPUDim){
 
   /**
@@ -591,7 +593,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to update and blend.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
    * @param perGPUDim Size of the array segment allocated per GPU (total elements per GPU).
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for the multiple GPU execution.
@@ -612,7 +614,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void multiply_support_mgpu(cufftComplex *a,
                                         cufftComplex *b,
-                                        short *c,
+                                        uint8_t *c,
                                         size_t perGPUDim){
   /**
    * @brief Multiplies a complex array `b` by a support constraint array `c` and stores the result in array `a` for multiple GPUs.
@@ -628,7 +630,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after multiplication.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be multiplied.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to multiply.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to multiply.
    * @param perGPUDim Size of the array segment allocated per GPU (total elements per GPU).
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for the multiple GPU execution.
@@ -649,7 +651,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   __global__ void multiply_support(cufftComplex *a,
                                    cufftComplex *b,
-                                   short *c,
+                                   uint8_t *c,
                                    int dimension){
   /**
    * @brief Multiplies a complex array `b` by a support constraint array `c` and stores the result in array `a`.
@@ -665,7 +667,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *
    * @param a Pointer to the output array of complex values (`cufftComplex`) after multiplication.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be multiplied.
-   * @param c Pointer to the input array of support constraints (`short`) defining which elements to multiply.
+   * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to multiply.
    * @param dimension Size of each dimension of the 3D volume represented by `a`, `b`, and `c` (total elements in each dimension).
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for the single GPU execution.
@@ -688,7 +690,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
 
   __global__ void set_dx(cufftComplex *a,
-                         short *b,
+                         uint8_t *b,
                          float *m,
                          int dimension){
     //
@@ -714,7 +716,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
   // for multiple GPU 
   __global__ void set_dx_mgpu(cufftComplex *a,
-                              short *b,
+                              uint8_t *b,
                               float *m,
                               size_t perGPUDim){
     //
@@ -827,8 +829,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   }
 
   /*
-  __global__ void get_support_mgpu(short *m,
-                                   short *a,
+  __global__ void get_support_mgpu(uint8_t *m,
+                                   uint8_t *a,
                                    size_t perGPUDim){
       //
       // m = a 
@@ -1605,7 +1607,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
 
  
 
-  __global__ void update_support_sw(short* supp,
+  __global__ void update_support_sw(uint8_t* supp,
                                     cufftComplex *iter,
                                     float threshold,
                                     float globalMax,
@@ -1672,7 +1674,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
     }
   }
   
-  __global__ void update_support_sw_mgpu(short* supp,
+  __global__ void update_support_sw_mgpu(uint8_t* supp,
                                          cufftComplex *iter,
                                          float threshold,
                                          float globalMax,
@@ -1685,7 +1687,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
      * It uses a global threshold to determine if the magnitude of each element in `iter` exceeds a certain fraction
      * of the maximum magnitude (`globalMax - globalMin`). This is computed per GPU thread based on the `perGPUDim`.
      *
-     * @param supp Pointer to the short array `supp` where the support information will be stored.
+     * @param supp Pointer to the uint8_t array `supp` where the support information will be stored.
      * @param iter Pointer to the input `cufftComplex` array whose magnitude determines the support.
      * @param threshold Threshold percentage used to determine support activation.
      * @param globalMax Global maximum magnitude value for thresholding.
@@ -1720,11 +1722,11 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
      *
      * This CUDA kernel function performs an in-place FFT shift operation on a 3D array of data represented by `input`.
      * The operation reorganizes the data in the frequency domain to shift the zero-frequency components to the center of the spectrum.
-     * It supports shifting for `cufftComplex` (complex), `short` (integer), and `float` (real) data types based on the parameter `dtype`.
+     * It supports shifting for `cufftComplex` (complex), `uint8_t` (byte), and `float` (real) data types based on the parameter `dtype`.
      *
-     * @param input Pointer to the 3D array (`cufftComplex`, `short`, or `float`) to be shifted.
+     * @param input Pointer to the 3D array (`cufftComplex`, `uint8_t`, or `float`) to be shifted.
      * @param N Size of one dimension of the 3D array (`N x N x N`).
-     * @param dtype Integer indicating the data type: `SSC_DTYPE_CUFFTCOMPLEX` for `cufftComplex`, `SSC_DTYPE_SHORT` for `short`, or `SSC_DTYPE_FLOAT` for `float`.
+     * @param dtype Integer indicating the data type: `SSC_DTYPE_CUFFTCOMPLEX` for `cufftComplex`, `SSC_DTYPE_BYTE` for `uint8_t`, or `SSC_DTYPE_FLOAT` for `float`.
      *
      * @note This function implements the FFT shift algorithm for CUDA, as adapted from the original implementation available at:
      *       https://github.com/marwan-abdellah/cufftShift/blob/master/Src/CUDA/Kernels/in-place/cufftShift_3D_IP.cu
@@ -1805,9 +1807,9 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       }
     }
 
-    if (dtype==SSC_DTYPE_SHORT){
-      short regTemp;
-      short *data = (short *) input;
+    if (dtype==SSC_DTYPE_BYTE){
+      uint8_t regTemp;
+      uint8_t *data = (uint8_t*) input;
     
       if (zIndex<N/2){
         if (xIndex<N/2){
