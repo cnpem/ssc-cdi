@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <stdint.h>  // For uint8_t
 
 #include <cuda_runtime.h>
 #include <cufftXt.h>
@@ -27,7 +28,8 @@ extern "C" {
 
   void set_input(ssc_pwcdi_plan *workspace,
                  ssc_pwcdi_params *params,
-                 float *input);
+                 float *input,
+                 cufftComplex* obj_input);
   
   void set_output(char *outpath,
                   ssc_pwcdi_params *params,
@@ -62,7 +64,7 @@ extern "C" {
         
   void m_projection_S(cudaLibXtDesc* d_z,
                       cudaLibXtDesc* d_y,
-                      short** d_support, 
+                      uint8_t** d_support, 
                       int extraConstraint,
                       size_t totalDim, 
                       size_t perGPUDim, 
@@ -76,7 +78,7 @@ extern "C" {
 
   void m_projection_S_only(cudaLibXtDesc* d_z,
                            cudaLibXtDesc* d_y,
-                           short** d_support,
+                           uint8_t** d_support,
                            int extraConstraint,
                            size_t totalDim,
                            size_t perGPUDim,
@@ -92,14 +94,14 @@ extern "C" {
   void s_projection_S(cufftHandle& plan_input,
                       cufftComplex* d_z,
                       cufftComplex* d_y,
-                      short* d_support,
+                      uint8_t* d_support,
                       int extraConstraint,
                       int dimension);
 
   void s_projection_S_only(cufftHandle& plan_input,
                            cufftComplex* d_z,
                            cufftComplex* d_y,
-                           short* d_support,
+                           uint8_t* d_support,
                            int extraConstraint,
                            int dimension);
   
@@ -115,10 +117,10 @@ extern "C" {
   
 
 
-  void m_fftshift(short** data, 
+  void m_fftshift(uint8_t** data, 
                   size_t dimension, 
                   int dtype, 
-                  short* host_swap_short,
+                  uint8_t* host_swap_byte,
                   size_t perGPUDim,
                   ssc_gpus *gpus);
 
@@ -138,6 +140,10 @@ extern "C" {
                                     int dimension);
  
 
+  void get_output(cufftComplex* obj_output, 
+                  uint8_t* finsup_output, 
+                  ssc_pwcdi_plan* workspace, 
+                  ssc_pwcdi_params* params);
 
 
 #ifdef __cplusplus
