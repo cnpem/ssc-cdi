@@ -59,7 +59,7 @@ extern "C"
 {
     void glcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float probef1)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
         ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -69,7 +69,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps,  probef1, step_obj, step_probe, reg_obj, reg_probe);
+                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
 
             gl->ptycho->objmomentum = objbeta;
             gl->ptycho->probemomentum = probebeta;
@@ -88,8 +88,10 @@ extern "C"
             int numiter,
             int* cpugpus, int ngpus,
             float* rfactors,
+            int poscorr_iter,
             float step_object, float step_probe,
-            float reg_obj, float reg_probe) {
+            float reg_obj, float reg_probe,
+            float wavelength_m, float pixelsize_m, float distance_m) {
 
         ssc_info(format("Starting PIE - p: {} o: {} r: {} n: {}",
                     psizex, osizex, numrois, numiter));
@@ -100,10 +102,7 @@ extern "C"
             gpus.push_back(cpugpus[g]);
 
         const int batchsize = 1;
-        const int geometricsteps = 1;
         const int numobjsupport = 0;
-
-        const float probef1 = 0.0;
 
         float* objsupport = nullptr;
         float* probesupport = nullptr;
@@ -112,11 +111,12 @@ extern "C"
                 dim3(dsizex,dsizex,numrois),
                 (complex*)cpuprobe, dim3(psizex,psizex,psizez),
                 (complex*)cpuobj, dim3(osizex, osizey),
-                (ROI*)cpurois, numrois,
+                (Position*)cpurois, numrois,
                 batchsize, rfactors,
                 gpus, objsupport,
                 probesupport, numobjsupport,
-                geometricsteps, probef1,
+                wavelength_m, pixelsize_m, distance_m,
+                poscorr_iter,
                 step_object, step_probe,
                 reg_obj, reg_probe);
 
@@ -127,7 +127,7 @@ extern "C"
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps, float step_obj, float step_probe, float reg_obj, float reg_probe, float probef1, float raarbeta)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
         ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -137,7 +137,10 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, probef1, step_obj, step_probe, reg_obj, reg_probe);
+                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,
+                    wavelength_m, pixelsize_m, distance_m,
+                    poscorr_iter,
+                    step_obj, step_probe, reg_obj, reg_probe);
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probemomentum = probebeta;
@@ -152,9 +155,9 @@ extern "C"
 
     void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, int geometricsteps,
+            float* objsupport, float* probesupport, int numobjsupport,
             float step_obj, float step_probe, float reg_obj, float reg_probe,
-            float probef1)
+            float wavelength_m, float pixelsize_m, float distance_m)
     {
         ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -163,10 +166,8 @@ extern "C"
             for(int g=0; g<ngpus; g++)
                 gpus.push_back(cpugpus[g]);
 
-            IndexRois((ROI*)cpurois, numrois);
-
             PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-                    (ROI*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport, geometricsteps, probef1, step_obj, step_probe, reg_obj, reg_probe);
+                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, step_obj, step_probe, reg_obj, reg_probe);
 
             pk->ptycho->objmomentum = objbeta;
             pk->ptycho->probemomentum = probebeta;

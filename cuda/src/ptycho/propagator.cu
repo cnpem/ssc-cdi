@@ -69,7 +69,7 @@ Fraunhoffer::~Fraunhoffer()
         delete workarea;
 }
 
-__global__ void KApplyASM(complex* wave, float f1, dim3 shape)
+__global__ void KApplyASM(complex* wave, float fresnel_number, dim3 shape)
 {
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     size_t idy = blockIdx.y;
@@ -81,13 +81,19 @@ __global__ void KApplyASM(complex* wave, float f1, dim3 shape)
     float xx = float( int(idx+shape.x/2)%int(shape.x) )/float(shape.x) - 0.5f;
     float yy = float( int(idy+shape.y/2)%int(shape.y) )/float(shape.y) - 0.5f;
 
-    wave[idz*shape.x*shape.y + idy*shape.x + idx] *= complex::exp1j( -float(M_PI)/f1 * (xx*xx + yy*yy) ) / float(shape.x*shape.y);
+    wave[idz*shape.x*shape.y + idy*shape.x + idx] *= complex::exp1j( -float(M_PI)/fresnel_number * (xx*xx + yy*yy) ) / float(shape.x*shape.y);
 }
 
-void ASM::Propagate(complex* owave, complex* iwave, dim3 shape, float amount)
+ASM::ASM(float wavelength, float pixelsize_m)
+    :wavelength_m(wavelength_m), pixelsize_m(pixelsize_m) {
+
+}
+
+void ASM::Propagate(complex* owave, complex* iwave, dim3 shape, float distance_m)
 {
+    const float fresnel_number = (pixelsize_m * pixelsize_m) / wavelength_m / distance_m;
     Fraunhoffer::Propagate(owave,iwave,shape,1);
-    KApplyASM<<<dim3((shape.x+127)/128,shape.y,shape.z),dim3(128,1,1)>>>(owave, amount, shape);
+    KApplyASM<<<dim3((shape.x+127)/128,shape.y,shape.z),dim3(128,1,1)>>>(owave, fresnel_number, shape);
     Fraunhoffer::Propagate(owave,owave,shape,-1);
 }
 }
