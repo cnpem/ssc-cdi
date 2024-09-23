@@ -14,6 +14,14 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+
+[0.13.1] - 2024-09-20
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Changed cupy dependency to be cupy==12.0
+
+
 [0.13.0] - 2024-09-19
 ------------------------------
 Added
