@@ -59,7 +59,7 @@ extern "C"
 {
     void glcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
         ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -69,7 +69,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, step_obj, step_probe, reg_obj, reg_probe);
+                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
 
             gl->ptycho->objmomentum = objbeta;
             gl->ptycho->probemomentum = probebeta;
@@ -88,8 +88,10 @@ extern "C"
             int numiter,
             int* cpugpus, int ngpus,
             float* rfactors,
+            int poscorr_iter,
             float step_object, float step_probe,
-            float reg_obj, float reg_probe) {
+            float reg_obj, float reg_probe,
+            float wavelength_m, float pixelsize_m, float distance_m) {
 
         ssc_info(format("Starting PIE - p: {} o: {} r: {} n: {}",
                     psizex, osizex, numrois, numiter));
@@ -102,8 +104,6 @@ extern "C"
         const int batchsize = 1;
         const int numobjsupport = 0;
 
-        const float probef1 = 0.0;
-
         float* objsupport = nullptr;
         float* probesupport = nullptr;
 
@@ -115,7 +115,8 @@ extern "C"
                 batchsize, rfactors,
                 gpus, objsupport,
                 probesupport, numobjsupport,
-                probef1, probef1, probef1, //TODO: we should use the parameters of distance here
+                wavelength_m, pixelsize_m, distance_m,
+                poscorr_iter,
                 step_object, step_probe,
                 reg_obj, reg_probe);
 
@@ -126,7 +127,7 @@ extern "C"
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
         ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
@@ -138,6 +139,7 @@ extern "C"
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
                     (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,
                     wavelength_m, pixelsize_m, distance_m,
+                    poscorr_iter,
                     step_obj, step_probe, reg_obj, reg_probe);
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?

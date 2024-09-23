@@ -21,6 +21,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
+        int poscorr_iter,
         float step_object, float step_probe, float reg_obj, float reg_probe) {
     Pie* pie = new Pie();
 
@@ -32,7 +33,9 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             gpus,
             objsupp, probesupp, numobjsupp,
             wavelength_m, pixelsize_m, distance_m,
-            step_object, step_probe, reg_obj, reg_probe);
+            poscorr_iter,
+            step_object, step_probe,
+            reg_obj, reg_probe);
 
     return pie;
 }
@@ -254,6 +257,10 @@ void PieRun(Pie& pie, int iterations) {
                     obj_abs2_max, rois);
 
         }
+
+        if (pie.ptycho->poscorr_iter &&
+                (iter + 1) % pie.ptycho->poscorr_iter == 0)
+            ApplyPositionCorrection(*pie.ptycho);
 
         pie.ptycho->cpurfact[iter] = sqrtf(pie.ptycho->rfactors->SumGPU());
         if (iter % 10 == 0) {

@@ -161,6 +161,10 @@ void GLimRun(GLim& glim, int iterations) {
 
     ApplyProbeUpdate(ptycho, probevelocity, ptycho.probestep, ptycho.probemomentum, ptycho.probereg);
 
+    if (ptycho.poscorr_iter &&
+                (iter + 1) % ptycho.poscorr_iter == 0)
+            ApplyPositionCorrection(ptycho);
+
     ptycho.cpurfact[iter] = sqrtf(ptycho.rfactors->SumCPU());
 
     if (iter % 10 == 0) {
@@ -182,6 +186,7 @@ GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
+                 int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     GLim* glim = new GLim;
@@ -190,7 +195,9 @@ GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim
                 object, objshape, rois, numrois, batchsize, rfact,
                 gpus, objsupp, probesupp, numobjsupp,
                 wavelength_m, pixelsize_m, distance_m,
-                step_obj, step_probe, reg_obj, reg_probe);
+                poscorr_iter,
+                step_obj, step_probe,
+                reg_obj, reg_probe);
 
     return glim;
 }

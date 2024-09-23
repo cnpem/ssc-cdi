@@ -31,6 +31,7 @@ struct POptAlgorithm {
     cMImage* probe = nullptr;       //!< Current probe estimate.
     cMImage* exitwave = nullptr;    //!< Temporary exitwave estimates to be amplitude projected.
     rMImage* rfactors = nullptr;    //!< GPU Buffer for the error metric.
+    rMImage* errorcounter = nullptr;
 
     rMImage* objectsupport = nullptr;  //!< List of object supports to be applied.
     rMImage* probesupport = nullptr;   //!< Support for the probe with the same shape as the probe itself.
@@ -59,6 +60,7 @@ struct POptAlgorithm {
     size_t multibatchsize;
 
     int total_num_rois;
+    int poscorr_iter = 0;
 
     rMImage* object_div;  //!< Denominator in the object augmented projector / LS-gradient preconditioner.
     cMImage* object_acc;  //!< Accumulator in the object augmented projector / LS-gradient preconditioner.
@@ -123,14 +125,16 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp,
                                    float wavelength_m, float pixelsize_m, float distance_m,
-                                   float step_obj, float step_probe, float reg_obj, float reg_probe);
+                                   int poscorr_iter,
+                                   float step_obj, float step_probe,
+                                   float reg_obj, float reg_probe);
 
 
 template <typename dtype>
 void ProjectPhiToProbe(POptAlgorithm& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm);
 void ApplyProbeUpdate(POptAlgorithm& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
-
+void ApplyPositionCorrection(POptAlgorithm& ptycho);
 
 
 /**
@@ -151,6 +155,7 @@ RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
+                 int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
 
@@ -194,6 +199,7 @@ GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
+                 int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
 
@@ -215,6 +221,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
+        int poscorr_iter,
         float step_object, float step_probe,
         float reg_obj, float reg_probe);
 

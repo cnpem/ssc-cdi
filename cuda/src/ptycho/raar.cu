@@ -107,6 +107,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
                  const dim3 &objshape, Position *rois, int numrois, int batchsize, float *rfact,
                  const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
+                 int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     RAAR *raar = new RAAR();
@@ -115,7 +116,9 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
                             gpus, objsupp, probesupp, numobjsupp,
                             wavelength_m, pixelsize_m, distance_m,
-                            step_obj, step_probe, reg_obj, reg_probe);
+                            poscorr_iter,
+                            step_obj, step_probe,
+                            reg_obj, reg_probe);
 
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
@@ -286,6 +289,10 @@ void RAARRun(RAAR& raar, int iterations) {
             RAARApplyObjectUpdate(raar, objvelocity,
                     raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
         }
+
+        if (raar.ptycho->poscorr_iter &&
+                (iter + 1) % raar.ptycho->poscorr_iter == 0)
+            ApplyPositionCorrection(*raar.ptycho);
 
         raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumGPU());
 

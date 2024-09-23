@@ -53,7 +53,7 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float,
         c_float, c_float, c_float, c_float
     ]
@@ -62,7 +62,7 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int,
+        ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         c_float, c_float, c_float, c_float
     ]
@@ -79,8 +79,11 @@ try:
     libcdi.piecall.argtypes = [
         ctypes.c_void_p, c_int, c_int, ctypes.c_void_p, c_int, c_int,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_int,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, c_float, c_float, c_float,
-        c_float
+        ctypes.c_void_p, c_int, ctypes.c_void_p,
+        ctypes.c_int,
+        c_float, c_float, c_float, c_float,
+        ctypes.c_int,
+        c_float, c_float, c_float
     ]
 
     libcdi.piecall.restype = None
@@ -132,10 +135,14 @@ def PIE(obj: np.ndarray,
         difpads: np.ndarray,
         rois: np.ndarray,
         iterations: int,
+        poscorr_iter: int,
         step_obj: float,
         step_probe: float,
         reg_obj: float,
         reg_probe: float,
+        wavelength_m: float = 0.0,
+        pixelsize_m: float = 0.0,
+        distance_m: float = 0.0,
         params: dict = {}):
     """ Ptychography PIE algorithm.
 
@@ -203,8 +210,11 @@ def PIE(obj: np.ndarray,
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez,
                    difpadsptr, dsizex, roisptr, numrois,
                    c_int(iterations), devicesptr, ndevices, rfactorptr,
+                   c_int(poscorr_iter),
                    c_float(step_obj), c_float(step_probe),
-                   c_float(reg_obj), c_float(reg_probe))
+                   c_float(reg_obj), c_float(reg_probe),
+                   c_int(poscorr_iter),
+                    c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
@@ -225,6 +235,7 @@ def RAAR(obj: np.ndarray,
          step_probe: float = 0.5,
          reg_obj: float = 1e-3,
          reg_probe: float = 1e-3,
+         poscorr_iter: int = 0,
          wavelength_m: float = 0.0,
          pixelsize_m: float = 0.0,
          distance_m: float = 0.0,
@@ -291,7 +302,6 @@ def RAAR(obj: np.ndarray,
 
     nummodes = psizez
 
-
     assert (probesupp.shape[-1] == probe.shape[-1] and
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
@@ -314,7 +324,7 @@ def RAAR(obj: np.ndarray,
                     osizey, dsizex, roisptr, numrois, c_int(batch),
                     c_int(iterations), ndevices, devicesptr, rfactorptr,
                     c_float(objbeta), c_float(probebeta), nummodes,
-                    objsuppptr, probesuppptr, numobjsupport,
+                    objsuppptr, probesuppptr, numobjsupport, c_int(poscorr_iter),
                     c_float(step_obj), c_float(step_probe),
                     c_float(reg_obj), c_float(reg_probe),
                     c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m),
@@ -338,6 +348,7 @@ def AP(obj: np.ndarray,
        step_probe: float = 0.5,
        reg_obj: float = 1e-3,
        reg_probe: float = 1e-3,
+       poscorr_iter: int = 0,
        wavelength_m: float = 0.0,
        pixelsize_m: float = 0.0,
        distance_m: float = 0.0,
@@ -403,8 +414,6 @@ def AP(obj: np.ndarray,
 
     nummodes = psizez
 
-    flyscansteps = int(rois.shape[1])
-
     assert (probesupp.shape[-1] == probe.shape[-1] and
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
@@ -415,7 +424,8 @@ def AP(obj: np.ndarray,
                   osizey, dsizex, roisptr, numrois, c_int(batch),
                   c_int(iterations), ndevices, devicesptr, rfactorptr,
                   c_float(objbeta), c_float(probebeta), nummodes, objsuppptr,
-                  probesuppptr, numobjsupport, c_int(flyscansteps),
+                  probesuppptr, numobjsupport,
+                  c_int(poscorr_iter),
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe),
                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
@@ -502,8 +512,6 @@ def PosCorrection(obj: np.ndarray,
 
     nummodes = psizez
 
-    flyscansteps = int(rois.shape[1])
-
     assert (probesupp.shape[-1] == probe.shape[-1] and
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
@@ -515,7 +523,6 @@ def PosCorrection(obj: np.ndarray,
                        c_int(iterations), ndevices, devicesptr, rfactorptr,
                        c_float(objbeta), c_float(probebeta), nummodes,
                        objsuppptr, probesuppptr, numobjsupport,
-                       c_int(flyscansteps),
                        c_float(step_obj), c_float(step_probe),
                        c_float(reg_obj),c_float(reg_probe),
                        c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))

@@ -7,7 +7,7 @@
 
 extern "C"{
 
-__global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object, const GArray<Position> rois, int offx, int offy)
+__global__ void KSideExitwavePosCor(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object, const GArray<Position> rois, int offx, int offy)
 {
 	int idx = blockIdx.x*blockDim.x + threadIdx.x;
 	if(idx >= probe.shape.x)
@@ -27,7 +27,7 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
 			exitwave(m + probe.shape.z*blockIdx.z,idy,idx) = obj * probe(m,idy,idx);
 	}
 }
-__global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, const GArray<float> difpads,
+__global__ void KComputeErrorPosCor(float* rfactors, const GArray<complex> exitwave, const GArray<float> difpads,
     const float* background, size_t nummodes)
 {
     __shared__ float sh_rfactor[64];
@@ -76,12 +76,12 @@ PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex
                                    float step_obj, float step_probe,
                                    float reg_obj, float reg_probe) {
     PosCorrection* poscorr = new PosCorrection;
-    poscorr->errorcounter = new rMImage(5, 1, batchsize, true, gpus);
     poscorr->ptycho =
         CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
                 gpus, objsupp, probesupp, numobjsupp,
                 wavelength_m, pixelsize_m, distance_m,
+                1,
                 step_obj, step_probe, reg_obj, reg_probe);
     return poscorr;
 }
@@ -97,7 +97,6 @@ void PosCorrectionProjectProbe(PosCorrection& poscorr, int section) {
 }
 
 void DestroyPosCorrection(PosCorrection*& poscorr) {
-    delete poscorr->errorcounter;
     const size_t num_batches = poscorr->ptycho->positions.size();
     size_t global_idx = 0;
     for(int d = 0; d < num_batches; d++) {
@@ -137,7 +136,7 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
         cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
         cur_difpad.LoadToGPU(ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y);
 
-        poscorr.errorcounter->SetGPUToZero();
+        poscorr.ptycho->errorcounter->SetGPUToZero();
         ptycho.positions[d]->LoadFromGPU();
 
         const size_t ngpus = ptycho_num_gpus(ptycho);
@@ -150,7 +149,7 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
                     dim3 thr = ptycho.exitwave->ShapeThread();
 
                     Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
-                    KSideExitwave<<<blk,thr>>>(*ptycho.exitwave->arrays[g],
+                    KSideExitwavePosCor<<<blk,thr>>>(*ptycho.exitwave->arrays[g],
                             *ptycho.probe->arrays[g],
                             *ptycho.object->arrays[g],
                             ptr_roi, offx[k], offy[k]);
@@ -158,21 +157,21 @@ void PosCorrectionApplyProbeUpdate(PosCorrection& poscorr, cImage& velocity,
                             ptycho.exitwave->arrays[g]->gpuptr,
                             ptycho.exitwave->arrays[g]->Shape(), 1);
 
-                    KComputeError<<<blk,thr>>>(
-                            poscorr.errorcounter->arrays[g]->gpuptr + batchsize*k,
+                    KComputeErrorPosCor<<<blk,thr>>>(
+                            poscorr.ptycho->errorcounter->arrays[g]->gpuptr + batchsize*k,
                             *ptycho.exitwave->arrays[g], *cur_difpad.arrays[g],
                             nullptr,
                             ptycho.probe->sizez);
             }
         }
 
-        poscorr.errorcounter->LoadFromGPU();
-        poscorr.errorcounter->SyncDevices();
+        poscorr.ptycho->errorcounter->LoadFromGPU();
+        poscorr.ptycho->errorcounter->SyncDevices();
 
         for(int g = 0; g<ptycho.gpus.size(); g++) {
             const size_t batch_size = ptycho_cur_batch_gpu_zsize(ptycho, d, g);
             for(size_t z = 0; z < batch_size; z++) {
-                float* error = poscorr.errorcounter->arrays[g]->cpuptr + z;
+                float* error = poscorr.ptycho->errorcounter->arrays[g]->cpuptr + z;
                 float minerror = 1E35f;
                 int minidx = 0;
 
