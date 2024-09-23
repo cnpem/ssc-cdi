@@ -40,11 +40,9 @@ include_directories(
 #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -Xcompiler -use_fast_math --ptxas-options=-v -c --compiler-options -fPIC -G")
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
-file(GLOB_RECURSE CDI_SRC cuda/src/common/*.c* cuda/src/ptycho/*.c* cuda/src/planewave/*.c*)
+file(GLOB_RECURSE CDI_SRC cuda/src/**/*.c*)
 
 add_library(ssccdi SHARED ${CDI_SRC})
-target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart)
+target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart m pthread)
 
-
-target_link_options(ssccdi PUBLIC -std=c++17 -lm -lcudart -lpthread -lcufft -lcublas)
 install(TARGETS ssccdi LIBRARY DESTINATION ${PROJECT_NAME}/lib)

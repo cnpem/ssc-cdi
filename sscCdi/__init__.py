@@ -6,7 +6,7 @@ try:
     from .cditypes import *
     from .cditypes_planewave import *
     import atexit
-    log_start(level="error")
+    log_start(level="info")
     atexit.register(log_stop)
 
 except:
@@ -18,5 +18,3 @@ from .cditypes_planewave import *
 from .processing import *
 from .ptycho import *
 from .misc import *
-from .beamlines.gui_jupyter import *
-from .beamlines import *

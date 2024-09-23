@@ -106,7 +106,7 @@ struct productstruct<complex, complex> {
  * Base class for single GPU basic operations and memory management.
  * */
 template <typename Type>
-struct Image2D {
+struct Image {
     MemoryType memorytype;
 
     bool bIsManaged() const { return memorytype == MemoryType::EAllocManaged; }
@@ -116,7 +116,7 @@ struct Image2D {
     /**
      * Constructor
      */
-    Image2D(size_t _sizex, size_t _sizey, size_t _sizez = 1, MemoryType memtype = MemoryType::EAllocCPUGPU)
+    Image(size_t _sizex, size_t _sizey, size_t _sizez = 1, MemoryType memtype = MemoryType::EAllocCPUGPU)
         : sizex(_sizex),
           sizey(_sizey),
           sizez(_sizez),
@@ -133,9 +133,9 @@ struct Image2D {
     /**
      * Makes a copy from a given pointer during construction.
      * */
-    Image2D(Type* newdata, size_t _sizex, size_t _sizey, size_t _sizez = 1,
+    Image(Type* newdata, size_t _sizex, size_t _sizey, size_t _sizez = 1,
             MemoryType memtype = MemoryType::EAllocCPUGPU)
-        : Image2D<Type>(_sizex, _sizey, _sizez, memtype) {
+        : Image<Type>(_sizex, _sizey, _sizez, memtype) {
         if (memtype == MemoryType::ENoAlloc) {
             this->cpuptr = newdata;
             this->gpuptr = newdata;
@@ -149,25 +149,25 @@ struct Image2D {
     /**
      * Makes a copy of given array.
      */
-    explicit Image2D(Image2D<Type>& other)
-        : Image2D(other.sizex, other.sizey, other.sizez,
+    explicit Image(Image<Type>& other)
+        : Image(other.sizex, other.sizey, other.sizez,
                   (other.memorytype != MemoryType::ENoAlloc) ? other.memorytype : MemoryType::EAllocCPUGPU) {
         CopyFrom(other);
     }
     /**
      * Constructor
      */
-    Image2D(const dim3& dim, MemoryType memtype = MemoryType::EAllocCPUGPU) : Image2D(dim.x, dim.y, dim.z, memtype){};
+    Image(const dim3& dim, MemoryType memtype = MemoryType::EAllocCPUGPU) : Image(dim.x, dim.y, dim.z, memtype){};
     /**
      * Constructor
      */
-    Image2D(Type* newdata, const dim3& dim, MemoryType memtype = MemoryType::EAllocCPUGPU)
-        : Image2D(newdata, dim.x, dim.y, dim.z, memtype){};
+    Image(Type* newdata, const dim3& dim, MemoryType memtype = MemoryType::EAllocCPUGPU)
+        : Image(newdata, dim.x, dim.y, dim.z, memtype){};
 
     /**
      * Destructor
      */
-    virtual ~Image2D() {
+    virtual ~Image() {
         cudaDeviceSynchronize();
         ssc_debug(format("Dealloc Image of pointer {}", (void*)gpuptr));
 
@@ -279,7 +279,7 @@ struct Image2D {
     }
 
     template <typename Type2 = Type>
-    bool operator==(const Image2D<Type2>& other) const {
+    bool operator==(const Image<Type2>& other) const {
         if (size != other.size || sizex != other.sizex ||
                 sizey != other.sizey || sizez != other.sizez)
             return false;
@@ -289,21 +289,21 @@ struct Image2D {
     }
 
     template <typename Type2 = Type>
-    Image2D<Type>& operator+=(const Image2D<Type2>& other) {
+    Image<Type>& operator+=(const Image<Type2>& other) {
         ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for addition.");
         BasicOps::KB_Add<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator-=(const Image2D<Type2>& other) {
+    Image<Type>& operator-=(const Image<Type2>& other) {
         ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for subtraction.");
         BasicOps::KB_Sub<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator*=(const Image2D<Type2>& other) {
+    Image<Type>& operator*=(const Image<Type2>& other) {
         ssc_assert(this->size == other.size || this->sizex == other.sizex,
                     "Incompatible GPU shape for multiplication.");
         BasicOps::KB_Mul<Type, Type2>
@@ -311,7 +311,7 @@ struct Image2D {
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator/=(const Image2D<Type2>& other) {
+    Image<Type>& operator/=(const Image<Type2>& other) {
         ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for division.");
         BasicOps::KB_Div<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
@@ -319,22 +319,22 @@ struct Image2D {
     }
 
     template <typename Type2 = Type>
-    Image2D<Type>& operator+=(Type2 other) {
+    Image<Type>& operator+=(Type2 other) {
         BasicOps::KB_Add<Type, Type2><<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, other, this->size);
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator-=(Type2 other) {
+    Image<Type>& operator-=(Type2 other) {
         BasicOps::KB_Sub<Type, Type2><<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, other, this->size);
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator*=(Type2 other) {
+    Image<Type>& operator*=(Type2 other) {
         BasicOps::KB_Mul<Type, Type2><<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, other, this->size);
         return *this;
     }
     template <typename Type2 = Type>
-    Image2D<Type>& operator/=(Type2 other) {
+    Image<Type>& operator/=(Type2 other) {
         BasicOps::KB_Div<Type, Type2><<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, other, this->size);
         return *this;
     }
@@ -442,20 +442,20 @@ struct Image2D {
         cudaMemcpy3D(&params);
     }
 
-    void CopyRoiTo(Image2D<Type>& other, dim3 offset, dim3 roi_size) {
+    void CopyRoiTo(Image<Type>& other, dim3 offset, dim3 roi_size) {
         CopyRoiTo(other.gpuptr, offset, roi_size);
     }
 
     /**
      * Copies from given array.
      */
-    void CopyFrom(const Image2D<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
+    void CopyFrom(const Image<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
         CopyFrom(other.gpuptr, stream, cpysize);
     }
     /**
      * Copies to given array.
      * */
-    void CopyTo(Image2D<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
+    void CopyTo(Image<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
         CopyTo(other.gpuptr, stream, cpysize);
     }
 
@@ -511,13 +511,13 @@ struct Image2D {
     /**
      * Computes *this = exp(i*other)
      * */
-    void exp1j(Image2D<float>& other) {
+    void exp1j(Image<float>& other) {
         BasicOps::KB_exp1j<<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, other.gpuptr, size);
     };
     /**
      * Computes *this = arctan(other.imag/other.real)
      * */
-    void angle(Image2D<float>& other) {
+    void angle(Image<float>& other) {
         BasicOps::KB_log1j<<<ShapeBlock(), ShapeThread()>>>(other.gpuptr, this->gpuptr, size);
     };
 
@@ -577,7 +577,7 @@ struct Image2D {
     /**
      * Dumps absolute value^2 to out.
      * */
-    void abs2(Image2D<float>& out) {
+    void abs2(Image<float>& out) {
         BasicOps::KB_ABS2<Type><<<ShapeBlock(), ShapeThread()>>>(out.gpuptr, this->gpuptr, this->size);
     }
 
@@ -614,7 +614,7 @@ struct Image2D {
      * operation.
      * */
     template <typename T2>
-    Type dot(Image2D<T2>& other) {
+    Type dot(Image<T2>& other) {
         return thrust::inner_product(thrust::device, gpuptr, gpuptr + size, other.gpuptr, Type(0), thrust::plus<Type>(),
                                      _AuxReduction::productstruct<Type, T2>());
     }
@@ -666,8 +666,8 @@ struct Image2D {
     /**
      * Returns reference array containing the Z-index specified
      * */
-    Image2D<Type>* SliceZ(size_t index) const {
-        return new Image2D<Type>(gpuptr + sizex * sizey * index, sizex, sizey, 1, MemoryType::ENoAlloc);
+    Image<Type>* SliceZ(size_t index) const {
+        return new Image<Type>(gpuptr + sizex * sizey * index, sizex, sizey, 1, MemoryType::ENoAlloc);
     };
 };
 
@@ -688,7 +688,7 @@ struct GArray {
     /**
      * Generates a kernel array form given Image/Volume
      * */
-    GArray<Type>(const Image2D<Type>& img) : ptr(img.gpuptr), shape(img.sizex, img.sizey, img.sizez){};
+    GArray<Type>(const Image<Type>& img) : ptr(img.gpuptr), shape(img.sizex, img.sizey, img.sizez){};
 
     /**
      * Shapeoffset is meant to create a slice:
@@ -696,7 +696,7 @@ struct GArray {
      *  -> newshape = shape - shapeoffset
      * It is the caller's responsibility to deal with a possible noncontiguous memory issue.
      * */
-    explicit GArray<Type>(const Image2D<Type>& img, dim3 shapeoffset) : GArray<Type>(img) {
+    explicit GArray<Type>(const Image<Type>& img, dim3 shapeoffset) : GArray<Type>(img) {
         assert(shape.x >= shapeoffset.x && shape.y >= shapeoffset.y && shape.z >= shapeoffset.z);
         ptr += shapeoffset.x + shape.x * (shapeoffset.y + shape.y * shapeoffset.z);
         shape.x -= shapeoffset.x;
@@ -718,9 +718,9 @@ struct GArray {
 };
 
 
-typedef Image2D<float> rImage;
-typedef Image2D<complex> cImage;
-typedef Image2D<complex16> hcImage;
+typedef Image<float> rImage;
+typedef Image<complex> cImage;
+typedef Image<complex16> hcImage;
 
 // Note: The outer brackets are necessary for shallow declaration of g.
 // Removing them may cause compile errors.
@@ -790,13 +790,13 @@ struct MImage : public MultiGPU {
     bool bHasAllocCPU() const { return (memorytype & MemoryType::EAllocCPU) == MemoryType::EAllocCPU; }
     bool bHasAllocGPU() const { return (memorytype & MemoryType::EAllocGPU) == MemoryType::EAllocGPU; }
 
-    Image2D<Type>* arrays[16];
+    Image<Type>* arrays[16];
     size_t offsets[16];
 
     bool bBroadcast = false;
 
     Type* Ptr(int g) const { return arrays[g]->gpuptr; }
-    Image2D<Type>& operator[](int n) { return *(arrays[n]); };
+    Image<Type>& operator[](int n) { return *(arrays[n]); };
 
     /**
      * Constructor. If broadcast = true, makes each gpu have a full copy of the array. Otherwise, each gpu gets a chunk
@@ -838,7 +838,7 @@ struct MImage : public MultiGPU {
 
             Set(g);
 
-            arrays[g] = new Image2D<Type>(sizex, sizey, zdistrib, memtype);
+            arrays[g] = new Image<Type>(sizex, sizey, zdistrib, memtype);
             offsets[g] = sizex * sizey * zstep * g;
 
             if (sizez <= zstep * g) arrays[g]->sizez = 0;
@@ -1050,6 +1050,25 @@ struct MImage : public MultiGPU {
         }
     }
 
+    void LoadFromGPU(Type* data) {
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            arrays[g]->CopyTo(data + offsets[g]);
+        }
+    }
+
+    void LoadFromGPU(Type* data, const size_t copysize) {
+        size_t rem_copysize = copysize;
+        for (int g = 0; g < this->ngpus; g++) {
+            Set(g);
+            const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
+            if (gpu_copy_size <= 0)
+                return;
+            arrays[g]->CopyTo(data + offsets[g], 0, gpu_copy_size);
+            rem_copysize -= gpu_copy_size;
+        }
+    }
+
     void LoadToGPU() { MGPULOOP(arrays[g]->LoadToGPU();); }
     void LoadFromGPU() { MGPULOOP(arrays[g]->LoadFromGPU();); }
 
@@ -1173,7 +1192,7 @@ struct MImage : public MultiGPU {
      * Meant for ptychography: object(all_gpus) = Sum_gpus(P+*Phi)/Sum_gpus(|P|^2) + beta*momentum
      * */
     void WeightedLerpSync(MImage<Type>& acc, MImage<float>& div, float stepsize, float momentum,
-                          Image2D<Type>& velocity, float epsilon) {
+                          Image<Type>& velocity, float epsilon) {
         acc.ReduceSync();
         div.ReduceSync();
 
@@ -1209,7 +1228,7 @@ struct MImage : public MultiGPU {
     /**
      * Same as ReduceSync() except only synchronize unmasked pixels, for performance reasons.
      * */
-    void ReduceSyncMasked(Image2D<uint32_t>** syncmask) {
+    void ReduceSyncMasked(Image<uint32_t>** syncmask) {
         if (ngpus < 2) return;
 
         dim3 blk = ShapeBlock();
@@ -1236,7 +1255,7 @@ struct MImage : public MultiGPU {
     /**
      * Same as Broadcast() except only synchronize unmasked pixels, for performance reasons.
      * */
-    void BroadcastSyncMasked(Image2D<uint32_t>** syncmask) {
+    void BroadcastSyncMasked(Image<uint32_t>** syncmask) {
         if (ngpus < 2) return;
 
         int potgpus = ngpus - 1;  // convert ngpus to power-of-two
@@ -1265,11 +1284,11 @@ struct MImage : public MultiGPU {
         MGPULOOP(cudaDeviceSynchronize(););
     }
 
-    Image2D<uint32_t>** GenSyncMask() {
+    Image<uint32_t>** GenSyncMask() {
         if (ngpus < 2) return nullptr;
 
-        Image2D<uint32_t>** maskmatrix = new Image2D<uint32_t>*[4 * ngpus];
-        memset(maskmatrix, 0, 4 * ngpus * sizeof(Image2D<uint32_t>*));
+        Image<uint32_t>** maskmatrix = new Image<uint32_t>*[4 * ngpus];
+        memset(maskmatrix, 0, 4 * ngpus * sizeof(Image<uint32_t>*));
 
         for (int s = 1; s < ngpus; s *= 2) {
             int t = __StupidLog2(s);
@@ -1277,13 +1296,13 @@ struct MImage : public MultiGPU {
             for (int g = 0; g < ngpus; g += 2 * s)
                 if (g + s < ngpus) {
                     Set(g);
-                    maskmatrix[t + g * 4] = new Image2D<uint32_t>((size + 31) / 32, 1, 1);
+                    maskmatrix[t + g * 4] = new Image<uint32_t>((size + 31) / 32, 1, 1);
                 }
         }
 
         return maskmatrix;
     }
-    void DeleteSyncMask(Image2D<uint32_t>** maskmatrix) {
+    void DeleteSyncMask(Image<uint32_t>** maskmatrix) {
         if (maskmatrix == nullptr) return;
 
         for (int s = 1; s < ngpus; s *= 2) {
@@ -1301,7 +1320,7 @@ struct MImage : public MultiGPU {
         delete[] maskmatrix;
     }
 
-    void UpdateSyncMask(Image2D<uint32_t>** maskmatrix, float thresh) {
+    void UpdateSyncMask(Image<uint32_t>** maskmatrix, float thresh) {
         if (ngpus < 2) return;
 
         dim3 blk = dim3((this->size + 31) / 32, 1, 1);
@@ -1329,7 +1348,7 @@ struct MImage : public MultiGPU {
     /**
      * Same as WeightedLerpSyncMasked() except only synchronize unmasked pixels, for performance reasons.
      * */
-    void WeightedLerpSyncMasked(MImage<Type>& acc, MImage<float>& div, float lerp, Image2D<uint32_t>** syncmask) {
+    void WeightedLerpSyncMasked(MImage<Type>& acc, MImage<float>& div, float lerp, Image<uint32_t>** syncmask) {
         acc.ReduceSyncMasked(syncmask);
         div.ReduceSyncMasked(syncmask);
 
