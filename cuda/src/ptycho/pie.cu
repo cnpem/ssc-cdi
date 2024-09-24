@@ -169,8 +169,8 @@ __global__ void maxAbs2(complex *d_array, float *d_max, size_t size) {
 
 void PieRun(Pie& pie, int iterations) {
 
-    ssc_assert(ptycho_num_batches(*pie.ptycho), "This algorithm does not support MultiGPU.");
-    ssc_assert(ptycho_batch_size(*pie.ptycho) == 1, "Batch > 1 is not supported for PIE.");
+    sscAssert(PtychoNumBatches(*pie.ptycho), "This algorithm does not support MultiGPU.");
+    sscAssert(PtychoBatchSize(*pie.ptycho) == 1, "Batch > 1 is not supported for PIE.");
 
     const int gpu = 0;
 
@@ -192,7 +192,7 @@ void PieRun(Pie& pie, int iterations) {
     rMImage cur_difpad(difpadshape.x, difpadshape.y, batch_size,
             false, pie.ptycho->gpus, MemoryType::EAllocGPU);
 
-    auto time0 = ssc_time();
+    auto time0 = sscTime();
 
     //float *obj_abs2_max;
     //float *probe_abs2_max;
@@ -201,7 +201,7 @@ void PieRun(Pie& pie, int iterations) {
     //cudaMalloc((void**)&probe_abs2_max, sizeof(float));
 
     // when (batchsize == 1) => (num_batches == num_rois)
-    const size_t num_rois = ptycho_num_batches(*pie.ptycho);
+    const size_t num_rois = PtychoNumBatches(*pie.ptycho);
     int random_idx[num_rois];
     range_array(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
@@ -230,7 +230,7 @@ void PieRun(Pie& pie, int iterations) {
 
             wavefront->CopyTo(wavefront_prev);
 
-            project_reciprocal_space(*pie.ptycho, difpad, gpu, pie.isGradPm);
+            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGradPm);
 
             *wavefront /= float(probeshape.x * probeshape.y);
 
@@ -264,7 +264,7 @@ void PieRun(Pie& pie, int iterations) {
 
         pie.ptycho->cpurfact[iter] = sqrtf(pie.ptycho->rfactors->SumGPU());
         if (iter % 10 == 0) {
-            ssc_info(format("iter {}/{} error = {}",
+            sscInfo(format("iter {}/{} error = {}",
                         iter, iterations, pie.ptycho->cpurfact[iter]));
         }
     }
@@ -272,7 +272,7 @@ void PieRun(Pie& pie, int iterations) {
     //cudaFree(obj_abs2_max);
     //cudaFree(probe_abs2_max);
 
-    auto time1 = ssc_time();
-    ssc_info(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
+    auto time1 = sscTime();
+    sscInfo(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
 }
 

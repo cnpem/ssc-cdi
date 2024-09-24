@@ -20,7 +20,7 @@ __device__ float const d_pos_offy[] = { 0, 0, 0, 1, -1, -1, 1, -1, 1};
 constexpr int n_pos_neighbors = 8;
 
 
-__global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object, const GArray<Position> rois, int offx, int offy)
+__global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object, const GArray<Position> positions, int offx, int offy)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if(idx >= probe.shape.x)
@@ -31,8 +31,8 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
 
     if(true)
     {
-        int objposx = idx + (int)rois(idz,0,0).x + offx;
-        int objposy = idy + (int)rois(idz,0,0).y + offy;
+        int objposx = idx + (int)positions(idz,0,0).x + offx;
+        int objposy = idy + (int)positions(idz,0,0).y + offy;
 
         const complex& obj = object(objposy, objposx);
 
@@ -80,7 +80,7 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
 }
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
-        const GArray<complex> object, const GArray<complex> exitwave, const GArray<Position> rois,
+        const GArray<complex> object, const GArray<complex> exitwave, const GArray<Position> positions,
         bool bFTNorm, bool bIsGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -90,14 +90,14 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
     complex pacc = complex(0);
     float pdiv = 0;
 
-    for (size_t roi = 0; roi < rois.shape.z; roi++)
-        for (int p = 0; p < rois.shape.x; p++)  // for each flyscan point
+    for (size_t pos = 0; pos < positions.shape.z; pos++)
+        for (int p = 0; p < positions.shape.x; p++)  // for each flyscan point
         {
-            int objposx = idx + (int)rois(roi, 0, p).x;
-            int objposy = idy + (int)rois(roi, 0, p).y;
+            int objposx = idx + (int)positions(pos, 0, p).x;
+            int objposy = idy + (int)positions(pos, 0, p).y;
 
             complex obj = object(objposy, objposx);
-            complex ew = exitwave((roi * rois.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx);
+            complex ew = exitwave((pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx);
 
             pacc += ew * obj.conj();
             pdiv += obj.abs2();
@@ -114,7 +114,7 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
 
 // the kernel code is replicated for complex16, for some reason cuda was not playing well with explicit instantiation on gpu kernels
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
-        const GArray<complex> object, const GArray<complex16> exitwave, const GArray<Position> rois,
+        const GArray<complex> object, const GArray<complex16> exitwave, const GArray<Position> positions,
         bool bFTNorm, bool bIsGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -124,14 +124,14 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
     complex pacc = complex(0);
     float pdiv = 0;
 
-    for (size_t roi = 0; roi < rois.shape.z; roi++)
-        for (int p = 0; p < rois.shape.x; p++)  // for each flyscan point
+    for (size_t pos = 0; pos < positions.shape.z; pos++)
+        for (int p = 0; p < positions.shape.x; p++)  // for each flyscan point
         {
-            int objposx = idx + (int)rois(roi, 0, p).x;
-            int objposy = idy + (int)rois(roi, 0, p).y;
+            int objposx = idx + (int)positions(pos, 0, p).x;
+            int objposy = idy + (int)positions(pos, 0, p).y;
 
             complex obj = object(objposy, objposx);
-            complex ew = complex(exitwave((roi * rois.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx));
+            complex ew = complex(exitwave((pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx));
 
             pacc += ew * obj.conj();
             pdiv += obj.abs2();
@@ -168,7 +168,7 @@ extern "C" {
     void DisablePeerToPeer(const std::vector<int>& gpus);
 
 
-    __global__ void k_project_reciprocal_space(GArray<complex> exitwave,
+    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,
             const GArray<float> difpads, float* rfactors,
             size_t upsample, size_t nummodes,
             bool bIsGrad) {
@@ -240,7 +240,7 @@ extern "C" {
 }
 
 
-void project_reciprocal_space(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
+void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
 
     SetDevice(pt.gpus, g);
 
@@ -252,7 +252,7 @@ void project_reciprocal_space(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm)
 
     pt.exitwave->arrays[g]->FFTShift2();
 
-    k_project_reciprocal_space<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.exitwave->arrays[g][0], *difpad, pt.rfactors->Ptr(g), upsample,
+    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.exitwave->arrays[g][0], *difpad, pt.rfactors->Ptr(g), upsample,
             pt.probe->sizez, bIsGradPm);
 
 
@@ -327,11 +327,11 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
             false, ptycho.gpus, MemoryType::EAllocGPU);
 
     const size_t batchsize = ptycho.positions[0]->arrays[0]->sizez;
-    const size_t num_batches = ptycho_num_batches(ptycho);
-    const size_t ngpus = ptycho_num_gpus(ptycho);
+    const size_t num_batches = PtychoNumBatches(ptycho);
+    const size_t ngpus = PtychoNumGpus(ptycho);
     for(int d = 0; d < num_batches; d++) {
-        const size_t difpad_batch_zsize = ptycho_cur_batch_zsize(ptycho, d);
-        const size_t difpad_idx = d * ptycho_batch_size(ptycho);
+        const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, d);
+        const size_t difpad_idx = d * PtychoBatchSize(ptycho);
 
         cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
         cur_difpad.LoadToGPU(ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y);
@@ -364,7 +364,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
         for(int g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
-            const size_t batch_size = ptycho_cur_batch_gpu_zsize(ptycho, d, g);
+            const size_t batch_size = PtychoCurBatchGpuZsize(ptycho, d, g);
             if (batch_size > 0) {
                 KPositionCorrection<<<256, batchsize / 256 + (batchsize % 256 > 0)>>>
                     (ptycho.errorcounter->arrays[g]->gpuptr,
@@ -377,7 +377,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
 void DestroyPtycho(Ptycho*& ptycho_ref) {
     Ptycho& ptycho = *ptycho_ref;
-    ssc_debug("Dealloc POpt.");
+    sscDebug("Dealloc POpt.");
     if (ptycho.object_div) delete ptycho.object_div;
     ptycho.object_div = nullptr;
     if (ptycho.object_acc) delete ptycho.object_acc;
@@ -389,40 +389,40 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
 
     cudaFreeHost(ptycho.cpudifpads);
 
-    ssc_debug("Deallocating base algorithm.");
+    sscDebug("Deallocating base algorithm.");
     for (int g = 0; g < ptycho.gpus.size(); g++) {
-        ssc_debug(format("Dealloc propagator: {}", g));
+        sscDebug(format("Dealloc propagator: {}", g));
         SetDevice(ptycho.gpus, g);
         delete ptycho.propagator[g];
         ptycho.propagator[g] = nullptr;
     }
 
-    ssc_debug("Probe D2H");
+    sscDebug("Probe D2H");
     ptycho.probe->CopyTo(ptycho.cpuprobe);
-    ssc_debug("Object D2H");
+    sscDebug("Object D2H");
     ptycho.object->CopyTo(ptycho.cpuobject);
 
-    ssc_debug("Dealloc probe.");
+    sscDebug("Dealloc probe.");
     delete ptycho.probe;
-    ssc_debug("Dealloc object.");
+    sscDebug("Dealloc object.");
     delete ptycho.object;
-    ssc_debug("Dealloc exitwave.");
+    sscDebug("Dealloc exitwave.");
     delete ptycho.exitwave;
 
-    ssc_debug("Dealloc supports.");
+    sscDebug("Dealloc supports.");
     if (ptycho.objectsupport != nullptr) delete ptycho.objectsupport;
     if (ptycho.probesupport != nullptr) delete ptycho.probesupport;
 
-    ssc_debug("Dealloc rfactors.");
+    sscDebug("Dealloc rfactors.");
     delete ptycho.rfactors;
 
-    ssc_debug("Dealloc errorcounter.");
+    sscDebug("Dealloc errorcounter.");
     delete ptycho.errorcounter;
 
-    ssc_debug("Dealloc rois.");
-    for (auto* roi : ptycho.positions) delete roi;
+    sscDebug("Dealloc rois.");
+    for (auto* pos : ptycho.positions) delete pos;
 
-    ssc_debug("Done.");
+    sscDebug("Done.");
 
     SetDevice(ptycho.gpus, 0);
     delete ptycho.probepropagator;
@@ -431,7 +431,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
 }
 
 Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
-        complex* _object, const dim3& objshape, Position* _rois, int numrois, int batchsize,
+        complex* _object, const dim3& objshape, Position* positions, int numrois, int batchsize,
         float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
         int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
@@ -442,8 +442,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     Ptycho* ptycho = new Ptycho;
     ptycho->gpus = gpus;
 
-    ssc_debug("Initializing algorithm.");
-    ssc_debug("Enabling P2P");
+    sscDebug("Initializing algorithm.");
+    sscDebug("Enabling P2P");
 
     ptycho->pixelsize_m = pixelsize_m;
     ptycho->wavelength_m = wavelength_m;
@@ -471,7 +471,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
         ptycho->singlebatchsize = (numrois + ngpus - 1) / ngpus;
         batchsize = ptycho->multibatchsize = ptycho->singlebatchsize * ngpus;
     }
-    ssc_debug(format("Batches: {} {}", ptycho->singlebatchsize, ptycho->multibatchsize));
+    sscDebug(format("Batches: {} {}", ptycho->singlebatchsize, ptycho->multibatchsize));
 
     ptycho->total_num_rois = numrois;
 
@@ -483,18 +483,18 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
 
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;
-    ptycho->cpurois = _rois;
+    ptycho->cpurois = positions;
     ptycho->cpurfact = _rfact;
 
-    ssc_debug("Alloc probe.");
+    sscDebug("Alloc probe.");
     ptycho->probe = new cMImage(_probe, probeshape, true, gpus);
-    ssc_debug("Alloc obj");
+    sscDebug("Alloc obj");
     ptycho->object = new cMImage(_object, objshape, true, gpus);
-    ssc_debug("Alloc EW");
+    sscDebug("Alloc EW");
     ptycho->exitwave = new cMImage(probeshape.x, probeshape.y,
             ptycho->singlebatchsize * probeshape.z, true, gpus);
 
-    ssc_debug("Alloc Supports");
+    sscDebug("Alloc Supports");
 
     if (numobjsupp > 0 && _objectsupport != nullptr) {
         ptycho->objectsupport = new rMImage(_objectsupport, dim3(objshape.x, objshape.y, numobjsupp), true, ptycho->gpus);
@@ -512,7 +512,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     else
         ptycho->probesupport = nullptr;
 
-    ssc_debug("Alloc RF");
+    sscDebug("Alloc RF");
     ptycho->rfactors = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
     ptycho->rfactors->SetGPUToZero();
 
@@ -522,23 +522,23 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->roibatch_offset = std::vector<int>();
 
     for (size_t n = 0; n < numrois; n += batchsize) {
-        ssc_debug(format("Creating DPGroup at: {} of {} at step {}" , n, numrois, batchsize));
+        sscDebug(format("Creating DPGroup at: {} of {} at step {}" , n, numrois, batchsize));
         if (numrois - n < batchsize)  // last batch
         {
-            ptycho->positions.push_back(new PositionArray(_rois + n, 1, 1, numrois - n, false, gpus));
+            ptycho->positions.push_back(new PositionArray(positions + n, 1, 1, numrois - n, false, gpus));
         } else {
-            ptycho->positions.push_back(new PositionArray(_rois + n, 1, 1, batchsize, false, gpus));
+            ptycho->positions.push_back(new PositionArray(positions + n, 1, 1, batchsize, false, gpus));
         }
         ptycho->roibatch_offset.push_back(n / ngpus);
     }
 
     for (int g = 0; g < gpus.size(); g++) {
         SetDevice(gpus, g);
-        ssc_debug(format("Creating propagator: {}", g));
+        sscDebug(format("Creating propagator: {}", g));
         ptycho->propagator[g] = new Fraunhoffer();
     }
 
-    ssc_debug("Computing I0");
+    sscDebug("Computing I0");
     SetDevice(gpus, 0);
     ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
     ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);

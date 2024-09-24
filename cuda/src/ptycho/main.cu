@@ -16,21 +16,21 @@ extern "C" {
             for(int g2 : gpus) {
                 if(g2 != g && !accessEnabled[g][g2]) {
                     int can_acess;
-                    ssc_cuda_check( cudaDeviceCanAccessPeer(&can_acess, g, g2) );
+                    sscCudaCheck( cudaDeviceCanAccessPeer(&can_acess, g, g2) );
                     if(!can_acess) {
-                        ssc_warning(format("Warning: GPU {} cant access GPU {}", g, g2));
+                        sscWarning(format("Warning: GPU {} cant access GPU {}", g, g2));
                     }
                     else {
                         cudaError_t cerror = cudaDeviceEnablePeerAccess(g2, 0);
                         if( cerror == cudaSuccess ) {
                             accessEnabled[g][g2] = true;
-                            ssc_debug(format("P2P access enabled: {} <-> {}", g, g2));
+                            sscDebug(format("P2P access enabled: {} <-> {}", g, g2));
                         }
                         else if(cerror == cudaErrorPeerAccessAlreadyEnabled) {
-                            ssc_debug(format("GPU {} already has access to GPU {}", g, g2));
+                            sscDebug(format("GPU {} already has access to GPU {}", g, g2));
                         }
                         else {
-                            ssc_cuda_check( cerror );
+                            sscCudaCheck( cerror );
                         }
                     }
                 }
@@ -47,8 +47,8 @@ extern "C" {
             cudaSetDevice(g);
             for(int g2 : gpus) {
                 if(g2 != g && accessEnabled[g][g2]) {
-                    ssc_cuda_check( cudaDeviceDisablePeerAccess(g2) );
-                    ssc_debug(format("P2P access disabled: {} <-> {}", g, g2));
+                    sscCudaCheck( cudaDeviceDisablePeerAccess(g2) );
+                    sscDebug(format("P2P access disabled: {} <-> {}", g, g2));
                 }
             }
         }
@@ -61,7 +61,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
-        ssc_info(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
+        sscInfo(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
@@ -78,7 +78,7 @@ extern "C"
 
             DestroyAP(ap);
         }
-        ssc_info("End AP.");
+        sscInfo("End AP.");
     }
 
     void piecall(void* cpuobj, int osizex, int osizey,
@@ -93,7 +93,7 @@ extern "C"
             float reg_obj, float reg_probe,
             float wavelength_m, float pixelsize_m, float distance_m) {
 
-        ssc_info(format("Starting PIE - p: {} o: {} r: {} n: {}",
+        sscInfo(format("Starting PIE - p: {} o: {} r: {} n: {}",
                     psizex, osizex, numrois, numiter));
 
         std::vector<int> gpus;
@@ -129,7 +129,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
-        ssc_info(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
+        sscInfo(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
                     psizex, osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
@@ -149,7 +149,7 @@ extern "C"
 
             DestroyRAAR(raar);
 
-            ssc_info("End RAAR.");
+            sscInfo("End RAAR.");
         }
     }
 }
@@ -207,7 +207,7 @@ struct Initializer
         std::iota(gpus.begin(), gpus.end(), 0);
 
         //DisablePeerToPeer(gpus);
-        ssc_debug("Disabled P2P.");
+        sscDebug("Disabled P2P.");
     };
 };
 

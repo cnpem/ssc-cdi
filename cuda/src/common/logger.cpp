@@ -15,7 +15,7 @@ std::atomic_bool log_active;
 
 void ssc_log_start(const char* level) {
     if (log_active) {
-        ssc_warning("Log already started. Ignoring start.");
+        sscWarning("Log already started. Ignoring start.");
         return;
     }
 
@@ -28,29 +28,29 @@ void ssc_log_start(const char* level) {
 
 void ssc_log_stop() {
     if (!log_active) {
-        ssc_warning("Log not started. Ignoring stop.");
+        sscWarning("Log not started. Ignoring stop.");
     }
     log_active = false;
     spdlog::drop_all();
     spdlog::shutdown();
 }
 
-void ssc_warning(const string& msg) {
+void sscWarning(const string& msg) {
     if (log_active)
         spdlog::warn(msg);
 }
 
-void ssc_error(const string& msg) {
+void sscError(const string& msg) {
     if (log_active)
         spdlog::error(msg);
 }
 
-void ssc_info(const string& msg) {
+void sscInfo(const string& msg) {
     if (log_active)
         spdlog::info(msg);
 }
 
-void ssc_debug(const string& msg) {
+void sscDebug(const string& msg) {
     if (log_active)
         spdlog::debug(msg);
 }
@@ -80,30 +80,30 @@ const char* cufftGetErrorString(cufftResult s) {
     }
 }
 
-void _ssc_assert(bool assertion,
+void _sscAssert(bool assertion,
         const std::string& log_msg,
         const char *file, const int line) {
         if (!assertion) {
-            ssc_error(format("{} ({}): *** assertion error: {}",
+            sscError(format("{} ({}): *** assertion error: {}",
                         file, line, log_msg.c_str()));
             raise(SIGABRT);
         }
 }
 
-void _ssc_cufft_check(cufftResult fftres,
+void _sscCufftCheck(cufftResult fftres,
         const char *file, const int line) {
     if (fftres != CUFFT_SUCCESS) {
-        ssc_error(format("{} ({}) => *** cufftError: {}",
+        sscError(format("{} ({}) => *** cufftError: {}",
                     file, line, cufftGetErrorString(fftres)));
         raise(SIGABRT);
     }
 }
 
-void _ssc_cuda_check(cudaError_t cudares,
+void _sscCudaCheck(cudaError_t cudares,
         const char *file, const int line) {
     if (cudares != cudaSuccess) {
         int device;
-        ssc_error(format("{} ({}) => *** cudaError: {}",
+        sscError(format("{} ({}) => *** cudaError: {}",
                     file, line, cudaGetErrorString(cudares)));
         raise(SIGABRT);
     }

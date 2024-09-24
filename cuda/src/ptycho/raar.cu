@@ -123,7 +123,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
 
-    const size_t num_batches = ptycho_num_batches(*raar->ptycho);
+    const size_t num_batches = PtychoNumBatches(*raar->ptycho);
     for (int i = 0; i < num_batches; i++) {
         size_t batchsize = raar->ptycho->positions[i]->arrays[0]->sizez;
         auto *newphistack =
@@ -185,7 +185,7 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
     raar.ptycho->probe_acc->SetGPUToZero();
     raar.ptycho->probe_div->SetGPUToZero();
 
-    const size_t num_batches = ptycho_num_batches(*raar.ptycho);
+    const size_t num_batches = PtychoNumBatches(*raar.ptycho);
     for (int d = 0; d < num_batches; d++) {
           RAARProjectProbe(raar, d, *raar.phistack[d]);
     }
@@ -205,7 +205,7 @@ void init_wavefront(RAAR& raar) {
  * RAAR iteration loop.
  * */
 void RAARRun(RAAR& raar, int iterations) {
-    ssc_info("Starting RAAR iteration.");
+    sscInfo("Starting RAAR iteration.");
 
     const dim3 probeshape = raar.ptycho->probe->Shape();
 
@@ -216,7 +216,7 @@ void RAARRun(RAAR& raar, int iterations) {
     objvelocity.SetGPUToZero();
     probevelocity.SetGPUToZero();
 
-    auto time0 = ssc_time();
+    auto time0 = sscTime();
 
     const dim3 difpadshape = raar.ptycho->difpadshape;
 
@@ -229,7 +229,7 @@ void RAARRun(RAAR& raar, int iterations) {
         raar.ptycho->object_acc->SetGPUToZero();
         raar.ptycho->object_div->SetGPUToZero();
 
-        const size_t num_batches = ptycho_num_batches(*raar.ptycho);
+        const size_t num_batches = PtychoNumBatches(*raar.ptycho);
         for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
           const size_t difpad_batch_zsize = raar.ptycho->positions[batch_idx]->sizez;
@@ -240,7 +240,7 @@ void RAARRun(RAAR& raar, int iterations) {
           cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
           cur_difpad.LoadToGPU(difpad_batch_ptr);
 
-           const size_t ngpus = ptycho_num_gpus(*raar.ptycho);
+           const size_t ngpus = PtychoNumGpus(*raar.ptycho);
            for (int gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
 
                 cImage* current_exit_wave = raar.ptycho->exitwave->arrays[gpu_idx];
@@ -263,7 +263,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *current_measurement, ptr_roi, raar.beta);
 
-                    project_reciprocal_space(*raar.ptycho,
+                    ProjectReciprocalSpace(*raar.ptycho,
                             cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGradPm); // propagate, apply measured intensity and unpropagate
 
                     //normalize inverse cufft output
@@ -276,11 +276,11 @@ void RAARRun(RAAR& raar, int iterations) {
         }
 
 
-        ssc_debug("Syncing OBJ");
+        sscDebug("Syncing OBJ");
         objvelocity.SetGPUToZero();
         raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_acc), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg);
 
-        ssc_debug("Applying probe");
+        sscDebug("Applying probe");
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
@@ -297,14 +297,14 @@ void RAARRun(RAAR& raar, int iterations) {
         raar.ptycho->cpurfact[iter] = sqrtf(raar.ptycho->rfactors->SumGPU());
 
         if (iter % 10 == 0) {
-            ssc_info(format("iter {}/{} error: {}",
+            sscInfo(format("iter {}/{} error: {}",
                         iter, iterations, raar.ptycho->cpurfact[iter]));
         }
 
     }
 
-    auto time1 = ssc_time();
-    ssc_info(format("End RAAR iteration: {} ms", ssc_diff_time(time0, time1)));
+    auto time1 = sscTime();
+    sscInfo(format("End RAAR iteration: {} ms", ssc_diff_time(time0, time1)));
 
 }
 
