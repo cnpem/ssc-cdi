@@ -1,3 +1,13 @@
+# Academic License Agreement:
+#
+# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
+#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
+# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
+#
+# For the complete LICENSE description see LICENSE file available within the root directory of this project.
+##################################################################################################################################################################
+
+
 import numpy as np
 import sys, os, h5py
 import random
@@ -21,7 +31,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     - `ePIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
     - `RAAR`: Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
     - `AP`: Alternate Projections. Multi GPU, CUDA implementation
-    - `AP_PC`: Alternate Projections with Position Correction via Annealing method. Multi GPU, CUDA implementation
     - `ePIE`: Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
 
     Args:
@@ -119,17 +128,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                     'batch': 64
                 },
                 '4': {
-                    'name':'AP_PC',
-                    'iterations': 100,
-                    'step_object': 0.9,
-                    'step_probe': 0.9,
-                    'regularization_object': 0.001,
-                    'regularization_probe': 0.001,
-                    'momentum_obj': 0.5,
-                    'momentum_probe': 0.5,
-                    'batch': 64,
-                },
-                '5': {
                     'name':'AP',
                     'iterations': 50,
                     'step_object': 1.0,
@@ -140,7 +138,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                     'momentum_probe': 0.5,
                     'batch': 64,
                 },
-                '6': {
+                '5': {
                     'name':'PIE',
                     'iterations': 50,
                     'step_object': 1.0,
@@ -321,25 +319,17 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support_array'])[3]:.2f} GBs")
 
-    algo_inputs = input_dict #TODO: unification of algo calls
-
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
     corrected_positions = None
 
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
-        algo_inputs['iterations'] = input_dict['algorithms'][str(counter)]['iterations'] 
+        algo_inputs = {
+            **input_dict,
+            **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }
+        }
+
         algo_inputs['distance'] = input_dict["detector_distance"]
-        try:
-            algo_inputs['regularization_object'] = input_dict['algorithms'][str(counter)]['regularization_object'] # try because it is not mandatory for ML algorithm
-        except:
-            print('No regularization for object')
-        try:
-            algo_inputs['regularization_probe']  = input_dict['algorithms'][str(counter)]['regularization_probe'] 
-        except:
-            print('No regularization for probe')
-        algo_inputs['step_object']= input_dict['algorithms'][str(counter)]['step_object'] 
-        algo_inputs['step_probe'] = input_dict['algorithms'][str(counter)]['step_probe'] 
 
         algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
         # algo_inputs['centralize_probe'] = False # not implemented 
@@ -361,8 +351,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
-            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] 
-            
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
@@ -372,10 +360,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
-            algo_inputs['optimizer'] = input_dict['algorithms'][str(counter)]['optimizer'] 
             obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
             probe[0] = new_probe
-            
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
 
@@ -383,10 +369,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            
-            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
 
             obj, probe, algo_error, probe_positions = AP(iterations=algo_inputs['iterations'],
                                                         objbeta=algo_inputs['momentum_obj'],
@@ -402,8 +384,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         probe=probe,
                                                         probesupp = algo_inputs['probe_support_array'],
                                                         params={'device': input_dict["GPUs"]},
-                                                        probef1=input_dict['fresnel_number'])
-            
+                                                        poscorr_iter=algo_inputs["position_correction"],
+                                                        wavelength_m=input_dict["wavelength"],
+                                                        pixelsize_m=input_dict["object_pixel"],
+                                                        distance_m=input_dict["distance_sample_focus"])
             algo_error = np.expand_dims(algo_error,axis=1)
 
             obj = obj.astype(np.complex64)
@@ -416,12 +400,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            
-            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
-            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta']
-            
             obj, probe, algo_error, probe_positions  = RAAR(iterations=algo_inputs['iterations'],
                                                             probebeta=algo_inputs['momentum_probe'],
                                                             objbeta=algo_inputs['momentum_obj'],
@@ -437,41 +415,16 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             probe=probe,
                                                             probesupp = algo_inputs['probe_support_array'],
                                                             params={'device': input_dict["GPUs"]},
-                                                            probef1=input_dict['fresnel_number'])
-                                
+                                                            poscorr_iter=algo_inputs["position_correction"],
+                                                            wavelength_m=input_dict["wavelength"],
+                                                            pixelsize_m=input_dict["object_pixel"],
+                                                            distance_m=input_dict["distance_sample_focus"])
+
             algo_error = np.expand_dims(algo_error,axis=1)
 
             obj = obj.astype(np.complex64) 
             probe = probe.astype(np.complex64)
 
-        elif input_dict["algorithms"][str(counter)]['name'] == 'AP_PC':
-            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projection with Annealing Position Correction algorithm...")
-
-            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
-                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
-            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
-                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            
-            algo_inputs['momentum_obj'] = input_dict['algorithms'][str(counter)]['momentum_obj']
-            algo_inputs['momentum_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe']
-            algo_inputs['batch'] = input_dict['algorithms'][str(counter)]['batch']
-            
-            obj, probe, algo_error, probe_positions = PosCorrection( iterations=algo_inputs['iterations'],
-                                                                    objbeta=algo_inputs['momentum_obj'],
-                                                                    probebeta=algo_inputs['momentum_probe'],
-                                                                    batch=algo_inputs['batch'],
-                                                                    step_obj=algo_inputs['step_object'],
-                                                                    step_probe=algo_inputs['step_probe'],
-                                                                    reg_obj=algo_inputs['regularization_object'],
-                                                                    reg_probe=algo_inputs['regularization_probe'],
-                                                                    difpads=DPs,
-                                                                    obj=obj,
-                                                                    rois=probe_positions,
-                                                                    probe=probe,
-                                                                    probesupp = algo_inputs['probe_support_array'],
-                                                                    params={'device': input_dict["GPUs"]},
-                                                                    probef1=input_dict['fresnel_number'])
-            
             corrected_positions = probe_positions.copy()
             algo_error = np.expand_dims(algo_error,axis=1)
 
@@ -485,18 +438,20 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            
             obj, probe, algo_error, probe_positions = PIE(iterations=algo_inputs['iterations'],
                                                             step_obj=algo_inputs['step_object'],
                                                             step_probe=algo_inputs['step_probe'],
                                                             reg_obj=algo_inputs['regularization_object'],
                                                             reg_probe=algo_inputs['regularization_probe'],
-                                                            rois=probe_positions, 
+                                                            poscorr_iter=algo_inputs["position_correction"],
+                                                            rois=probe_positions,
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
+                                                            wavelength_m=input_dict["wavelength"],
+                                                            pixelsize_m=input_dict["object_pixel"],
+                                                            distance_m=input_dict["distance_sample_focus"],
                                                             params={'device': input_dict["GPUs"]})
-            
             algo_error = np.expand_dims(algo_error,axis=1)
 
             obj = obj.astype(np.complex64)

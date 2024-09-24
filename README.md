@@ -9,7 +9,7 @@
 
 	- Ptycho-tomography pre-processing (sorting, cropping, unwrapping, phase-ramp removal)
 
-High-level level functionality is written in Python, whereas some of the low-level algorithms are be accelerated with CUDA.
+High-level level functionality is written in Python. Some of the algorithms are accelerated with C++/CUDA.
 
 ## Installation
 
@@ -23,11 +23,13 @@ See examples/ folder for Python notebooks that show how to use package.
 
 For support in **ssc-cdi**, contact the Scientific Computing group via [gcc@lnls.br](mailto:gcc@lnls.br) or one of its members:
 
+## License
+
+See LICENSE file.
+
 ## Contributors
 
 	Alan Z. Peixinho (alan.peixinho@lnls.br)
-
-	Camila F. A. Lages (camila.lages@lnls.br)
 
 	Eduardo X. Miqueles	(eduardo.miqueles@lnls.br)
 
@@ -41,8 +43,7 @@ Former contributors
 
 	Julia C. Carvalho (julia.carvalho@lnls.br)
 
+	Camila F. A. Lages 
+
 	Giovanni L. Baraldi
-
-
-	
 
