@@ -113,7 +113,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
     RAAR *raar = new RAAR();
 
     raar->ptycho =
-        CreatePOptAlgorithm(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
+        CreatePtycho(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
                             gpus, objsupp, probesupp, numobjsupp,
                             wavelength_m, pixelsize_m, distance_m,
                             poscorr_iter,
@@ -140,7 +140,7 @@ void DestroyRAAR(RAAR *&raar) {
     for (auto *phi : raar->phistack) {
         delete phi;
     }
-    DestroyPOptAlgorithm(raar->ptycho);
+    DestroyPtycho(raar->ptycho);
     raar = nullptr;
 }
 

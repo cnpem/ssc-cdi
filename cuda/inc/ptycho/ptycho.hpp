@@ -23,7 +23,7 @@ typedef MImage<Position> PositionArray;
 /**
  * Base class for ptychography algorithms. Holds most of the relevant information and data.
  * */
-struct POptAlgorithm {
+struct Ptycho {
     std::vector<int> gpus;
 
     std::vector<PositionArray*> positions;    //!< List of probe positions with exact same length as their corresponding scattering patterns.
@@ -79,48 +79,48 @@ struct POptAlgorithm {
     float objreg = 0.01f;
 };
 
-inline size_t ptycho_num_batches(POptAlgorithm& ptycho) {
+inline size_t ptycho_num_batches(Ptycho& ptycho) {
     return ptycho.positions.size();
 }
 
-inline size_t ptycho_num_gpus(POptAlgorithm& ptycho) {
+inline size_t ptycho_num_gpus(Ptycho& ptycho) {
     return ptycho.gpus.size();
 }
 
-inline int ptycho_num_modes(POptAlgorithm& ptycho) {
+inline int ptycho_num_modes(Ptycho& ptycho) {
     return ptycho.probe->sizez;
 }
 
 /**
  * Number of slices for current batch.
  **/
-inline size_t ptycho_cur_batch_zsize(POptAlgorithm& ptycho, size_t batch_idx) {
+inline size_t ptycho_cur_batch_zsize(Ptycho& ptycho, size_t batch_idx) {
     return ptycho.positions[batch_idx]->sizez;
 }
 
-inline size_t ptycho_batch_size(POptAlgorithm& ptycho) {
+inline size_t ptycho_batch_size(Ptycho& ptycho) {
     return ptycho.multibatchsize;
 }
 
 /**
  * Number of slices on gpu for batch.
  **/
-inline size_t ptycho_cur_batch_gpu_zsize(POptAlgorithm& ptycho, size_t batch_idx, size_t gpu_idx) {
+inline size_t ptycho_cur_batch_gpu_zsize(Ptycho& ptycho, size_t batch_idx, size_t gpu_idx) {
     return (*ptycho.positions[batch_idx])[gpu_idx].sizez;
 }
 
 /**
  * Probe real space project from a given section of the list.
  * */
-void ProjectProbe(POptAlgorithm& ptycho, int section);
+void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void project_reciprocal_space(POptAlgorithm& ptycho, rImage* difpads, int g, bool isGradPm);
+void project_reciprocal_space(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm);
 
-void DestroyPOptAlgorithm(POptAlgorithm*& ptycho);
+void DestroyPtycho(Ptycho*& ptycho);
 
-POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
+Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
                                    complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
                                    float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                                    int numobjsupp,
@@ -131,10 +131,10 @@ POptAlgorithm* CreatePOptAlgorithm(float* difpads, const dim3& difshape, complex
 
 
 template <typename dtype>
-void ProjectPhiToProbe(POptAlgorithm& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm);
-void ApplyProbeUpdate(POptAlgorithm& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
+void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm);
+void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
-void ApplyPositionCorrection(POptAlgorithm& ptycho);
+void ApplyPositionCorrection(Ptycho& ptycho);
 
 
 /**
@@ -142,7 +142,7 @@ void ApplyPositionCorrection(POptAlgorithm& ptycho);
  * projectors.
  * */
 struct RAAR {
-    POptAlgorithm* ptycho = nullptr;
+    Ptycho* ptycho = nullptr;
     std::vector<hcMImage*> phistack;  //!< Stack of current exitwave estimates. can become very huge
     const bool isGradPm = false;
     float beta = 0.9f;
@@ -188,14 +188,14 @@ __global__ void k_project_reciprocal_space(GArray<complex> exitwave, const GArra
 /**
  * Alternated projections with momentum.
  * */
-struct GLim {
-    POptAlgorithm* ptycho;
+struct AP {
+    Ptycho* ptycho;
     const bool isGradPm = true;
 };
 
-void GLimRun(GLim& glim, int iter);
+void APRun(AP& glim, int iter);
 
-GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
+AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
@@ -203,12 +203,12 @@ GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe);
 
-void DestroyGLim(GLim*& glim);
+void DestroyAP(AP*& glim);
 
-void GLimProjectProbe(GLim& glim, int section);
+void APProjectProbe(AP& glim, int section);
 
 struct Pie {
-    POptAlgorithm* ptycho;
+    Ptycho* ptycho;
     const bool isGradPm = false;
 };
 
@@ -229,28 +229,3 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
 void DestroyPie(Pie*& pie);
 
 void PieRun(Pie& pie, int iterations);
-
-struct PosCorrection
-{
-    rMImage* errorcounter = nullptr;
-    POptAlgorithm* ptycho = nullptr;
-    const bool isGradPm = true;
-};
-
-PosCorrection* CreatePosCorrection(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
-                                   complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
-                                   float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
-                                   int numobjsupp,
-                                   float wavelength_m, float pixelsize_m, float distance_m,
-                                   float step_obj, float step_probe,
-                                   float reg_obj, float reg_probe);
-
-
-void DestroyPosCorrection(PosCorrection*& poscorr);
-
-void PosCorrectionRun(PosCorrection& poscorr, int iterations);
-
-/**
- * Noise model to use in the LS-Maximum Likelihood optimization.
- * */
-enum class NoiseModel { EUCLID, GAUSS, POISSON, DEAD, MIXED };

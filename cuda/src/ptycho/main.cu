@@ -68,15 +68,15 @@ extern "C"
             for(int g=0; g<ngpus; g++)
                 gpus.push_back(cpugpus[g]);
 
-            GLim *gl = CreateGLim((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
+            AP *ap = CreateAP((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
                     (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
 
-            gl->ptycho->objmomentum = objbeta;
-            gl->ptycho->probemomentum = probebeta;
+            ap->ptycho->objmomentum = objbeta;
+            ap->ptycho->probemomentum = probebeta;
 
-            GLimRun(*gl, numiter);
+            APRun(*ap, numiter);
 
-            DestroyGLim(gl);
+            DestroyAP(ap);
         }
         ssc_info("End AP.");
     }
@@ -152,32 +152,6 @@ extern "C"
             ssc_info("End RAAR.");
         }
     }
-
-    void poscorrcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport,
-            float step_obj, float step_probe, float reg_obj, float reg_probe,
-            float wavelength_m, float pixelsize_m, float distance_m)
-    {
-        ssc_info(format("Starting PosCorrection - p: {} o: {} r: {} b: {} n: {}",
-                    psizex, osizex, numrois, bsize, numiter));
-        {
-            std::vector<int> gpus;
-            for(int g=0; g<ngpus; g++)
-                gpus.push_back(cpugpus[g]);
-
-            PosCorrection *pk = CreatePosCorrection((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex,osizey),
-                    (Position*)cpurois, numrois, bsize, rfactors, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, step_obj, step_probe, reg_obj, reg_probe);
-
-            pk->ptycho->objmomentum = objbeta;
-            pk->ptycho->probemomentum = probebeta;
-
-            PosCorrectionRun(*pk, numiter);
-            DestroyPosCorrection(pk);
-        }
-        ssc_info("End PosCorrection.");
-    }
-
 }
 
 

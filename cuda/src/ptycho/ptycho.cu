@@ -147,7 +147,7 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
 }
 
 template <typename dtype>
-void ProjectPhiToProbe(POptAlgorithm& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool bIsGradPm) {
+void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool bIsGradPm) {
     dim3 blk = pt.probe->ShapeBlock();
     dim3 thr = pt.probe->ShapeThread();
 
@@ -159,9 +159,9 @@ void ProjectPhiToProbe(POptAlgorithm& pt, int section, const MImage<dtype>& Phi,
     }
 }
 
-template void ProjectPhiToProbe<complex>(POptAlgorithm& pt, int section, const cMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
+template void ProjectPhiToProbe<complex>(Ptycho& pt, int section, const cMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
 
-template void ProjectPhiToProbe<complex16>(POptAlgorithm& pt, int section, const hcMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
+template void ProjectPhiToProbe<complex16>(Ptycho& pt, int section, const hcMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
 
 extern "C" {
     void EnablePeerToPeer(const std::vector<int>& gpus);
@@ -240,7 +240,7 @@ extern "C" {
 }
 
 
-void project_reciprocal_space(POptAlgorithm &pt, rImage* difpad, int g, bool bIsGradPm) {
+void project_reciprocal_space(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
 
     SetDevice(pt.gpus, g);
 
@@ -262,7 +262,7 @@ void project_reciprocal_space(POptAlgorithm &pt, rImage* difpad, int g, bool bIs
 }
 
 
-void ApplyProbeUpdate(POptAlgorithm& pt, cImage& velocity, float stepsize, float momentum, float epsilon) {
+void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize, float momentum, float epsilon) {
 
     if (momentum < 0 | stepsize < 0) return;
 
@@ -318,7 +318,7 @@ void KPositionCorrection(float* errorcounter, Position* positions,
 
 }
 
-void ApplyPositionCorrection(POptAlgorithm& ptycho) {
+void ApplyPositionCorrection(Ptycho& ptycho) {
 
     ptycho.errorcounter->SetGPUToZero();
 
@@ -375,8 +375,8 @@ void ApplyPositionCorrection(POptAlgorithm& ptycho) {
     }
 }
 
-void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
-    POptAlgorithm& ptycho = *ptycho_ref;
+void DestroyPtycho(Ptycho*& ptycho_ref) {
+    Ptycho& ptycho = *ptycho_ref;
     ssc_debug("Dealloc POpt.");
     if (ptycho.object_div) delete ptycho.object_div;
     ptycho.object_div = nullptr;
@@ -430,7 +430,7 @@ void DestroyPOptAlgorithm(POptAlgorithm*& ptycho_ref) {
     ptycho_ref = nullptr;
 }
 
-POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
+Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
         complex* _object, const dim3& objshape, Position* _rois, int numrois, int batchsize,
         float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
         int numobjsupp,
@@ -439,7 +439,7 @@ POptAlgorithm* CreatePOptAlgorithm(float* _difpads, const dim3& difshape, comple
         float step_obj, float step_probe,
         float reg_obj, float reg_probe) {
 
-    POptAlgorithm* ptycho = new POptAlgorithm;
+    Ptycho* ptycho = new Ptycho;
     ptycho->gpus = gpus;
 
     ssc_debug("Initializing algorithm.");
