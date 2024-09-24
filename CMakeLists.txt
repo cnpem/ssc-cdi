@@ -11,14 +11,6 @@ set(CMAKE_CUDA_ARCHITECTURES 70)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) #-fPIC
 
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
-    set (CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-fopenmp")
-endif()
-
 FetchContent_Declare(
   spdlog
   GIT_REPOSITORY https://github.com/gabime/spdlog.git
@@ -27,7 +19,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(spdlog)
 
-find_package(CUDAToolkit)
+find_package(CUDAToolkit REQUIRED)
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
 
@@ -39,13 +31,18 @@ include_directories(
     cuda/inc
     cuda/inc/common
     cuda/inc/common10
+    cuda/inc/ptycho
+    cuda/inc/planewave
 )
 
 # suppress annoying warning to allow header function definition
 #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcudafe --diag_suppress=20050")
+#set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda -Xcompiler -use_fast_math --ptxas-options=-v -c --compiler-options -fPIC -G")
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-file(GLOB_RECURSE CDI_SRC cuda/src/*.c*)
+file(GLOB_RECURSE CDI_SRC cuda/src/**/*.c*)
 
 add_library(ssccdi SHARED ${CDI_SRC})
-target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart)
+target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart m pthread)
+
 install(TARGETS ssccdi LIBRARY DESTINATION ${PROJECT_NAME}/lib)

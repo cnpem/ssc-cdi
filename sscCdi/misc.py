@@ -1,3 +1,13 @@
+# Academic License Agreement:
+#
+# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
+#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
+# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
+#
+# For the complete LICENSE description see LICENSE file available within the root directory of this project.
+##################################################################################################################################################################
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
@@ -602,7 +612,7 @@ def slice_visualizer(data, axis=0, type='', title='', cmap='gray', aspect_ratio=
         figure.canvas.header_visible = False
         colorbar = plt.colorbar(
             matplotlib.cm.ScalarMappable(
-                norm=get_colornorm(volume_slice, vmin, vmax, norm),
+                # norm=get_colornorm(volume_slice, vmin, vmax, norm),
                 cmap=cmap))
         plt.show()
 

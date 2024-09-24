@@ -14,6 +14,33 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+
+[0.13.1] - 2024-09-20
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Changed cupy dependency to be cupy==12.0
+
+
+[0.13.0] - 2024-09-19
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Initial merge of the 3d planewave CDI code. 
+
+
+[0.12.0] - 2024-09-19
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Removed restoration module and beamline specific codes (pipelines) from sscCdi. These are now part of the ssc-cdi-apps package.
+
+[0.11.2] - 2024-08-27
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixed bug for PIE when considering incoherent_modes > 1
+
 [0.11.1] - 2024-08-01
 ------------------------------
 Fixed
@@ -514,3 +541,4 @@ Added
 Changed
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 - Changed number of possible GPUs for CAT interfaces for 5 at Cluster and 6 at Local since restructuring of the machines
+

@@ -1,14 +1,12 @@
 [build-system]
-build-backend = "setuptools.build_meta"
 requires = [
     "setuptools>=60.0",
     "scikit-build>=0.17",
     "cmake>=3.18",
-    "cython",
     "ninja",
     "wheel",
 ]
-
+build-backend = "setuptools.build_meta"
 
 [project]
 dynamic = ["version"]
