@@ -29,32 +29,26 @@ struct Ptycho {
     std::vector<PositionArray*> positions;    //!< List of probe positions with exact same length as their corresponding scattering patterns.
     cMImage* object = nullptr;      //!< Current object estimate.
     cMImage* probe = nullptr;       //!< Current probe estimate.
-    cMImage* exitwave = nullptr;    //!< Temporary exitwave estimates to be amplitude projected.
-    rMImage* rfactors = nullptr;    //!< GPU Buffer for the error metric.
+    cMImage* wavefront = nullptr;    //!< Temporary exitwave estimates to be amplitude projected.
+    rMImage* error = nullptr;    //!< GPU Buffer for the error metric.
     rMImage* errorcounter = nullptr;
 
     rMImage* objectsupport = nullptr;  //!< List of object supports to be applied.
     rMImage* probesupport = nullptr;   //!< Support for the probe with the same shape as the probe itself.
     std::vector<float> SupportSizes;   //!< Normalization vector for the object support.
 
-    bool bCenterProbe = true;    //!< Currently unused.
-
-    float I0;  //!< Initial probe norm ||P||^2
-
     Propagator* propagator[16];             //!< List of propagators to be used in the amplitude projection.
     Propagator* probepropagator = nullptr;  //!< Propagator to be used before applying a support to the probe.
 
-    dim3 difpadshape;   //!< Shape of all scattering intensities.
-    float probef1 = 1;  //!< Fresnel number to be applied by probepropagator.
+    dim3 diff_pattern_shape;   //!< Shape of all scattering intensities.
 
-    float pixelsize_m, wavelength_m;
+    float pixelsize_m, wavelength_m, distance_m;
 
-    float* cpudifpads = nullptr;   //!< Copy of difpads' memory location passed to the algorithm.
+    float* cpu_diff_pattern = nullptr;   //!< Copy of difpads' memory location passed to the algorithm.
     complex* cpuobject = nullptr;  //!< Copy of the object's memory location passed to the algorithm.
     complex* cpuprobe = nullptr;   //!< Copy of the probe's memory location passed to the algorithm.
-    Position* cpurois = nullptr;        //!< Copy of the rois' memory location passed to the algorithm.
-    float* cpurfact = nullptr;     //!< Copy of the output error metric's memory location passed to the algorithm.
-
+    Position* cpupositions = nullptr;        //!< Copy of the rois' memory location passed to the algorithm.
+    float* cpuerror = nullptr;     //!< Copy of the output error metric's memory location passed to the algorithm.
     std::vector<int> roibatch_offset;
     size_t singlebatchsize;
     size_t multibatchsize;
@@ -63,10 +57,10 @@ struct Ptycho {
     int poscorr_iter = 0;
 
     rMImage* object_div;  //!< Denominator in the object augmented projector / LS-gradient preconditioner.
-    cMImage* object_acc;  //!< Accumulator in the object augmented projector / LS-gradient preconditioner.
+    cMImage* object_num;  //!< Accumulator in the object augmented projector / LS-gradient preconditioner.
 
     rMImage* probe_div;  //!< Denominator in the probe augmented projector / LS-gradient preconditioner.
-    cMImage* probe_acc;  //!< Accumulator in the probe augmented projector / LS-gradient preconditioner.
+    cMImage* probe_num;  //!< Accumulator in the probe augmented projector / LS-gradient preconditioner.
 
 
     float objmomentum = 0.95f;
@@ -143,7 +137,7 @@ void ApplyPositionCorrection(Ptycho& ptycho);
  * */
 struct RAAR {
     Ptycho* ptycho = nullptr;
-    std::vector<hcMImage*> phistack;  //!< Stack of current exitwave estimates. can become very huge
+    std::vector<hcMImage*> previous_wavefront;  //!< Stack of current exitwave estimates. can become very huge
     const bool isGradPm = false;
     float beta = 0.9f;
 };
@@ -173,17 +167,6 @@ void RAARApplyObjectUpdate(RAAR& raar, cImage& velocity, float stepsize, float m
  * Projects phistack to the probe subspace and calls Super::ApplyProbeUpdate
  * */
 void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity, float stepsize, float momentum, float epsilon);
-
-extern "C" {
-__global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,
-                            const GArray<Position> rois);
-
-__global__ void KGLPs(const GArray<complex> probe, GArray<complex> object_acc, GArray<float> object_div,
-                      const GArray<complex> p_pm, const GArray<Position> rois);
-
-__global__ void KProjectReciprocalSpace(GArray<complex> exitwave, const GArray<float> difpads, float* rfactors, size_t upsample,
-                    size_t nummodes, bool bIsGrad);
-}
 
 /**
  * Alternated projections with momentum.
