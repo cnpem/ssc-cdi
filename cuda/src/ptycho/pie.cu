@@ -178,7 +178,7 @@ void PieRun(Pie& pie, int iterations) {
 
     dim3 probeshape = pie.ptycho->probe->Shape();
     dim3 objectshape = pie.ptycho->object->Shape();
-    dim3 difpadshape = pie.ptycho->difpadshape;
+    dim3 difpadshape = pie.ptycho->diff_pattern_shape;
     dim3 roishape = dim3(probeshape.x, probeshape.y, 1);
 
     SetDevice(pie.ptycho->gpus, gpu);
@@ -187,7 +187,7 @@ void PieRun(Pie& pie, int iterations) {
 
     const int num_modes = ptycho_num_modes(*pie.ptycho);
 
-    cImage wavefront_prev(*pie.ptycho->exitwave->arrays[0]);
+    cImage wavefront_prev(*pie.ptycho->wavefront->arrays[0]);
 
     rMImage cur_difpad(difpadshape.x, difpadshape.y, batch_size,
             false, pie.ptycho->gpus, MemoryType::EAllocGPU);
@@ -205,25 +205,25 @@ void PieRun(Pie& pie, int iterations) {
     int random_idx[num_rois];
     range_array(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
-        pie.ptycho->rfactors->SetGPUToZero();
+        pie.ptycho->error->SetGPUToZero();
 
         shuffle_array(random_idx, num_rois);
         for (int pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
             const size_t random_pos_idx = random_idx[pos_idx];
 
-            float* difpad_batch_ptr = pie.ptycho->cpudifpads +
+            float* difpad_batch_ptr = pie.ptycho->cpu_diff_pattern +
                 random_pos_idx * difpadshape.x * difpadshape.y;
 
             cur_difpad.LoadToGPU(difpad_batch_ptr);
 
-            dim3 blk = pie.ptycho->exitwave->ShapeBlock();
+            dim3 blk = pie.ptycho->wavefront->ShapeBlock();
             blk.z = batch_size;
-            dim3 thr = pie.ptycho->exitwave->ShapeThread();
+            dim3 thr = pie.ptycho->wavefront->ShapeThread();
 
             Position* rois = pie.ptycho->positions[random_pos_idx]->Ptr(gpu);
             cImage* probe = pie.ptycho->probe->arrays[gpu];
             cImage* obj = pie.ptycho->object->arrays[gpu];
-            cImage* wavefront = pie.ptycho->exitwave->arrays[gpu];
+            cImage* wavefront = pie.ptycho->wavefront->arrays[gpu];
             rImage* difpad = cur_difpad.arrays[gpu];
 
             k_pie_wavefront_calc<<<blk, thr>>>(*wavefront, *probe, *obj, rois);
@@ -235,8 +235,8 @@ void PieRun(Pie& pie, int iterations) {
             *wavefront /= float(probeshape.x * probeshape.y);
 
             const float probe_abs2_max = probe->maxAbs2();
-            const dim3 pos_offset(pie.ptycho->cpurois[random_pos_idx].x,
-                    pie.ptycho->cpurois[random_pos_idx].y, 0);
+            const dim3 pos_offset(pie.ptycho->cpupositions[random_pos_idx].x,
+                    pie.ptycho->cpupositions[random_pos_idx].y, 0);
             obj->CopyRoiTo(obj_box, pos_offset, roishape);
             const float obj_abs2_max = obj_box.maxAbs2();
 
@@ -262,10 +262,10 @@ void PieRun(Pie& pie, int iterations) {
                 (iter + 1) % pie.ptycho->poscorr_iter == 0)
             ApplyPositionCorrection(*pie.ptycho);
 
-        pie.ptycho->cpurfact[iter] = sqrtf(pie.ptycho->rfactors->SumGPU());
+        pie.ptycho->cpuerror[iter] = sqrtf(pie.ptycho->error->SumGPU());
         if (iter % 10 == 0) {
             sscInfo(format("iter {}/{} error = {}",
-                        iter, iterations, pie.ptycho->cpurfact[iter]));
+                        iter, iterations, pie.ptycho->cpuerror[iter]));
         }
     }
 

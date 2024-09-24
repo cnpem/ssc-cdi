@@ -154,7 +154,7 @@ void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool b
     for (int g = 0; g < pt.gpus.size(); g++) {
         SetDevice(pt.gpus, g);
 
-        KProjectPhiToProbe<<<blk, thr>>>(pt.probe->arrays[g][0], pt.probe_acc->Ptr(g), pt.probe_div->Ptr(g),
+        KProjectPhiToProbe<<<blk, thr>>>(pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
                 pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0], bNormalizeFFT, bIsGradPm);
     }
 }
@@ -244,20 +244,20 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
 
     SetDevice(pt.gpus, g);
 
-    complex* ewave = pt.exitwave->Ptr(g);
+    complex* ewave = pt.wavefront->Ptr(g);
 
-    int upsample = pt.exitwave->sizex / difpad->sizex;
+    int upsample = pt.wavefront->sizex / difpad->sizex;
 
-    pt.propagator[g]->Propagate(ewave, ewave, pt.exitwave->Shape(), 1);
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), 1);
 
-    pt.exitwave->arrays[g]->FFTShift2();
+    pt.wavefront->arrays[g]->FFTShift2();
 
-    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.exitwave->arrays[g][0], *difpad, pt.rfactors->Ptr(g), upsample,
+    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.wavefront->arrays[g][0], *difpad, pt.error->Ptr(g), upsample,
             pt.probe->sizez, bIsGradPm);
 
 
-    pt.exitwave->arrays[g]->FFTShift2();
-    pt.propagator[g]->Propagate(ewave, ewave, pt.exitwave->Shape(), -1);
+    pt.wavefront->arrays[g]->FFTShift2();
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1);
 
 }
 
@@ -271,18 +271,18 @@ void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize, float moment
     SetDevice(pt.gpus, 0);
 
 
-    pt.probe->WeightedLerpSync(*(pt.probe_acc), *(pt.probe_div), stepsize, momentum, velocity, epsilon);
+    pt.probe->WeightedLerpSync(*(pt.probe_num), *(pt.probe_div), stepsize, momentum, velocity, epsilon);
 
     if (pt.probesupport != nullptr) {
         dim3 shape = dim3(pt.probe->sizex, pt.probe->sizey, pt.probe->sizez);
         complex* pointer = pt.probe->arrays[0]->gpuptr;
         SetDevice(pt.gpus, 0);
 
-        if (pt.probef1 != 0) pt.probepropagator->Propagate(pointer, pointer, shape, +pt.probef1);
+        if (pt.distance_m > 0) pt.probepropagator->Propagate(pointer, pointer, shape, +pt.distance_m);
 
         pt.probe->arrays[0][0] *= pt.probesupport->arrays[0][0];
 
-        if (pt.probef1 != 0) pt.probepropagator->Propagate(pointer, pointer, shape, -pt.probef1);
+        if (pt.distance_m > 0) pt.probepropagator->Propagate(pointer, pointer, shape, -pt.distance_m);
 
         pt.probe->BroadcastSync();
     }
@@ -322,7 +322,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
     ptycho.errorcounter->SetGPUToZero();
 
-    const dim3 difpadshape = ptycho.difpadshape;
+    const dim3 difpadshape = ptycho.diff_pattern_shape;
     rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
             false, ptycho.gpus, MemoryType::EAllocGPU);
 
@@ -334,28 +334,28 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
         const size_t difpad_idx = d * PtychoBatchSize(ptycho);
 
         cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
-        cur_difpad.LoadToGPU(ptycho.cpudifpads + difpad_idx * difpadshape.x * difpadshape.y);
+        cur_difpad.LoadToGPU(ptycho.cpu_diff_pattern + difpad_idx * difpadshape.x * difpadshape.y);
         for(int g = 0; g < ngpus; g++) {
             for(int k = 0; k <= n_pos_neighbors; k++) {
                 SetDevice(ptycho.gpus, g);
                 const size_t difpadsizez = ptycho.positions[d][0][g].sizez;
                 if(difpadsizez > 0) {
-                    dim3 blk = ptycho.exitwave->ShapeBlock();
+                    dim3 blk = ptycho.wavefront->ShapeBlock();
                     blk.z = difpadsizez;
-                    dim3 thr = ptycho.exitwave->ShapeThread();
+                    dim3 thr = ptycho.wavefront->ShapeThread();
 
                     Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
-                    KSideExitwave<<<blk,thr>>>(*ptycho.exitwave->arrays[g],
+                    KSideExitwave<<<blk,thr>>>(*ptycho.wavefront->arrays[g],
                             *ptycho.probe->arrays[g],
                             *ptycho.object->arrays[g],
                             ptr_roi, pos_offx[k], pos_offy[k]);
-                    ptycho.propagator[g]->Propagate(ptycho.exitwave->arrays[g]->gpuptr,
-                            ptycho.exitwave->arrays[g]->gpuptr,
-                            ptycho.exitwave->arrays[g]->Shape(), 1);
+                    ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,
+                            ptycho.wavefront->arrays[g]->gpuptr,
+                            ptycho.wavefront->arrays[g]->Shape(), 1);
 
                     KComputeError<<<blk,thr>>>(
                             ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
-                            *ptycho.exitwave->arrays[g], *cur_difpad.arrays[g],
+                            *ptycho.wavefront->arrays[g], *cur_difpad.arrays[g],
                             nullptr,
                             ptycho.probe->sizez);
                 }
@@ -380,14 +380,14 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     sscDebug("Dealloc POpt.");
     if (ptycho.object_div) delete ptycho.object_div;
     ptycho.object_div = nullptr;
-    if (ptycho.object_acc) delete ptycho.object_acc;
-    ptycho.object_acc = nullptr;
+    if (ptycho.object_num) delete ptycho.object_num;
+    ptycho.object_num = nullptr;
     if (ptycho.probe_div) delete ptycho.probe_div;
     ptycho.probe_div = nullptr;
-    if (ptycho.probe_acc) delete ptycho.probe_acc;
-    ptycho.probe_acc = nullptr;
+    if (ptycho.probe_num) delete ptycho.probe_num;
+    ptycho.probe_num = nullptr;
 
-    cudaFreeHost(ptycho.cpudifpads);
+    cudaFreeHost(ptycho.cpu_diff_pattern);
 
     sscDebug("Deallocating base algorithm.");
     for (int g = 0; g < ptycho.gpus.size(); g++) {
@@ -407,14 +407,14 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     sscDebug("Dealloc object.");
     delete ptycho.object;
     sscDebug("Dealloc exitwave.");
-    delete ptycho.exitwave;
+    delete ptycho.wavefront;
 
     sscDebug("Dealloc supports.");
     if (ptycho.objectsupport != nullptr) delete ptycho.objectsupport;
     if (ptycho.probesupport != nullptr) delete ptycho.probesupport;
 
     sscDebug("Dealloc rfactors.");
-    delete ptycho.rfactors;
+    delete ptycho.error;
 
     sscDebug("Dealloc errorcounter.");
     delete ptycho.errorcounter;
@@ -447,6 +447,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
 
     ptycho->pixelsize_m = pixelsize_m;
     ptycho->wavelength_m = wavelength_m;
+    ptycho->distance_m = distance_m;
 
     EnablePeerToPeer(ptycho->gpus);
 
@@ -455,9 +456,9 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->objstep = step_obj;
     ptycho->probestep = step_probe;
 
-    ptycho->difpadshape.x = difshape.x;
-    ptycho->difpadshape.y = difshape.y;
-    ptycho->difpadshape.z = difshape.z;
+    ptycho->diff_pattern_shape.x = difshape.x;
+    ptycho->diff_pattern_shape.y = difshape.y;
+    ptycho->diff_pattern_shape.z = difshape.z;
 
     ptycho->poscorr_iter = poscorr_iter;
 
@@ -475,23 +476,23 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
 
     ptycho->total_num_rois = numrois;
 
-    ptycho->cpudifpads = _difpads;
+    ptycho->cpu_diff_pattern = _difpads;
 
-    size_t difpad_size = ptycho->difpadshape.x * ptycho->difpadshape.y * ptycho->difpadshape.z;
-    cudaMallocHost(&(ptycho->cpudifpads), difpad_size * sizeof(float));
-    cudaMemcpy(ptycho->cpudifpads, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
+    size_t difpad_size = ptycho->diff_pattern_shape.x * ptycho->diff_pattern_shape.y * ptycho->diff_pattern_shape.z;
+    cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
+    cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
 
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;
-    ptycho->cpurois = positions;
-    ptycho->cpurfact = _rfact;
+    ptycho->cpupositions = positions;
+    ptycho->cpuerror = _rfact;
 
     sscDebug("Alloc probe.");
     ptycho->probe = new cMImage(_probe, probeshape, true, gpus);
     sscDebug("Alloc obj");
     ptycho->object = new cMImage(_object, objshape, true, gpus);
     sscDebug("Alloc EW");
-    ptycho->exitwave = new cMImage(probeshape.x, probeshape.y,
+    ptycho->wavefront = new cMImage(probeshape.x, probeshape.y,
             ptycho->singlebatchsize * probeshape.z, true, gpus);
 
     sscDebug("Alloc Supports");
@@ -513,8 +514,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
         ptycho->probesupport = nullptr;
 
     sscDebug("Alloc RF");
-    ptycho->rfactors = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
-    ptycho->rfactors->SetGPUToZero();
+    ptycho->error = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
+    ptycho->error->SetGPUToZero();
 
     ptycho->errorcounter = new rMImage(n_pos_neighbors + 1, 1, batchsize, true, ptycho->gpus);
 
@@ -540,14 +541,13 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
 
     sscDebug("Computing I0");
     SetDevice(gpus, 0);
-    ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
     ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);
 
     ptycho->object_div = new rMImage(ptycho->object->Shape(), true, gpus);
-    ptycho->object_acc = new cMImage(ptycho->object->Shape(), true, gpus);
+    ptycho->object_num = new cMImage(ptycho->object->Shape(), true, gpus);
 
     ptycho->probe_div = new rMImage(ptycho->probe->Shape(), true, gpus);
-    ptycho->probe_acc = new cMImage(ptycho->probe->Shape(), true, gpus);
+    ptycho->probe_num = new cMImage(ptycho->probe->Shape(), true, gpus);
 
     return ptycho;
 }
