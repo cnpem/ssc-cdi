@@ -125,7 +125,7 @@ struct Image {
           memorytype(memtype),
           gpuptr(nullptr),
           cpuptr(nullptr) {
-        ssc_debug(format("Creating Image of size: {} {} {} ({})", sizex, sizey, sizez, sizeof(Type)));
+        sscDebug(format("Creating Image of size: {} {} {} ({})", sizex, sizey, sizez, sizeof(Type)));
         AllocManaged();
         AllocGPU();
         AllocCPU();
@@ -140,7 +140,7 @@ struct Image {
             this->cpuptr = newdata;
             this->gpuptr = newdata;
         } else {
-            ssc_debug(format("Creating Image of size: {} {} {} ({}) from pointer {}",
+            sscDebug(format("Creating Image of size: {} {} {} ({}) from pointer {}",
                         sizex, sizey, sizez, sizeof(Type), (void*)newdata));
             if (bHasAllocGPU() || bIsManaged()) this->CopyFrom(newdata);
             if (bHasAllocCPU()) memcpy(cpuptr, newdata, sizeof(Type) * GetSize());
@@ -169,14 +169,14 @@ struct Image {
      */
     virtual ~Image() {
         cudaDeviceSynchronize();
-        ssc_debug(format("Dealloc Image of pointer {}", (void*)gpuptr));
+        sscDebug(format("Dealloc Image of pointer {}", (void*)gpuptr));
 
         DeallocManaged();
         DeallocGPU();
         DeallocCPU();
 
         cudaDeviceSynchronize();
-        ssc_cuda_check(cudaGetLastError());
+        sscCudaCheck(cudaGetLastError());
     }
 
     size_t sizex = 0;
@@ -194,14 +194,14 @@ struct Image {
      * Zero-fill.
      * */
     void SetGPUToZero() {
-        ssc_cuda_check(cudaMemset(gpuptr, 0, size * sizeof(Type)));
+        sscCudaCheck(cudaMemset(gpuptr, 0, size * sizeof(Type)));
         SyncDebug;
     }
     /**
      * Stramem zero-fill.
      * */
     void SetGPUToZero(cudaStream_t stream) {
-        ssc_cuda_check(cudaMemsetAsync(gpuptr, 0, size * sizeof(Type), stream));
+        sscCudaCheck(cudaMemsetAsync(gpuptr, 0, size * sizeof(Type), stream));
         SyncDebug;
     }
     /**
@@ -242,7 +242,7 @@ struct Image {
     void Resize(size_t x, size_t y, size_t z) {
         size_t s = x * y * z;
         if (s > capacity) {
-            ssc_error(format("This image cant be resized beyond its original capacity"));
+            sscError(format("This image cant be resized beyond its original capacity"));
             exit(-1);
         }
         size = s;
@@ -252,7 +252,7 @@ struct Image {
     }
 
     void AllocGPU() {
-        if (!gpuptr && bHasAllocGPU()) ssc_cuda_check(cudaMalloc((void**)&gpuptr, sizeof(Type) * size));
+        if (!gpuptr && bHasAllocGPU()) sscCudaCheck(cudaMalloc((void**)&gpuptr, sizeof(Type) * size));
     }
     void DeallocGPU() {
         if (gpuptr && bHasAllocGPU()) cudaFree(gpuptr);
@@ -267,7 +267,7 @@ struct Image {
     }
     void AllocManaged() {
         if (bIsManaged()) {
-            ssc_cuda_check(cudaMallocManaged((void**)&gpuptr, sizeof(Type) * size));
+            sscCudaCheck(cudaMallocManaged((void**)&gpuptr, sizeof(Type) * size));
             cpuptr = gpuptr;
         }
     }
@@ -290,21 +290,21 @@ struct Image {
 
     template <typename Type2 = Type>
     Image<Type>& operator+=(const Image<Type2>& other) {
-        ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for addition.");
+        sscAssert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for addition.");
         BasicOps::KB_Add<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
         return *this;
     }
     template <typename Type2 = Type>
     Image<Type>& operator-=(const Image<Type2>& other) {
-        ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for subtraction.");
+        sscAssert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for subtraction.");
         BasicOps::KB_Sub<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
         return *this;
     }
     template <typename Type2 = Type>
     Image<Type>& operator*=(const Image<Type2>& other) {
-        ssc_assert(this->size == other.size || this->sizex == other.sizex,
+        sscAssert(this->size == other.size || this->sizex == other.sizex,
                     "Incompatible GPU shape for multiplication.");
         BasicOps::KB_Mul<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
@@ -312,7 +312,7 @@ struct Image {
     }
     template <typename Type2 = Type>
     Image<Type>& operator/=(const Image<Type2>& other) {
-        ssc_assert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for division.");
+        sscAssert(this->size == other.size || this->sizex == other.sizex, "Incompatible GPU shape for division.");
         BasicOps::KB_Div<Type, Type2>
             <<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, (const Type2*)other.gpuptr, this->size, other.size);
         return *this;
@@ -369,7 +369,7 @@ struct Image {
                 DataAs<__half>((__half*)fill, tsize, threshold);
                 break;
             default:
-                ssc_error("Invalid data type!");
+                sscError("Invalid data type!");
                 exit(-1);
                 break;
         }
@@ -381,8 +381,8 @@ struct Image {
     void CopyFrom(const Type* other, cudaStream_t stream = 0, int64_t cpysize = -1) {
         if (cpysize == -1) cpysize = this->size;
 
-        ssc_assert(other != nullptr, "Syncing from empty pointer!");
-        ssc_assert(gpuptr != nullptr && cpysize <= this->size, "Not enough space for sync.!");
+        sscAssert(other != nullptr, "Syncing from empty pointer!");
+        sscAssert(gpuptr != nullptr && cpysize <= this->size, "Not enough space for sync.!");
 
         if (stream == 0)
             cudaMemcpy(this->gpuptr, other, cpysize * sizeof(Type), cudaMemcpyDefault);
@@ -393,7 +393,7 @@ struct Image {
      * Copies memory to given pointer. Cpysize == -1 -> Cpysize = this->size
      * */
     void CopyTo(Type* outptr, cudaStream_t stream = 0, int64_t cpysize = -1) {
-        ssc_assert(gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
+        sscAssert(gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
 
         if (cpysize < 0)
             cpysize = size * sizeof(Type);
@@ -401,9 +401,9 @@ struct Image {
             cpysize = cpysize * sizeof(Type);
 
         if (stream == 0)
-            ssc_cuda_check(cudaMemcpy((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault));
+            sscCudaCheck(cudaMemcpy((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault));
         else
-            ssc_cuda_check(cudaMemcpyAsync((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault, stream));
+            sscCudaCheck(cudaMemcpyAsync((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault, stream));
         SyncDebug;
     }
 
@@ -463,7 +463,7 @@ struct Image {
      * If the allocation is not using unified address, copies the contents of cpuptr to gpuptr.
      * */
     void LoadToGPU(cudaStream_t stream = 0, int64_t cpysize = -1) {
-        ssc_assert(cpuptr && gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
+        sscAssert(cpuptr && gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
 
         if (gpuptr == cpuptr) return;
 
@@ -473,9 +473,9 @@ struct Image {
             cpysize = cpysize * sizeof(Type);
 
         if (stream == 0)
-            ssc_cuda_check(cudaMemcpy((void*)gpuptr, (void*)cpuptr, sizeof(Type) * size, cudaMemcpyHostToDevice));
+            sscCudaCheck(cudaMemcpy((void*)gpuptr, (void*)cpuptr, sizeof(Type) * size, cudaMemcpyHostToDevice));
         else
-            ssc_cuda_check(
+            sscCudaCheck(
                 cudaMemcpyAsync((void*)gpuptr, (void*)cpuptr, sizeof(Type) * size, cudaMemcpyHostToDevice, stream));
         SyncDebug;
     }
@@ -483,7 +483,7 @@ struct Image {
      * If the allocation is not using unified address, copies the contents of gpuptr to cpuptr.
      * */
     void LoadFromGPU(cudaStream_t stream = 0, int64_t cpysize = -1) {
-        ssc_assert(cpuptr && gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
+        sscAssert(cpuptr && gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
         if (gpuptr == cpuptr) return;
 
         if (cpysize < 0)
@@ -492,9 +492,9 @@ struct Image {
             cpysize = cpysize * sizeof(Type);
 
         if (stream == 0)
-            ssc_cuda_check(cudaMemcpy((void*)cpuptr, (void*)gpuptr, cpysize, cudaMemcpyDeviceToHost));
+            sscCudaCheck(cudaMemcpy((void*)cpuptr, (void*)gpuptr, cpysize, cudaMemcpyDeviceToHost));
         else
-            ssc_cuda_check(cudaMemcpyAsync((void*)cpuptr, (void*)gpuptr, cpysize, cudaMemcpyDeviceToHost, stream));
+            sscCudaCheck(cudaMemcpyAsync((void*)cpuptr, (void*)gpuptr, cpysize, cudaMemcpyDeviceToHost, stream));
         SyncDebug;
     }
 
@@ -522,7 +522,7 @@ struct Image {
     };
 
     void SwapZ() {
-        ssc_assert(sizex == sizey && sizex == sizez, "Invalid shape for square transpose.");
+        sscAssert(sizex == sizey && sizex == sizez, "Invalid shape for square transpose.");
         KSwapZ<<<ShapeBlock(), ShapeThread()>>>(this->gpuptr, sizex);
     };
     /**
@@ -530,7 +530,7 @@ struct Image {
      * */
     cufftHandle GetFFTPlan1D(int batch = -1) {
         cufftHandle plan;
-        ssc_cufft_check(cufftPlan1d(&plan, sizex, CUFFT_C2C, (batch > 0) ? batch : (sizey * sizez)));
+        sscCufftCheck(cufftPlan1d(&plan, sizex, CUFFT_C2C, (batch > 0) ? batch : (sizey * sizez)));
         return plan;
     }
     /**
@@ -538,7 +538,7 @@ struct Image {
      * */
     cufftHandle GetFFTPlan2D() {
         cufftHandle plan;
-        ssc_cufft_check(cufftPlan2d(&plan, sizey, sizex, CUFFT_C2C));
+        sscCufftCheck(cufftPlan2d(&plan, sizey, sizex, CUFFT_C2C));
         return plan;
     }
     /**
@@ -546,7 +546,7 @@ struct Image {
      * */
     cufftHandle GetFFTPlan3D() {
         cufftHandle plan;
-        ssc_cufft_check(cufftPlan3d(&plan, sizez, sizey, sizex, CUFFT_C2C));
+        sscCufftCheck(cufftPlan3d(&plan, sizez, sizey, sizex, CUFFT_C2C));
         return plan;
     }
     /**
@@ -554,14 +554,14 @@ struct Image {
      * */
     void FFT(cufftHandle plan) {
         for (int z = 0; z < sizez; z++)
-            ssc_cufft_check(cufftExecC2C(plan, gpuptr + z * sizex * sizey, gpuptr + z * sizex * sizey, CUFFT_FORWARD));
+            sscCufftCheck(cufftExecC2C(plan, gpuptr + z * sizex * sizey, gpuptr + z * sizex * sizey, CUFFT_FORWARD));
     }
     /**
      * Executes IFFT on this array. Not normalized.
      * */
     void IFFT(cufftHandle plan) {
         for (int z = 0; z < sizez; z++)
-            ssc_cufft_check(cufftExecC2C(plan, gpuptr + z * sizex * sizey, gpuptr + z * sizex * sizey, CUFFT_INVERSE));
+            sscCufftCheck(cufftExecC2C(plan, gpuptr + z * sizex * sizey, gpuptr + z * sizex * sizey, CUFFT_INVERSE));
     }
 
     /**
@@ -732,7 +732,7 @@ typedef Image<complex16> hcImage;
             dim3& blk = array1.blk[g];                      \
             dim3& thr = array1.thr[g];                      \
             func<<<blk, thr>>>(array1.Ptr(g), __VA_ARGS__); \
-            ssc_cuda_check(cudaGetLastError());               \
+            sscCudaCheck(cudaGetLastError());               \
         }                                                   \
     }
 
@@ -812,8 +812,8 @@ struct MImage : public MultiGPU {
           capacity(_sizex * _sizey * _sizez),
           bBroadcast(_bBroadcast),
           memorytype(memtype) {
-        ssc_assert(gpus.size() <= 16, "Too many gpus!");
-        ssc_debug(format("Creating MImage of size: {} {} {} ({})",
+        sscAssert(gpus.size() <= 16, "Too many gpus!");
+        sscDebug(format("Creating MImage of size: {} {} {} ({})",
                     sizex, sizey, sizez, sizeof(Type)));
 
         size_t zstep, zdistrib;
@@ -823,7 +823,7 @@ struct MImage : public MultiGPU {
             zdistrib = sizez;
         } else {
             if (gpus.size() > sizez)
-                ssc_debug("Warning: More GPUs than slices!");
+                sscDebug("Warning: More GPUs than slices!");
             zstep = (sizez + gpus.size() - 1) / gpus.size();
             zdistrib = zstep;
         }
@@ -856,7 +856,7 @@ struct MImage : public MultiGPU {
             Set(g);
             arrays[g]->CopyFrom(newdata + offsets[g]);
         }
-        ssc_debug(format("^ from pointer {}", (void*)newdata));
+        sscDebug(format("^ from pointer {}", (void*)newdata));
     }
     /**
      * Constructor. If broadcast = true, makes each gpu have a full copy of the array. Otherwise, each gpu gets a chunk
@@ -878,10 +878,10 @@ struct MImage : public MultiGPU {
     };
 
     virtual ~MImage() {
-        ssc_debug(format("Deleting MImage of shape: {} {} {} ({})",
+        sscDebug(format("Deleting MImage of shape: {} {} {} ({})",
                     sizex, sizey, sizez, sizeof(Type)));
         MGPULOOP(delete arrays[g]; arrays[g] = nullptr;);
-        ssc_cuda_check(cudaGetLastError());
+        sscCudaCheck(cudaGetLastError());
     }
     dim3 Shape() const { return dim3(sizex, sizey, sizez); };
 
@@ -899,7 +899,7 @@ struct MImage : public MultiGPU {
 
         size_t s = x * y * z;
         if (s > capacity) {
-            ssc_error("This Image cant be resized beyond its original capacity.");
+            sscError("This Image cant be resized beyond its original capacity.");
             exit(-1);
         }
 
@@ -915,7 +915,7 @@ struct MImage : public MultiGPU {
             zdistrib = sizez;
         } else {
             if (ngpus > sizez)
-                ssc_debug("Warning: More GPUs than slices!");
+                sscDebug("Warning: More GPUs than slices!");
             zstep = (sizez + ngpus - 1) / ngpus;
             zdistrib = zstep;
         }
@@ -1011,8 +1011,8 @@ struct MImage : public MultiGPU {
 
     void CopyFrom(const Type* other) { MGPULOOP(arrays[g]->CopyFrom(other + offsets[g]);); }
     void CopyTo(Type* other) {
-        // ssc_assert(!bBroadcast, "Source copy has multiple instances!");
-        ssc_debug(format("Copying MImage to pointer. Broadcast {}", (void*)bBroadcast));
+        // sscAssert(!bBroadcast, "Source copy has multiple instances!");
+        sscDebug(format("Copying MImage to pointer. Broadcast {}", (void*)bBroadcast));
         if (!bBroadcast) {
             MGPULOOP(arrays[g]->CopyTo(other + offsets[g]););
         } else {
@@ -1022,11 +1022,11 @@ struct MImage : public MultiGPU {
     }
 
     void CopyFrom(const MImage<Type>& other) {
-        ssc_assert(other.GetSize() >= GetSize() && other.sizez / other.ngpus >= sizez / ngpus, "Source will not fit!");
+        sscAssert(other.GetSize() >= GetSize() && other.sizez / other.ngpus >= sizez / ngpus, "Source will not fit!");
         MGPULOOP(arrays[g]->CopyFrom(other.arrays[g][0]););
     }
     void CopyTo(MImage<Type>& other) {
-        ssc_assert(other.GetSize() >= GetSize() && other.sizez / other.ngpus >= sizez / ngpus,
+        sscAssert(other.GetSize() >= GetSize() && other.sizez / other.ngpus >= sizez / ngpus,
                     "Destination will not fit!");
         MGPULOOP(arrays[g]->CopyTo(other.arrays[g][0]););
     }
@@ -1119,7 +1119,7 @@ struct MImage : public MultiGPU {
     }
 
     void SwapZ() {
-        ssc_assert(ngpus == 1 || (sizez % 4 == 0 && ngpus == 4), "Cant SwapZ!");
+        sscAssert(ngpus == 1 || (sizez % 4 == 0 && ngpus == 4), "Cant SwapZ!");
 
         if (ngpus == 4) {
             for (int g = 0; g < ngpus; g++) {

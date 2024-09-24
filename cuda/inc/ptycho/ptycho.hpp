@@ -79,11 +79,11 @@ struct Ptycho {
     float objreg = 0.01f;
 };
 
-inline size_t ptycho_num_batches(Ptycho& ptycho) {
+inline size_t PtychoNumBatches(Ptycho& ptycho) {
     return ptycho.positions.size();
 }
 
-inline size_t ptycho_num_gpus(Ptycho& ptycho) {
+inline size_t PtychoNumGpus(Ptycho& ptycho) {
     return ptycho.gpus.size();
 }
 
@@ -94,18 +94,18 @@ inline int ptycho_num_modes(Ptycho& ptycho) {
 /**
  * Number of slices for current batch.
  **/
-inline size_t ptycho_cur_batch_zsize(Ptycho& ptycho, size_t batch_idx) {
+inline size_t PtychoCurBatchZsize(Ptycho& ptycho, size_t batch_idx) {
     return ptycho.positions[batch_idx]->sizez;
 }
 
-inline size_t ptycho_batch_size(Ptycho& ptycho) {
+inline size_t PtychoBatchSize(Ptycho& ptycho) {
     return ptycho.multibatchsize;
 }
 
 /**
  * Number of slices on gpu for batch.
  **/
-inline size_t ptycho_cur_batch_gpu_zsize(Ptycho& ptycho, size_t batch_idx, size_t gpu_idx) {
+inline size_t PtychoCurBatchGpuZsize(Ptycho& ptycho, size_t batch_idx, size_t gpu_idx) {
     return (*ptycho.positions[batch_idx])[gpu_idx].sizez;
 }
 
@@ -116,7 +116,7 @@ void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void project_reciprocal_space(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm);
+void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm);
 
 void DestroyPtycho(Ptycho*& ptycho);
 
@@ -181,7 +181,7 @@ __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> prob
 __global__ void KGLPs(const GArray<complex> probe, GArray<complex> object_acc, GArray<float> object_div,
                       const GArray<complex> p_pm, const GArray<Position> rois);
 
-__global__ void k_project_reciprocal_space(GArray<complex> exitwave, const GArray<float> difpads, float* rfactors, size_t upsample,
+__global__ void KProjectReciprocalSpace(GArray<complex> exitwave, const GArray<float> difpads, float* rfactors, size_t upsample,
                     size_t nummodes, bool bIsGrad);
 }
 
