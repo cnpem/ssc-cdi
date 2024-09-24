@@ -25,7 +25,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         float step_object, float step_probe, float reg_obj, float reg_probe) {
     Pie* pie = new Pie();
 
-    pie->ptycho = CreatePOptAlgorithm(difpads, difshape,
+    pie->ptycho = CreatePtycho(difpads, difshape,
             probe, probeshape,
             object, objshape,
             rois, numrois,
@@ -41,7 +41,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
 }
 
 void DestroyPie(Pie*& pie) {
-    DestroyPOptAlgorithm(pie->ptycho);
+    DestroyPtycho(pie->ptycho);
     pie = nullptr;
 }
 
