@@ -161,7 +161,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
     estimated_size_for_all_DPs = DPs.shape[0]*size_of_single_restored_DP
     print(f"Estimated size for {DPs.shape[0]} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
-    print(f'Pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
+    print(f'Detector pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
     
     print(f'Energy = {input_dict["energy"]} keV')
     
@@ -204,7 +204,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         plot_iteration_error(error)
 
     if input_dict['hdf5_output'] is not None:
-        print('Saving output hdf5 file...')
+        print('Saving output hdf5 file at: ', input_dict['hdf5_output'])
         save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj)
 
     return obj, probe, corrected_positions, input_dict, error
@@ -480,7 +480,7 @@ def append_ones(probe_positions):
     return probe_positions
 
 def set_initial_probe(input_dict, DPs, incoherent_modes):
-    print('Creating initial probe...')
+    print('Creating initial probe of type: ',input_dict['initial_probe']["probe"])
 
     DP_shape = (DPs.shape[1], DPs.shape[2])
 
@@ -577,7 +577,7 @@ def detect_variable_type_of_guess(variable):
         raise ValueError("Your input for the initial guess is wrong.")
 
 def set_initial_object(input_dict,DPs, probe, obj_shape):
-    print('Creating initial object...')
+    print('Creating initial object of type: ', input_dict['initial_obj']["obj"])
 
     type_of_initial_guess = detect_variable_type_of_guess(input_dict['initial_obj']["obj"])
 
@@ -604,6 +604,7 @@ def set_initial_object(input_dict,DPs, probe, obj_shape):
 
     complex_obj = obj.astype(np.complex64)
 
+    print('Object shape:', complex_obj.shape, 'with dtype:', complex_obj.dtype)
 
     return complex_obj
 
