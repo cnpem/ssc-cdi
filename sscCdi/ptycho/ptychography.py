@@ -62,6 +62,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
             'detector_pixel_size': 55e-6,  # Detector pixel size in meters
             'binning': 1,  # Binning factor. Must be an even number. If 1, no binning occurs.
             'position_rotation': 0,  # Rotation angle in radians to correct for misalignment
+            'positions_unit': 'pixels',  # Units of positions. Options are 'pixels' or 'meters'
             'object_padding': 0,  # Number of pixels to add around the object matrix
             'incoherent_modes': 1,  # Number of incoherent modes to use
 
@@ -155,6 +156,8 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
+    #TODO: add data binning step here
+
     print(f'Data shape: {DPs.shape}')
     print(f"Initial probe shape: {DPs[0].shape}")
 
@@ -173,6 +176,17 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1],binning=input_dict["binning"]) # in meters
         print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
     
+    if 'positions_unit' not in input_dict:
+        pass
+    elif input_dict['positions_unit'] == 'meters' or input_dict['positions_unit'] == 'm':
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1)
+    elif input_dict['positions_unit'] == 'millimeters' or input_dict['positions_unit'] == 'mm':
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-3)
+    elif input_dict['positions_unit'] == 'microns' or input_dict['positions_unit'] == 'micrometers' or input_dict['positions_unit'] == 'um':
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-6)
+    elif input_dict['positions_unit'] == 'pixels':
+        pass
+
     if "object_shape" not in input_dict:
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
@@ -267,6 +281,19 @@ def create_output_h5_file(input_dict):
                     h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
 
     h5file.close()
+
+def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
+    """
+    Subtratcs minimum of position in each direction, converts from microns to pixels and then apply desired offset 
+    """
+
+    probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
+    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
+
+    probe_positions[:, 0] = factor * probe_positions[:, 0] / pixel_size  # convert from microns to pixels
+    probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size 
+    
+    return probe_positions
 
 def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
 
