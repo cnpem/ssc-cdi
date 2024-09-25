@@ -31,7 +31,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     - `ePIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
     - `RAAR`: Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
     - `AP`: Alternate Projections. Multi GPU, CUDA implementation
-    - `AP_PC`: Alternate Projections with Position Correction via Annealing method. Multi GPU, CUDA implementation
     - `ePIE`: Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
 
     Args:
@@ -129,17 +128,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                     'batch': 64
                 },
                 '4': {
-                    'name':'AP_PC',
-                    'iterations': 100,
-                    'step_object': 0.9,
-                    'step_probe': 0.9,
-                    'regularization_object': 0.001,
-                    'regularization_probe': 0.001,
-                    'momentum_obj': 0.5,
-                    'momentum_probe': 0.5,
-                    'batch': 64,
-                },
-                '5': {
                     'name':'AP',
                     'iterations': 50,
                     'step_object': 1.0,
@@ -150,7 +138,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                     'momentum_probe': 0.5,
                     'batch': 64,
                 },
-                '6': {
+                '5': {
                     'name':'PIE',
                     'iterations': 50,
                     'step_object': 1.0,
@@ -437,30 +425,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             obj = obj.astype(np.complex64) 
             probe = probe.astype(np.complex64)
 
-        elif input_dict["algorithms"][str(counter)]['name'] == 'AP_PC':
-            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projection with Annealing Position Correction algorithm...")
-
-            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
-                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
-            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
-                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            obj, probe, algo_error, probe_positions = PosCorrection( iterations=algo_inputs['iterations'],
-                                                                    objbeta=algo_inputs['momentum_obj'],
-                                                                    probebeta=algo_inputs['momentum_probe'],
-                                                                    batch=algo_inputs['batch'],
-                                                                    step_obj=algo_inputs['step_object'],
-                                                                    step_probe=algo_inputs['step_probe'],
-                                                                    reg_obj=algo_inputs['regularization_object'],
-                                                                    reg_probe=algo_inputs['regularization_probe'],
-                                                                    difpads=DPs,
-                                                                    obj=obj,
-                                                                    rois=probe_positions,
-                                                                    probe=probe,
-                                                                    probesupp = algo_inputs['probe_support_array'],
-                                                                    params={'device': input_dict["GPUs"]},
-                                                                    wavelength_m=input_dict["wavelength"],
-                                                                    pixelsize_m=input_dict["object_pixel"],
-                                                                    distance_m=input_dict["distance_sample_focus"])
             corrected_positions = probe_positions.copy()
             algo_error = np.expand_dims(algo_error,axis=1)
 
