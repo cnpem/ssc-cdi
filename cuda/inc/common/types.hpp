@@ -7,6 +7,7 @@
 #define _TYPES_H
 
 #include <cstddef>
+#include <driver_types.h>
 #ifdef __CUDACC__
 #define restrict __restrict__
 #else
@@ -619,6 +620,10 @@ struct Image {
                                      _AuxReduction::productstruct<Type, T2>());
     }
 
+    void scale(float s, cudaStream_t st = 0) {
+        BasicOps::KB_Mul<Type><<<ShapeBlock(), ShapeThread(), 0, st>>>(this->gpuptr, s, this->size);
+    }
+
     /**
      * Computes the maximum element in array.
      * */
@@ -648,15 +653,21 @@ struct Image {
     /**
      * Applies the 1d-fftshift to this array.
      * */
-    void FFTShift1() { BasicOps::KFFTshift1<<<ShapeBlock(), ShapeThread()>>>(gpuptr, sizex, sizey); }
+    void FFTShift1(cudaStream_t st = 0) {
+        BasicOps::KFFTshift1<<<ShapeBlock(), ShapeThread(), 0, st>>>(gpuptr, sizex, sizey);
+    }
     /**
      * Applies the 2d-fftshift to this array.
      * */
-    void FFTShift2() { BasicOps::KFFTshift2<<<ShapeBlock(), ShapeThread()>>>(gpuptr, sizex, sizey); }
+    void FFTShift2(cudaStream_t st = 0) {
+        BasicOps::KFFTshift2<<<ShapeBlock(), ShapeThread(), 0, st>>>(gpuptr, sizex, sizey);
+    }
     /**
      * Applies the 3d-fftshift to this array.
      * */
-    void FFTShift3() { BasicOps::KFFTshift3<<<ShapeBlock(), ShapeThread()>>>(gpuptr, sizex, sizey, sizez); }
+    void FFTShift3(cudaStream_t st = 0) {
+        BasicOps::KFFTshift3<<<ShapeBlock(), ShapeThread(), 0, st>>>(gpuptr, sizex, sizey, sizez);
+    }
 
     template <typename Op>
     void UnaryOperator(Op op) {
@@ -1031,40 +1042,40 @@ struct MImage : public MultiGPU {
         MGPULOOP(arrays[g]->CopyTo(other.arrays[g][0]););
     }
 
-    void LoadToGPU(Type* data) {
+    void LoadToGPU(Type* data, cudaStream_t st = 0) {
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
-            arrays[g]->CopyFrom(data + offsets[g]);
+            arrays[g]->CopyFrom(data + offsets[g], st);
         }
     }
 
-    void LoadToGPU(Type* data, const size_t copysize) {
+    void LoadToGPU(Type* data, const size_t copysize, cudaStream_t st = 0) {
         size_t rem_copysize = copysize;
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
             const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
             if (gpu_copy_size <= 0)
                 return;
-            arrays[g]->CopyFrom(data + offsets[g], 0, gpu_copy_size);
+            arrays[g]->CopyFrom(data + offsets[g], st, gpu_copy_size);
             rem_copysize -= gpu_copy_size;
         }
     }
 
-    void LoadFromGPU(Type* data) {
+    void LoadFromGPU(Type* data, cudaStream_t st = 0) {
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
-            arrays[g]->CopyTo(data + offsets[g]);
+            arrays[g]->CopyTo(data + offsets[g], st);
         }
     }
 
-    void LoadFromGPU(Type* data, const size_t copysize) {
+    void LoadFromGPU(Type* data, const size_t copysize, cudaStream_t st = 0) {
         size_t rem_copysize = copysize;
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
             const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
             if (gpu_copy_size <= 0)
                 return;
-            arrays[g]->CopyTo(data + offsets[g], 0, gpu_copy_size);
+            arrays[g]->CopyTo(data + offsets[g], st, gpu_copy_size);
             rem_copysize -= gpu_copy_size;
         }
     }

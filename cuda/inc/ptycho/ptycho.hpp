@@ -110,7 +110,7 @@ void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm);
+void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm, cudaStream_t stream = 0);
 
 void DestroyPtycho(Ptycho*& ptycho);
 
