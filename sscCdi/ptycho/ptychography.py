@@ -12,9 +12,9 @@ import numpy as np
 import sys, os, h5py
 import random
 
-from ..cditypes import AP, PosCorrection, PIE, RAAR
+from ..cditypes import AP, PIE, RAAR
 
-from ..misc import estimate_memory_usage, concatenate_array_to_h5_dataset, wavelength_meters_from_energy_keV
+from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
 from .raar import RAAR_multiprobe_cupy
@@ -183,7 +183,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         print('Creating output hdf5 file...')
         create_output_h5_file(input_dict)
 
-    obj, probe, error, corrected_positions = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
+    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
     if plot == True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
@@ -205,7 +205,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     if input_dict['hdf5_output'] is not None:
         print('Saving output hdf5 file...')
-        save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error)
+        save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj)
 
     return obj, probe, corrected_positions, input_dict, error
 
@@ -268,16 +268,18 @@ def create_output_h5_file(input_dict):
 
     h5file.close()
 
-def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error):
+def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
 
     with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
 
         h5file["recon"].create_dataset('object',data=obj) 
         h5file["recon"].create_dataset('probe',data=probe) 
-        h5file["recon"].create_dataset('positions',data=positions) 
+        h5file["recon"].create_dataset('positions',data=positions)
+        h5file["recon"].create_dataset('initial_probe',data=initial_probe)
+        h5file["recon"].create_dataset('initial_obj',data=initial_obj) 
+        h5file["recon"].create_dataset('error',data=error) 
         if corrected_positions is not None:
             h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
-        h5file["recon"].create_dataset('error',data=error) 
 
     h5file.close()
 
@@ -285,11 +287,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     
     if initial_probe is None:
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
-    probe = initial_probe
+    probe = initial_probe.copy()
 
     if initial_obj is None:
         initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
-    obj = initial_obj
+    obj = initial_obj.copy()
 
     print('Plotting initial guesses...')
     if plot: plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
@@ -308,8 +310,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     if plot: plot_probe_support(input_dict["probe_support_array"][0],extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
-    error = np.empty((0,1))
-
     if input_dict["distance_sample_focus"] == 0:
         input_dict['fresnel_number'] = 0
     else:
@@ -320,7 +320,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support_array'])[3]:.2f} GBs")
 
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
+
     corrected_positions = None
+    error = []
 
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
@@ -328,11 +330,6 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             **input_dict,
             **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }
         }
-
-        algo_inputs['distance'] = input_dict["detector_distance"]
-
-        algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
-        # algo_inputs['centralize_probe'] = False # not implemented 
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
@@ -356,12 +353,15 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
+            algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
+            
             obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],algo_inputs)
 
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
             obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
             probe[0] = new_probe
+
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
 
@@ -388,10 +388,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         wavelength_m=input_dict["wavelength"],
                                                         pixelsize_m=input_dict["object_pixel"],
                                                         distance_m=input_dict["distance_sample_focus"])
-            algo_error = np.expand_dims(algo_error,axis=1)
 
-            obj = obj.astype(np.complex64)
-            probe = probe.astype(np.complex64)
+            error.append(algo_error)
+
+            if algo_inputs["position_correction"] > 0:
+                corrected_positions = probe_positions      
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -420,16 +421,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"])
 
-            algo_error = np.expand_dims(algo_error,axis=1)
+            error.append(algo_error)
 
-            obj = obj.astype(np.complex64) 
-            probe = probe.astype(np.complex64)
-
-            corrected_positions = probe_positions.copy()
-            algo_error = np.expand_dims(algo_error,axis=1)
-
-            obj = obj.astype(np.complex64)
-            probe = probe.astype(np.complex64)
+            if algo_inputs["position_correction"] > 0:
+                corrected_positions = probe_positions      
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
@@ -452,20 +447,21 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"],
                                                             params={'device': input_dict["GPUs"]})
-            algo_error = np.expand_dims(algo_error,axis=1)
 
-            obj = obj.astype(np.complex64)
-            probe = probe.astype(np.complex64)
+            error.append(algo_error)
 
+            if algo_inputs["position_correction"] > 0:
+                corrected_positions = probe_positions                                        
+            
         else:
             sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
 
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
             
-        error = np.concatenate((error,algo_error),axis=0)
 
-    return obj, probe, error, corrected_positions
+    error =  np.concatenate(error).ravel()
+    return obj, probe, error, corrected_positions, initial_obj, initial_probe
 
 
 def append_ones(probe_positions):
