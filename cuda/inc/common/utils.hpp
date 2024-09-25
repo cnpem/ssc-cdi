@@ -5,7 +5,7 @@
 
 using ssc_timepoint = std::chrono::time_point<std::chrono::system_clock>;
 
-inline ssc_timepoint ssc_time() {
+inline ssc_timepoint sscTime() {
     return std::chrono::system_clock::now();
 }
 

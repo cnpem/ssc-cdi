@@ -67,15 +67,6 @@ try:
         c_float, c_float, c_float, c_float
     ]
     libcdi.raarcall.restype = None
-    libcdi.poscorrcall.argtypes = [
-        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
-        c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_int,
-        c_float, c_float, c_float, c_float,
-        c_float, c_float, c_float
-    ]
-    libcdi.poscorrcall.restype = None
     libcdi.piecall.argtypes = [
         ctypes.c_void_p, c_int, c_int, ctypes.c_void_p, c_int, c_int,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_int,

@@ -4,7 +4,7 @@
 #include <cstddef>
 
 extern "C" {
-__global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,
+__global__ void KAPExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,
                             const GArray<Position> rois) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= probe.shape.x) return;
@@ -12,7 +12,7 @@ __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> prob
   int idy = blockIdx.y * blockDim.y + threadIdx.y;
   int idz = blockIdx.z;
 
-  for (int p = 0; p < rois.shape.x; p++)  // for each flyscan point
+  for (int p = 0; p < rois.shape.x; p++)
   {
     int objposx = idx + (int)rois(idz, 0, p).x;
     int objposy = idy + (int)rois(idz, 0, p).y;
@@ -25,7 +25,7 @@ __global__ void KGLExitwave(GArray<complex> exitwave, const GArray<complex> prob
   }
 }
 
-__global__ void KGLPs(const GArray<complex> probe, GArray<complex> object_acc, GArray<float> object_div,
+__global__ void KAPPs(const GArray<complex> probe, GArray<complex> object_acc, GArray<float> object_div,
                       const GArray<complex> p_pm, const GArray<Position> rois) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= probe.shape.x) return;
@@ -71,12 +71,12 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
   }
 }
 
-void GLimRun(GLim& glim, int iterations) {
-  ssc_info("Starting Alternate Projections.");
+void APRun(AP& ap, int iterations) {
+  sscInfo("Starting Alternate Projections.");
 
-  POptAlgorithm& ptycho = *glim.ptycho;
+  Ptycho& ptycho = *ap.ptycho;
 
-  auto time0 = ssc_time();
+  auto time0 = sscTime();
 
   ptycho.object->Set(0);
   cImage objvelocity(ptycho.object->Shape());
@@ -84,16 +84,16 @@ void GLimRun(GLim& glim, int iterations) {
   objvelocity.SetGPUToZero();
   probevelocity.SetGPUToZero();
 
-  const dim3 difpadshape = ptycho.difpadshape;
-  const size_t ngpus = ptycho_num_gpus(ptycho);
+  const dim3 difpadshape = ptycho.diff_pattern_shape;
+  const size_t ngpus = PtychoNumGpus(ptycho);
 
   for (int iter = 0; iter < iterations; iter++) {
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
-    ptycho.rfactors->SetGPUToZero();
-    ptycho.object_acc->SetGPUToZero();
+    ptycho.error->SetGPUToZero();
+    ptycho.object_num->SetGPUToZero();
     ptycho.object_div->SetGPUToZero();
-    ptycho.probe_acc->SetGPUToZero();
+    ptycho.probe_num->SetGPUToZero();
     ptycho.probe_div->SetGPUToZero();
 
     if (iter < 2) {
@@ -107,12 +107,12 @@ void GLimRun(GLim& glim, int iterations) {
     rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
           false, ptycho.gpus, MemoryType::EAllocGPU);
 
-    const size_t num_batches = ptycho_num_batches(ptycho);
+    const size_t num_batches = PtychoNumBatches(ptycho);
     for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
-          const size_t difpad_batch_zsize = ptycho_cur_batch_zsize(ptycho, batch_idx);
-          const size_t difpad_idx = batch_idx * ptycho_batch_size(ptycho);
-          float *difpad_batch_ptr = ptycho.cpudifpads +
+          const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, batch_idx);
+          const size_t difpad_idx = batch_idx * PtychoBatchSize(ptycho);
+          float *difpad_batch_ptr = ptycho.cpu_diff_pattern +
               difpad_idx * difpadshape.x * difpadshape.y;
 
           cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
@@ -123,30 +123,30 @@ void GLimRun(GLim& glim, int iterations) {
               if (difpadsizez > 0) {
                   SetDevice(ptycho.gpus, g);
 
-                  dim3 blk = ptycho.exitwave->ShapeBlock();
+                  dim3 blk = ptycho.wavefront->ShapeBlock();
                   blk.z = difpadsizez;
-                  dim3 thr = ptycho.exitwave->ShapeThread();
+                  dim3 thr = ptycho.wavefront->ShapeThread();
 
                   Image<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
-                  KGLExitwave<<<blk, thr>>>(*ptycho.exitwave->arrays[g],
+                  KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g],
                           *ptycho.probe->arrays[g],
                           *ptycho.object->arrays[g], ptr_roi);
 
-                  project_reciprocal_space(ptycho, cur_difpad.arrays[g], g, glim.isGradPm);
+                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGradPm);
 
-                  KGLPs<<<blk, thr>>>(*ptycho.probe->arrays[g],
-                          *ptycho.object_acc->arrays[g],
+                  KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],
+                          *ptycho.object_num->arrays[g],
                           *ptycho.object_div->arrays[g],
-                          *ptycho.exitwave->arrays[g], ptr_roi);
+                          *ptycho.wavefront->arrays[g], ptr_roi);
         }
       }
-      if (bIterProbe) GLimProjectProbe(glim, batch_idx);
+      if (bIterProbe) APProjectProbe(ap, batch_idx);
     }
 
-    ssc_debug("Syncing OBJ and setting RF");
+    sscDebug("Syncing OBJ and setting RF");
     if (ptycho.objmomentum >= 0)
         ptycho.object->WeightedLerpSync(
-                *ptycho.object_acc, *ptycho.object_div,
+                *ptycho.object_num, *ptycho.object_div,
                 ptycho.objstep, ptycho.objmomentum,
                 objvelocity, ptycho.objreg);
 
@@ -165,33 +165,33 @@ void GLimRun(GLim& glim, int iterations) {
                 (iter + 1) % ptycho.poscorr_iter == 0)
             ApplyPositionCorrection(ptycho);
 
-    ptycho.cpurfact[iter] = sqrtf(ptycho.rfactors->SumCPU());
+    ptycho.cpuerror[iter] = sqrtf(ptycho.error->SumCPU());
 
     if (iter % 10 == 0) {
-        ssc_info(format("iter {}/{} error = {}",
-                    iter, iterations, ptycho.cpurfact[iter]));
+        sscInfo(format("iter {}/{} error = {}",
+                    iter, iterations, ptycho.cpuerror[iter]));
     }
   }
 
-  auto time1 = ssc_time();
-  ssc_info(format("End AP: {} ms", ssc_diff_time(time0, time1)));
+  auto time1 = sscTime();
+  sscInfo(format("End AP: {} ms", ssc_diff_time(time0, time1)));
 }
 
 
-void GLimProjectProbe(GLim& glim, int section) {
-    ProjectPhiToProbe(*glim.ptycho, section, *glim.ptycho->exitwave, true, glim.isGradPm);
+void APProjectProbe(AP& ap, int section) {
+    ProjectPhiToProbe(*ap.ptycho, section, *ap.ptycho->wavefront, true, ap.isGradPm);
 }
 
-GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
+AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
                  int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
-    GLim* glim = new GLim;
-    glim->ptycho =
-        CreatePOptAlgorithm(difpads, difshape, probe, probeshape,
+    AP* ap = new AP;
+    ap->ptycho =
+        CreatePtycho(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact,
                 gpus, objsupp, probesupp, numobjsupp,
                 wavelength_m, pixelsize_m, distance_m,
@@ -199,10 +199,10 @@ GLim* CreateGLim(float* difpads, const dim3& difshape, complex* probe, const dim
                 step_obj, step_probe,
                 reg_obj, reg_probe);
 
-    return glim;
+    return ap;
 }
 
-void DestroyGLim(GLim*& glim) {
-    DestroyPOptAlgorithm(glim->ptycho);
-    glim = nullptr;
+void DestroyAP(AP*& ap) {
+    DestroyPtycho(ap->ptycho);
+    ap = nullptr;
 }

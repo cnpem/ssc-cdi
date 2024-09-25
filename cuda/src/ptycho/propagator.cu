@@ -3,10 +3,10 @@
 extern "C"{
 void Fraunhoffer::Append(const dim3& dim)
 {
-    ssc_debug(format("Creating new plan: {} {} {}", dim.x, dim.y, dim.z));
+    sscDebug(format("Creating new plan: {} {} {}", dim.x, dim.y, dim.z));
     if(workarea == nullptr || dim.x*dim.y*dim.z > workarea->size)
     {
-        ssc_debug(format("Reallocating plan memory to size: {} {} {}",
+        sscDebug(format("Reallocating plan memory to size: {} {} {}",
                     dim.x, dim.y, dim.z));
         if(workarea)
             delete workarea;
@@ -24,16 +24,16 @@ void Fraunhoffer::Append(const dim3& dim)
     cufftHandle newplan;
 
     size_t worksize;
-    ssc_cufft_check( cufftCreate(&newplan) );
-    ssc_cufft_check( cufftSetAutoAllocation(newplan,0) );
-    ssc_cufft_check( cufftMakePlanMany(newplan,2,n,nullptr,0,0,
+    sscCufftCheck( cufftCreate(&newplan) );
+    sscCufftCheck( cufftSetAutoAllocation(newplan,0) );
+    sscCufftCheck( cufftMakePlanMany(newplan,2,n,nullptr,0,0,
                 nullptr,0,0,CUFFT_C2C,(int)dim.z,&worksize) );
-    ssc_cufft_check( cufftSetWorkArea(newplan, workarea->gpuptr) );
+    sscCufftCheck( cufftSetWorkArea(newplan, workarea->gpuptr) );
 
     plans.push_back(newplan);
 
-    ssc_assert(worksize <= 8*workarea->size, "CuFFT being hungry!");
-    ssc_debug("Done.");
+    sscAssert(worksize <= 8*workarea->size, "CuFFT being hungry!");
+    sscDebug("Done.");
 }
 
 bool dim3EQ(const dim3& d1, const dim3& d2){
@@ -57,12 +57,12 @@ void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape, float am
         Append(shape);
         plan = plans[plans.size()-1];
     }
-    ssc_cufft_check(  cufftExecC2C(plan,iwave,owave,dir)  );
+    sscCufftCheck(  cufftExecC2C(plan,iwave,owave,dir)  );
 }
 
 Fraunhoffer::~Fraunhoffer()
 {
-    ssc_debug("Deleting propagator.");
+    sscDebug("Deleting propagator.");
     for(auto plan : plans)
         if(plan) cufftDestroy(plan);
     if(workarea)
