@@ -240,7 +240,7 @@ extern "C" {
 }
 
 
-void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
+void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm, cudaStream_t stream) {
 
     SetDevice(pt.gpus, g);
 
@@ -248,16 +248,16 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, int g, bool bIsGradPm) {
 
     int upsample = pt.wavefront->sizex / difpad->sizex;
 
-    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), 1);
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), 1, stream);
 
-    pt.wavefront->arrays[g]->FFTShift2();
+    pt.wavefront->arrays[g]->FFTShift2(stream);
 
-    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread()>>>(pt.wavefront->arrays[g][0], *difpad, pt.error->Ptr(g), upsample,
+    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], *difpad, pt.error->Ptr(g), upsample,
             pt.probe->sizez, bIsGradPm);
 
 
-    pt.wavefront->arrays[g]->FFTShift2();
-    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1);
+    pt.wavefront->arrays[g]->FFTShift2(stream);
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1, stream);
 
 }
 
