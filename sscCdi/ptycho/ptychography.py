@@ -156,7 +156,10 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
-    #TODO: add data binning step here
+    DPs = bin_volume(DPs, input_dict['binning']) # binning of diffraction patterns
+    if input_dict['binning']>1:
+        print('Detector pixel size downsampled from {input_dict["detector_pixel_size"]*1e6:.2f} um to {input_dict["detector_pixel_size"]*1e6*input_dict["binning"]:.2f} um')
+        input_dict["detector_pixel_size"] = input_dict["detector_pixel_size"]*input_dict['binning']
 
     print(f'Data shape: {DPs.shape}')
     print(f"Initial probe shape: {DPs[0].shape}")
@@ -173,7 +176,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
     
     if "object_pixel" not in input_dict:
-        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1],binning=input_dict["binning"]) # in meters
+        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1]) # meters
         print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
     
     if 'positions_unit' not in input_dict:
@@ -294,6 +297,49 @@ def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
     probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size 
     
     return probe_positions
+
+def bin_volume(volume, downsampling_factor):
+    """ Downsample a 3D volume (N,Y,X) in the Y, X directions by averaging over a specified downsampling factor.
+
+    Args:
+        volume (ndarray): 3D numpy array of shape (N,Y,X)
+        downsampling_factor (int): downsampling_factor
+
+    Raises:
+        ValueError: error in case Y and X dimensions are not divisible by the downsampling factor
+
+    Returns:
+        downsampled_volume: 3D numpy array of shape (N, Y//downsampling_factor, X//downsampling_factor)
+
+    """
+
+    def suggest_crop_dimensions(Y, X, downsampling_factor):
+        # Calculate the largest dimensions divisible by the downsampling factor
+        new_Y = Y - (Y % downsampling_factor)
+        new_X = X - (X % downsampling_factor)
+        
+        # Return the new suggested dimensions
+        return new_Y, new_X
+
+    N, Y, X = volume.shape
+
+    # Ensure that Y and X are divisible by the downsampling factor
+    if Y % downsampling_factor != 0 or X % downsampling_factor != 0:
+        new_Y, new_X = suggest_crop_dimensions(Y, X, downsampling_factor)
+        print("WARNING: Issue when binning. Y and X dimensions must be divisible by the downsampling factor. Cropping volume from ({Y},{X}) to ({new_Y},{new_X})")
+        volume = volume[:, :new_Y, :new_X]
+
+    def numpy_downsampling(volume, downsampling_factor):
+        N, Y, X = volume.shape
+        new_shape = (N, Y // downsampling_factor, downsampling_factor, X // downsampling_factor, downsampling_factor)
+        downsampled_volume = volume.reshape(new_shape).mean(axis=(2, 4))
+        return downsampled_volume
+    
+    binned_volume = numpy_downsampling(volume, downsampling_factor)
+
+    print('Binned data to new shape: ', binned_volume.shape)
+
+    return binned_volume
 
 def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
 
@@ -730,10 +776,10 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
     
     return mask
 
-def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels,binning=1):
-    return wavelength * detector_distance / (binning*detector_pixel_size * n_of_pixels)
+def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels):
+    return wavelength * detector_distance / (detector_pixel_size * n_of_pixels)
 
-def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size, binning=1):
+def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size):
     """
     Calculate and display the object pixel size
 
@@ -753,7 +799,7 @@ def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP
 
     """
     
-    object_pixel_size = calculate_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size, binning=binning)
+    object_pixel_size = calculate_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size)
     print(f"\tObject pixel size = {object_pixel_size*1e9:.2f} nm")
 
     PA_thickness = 4 * object_pixel_size ** 2 / (0.61 * wavelength)
