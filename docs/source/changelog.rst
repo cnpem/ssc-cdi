@@ -14,6 +14,13 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.13.3] - 2024-09-26
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added functions to check data types before ptychography
+- Added function to randomly remove scan points from positions and data arrays if wanted
+
 [0.13.2] - 2024-09-26
 ------------------------------
 Changed
