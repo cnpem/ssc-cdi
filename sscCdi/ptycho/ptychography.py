@@ -156,17 +156,21 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
+    DPs, initial_obj, initial_probe = check_dtypes(DPs,initial_obj,initial_probe) # check if dtypes are correct; exit program otherwise
+
     input_dict = check_and_set_defaults(input_dict)
+
+    if input_dict['n_of_positions_to_remove'] > 0:
+        positions,DPs = remove_positions_randomly(positions,DPs, input_dict['n_of_positions_to_remove'])
 
     if input_dict['binning']>1:
         DPs = bin_volume(DPs, input_dict['binning']) # binning of diffraction patterns
-        print('Detector pixel size downsampled from {input_dict["detector_pixel_size"]*1e6:.2f} um to {input_dict["detector_pixel_size"]*1e6*input_dict["binning"]:.2f} um')
+        print(f'Detector pixel size downsampled from {input_dict["detector_pixel_size"]*1e6:.2f} um to {input_dict["detector_pixel_size"]*1e6*input_dict["binning"]:.2f} um')
         input_dict["detector_pixel_size"] = input_dict["detector_pixel_size"]*input_dict['binning']
 
     print(f'Data shape: {DPs.shape}')
 
-    size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
-    estimated_size_for_all_DPs = DPs.shape[0]*size_of_single_restored_DP
+    estimated_size_for_all_DPs = estimate_memory_usage(DPs)[3]
     print(f"Estimated size for {DPs.shape[0]} DPs of type {DPs.dtype}: {estimated_size_for_all_DPs:.2f} GBs")
     print(f'Detector pixel size = {input_dict["detector_pixel_size"]*1e6:.2f} um')
     
@@ -417,6 +421,32 @@ def check_shape_of_inputs(DPs,positions,initial_probe):
         if DPs[0].shape[0] != initial_probe.shape[1] or DPs[0].shape[1] != initial_probe.shape[2]:
             raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
 
+def remove_positions_randomly(arr1, arr2, R):
+
+    """
+    Reduce the number of positions randomly by R
+    """
+
+    # Get the number of columns (N) from the first array
+    N = arr1.shape[0]
+
+    # Ensure R is less than N
+    if R >= N:
+        raise ValueError(f"R should be less than N ({N})")
+
+    # Randomly sample (N - R) indices to keep
+    indices_to_keep = np.random.choice(N, N - R, replace=False)
+
+    # Sort the indices to maintain the original order
+    indices_to_keep = np.sort(indices_to_keep)
+
+    # Slice both arrays using the sampled indices
+    reduced_arr1 = arr1[indices_to_keep, :]
+    reduced_arr2 = arr2[indices_to_keep, :, :]
+
+    return reduced_arr1, reduced_arr2
+
+
 def check_and_set_defaults(input_dict):
     # Define the default values
     default_values = {
@@ -431,6 +461,7 @@ def check_and_set_defaults(input_dict):
         'position_rotation': 0,
         'object_padding': 0,
         'incoherent_modes': 1,
+        'n_of_positions_to_remove':0,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
@@ -455,6 +486,23 @@ def check_and_set_defaults(input_dict):
             print(f"WARNING: key '{key}' was missing in the input dictionary. Set to default value: {default_value}")
 
     return input_dict
+
+def check_dtypes(DPs,initial_obj,initial_probe):
+    if DPs.dtype != np.float32:
+        print('WARNING: Diffraction patterns dtype is not np.float32. Converting to np.float32...')
+        DPs = DPs.astype(np.float32)
+
+    if initial_obj is not None:
+        if initial_obj.dtype != np.complex32:
+            print('WARNING: Initial object dtype is not np.complex32. Converting to np.complex32...')
+            initial_obj = initial_obj.astype(np.complex32)
+
+    if initial_probe is not None:
+        if initial_probe.dtype != np.complex32:
+            print('WARNING: Initial probe dtype is not np.complex32. Converting to np.complex32...')
+            initial_probe = initial_probe.astype(np.complex32)
+
+    return DPs, initial_obj, initial_probe
 
 def create_output_h5_file(input_dict):
 
@@ -533,6 +581,8 @@ def bin_volume(volume, downsampling_factor):
         downsampled_volume: 3D numpy array of shape (N, Y//downsampling_factor, X//downsampling_factor)
 
     """
+
+    print('Binning data...')
 
     def suggest_crop_dimensions(Y, X, downsampling_factor):
         # Calculate the largest dimensions divisible by the downsampling factor
