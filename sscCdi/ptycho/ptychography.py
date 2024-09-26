@@ -156,13 +156,14 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
-    DPs = bin_volume(DPs, input_dict['binning']) # binning of diffraction patterns
+    input_dict = check_and_set_defaults(input_dict)
+
     if input_dict['binning']>1:
+        DPs = bin_volume(DPs, input_dict['binning']) # binning of diffraction patterns
         print('Detector pixel size downsampled from {input_dict["detector_pixel_size"]*1e6:.2f} um to {input_dict["detector_pixel_size"]*1e6*input_dict["binning"]:.2f} um')
         input_dict["detector_pixel_size"] = input_dict["detector_pixel_size"]*input_dict['binning']
 
     print(f'Data shape: {DPs.shape}')
-    print(f"Initial probe shape: {DPs[0].shape}")
 
     size_of_single_restored_DP = estimate_memory_usage(DPs)[3]
     estimated_size_for_all_DPs = DPs.shape[0]*size_of_single_restored_DP
@@ -226,135 +227,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     return obj, probe, corrected_positions, input_dict, error
 
-def check_shape_of_inputs(DPs,positions,initial_probe):
-
-    if DPs.shape[0] != positions.shape[0]:
-        raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
-
-    if initial_probe is not None: # mudei como conversado com Mauro
-        if DPs[0].shape[0] != initial_probe.shape[1] or DPs[0].shape[1] != initial_probe.shape[2]:
-            raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
-
-def create_output_h5_file(input_dict):
-
-    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
-
-        h5file.create_group("recon")
-        h5file.create_group("metadata")
-
-        h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
-        h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
-        h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
-        h5file["metadata"].create_dataset('distance_sample_focus',data=input_dict['distance_sample_focus']) 
-        h5file["metadata"].create_dataset('detector_pixel_microns',data=input_dict['energy']) 
-        h5file["metadata"].create_dataset('object_pixel_meters',data=input_dict['object_pixel']) 
-        h5file["metadata"].create_dataset('cpus',data=input_dict['CPUs']) 
-        h5file["metadata"].create_dataset('binning',data=input_dict['binning']) 
-        h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
-        h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
-        h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
-        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
-
-        # lists, tuples, arrays
-        h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
-        h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
-        
-        h5file.create_group(f'metadata/probe_support')
-        for key in input_dict['probe_support']: # save input probe
-            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
-
-        h5file.create_group(f'metadata/initial_obj')
-        for key in input_dict['initial_obj']: # save input probe
-            h5file[f'metadata/initial_obj'].create_dataset(key,data=input_dict['initial_obj'][key])
-
-        h5file.create_group(f'metadata/initial_probe')
-        for key in input_dict['initial_probe']: # save input probe
-            h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
-        
-        for key in input_dict['algorithms']: # save algorithms used
-            h5file.create_group(f'metadata/algorithms/{key}')
-            for subkey in input_dict['algorithms'][key]:
-                if subkey == 'initial_obj':
-                   h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
-                   h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]['obj'])
-                elif subkey == 'initial_probe':
-                    h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
-                    h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
-                else:
-                    h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
-
-    h5file.close()
-
-def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
-    """
-    Subtratcs minimum of position in each direction, converts from microns to pixels and then apply desired offset 
-    """
-
-    probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
-    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
-
-    probe_positions[:, 0] = factor * probe_positions[:, 0] / pixel_size  # convert from microns to pixels
-    probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size 
-    
-    return probe_positions
-
-def bin_volume(volume, downsampling_factor):
-    """ Downsample a 3D volume (N,Y,X) in the Y, X directions by averaging over a specified downsampling factor.
-
-    Args:
-        volume (ndarray): 3D numpy array of shape (N,Y,X)
-        downsampling_factor (int): downsampling_factor
-
-    Raises:
-        ValueError: error in case Y and X dimensions are not divisible by the downsampling factor
-
-    Returns:
-        downsampled_volume: 3D numpy array of shape (N, Y//downsampling_factor, X//downsampling_factor)
-
-    """
-
-    def suggest_crop_dimensions(Y, X, downsampling_factor):
-        # Calculate the largest dimensions divisible by the downsampling factor
-        new_Y = Y - (Y % downsampling_factor)
-        new_X = X - (X % downsampling_factor)
-        
-        # Return the new suggested dimensions
-        return new_Y, new_X
-
-    N, Y, X = volume.shape
-
-    # Ensure that Y and X are divisible by the downsampling factor
-    if Y % downsampling_factor != 0 or X % downsampling_factor != 0:
-        new_Y, new_X = suggest_crop_dimensions(Y, X, downsampling_factor)
-        print("WARNING: Issue when binning. Y and X dimensions must be divisible by the downsampling factor. Cropping volume from ({Y},{X}) to ({new_Y},{new_X})")
-        volume = volume[:, :new_Y, :new_X]
-
-    def numpy_downsampling(volume, downsampling_factor):
-        N, Y, X = volume.shape
-        new_shape = (N, Y // downsampling_factor, downsampling_factor, X // downsampling_factor, downsampling_factor)
-        downsampled_volume = volume.reshape(new_shape).mean(axis=(2, 4))
-        return downsampled_volume
-    
-    binned_volume = numpy_downsampling(volume, downsampling_factor)
-
-    print('Binned data to new shape: ', binned_volume.shape)
-
-    return binned_volume
-
-def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
-
-    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
-
-        h5file["recon"].create_dataset('object',data=obj) 
-        h5file["recon"].create_dataset('probe',data=probe) 
-        h5file["recon"].create_dataset('positions',data=positions)
-        h5file["recon"].create_dataset('initial_probe',data=initial_probe)
-        h5file["recon"].create_dataset('initial_obj',data=initial_obj) 
-        h5file["recon"].create_dataset('error',data=error) 
-        if corrected_positions is not None:
-            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
-
-    h5file.close()
 
 def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     
@@ -536,6 +408,174 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     error =  np.concatenate(error).ravel()
     return obj, probe, error, corrected_positions, initial_obj, initial_probe
 
+def check_shape_of_inputs(DPs,positions,initial_probe):
+
+    if DPs.shape[0] != positions.shape[0]:
+        raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
+
+    if initial_probe is not None: # mudei como conversado com Mauro
+        if DPs[0].shape[0] != initial_probe.shape[1] or DPs[0].shape[1] != initial_probe.shape[2]:
+            raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
+
+def check_and_set_defaults(input_dict):
+    # Define the default values
+    default_values = {
+        'CPUs': 32,
+        'GPUs': [0],
+        'fresnel_regime': False,
+        'energy': 10,  # keV
+        'detector_distance': 10,  # meters
+        'distance_sample_focus': 0,
+        'detector_pixel_size': 55e-6, # meters
+        'binning': 1,
+        'position_rotation': 0,
+        'object_padding': 0,
+        'incoherent_modes': 1,
+        'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
+        'initial_obj': {"obj": 'random'},
+        'initial_probe': {"probe": 'inverse'},
+        'algorithms': {'1': {'name':'RAAR',
+                            'batch': 64,
+                            'iterations': 30, 
+                            'beta': 0.9,
+                            'step_object': 1.0,
+                            'step_probe': 1.0,   
+                            'regularization_object': 0.01,
+                            'regularization_probe': 0.01,
+                            'momentum_obj': 0.0,
+                            'momentum_probe': 0.0,
+                            'position_correction': 0,
+                            },  } 
+    }
+    
+    # Loop over the default values and check if they exist in input_dict
+    for key, default_value in default_values.items():
+        if key not in input_dict:
+            input_dict[key] = default_value
+            print(f"WARNING: key '{key}' was missing in the input dictionary. Set to default value: {default_value}")
+
+    return input_dict
+
+def create_output_h5_file(input_dict):
+
+    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
+
+        h5file.create_group("recon")
+        h5file.create_group("metadata")
+
+        h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
+        h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
+        h5file["metadata"].create_dataset('distance_sample_focus',data=input_dict['distance_sample_focus']) 
+        h5file["metadata"].create_dataset('detector_pixel_microns',data=input_dict['energy']) 
+        h5file["metadata"].create_dataset('object_pixel_meters',data=input_dict['object_pixel']) 
+        h5file["metadata"].create_dataset('cpus',data=input_dict['CPUs']) 
+        h5file["metadata"].create_dataset('binning',data=input_dict['binning']) 
+        h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
+        h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
+        h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
+        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+
+        # lists, tuples, arrays
+        h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
+        h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
+        
+        h5file.create_group(f'metadata/probe_support')
+        for key in input_dict['probe_support']: # save input probe
+            h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
+
+        h5file.create_group(f'metadata/initial_obj')
+        for key in input_dict['initial_obj']: # save input probe
+            h5file[f'metadata/initial_obj'].create_dataset(key,data=input_dict['initial_obj'][key])
+
+        h5file.create_group(f'metadata/initial_probe')
+        for key in input_dict['initial_probe']: # save input probe
+            h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
+        
+        for key in input_dict['algorithms']: # save algorithms used
+            h5file.create_group(f'metadata/algorithms/{key}')
+            for subkey in input_dict['algorithms'][key]:
+                if subkey == 'initial_obj':
+                   h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                   h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]['obj'])
+                elif subkey == 'initial_probe':
+                    h5file.create_group(f'metadata/algorithms/{key}/{subkey}')
+                    h5file[f'metadata/algorithms/{key}/{subkey}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey]["probe"])
+                else:
+                    h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
+
+    h5file.close()
+
+def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
+    """
+    Subtratcs minimum of position in each direction, converts from microns to pixels and then apply desired offset 
+    """
+
+    probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
+    probe_positions[:, 1] -= np.min(probe_positions[:, 1])
+
+    probe_positions[:, 0] = factor * probe_positions[:, 0] / pixel_size  # convert from microns to pixels
+    probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size 
+    
+    return probe_positions
+
+def bin_volume(volume, downsampling_factor):
+    """ Downsample a 3D volume (N,Y,X) in the Y, X directions by averaging over a specified downsampling factor.
+
+    Args:
+        volume (ndarray): 3D numpy array of shape (N,Y,X)
+        downsampling_factor (int): downsampling_factor
+
+    Raises:
+        ValueError: error in case Y and X dimensions are not divisible by the downsampling factor
+
+    Returns:
+        downsampled_volume: 3D numpy array of shape (N, Y//downsampling_factor, X//downsampling_factor)
+
+    """
+
+    def suggest_crop_dimensions(Y, X, downsampling_factor):
+        # Calculate the largest dimensions divisible by the downsampling factor
+        new_Y = Y - (Y % downsampling_factor)
+        new_X = X - (X % downsampling_factor)
+        
+        # Return the new suggested dimensions
+        return new_Y, new_X
+
+    N, Y, X = volume.shape
+
+    # Ensure that Y and X are divisible by the downsampling factor
+    if Y % downsampling_factor != 0 or X % downsampling_factor != 0:
+        new_Y, new_X = suggest_crop_dimensions(Y, X, downsampling_factor)
+        print("WARNING: Issue when binning. Y and X dimensions must be divisible by the downsampling factor. Cropping volume from ({Y},{X}) to ({new_Y},{new_X})")
+        volume = volume[:, :new_Y, :new_X]
+
+    def numpy_downsampling(volume, downsampling_factor):
+        N, Y, X = volume.shape
+        new_shape = (N, Y // downsampling_factor, downsampling_factor, X // downsampling_factor, downsampling_factor)
+        downsampled_volume = volume.reshape(new_shape).mean(axis=(2, 4))
+        return downsampled_volume
+    
+    binned_volume = numpy_downsampling(volume, downsampling_factor)
+
+    print('Binned data to new shape: ', binned_volume.shape)
+
+    return binned_volume
+
+def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
+
+    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
+
+        h5file["recon"].create_dataset('object',data=obj) 
+        h5file["recon"].create_dataset('probe',data=probe) 
+        h5file["recon"].create_dataset('positions',data=positions)
+        h5file["recon"].create_dataset('initial_probe',data=initial_probe)
+        h5file["recon"].create_dataset('initial_obj',data=initial_obj) 
+        h5file["recon"].create_dataset('error',data=error) 
+        if corrected_positions is not None:
+            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
+
+    h5file.close()
 
 def append_ones(probe_positions):
     """ Adjust shape and column order of positions array to be accepted by Giovanni's code
@@ -609,8 +649,7 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
                                     fzp_outer_zone_width = fzp_outer_zone_width,
                                     beamstopper_diameter = beamstopper_diameter,
                                     probe_diameter = probe_diameter,
-                                    probe_normalize = probe_normalize
-                                    )
+                                    probe_normalize = probe_normalize )
         else:
             sys.exit("Please select an appropriate type for probe initial guess: circular, squared, rectangular, cross, constant, random")
 
