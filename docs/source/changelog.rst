@@ -14,6 +14,20 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.13.2] - 2024-09-26
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Refactor of CUDA codes. Removed unused varialbes, renamed variables to more intuitive names and merged some functionality. 
+
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixed bugs when calling main ptychography function in Python
+
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added functions to bin data in the ptychography pipeline.
+- Added function to check input dictionary for missing keys and use default values for them, if needed
 
 [0.13.1] - 2024-09-20
 ------------------------------
