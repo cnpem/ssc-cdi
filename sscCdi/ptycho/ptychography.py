@@ -388,6 +388,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
 
+            if len(input_dict["GPUs"]) > 1:
+                print(f"WARNING: PIE algorithm is not implemented for multi-GPU. Using single GPU {input_dict["GPUs"][0:1]} (batch size = 1) instead.")
+
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
