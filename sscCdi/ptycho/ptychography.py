@@ -399,7 +399,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             wavelength_m=input_dict["wavelength"],
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"],
-                                                            params={'device': input_dict["GPUs"]})
+                                                            params={'device': input_dict["GPUs"][0:1]})
 
             error.append(algo_error)
 

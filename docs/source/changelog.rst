@@ -14,6 +14,12 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.13.4] - 2024-09-27
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added creation of hdf5 output folder path if needed
+
 [0.13.3] - 2024-09-26
 ------------------------------
 Added
