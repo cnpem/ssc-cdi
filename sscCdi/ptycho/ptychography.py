@@ -203,6 +203,10 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     if input_dict['hdf5_output'] is not None:
         print('Creating output hdf5 file...')
+        if os.path.exists(os.path.dirname(input_dict['hdf5_output'])) == False:
+            print('Folder does not exist. Creating it...')
+            os.makedirs(os.path.dirname(input_dict['hdf5_output']))
+
         create_output_h5_file(input_dict)
 
     obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
