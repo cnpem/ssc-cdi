@@ -160,6 +160,10 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     input_dict = check_and_set_defaults(input_dict)
 
+    if check_consecutive_keys(input_dict['algorithms']) == False:
+        raise ValueError('Keys in algorithms dictionary should be consecutive integers starting from 1. For example: {1: {...}, 2: {...}, 3: {...}}')
+
+
     if input_dict['n_of_positions_to_remove'] > 0:
         positions,DPs = remove_positions_randomly(positions,DPs, input_dict['n_of_positions_to_remove'])
 
@@ -276,6 +280,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     corrected_positions = None
     error = []
+
+
 
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
@@ -570,6 +576,11 @@ def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
     probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size 
     
     return probe_positions
+
+def check_consecutive_keys(algorithms):
+    keys = list(map(int, algorithms.keys()))
+    keys.sort()
+    return keys == list(range(1, len(keys) + 1))
 
 def bin_volume(volume, downsampling_factor):
     """ Downsample a 3D volume (N,Y,X) in the Y, X directions by averaging over a specified downsampling factor.
