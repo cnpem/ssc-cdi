@@ -235,7 +235,7 @@ void RAARRun(RAAR& raar, int iterations) {
     const dim3 difpadshape = raar.ptycho->diff_pattern_shape;
     const dim3 ew_shape = raar.ptycho->wavefront->Shape();
 
-    const int nstreams = 3;
+    const int nstreams = 2;
     const int ngpus = raar.ptycho->gpus.size();
     cudaStream_t streams[nstreams][ngpus];
 
