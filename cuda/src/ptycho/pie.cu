@@ -45,7 +45,7 @@ void DestroyPie(Pie*& pie) {
     pie = nullptr;
 }
 
-__global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<complex> probe,
+__global__ void kPieWavefrontCalc(GArray<complex> wavefront, const GArray<complex> probe,
         const GArray<complex> object, const Position* rois) {
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -63,7 +63,7 @@ __global__ void k_pie_wavefront_calc(GArray<complex> wavefront, const GArray<com
     }
 }
 
-__global__ void k_pie_update_probe(GArray<complex> object_box,
+__global__ void kPieUpdateProbe(GArray<complex> object_box,
         GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
         float reg_probe, float step_probe, float obj_abs2_max, const Position* rois) {
@@ -96,7 +96,7 @@ __global__ void k_pie_update_probe(GArray<complex> object_box,
     }
 }
 
-__global__ void k_pie_update_object(GArray<complex> object, GArray<complex> probe,
+__global__ void kPieUpdateObject(GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
         float reg_obj, float step_obj, float probe_abs2_max, const Position* rois) {
 
@@ -127,13 +127,13 @@ __global__ void k_pie_update_object(GArray<complex> object, GArray<complex> prob
     object(objposy, objposx) += (step_obj * obj_delta) / denominator_o;
 }
 
-void range_array(int* data, size_t n) {
+void rangeArray(int* data, size_t n) {
     for (int i = 0; i < n; ++i) {
         data[i] = i;
     }
 }
 
-void shuffle_array(int *data, size_t n) {
+void shuffleArray(int *data, size_t n) {
     std::shuffle(data, data + n, std::default_random_engine());
 }
 
@@ -203,11 +203,11 @@ void PieRun(Pie& pie, int iterations) {
     // when (batchsize == 1) => (num_batches == num_rois)
     const size_t num_rois = PtychoNumBatches(*pie.ptycho);
     int random_idx[num_rois];
-    range_array(random_idx, num_rois);
+    rangeArray(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
         pie.ptycho->error->SetGPUToZero();
 
-        shuffle_array(random_idx, num_rois);
+        shuffleArray(random_idx, num_rois);
         for (int pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
             const size_t random_pos_idx = random_idx[pos_idx];
 
@@ -226,7 +226,7 @@ void PieRun(Pie& pie, int iterations) {
             cImage* wavefront = pie.ptycho->wavefront->arrays[gpu];
             rImage* difpad = cur_difpad.arrays[gpu];
 
-            k_pie_wavefront_calc<<<blk, thr>>>(*wavefront, *probe, *obj, rois);
+            kPieWavefrontCalc<<<blk, thr>>>(*wavefront, *probe, *obj, rois);
 
             wavefront->CopyTo(wavefront_prev);
 
@@ -244,13 +244,13 @@ void PieRun(Pie& pie, int iterations) {
             //maxAbs2<<<(obj_box.size + 1024 - 1) / 1024, 1024>>>(obj_box.gpuptr, obj_abs2_max, obj_box.size);
             //maxAbs2<<<(probe->size + 1024 - 1) / 1024, 1024>>>(probe->gpuptr, probe_abs2_max, probe->size);
 
-            k_pie_update_object<<<blk, thr>>>(*obj, *probe,
+            kPieUpdateObject<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
                     pie.ptycho->objreg,
                     pie.ptycho->objstep,
                     probe_abs2_max, rois);
 
-            k_pie_update_probe<<<blk, thr>>>(obj_box, *obj, *probe,
+            kPieUpdateProbe<<<blk, thr>>>(obj_box, *obj, *probe,
                     *wavefront, wavefront_prev,
                     pie.ptycho->probereg,
                     pie.ptycho->probestep,

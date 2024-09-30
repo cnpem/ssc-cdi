@@ -19,11 +19,7 @@
 
 #include <cassert>
 #include <cstdint>
-#include <iostream>
 #include <limits>
-#include <sstream>
-#include <string>
-#include <vector>
 #include "cufft.h"
 
 #if __has_include("thrust/device_vector.h")
@@ -260,10 +256,14 @@ struct Image {
         gpuptr = nullptr;
     }
     void AllocCPU() {
-        if (!cpuptr && bHasAllocCPU()) cpuptr = new Type[size];
+        if (!cpuptr && bHasAllocCPU()) {
+            cpuptr = new Type[size];
+        }
     }
     void DeallocCPU() {
-        if (cpuptr && bHasAllocCPU()) delete[] cpuptr;  // cudaFreeHost(cpuptr);
+        if (cpuptr && bHasAllocCPU()) {
+            delete[] cpuptr;
+        }
         cpuptr = nullptr;
     }
     void AllocManaged() {
@@ -949,6 +949,7 @@ struct MImage : public MultiGPU {
 
     }
 
+    void SetCPUToZero() { MGPULOOP(arrays[g]->SetCPUToZero();); };
     void SetGPUToZero() { MGPULOOP(arrays[g]->SetGPUToZero();); };
     void Clamp(Type a, Type b) { MGPULOOP(arrays[g]->Clamp(a, b);); }
 
@@ -1042,17 +1043,19 @@ struct MImage : public MultiGPU {
         MGPULOOP(arrays[g]->CopyTo(other.arrays[g][0]););
     }
 
-    void LoadToGPU(Type* data, cudaStream_t st = 0) {
+    void LoadToGPU(Type* data, cudaStream_t* streams = nullptr) {
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
+            cudaStream_t st = streams != nullptr ? streams[g] : 0;
             arrays[g]->CopyFrom(data + offsets[g], st);
         }
     }
 
-    void LoadToGPU(Type* data, const size_t copysize, cudaStream_t st = 0) {
+    void LoadToGPU(Type* data, const size_t copysize, cudaStream_t* streams = nullptr) {
         size_t rem_copysize = copysize;
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
+            cudaStream_t st = streams != nullptr ? streams[g] : 0;
             const size_t gpu_copy_size = min(arrays[g]->size, rem_copysize);
             if (gpu_copy_size <= 0)
                 return;
@@ -1061,9 +1064,10 @@ struct MImage : public MultiGPU {
         }
     }
 
-    void LoadFromGPU(Type* data, cudaStream_t st = 0) {
+    void LoadFromGPU(Type* data, cudaStream_t* streams = nullptr) {
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
+            cudaStream_t st = streams != nullptr ? streams[g] : 0;
             arrays[g]->CopyTo(data + offsets[g], st);
         }
     }
@@ -1413,6 +1417,18 @@ struct MImage : public MultiGPU {
         return myimage;
     };
 };
+
+//Warning: this function reduces the MImages into a single MImage, not the GPU Images into a single GPU.
+//To achieve this, one needs to call out->ReduceSync() after;
+template <typename T>
+void ReduceMImages(MImage<T>* out, MImage<T> **in, int n) {
+    out->SetGPUToZero();
+    for (int g = 0; g < out->ngpus; ++g) {
+        for (int i = 0; i < n ; ++i) {
+            *out->arrays[g] += *in[i]->arrays[g];
+        }
+    }
+}
 
 typedef MImage<float> rMImage;
 typedef MImage<complex> cMImage;

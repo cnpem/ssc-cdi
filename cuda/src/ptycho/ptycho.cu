@@ -147,21 +147,26 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
 }
 
 template <typename dtype>
-void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool bIsGradPm) {
+void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool bIsGradPm,
+        cudaStream_t stream) {
     dim3 blk = pt.probe->ShapeBlock();
     dim3 thr = pt.probe->ShapeThread();
 
     for (int g = 0; g < pt.gpus.size(); g++) {
         SetDevice(pt.gpus, g);
 
-        KProjectPhiToProbe<<<blk, thr>>>(pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
-                pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0], bNormalizeFFT, bIsGradPm);
+        KProjectPhiToProbe<<<blk, thr, 0, stream>>>(
+                pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
+                pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0],
+                bNormalizeFFT, bIsGradPm);
     }
 }
 
-template void ProjectPhiToProbe<complex>(Ptycho& pt, int section, const cMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
+template void ProjectPhiToProbe<complex>(Ptycho& pt, int section,
+        const cMImage& Phi, bool bNormalizeFFT, bool bIsGradPm, cudaStream_t st);
 
-template void ProjectPhiToProbe<complex16>(Ptycho& pt, int section, const hcMImage& Phi, bool bNormalizeFFT, bool bIsGradPm);
+template void ProjectPhiToProbe<complex16>(Ptycho& pt, int section,
+        const hcMImage& Phi, bool bNormalizeFFT, bool bIsGradPm, cudaStream_t st);
 
 extern "C" {
     void EnablePeerToPeer(const std::vector<int>& gpus);
@@ -237,6 +242,28 @@ extern "C" {
         Reduction::KSharedReduce(sh_rfactor, 64);
         if (threadIdx.x == 0) atomicAdd(rfactors + blockIdx.y, sh_rfactor[0]);
     }
+}
+
+
+void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, cImage* wavefront, int g, bool bIsGradPm, cudaStream_t stream) {
+
+    SetDevice(pt.gpus, g);
+
+    complex* ewave = wavefront->gpuptr;
+
+    int upsample = wavefront->sizex / difpad->sizex;
+
+    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), 1, stream);
+
+    wavefront->FFTShift2(stream);
+
+    KProjectReciprocalSpace<<<difpad->ShapeBlock(), difpad->ShapeThread(), 0, stream>>>(*wavefront, *difpad, pt.error->Ptr(g), upsample,
+            pt.probe->sizez, bIsGradPm);
+
+
+    wavefront->FFTShift2(stream);
+    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), -1, stream);
+
 }
 
 
@@ -387,7 +414,8 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.probe_num) delete ptycho.probe_num;
     ptycho.probe_num = nullptr;
 
-    cudaFreeHost(ptycho.cpu_diff_pattern);
+    //cudaFreeHost(ptycho.cpu_diff_pattern);
+    cudaHostUnregister(ptycho.cpu_diff_pattern);
 
     sscDebug("Deallocating base algorithm.");
     for (int g = 0; g < ptycho.gpus.size(); g++) {
@@ -479,8 +507,11 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->cpu_diff_pattern = _difpads;
 
     size_t difpad_size = ptycho->diff_pattern_shape.x * ptycho->diff_pattern_shape.y * ptycho->diff_pattern_shape.z;
-    cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
-    cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
+    //cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
+    //cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
+
+    ptycho->cpu_diff_pattern = _difpads;
+    cudaHostRegister(ptycho->cpu_diff_pattern, difpad_size * sizeof(float), cudaHostRegisterDefault);
 
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;

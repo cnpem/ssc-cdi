@@ -420,9 +420,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"])
 
-            algo_error = np.expand_dims(algo_error,axis=1)
-
-            obj = obj.astype(np.complex64) 
+            obj = obj.astype(np.complex64)
             probe = probe.astype(np.complex64)
 
             corrected_positions = probe_positions.copy()

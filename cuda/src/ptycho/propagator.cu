@@ -61,8 +61,8 @@ void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape,
         }
     }
     if (!bPlanExists) {
-        Append(shape);
-        plan = plans[plans.size() - 1];
+        Append(shape, stream);
+        plan = plans.back();
     }
     sscCufftCheck(cufftExecC2C(plan, iwave, owave, dir));
 }
