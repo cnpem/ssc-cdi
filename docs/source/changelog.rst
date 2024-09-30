@@ -14,6 +14,33 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.13.4] - 2024-09-27
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added creation of hdf5 output folder path if needed
+
+[0.13.3] - 2024-09-26
+------------------------------
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added functions to check data types before ptychography
+- Added function to randomly remove scan points from positions and data arrays if wanted
+
+[0.13.2] - 2024-09-26
+------------------------------
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Refactor of CUDA codes. Removed unused varialbes, renamed variables to more intuitive names and merged some functionality. 
+
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Fixed bugs when calling main ptychography function in Python
+
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Added functions to bin data in the ptychography pipeline.
+- Added function to check input dictionary for missing keys and use default values for them, if needed
 
 [0.13.1] - 2024-09-20
 ------------------------------

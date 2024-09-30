@@ -599,7 +599,7 @@ def slice_visualizer(data, axis=0, type='', title='', cmap='gray', aspect_ratio=
         figure.canvas.header_visible = False
         colorbar = plt.colorbar(
             matplotlib.cm.ScalarMappable(
-                norm=get_colornorm(volume_slice, vmin, vmax, norm),
+                # norm=get_colornorm(volume_slice, vmin, vmax, norm),
                 cmap=cmap))
         plt.show()
 

@@ -61,8 +61,8 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
-        sscInfo(format("Starting AP - p: {} o: {} r: {} b: {} n: {}",
-                    psizex, osizex, numrois, bsize, numiter));
+        sscInfo(format("Starting AP - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, bsize, numiter));
+
         {
             std::vector<int> gpus;
             for(int g=0; g<ngpus; g++)
@@ -93,8 +93,7 @@ extern "C"
             float reg_obj, float reg_probe,
             float wavelength_m, float pixelsize_m, float distance_m) {
 
-        sscInfo(format("Starting PIE - p: {} o: {} r: {} n: {}",
-                    psizex, osizex, numrois, numiter));
+        sscInfo(format("Starting PIE - Probe: ({},{}), Object: ({},{}), Positions: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, numiter));
 
         std::vector<int> gpus;
         gpus.reserve(ngpus);
@@ -129,8 +128,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* rfactors, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
-        sscInfo(format("Starting RAAR - p: {} o: {} r: {} b: {} n: {}",
-                    psizex, osizex, numrois, bsize, numiter));
+        sscInfo(format("Starting RAAR - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
             for(int g=0; g<ngpus; g++)

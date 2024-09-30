@@ -83,8 +83,8 @@ def plot_ptycho_corrected_scan_points(positions, positions2, pixel_size=None):
     ax.legend(loc='best')
 
     # Add connectors between the points
-    for (x1, y1), (x2, y2) in zip(positions, positions2):
-        ax.plot([x1, x2], [y1, y2], 'k-', lw=0.5)
+    # for (y1, x1), (y2, x2) in zip(positions, positions2):
+        # ax.plot([x1, x2], [y1, y2], 'k-', lw=0.5)
 
     plt.show()
 
