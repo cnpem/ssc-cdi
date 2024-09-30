@@ -1422,9 +1422,13 @@ struct MImage : public MultiGPU {
 //To achieve this, one needs to call out->ReduceSync() after;
 template <typename T>
 void ReduceMImages(MImage<T>* out, MImage<T> **in, int n) {
-    out->SetGPUToZero();
+
     for (int g = 0; g < out->ngpus; ++g) {
-        for (int i = 0; i < n ; ++i) {
+        *out->arrays[g] += *in[0]->arrays[g];
+    }
+
+    for (int g = 0; g < out->ngpus; ++g) {
+        for (int i = 1; i < n ; ++i) {
             *out->arrays[g] += *in[i]->arrays[g];
         }
     }
