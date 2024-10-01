@@ -389,7 +389,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
 
             if len(input_dict["GPUs"]) > 1:
-                print(f"WARNING: PIE algorithm is not implemented for multi-GPU. Using single GPU {input_dict["GPUs"][0:1]} (batch size = 1) instead.")
+                print(f"WARNING: PIE algorithm is not implemented for multi-GPU. Using single GPU {input_dict['GPUs'][0:1]} (batch size = 1) instead.")
 
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
@@ -506,14 +506,14 @@ def check_dtypes(DPs,initial_obj,initial_probe):
         DPs = DPs.astype(np.float32)
 
     if initial_obj is not None:
-        if initial_obj.dtype != np.complex32:
-            print('WARNING: Initial object dtype is not np.complex32. Converting to np.complex32...')
-            initial_obj = initial_obj.astype(np.complex32)
+        if initial_obj.dtype != np.complex64:
+            print('WARNING: Initial object dtype is not np.complex64. Converting to np.complex64...')
+            initial_obj = initial_obj.astype(np.complex64)
 
     if initial_probe is not None:
-        if initial_probe.dtype != np.complex32:
-            print('WARNING: Initial probe dtype is not np.complex32. Converting to np.complex32...')
-            initial_probe = initial_probe.astype(np.complex32)
+        if initial_probe.dtype != np.complex64:
+            print('WARNING: Initial probe dtype is not np.complex64. Converting to np.complex64...')
+            initial_probe = initial_probe.astype(np.complex64)
 
     return DPs, initial_obj, initial_probe
 
