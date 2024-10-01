@@ -591,16 +591,13 @@ def slice_visualizer(data, axis=0, type='', title='', cmap='gray', aspect_ratio=
     with output:
         volume_slice = get_vol_slice(data, axis=0, frame=0)
         figure, ax = plt.subplots(dpi=100)
-        im = ax.imshow(volume_slice, cmap=cmap)
+        im = ax.imshow(volume_slice, cmap=cmap, norm=get_colornorm(volume_slice, vmin, vmax, norm))
+
         if not show_ticks:
             ax.set_xticks([])
             ax.set_yticks([])
-        figure.canvas.draw_idle()
-        figure.canvas.header_visible = False
-        colorbar = plt.colorbar(
-            matplotlib.cm.ScalarMappable(
-                # norm=get_colornorm(volume_slice, vmin, vmax, norm),
-                cmap=cmap))
+
+        colorbar = plt.colorbar(im, ax=ax)  # Link the colorbar to the imshow object
         plt.show()
 
     def update_imshow(figure, subplot, frame_number, axis=0, title="", cmap='gray', norm=None, aspect_ratio='', vmin=None, vmax=None, show_ticks=True):
@@ -608,7 +605,7 @@ def slice_visualizer(data, axis=0, type='', title='', cmap='gray', aspect_ratio=
 
         volume_slice = get_vol_slice(data, axis, frame_number)
         colornorm = get_colornorm(volume_slice, vmin, vmax, norm)
-        im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm)
+        im = subplot.imshow(volume_slice, cmap=cmap, norm=colornorm,vmin=vmin,vmax=vmax)
 
         if title != "":
             subplot.set_title(f'{title}')
