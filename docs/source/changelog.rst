@@ -14,6 +14,12 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.13.5] - 2024-10-01
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Bug fix of slice_visualizer for jupyter notebooks. Vmax and Vmin inputs should be working as well as the colorbar
+
 [0.13.4] - 2024-09-27
 ------------------------------
 Added
