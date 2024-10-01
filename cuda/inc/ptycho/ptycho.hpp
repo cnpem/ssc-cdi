@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <driver_types.h>
 #include <vector>
 
 #include <common/complex.hpp>
@@ -110,7 +111,10 @@ void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm);
+void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm, cudaStream_t stream = 0);
+
+
+void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, cImage* wavefront, int g, bool bIsGradPm, cudaStream_t stream = 0);
 
 void DestroyPtycho(Ptycho*& ptycho);
 
@@ -125,7 +129,8 @@ Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const
 
 
 template <typename dtype>
-void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm);
+void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm,
+        cudaStream_t st = 0);
 void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
 void ApplyPositionCorrection(Ptycho& ptycho);
@@ -137,7 +142,7 @@ void ApplyPositionCorrection(Ptycho& ptycho);
  * */
 struct RAAR {
     Ptycho* ptycho = nullptr;
-    std::vector<hcMImage*> previous_wavefront;  //!< Stack of current exitwave estimates. can become very huge
+    std::vector<hcMImage*> previous_wavefront;
     const bool isGradPm = false;
     float beta = 0.9f;
 };
@@ -157,7 +162,7 @@ void DestroyRAAR(RAAR*& raar);
 
 void RAARRun(RAAR& raar, int iter);
 
-void RAARProjectProbe(RAAR& raar, int section);
+void RAARProjectProbe(RAAR& raar, int section, cudaStream_t st = 0);
 
 /**
  * Projects phistack to object subspace and updates the object estimate.
