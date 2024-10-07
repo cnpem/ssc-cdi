@@ -79,7 +79,6 @@ def calculate_nmserror(measurement, total_wave_intensity,free_llk_mask,valid_dat
         error_numerator = np.sum(np.abs(mask*((measurement-total_wave_intensity)/(measurement)))**2)/(measurement.shape[0]*measurement.shape[1])
         return error_numerator
 
-
 def calculate_rfactor(measurement, estimated_intensity,free_llk_mask,valid_data_mask):
     """
     R-factor defined as:  R = sum( | sqrt(DP) - estimate| ) / sum( np.sqrt(DP) )
@@ -100,43 +99,6 @@ def calculate_poisson_likelihood(measurement,estimated_intensity,free_llk_mask,v
     estimated_intensity = estimated_intensity/integrated_intensity # normalize the estimated intensity
     measurement = measurement/integrated_intensity # normalize the measurement
     return np.sum((valid_data_mask*estimated_intensity-valid_data_mask*measurement*np.log(valid_data_mask*estimated_intensity)))
-
-
-def apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel):
-    if distance_focus_sample == 0:
-        probe_modes = probe_modes*probe_support
-    else:
-        for i, mode in enumerate(probe_modes): # propagate each mode back to focus
-            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,-distance_focus_sample)
-        probe_modes = probe_modes*probe_support
-        for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
-            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,distance_focus_sample)
-    return probe_modes
-
-
-# def poisson_log_likelihood(y, lambdas):
-#     """
-#     Calculate the Poisson log-likelihood error.
-
-#     Parameters:
-#     y (array-like): Observed counts
-#     lambdas (array-like): Predicted counts (mean of the Poisson distribution)
-
-#     Returns:
-#     float: Negative Poisson log-likelihood error
-#     """
-#     # Ensure inputs are numpy arrays
-#     y = np.array(y)
-#     lambdas = np.array(lambdas)
-    
-#     # Prevent log(0) by ensuring lambda values are greater than 0
-#     lambdas = np.clip(lambdas, a_min=1e-10, a_max=None)
-
-#     # Calculate Poisson log-likelihood
-#     log_likelihood = np.sum(lambdas - y * np.log(lambdas))
-    
-#     return log_likelihood
-
 
 def poisson_log_likelihood(y, lambda_pred):
     """
@@ -200,7 +162,6 @@ def gaussian_log_likelihood(y, mu, sigma2=0.1):
     
     return nll
 
-
 def create_random_binary_mask(Y, X, N):
     """
     Create a binary mask of dimensions (Y, X) with N randomly placed 1s.
@@ -229,3 +190,14 @@ def create_random_binary_mask(Y, X, N):
     mask = mask.reshape((Y, X))  # Reshape back to (Y, X)
     
     return mask
+
+def apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel):
+    if distance_focus_sample == 0:
+        probe_modes = probe_modes*probe_support
+    else:
+        for i, mode in enumerate(probe_modes): # propagate each mode back to focus
+            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,-distance_focus_sample)
+        probe_modes = probe_modes*probe_support
+        for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
+            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,distance_focus_sample)
+    return probe_modes

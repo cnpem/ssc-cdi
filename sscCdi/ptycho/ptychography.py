@@ -14,12 +14,13 @@ import random
 
 from ..cditypes import AP, PIE, RAAR
 
-from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV
+from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, calculate_object_pixel_size
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_python
 from .raar import RAAR_python
 from .ML import ML_cupy
-from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
+
+from .ptycho_plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
 random.seed(0)
 
@@ -213,7 +214,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
         create_output_h5_file(input_dict)
 
-    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
+    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_engines(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
     if plot == True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
@@ -239,8 +240,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     return obj, probe, corrected_positions, input_dict, error
 
-
-def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
+def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     
     if initial_probe is None:
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
@@ -496,7 +496,6 @@ def remove_positions_randomly(arr1, arr2, R):
     reduced_arr2 = arr2[indices_to_keep, :, :]
 
     return reduced_arr1, reduced_arr2
-
 
 def check_and_set_defaults(input_dict):
     # Define the default values
@@ -921,9 +920,6 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
     
     return mask
 
-def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels):
-    return wavelength * detector_distance / (detector_pixel_size * n_of_pixels)
-
 def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size):
     """
     Calculate and display the object pixel size
@@ -951,7 +947,6 @@ def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return object_pixel_size
 
-
 def set_object_shape(object_padding, DP_shape, probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
@@ -978,9 +973,6 @@ def set_object_shape(object_padding, DP_shape, probe_positions):
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
     return (object_shape_y, object_shape_x)
-
-
-
 
 def probe_model_fzp(wavelength, 
                     grid_shape,
