@@ -12,7 +12,7 @@ import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .common import get_magnitude_error
+from .common import calculate_errors
 
 def calculate_gradients_obj_probe(obj, probe, positions, data):
     gradient_o = cp.zeros_like(obj, dtype=complex)
@@ -156,7 +156,7 @@ def ML_cupy(data, positions, initial_obj, initial_probe, algo_inputs):
 
         gradient_o_prev, gradient_p_prev = gradient_o, gradient_p
 
-        error[i] = get_magnitude_error(data,wavefronts,algo_inputs) 
+        error[i] = calculate_errors(data,wavefronts,algo_inputs) 
         if i>0 and error[i] > 1000*error[i-1]:
             fig, ax = plt.subplots(figsize=(10, 7)) 
             ax.plot(error[:i].get(), 'o-', label='error')

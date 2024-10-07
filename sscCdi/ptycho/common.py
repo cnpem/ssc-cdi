@@ -8,46 +8,45 @@
 ##################################################################################################################################################################
 
 
-import cupy as cp
-import numpy as np
+try:
+    import cupy as cp
+    # Check if a GPU is available
+    cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+    np = cp  # np will be an alias for cupy
+except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+    # Fallback to NumPy if GPU is not available or cupy is not installed
+    import numpy as np
 
-from ..processing.propagation import fresnel_propagator_cone_beam
+from ..processing.propagation import fresnel_propagator
 
 """ COMMON FUNCTIONS FOR DIFFERENT PTYCHO ENGINES"""
 
-def update_exit_wave_multiprobe_cupy(wavefront_modes,measurement,inputs):
-    wavefront_modes = propagate_multiprobe_cupy(wavefront_modes,inputs)
-    wavefront_modes_at_detector = Fspace_update_multiprobe_cupy(wavefront_modes,measurement)
-    updated_wavefront_modes = propagate_multiprobe_cupy(wavefront_modes_at_detector,inputs,backpropagate=True)
-    return updated_wavefront_modes, wavefront_modes_at_detector
+def update_exit_wave(wavefront_modes,measurement,detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask,epsilon=0.001):
+    wavefront_modes_at_detector = propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_pixel_size,propagator) # propagate to detector plane
+    updated_wavefront_modes_at_detector = update_wavefronts(wavefront_modes_at_detector.copy(),measurement,epsilon) # update wavefronts. # copy to use wavefront_modes_at_detector in errror calaculation
+    wavefront_modes = propagate_wavefronts(updated_wavefront_modes_at_detector,-detector_distance,wavelength,detector_pixel_size,propagator) # propagate back to sample plane
 
-def propagate_multiprobe_cupy(wavefront_modes,inputs = {},backpropagate=False):
+    errors = calculate_errors(measurement, wavefront_modes_at_detector ,free_LLK_mask)
 
-    if inputs["source_distance"] is None:
-        if backpropagate == False:
-            for m, mode in enumerate(wavefront_modes): #TODO: worth propagating in parallel?
-                wavefront_modes[m] = cp.fft.fftshift(cp.fft.fft2(mode))
+    return wavefront_modes, errors
+
+def propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_pixel_size,propagator='fraunhoffer'):
+
+    if propagator == 'fraunhoffer':
+        if detector_distance > 0: 
+            wavefront_modes = cp.fft.fftshift(cp.fft.fft2(wavefront_modes,axes=(1,2)),axes=(1,2))
         else:
-            for m in range(wavefront_modes.shape[0]):
-                wavefront_modes[m] = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes[m]))
-    else:
-        if backpropagate == False:
-            z2 = 1*inputs["detector_distance"]
-            z1 = inputs["source_distance"]
-        else:
-            if inputs["source_distance"] !=0:
-                z2 = -1*inputs["detector_distance"]
-                z1 = -inputs["source_distance"]
-            else:
-                z2 = -1*inputs["detector_distance"]
-                z1 = inputs["source_distance"] # should be 0 here
+            wavefront_modes = cp.fft.ifft2(cp.fft.ifftshift(wavefront_modes,axes=(1,2)),axes=(1,2))
 
+    elif propagator == 'fresnel':
         for m, mode in enumerate(wavefront_modes): 
-            wavefront_modes[m] = fresnel_propagator_cone_beam(mode,inputs["wavelength"],inputs["detector_pixel_size"],z2,z1)
+            wavefront_modes[m] = fresnel_propagator(mode,wavelength,detector_pixel_size,detector_distance)
+    else:
+        raise ValueError('Invalid propagator type. Choose between "fraunhoffer" and "fresnel"')
     
     return wavefront_modes
 
-def Fspace_update_multiprobe_cupy(wavefront_modes,measurement,epsilon=0.001):
+def update_wavefronts(wavefront_modes,measurement,epsilon=0.001):
     
     total_wave_intensity = cp.zeros_like(wavefront_modes[0])
 
@@ -55,34 +54,52 @@ def Fspace_update_multiprobe_cupy(wavefront_modes,measurement,epsilon=0.001):
         total_wave_intensity += cp.abs(mode)**2
     total_wave_intensity = cp.sqrt(total_wave_intensity)
     
-    updated_wavefront_modes = wavefront_modes
-    for m, mode in enumerate(wavefront_modes): #TODO: worth updating in parallel?
-        updated_wavefront_modes[m][measurement>=0] = cp.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
+    for m, mode in enumerate(wavefront_modes): 
+        wavefront_modes[m][measurement>=0] = cp.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
     
-    return updated_wavefront_modes
+    return wavefront_modes
 
-def get_magnitude_error(diffractions_patterns,wavefronts,inputs):
+def calculate_errors(measurement, wavefronts_at_detector,free_llk_mask):
 
-    error_numerator = 0
-    error_denominator = 0
-    for DP, wave in zip(diffractions_patterns,wavefronts):
-        DP = np.squeeze(DP)
-        
-        wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
-        intensity = cp.abs(wave_at_detector)[0]
-        intensity[DP<0] = -1
-        error_numerator += cp.sum((DP-intensity)**2) 
-        error_denominator += cp.sum(DP+1)
+    total_wave_intensity = np.sum(cp.abs(wavefronts_at_detector)**2,axis=0)
+    valid_data_mask = measurement > 0
 
-    return error_numerator/error_denominator/np.prod(diffractions_patterns[0].shape)
+    r_factor_numerator, r_factor_denominator = calculate_rfactor(measurement, total_wave_intensity,free_llk_mask,valid_data_mask)
 
-    # for DP, wave in zip(diffractions_patterns,wavefronts):
-    #     wave_at_detector = propagate_multiprobe_cupy(np.expand_dims(wave,axis=0).copy(), inputs)
-    #     intensity = cp.abs(wave_at_detector)**2
-        
-    #     error_numerator += poisson_log_likelihood(DP, intensity)
+    nmse_numerator = calculate_nmserror(measurement, total_wave_intensity,free_llk_mask,valid_data_mask)
 
-    # return error_numerator
+    poisson_likelihood_error = calculate_poisson_likelihood(measurement, total_wave_intensity,free_llk_mask,valid_data_mask)
+
+    all_errors = [r_factor_numerator, r_factor_denominator, nmse_numerator, poisson_likelihood_error]
+
+    return all_errors
+
+def calculate_nmserror(measurement, total_wave_intensity,free_llk_mask,valid_data_mask):
+        mask = free_llk_mask*valid_data_mask
+        error_numerator = np.sum(np.abs(mask*((measurement-total_wave_intensity)/(measurement)))**2)/(measurement.shape[0]*measurement.shape[1])
+        return error_numerator
+
+
+def calculate_rfactor(measurement, estimated_intensity,free_llk_mask,valid_data_mask):
+    """
+    R-factor defined as:  R = sum( | sqrt(DP) - estimate| ) / sum( np.sqrt(DP) )
+    """
+
+    mask = free_llk_mask*valid_data_mask
+    error_numerator = np.sum(np.abs(np.sqrt(mask*measurement)-np.sqrt(mask*estimated_intensity)))
+    error_denominator = np.sum(np.sqrt(measurement))
+
+    return error_numerator, error_denominator
+
+def calculate_poisson_likelihood(measurement,estimated_intensity,free_llk_mask,valid_data_mask,epsilon=1e-10):
+    """
+    LLK_error = sum ( n*log(lambda)-lambda ) , where n is the measurement and lambda is the estimated intensity
+    """
+    integrated_intensity = np.sum(measurement*valid_data_mask)
+
+    estimated_intensity = estimated_intensity/integrated_intensity # normalize the estimated intensity
+    measurement = measurement/integrated_intensity # normalize the measurement
+    return np.sum((valid_data_mask*estimated_intensity-valid_data_mask*measurement*np.log(valid_data_mask*estimated_intensity)))
 
 
 def apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel):
@@ -90,11 +107,35 @@ def apply_probe_support(probe_modes,probe_support,distance_focus_sample,waveleng
         probe_modes = probe_modes*probe_support
     else:
         for i, mode in enumerate(probe_modes): # propagate each mode back to focus
-            probe_modes[i] = fresnel_propagator_cone_beam(mode,wavelength,obj_pixel,-distance_focus_sample)
+            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,-distance_focus_sample)
         probe_modes = probe_modes*probe_support
         for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
-            probe_modes[i] = fresnel_propagator_cone_beam(mode,wavelength,obj_pixel,distance_focus_sample)
+            probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,distance_focus_sample)
     return probe_modes
+
+
+# def poisson_log_likelihood(y, lambdas):
+#     """
+#     Calculate the Poisson log-likelihood error.
+
+#     Parameters:
+#     y (array-like): Observed counts
+#     lambdas (array-like): Predicted counts (mean of the Poisson distribution)
+
+#     Returns:
+#     float: Negative Poisson log-likelihood error
+#     """
+#     # Ensure inputs are numpy arrays
+#     y = np.array(y)
+#     lambdas = np.array(lambdas)
+    
+#     # Prevent log(0) by ensuring lambda values are greater than 0
+#     lambdas = np.clip(lambdas, a_min=1e-10, a_max=None)
+
+#     # Calculate Poisson log-likelihood
+#     log_likelihood = np.sum(lambdas - y * np.log(lambdas))
+    
+#     return log_likelihood
 
 
 def poisson_log_likelihood(y, lambda_pred):
@@ -158,3 +199,33 @@ def gaussian_log_likelihood(y, mu, sigma2=0.1):
     nll = -log_likelihood
     
     return nll
+
+
+def create_random_binary_mask(Y, X, N):
+    """
+    Create a binary mask of dimensions (Y, X) with N randomly placed 1s.
+    
+    Parameters:
+    Y (int): Number of rows (height of the mask).
+    X (int): Number of columns (width of the mask).
+    N (int): Number of points to be set to 1.
+    
+    Returns:
+    np.array: Binary mask of dimensions (Y, X) with N values equal to 1.
+    """
+    # Ensure that N is not greater than the total number of pixels (Y*X)
+    if N > Y * X:
+        raise ValueError("N cannot be greater than the total number of pixels (Y*X)")
+    
+    # Create a zero-filled mask
+    mask = np.zeros((Y, X), dtype=np.int32)
+    
+    # Generate N unique random indices
+    indices = np.random.choice(Y * X, N, replace=False)
+    
+    # Reshape the array and set values directly
+    mask = mask.reshape(-1)  # Reshape to 1D
+    mask[indices] = 1        # Set the chosen indices to 1
+    mask = mask.reshape((Y, X))  # Reshape back to (Y, X)
+    
+    return mask

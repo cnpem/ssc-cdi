@@ -1,6 +1,6 @@
 # Academic License Agreement:
 #
-# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
+# This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and Materials (CNPEM) (hereafter "LICENSOR")
 #  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
 # to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
 #
@@ -9,30 +9,45 @@
 
 
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
+from .common import update_exit_wave, apply_probe_support, create_random_binary_mask
 
-def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
+def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
 
-    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
-    diffraction_patterns = cp.array(diffraction_patterns) 
-    positions = cp.array(positions)
-    obj = cp.array(obj)
-    probe = cp.array(probe)
+    try:
+        import cupy as cp
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+        np = cp  # np will be an alias for cupy
+
+        print('Transfering data to GPU...')
+        diffraction_patterns = cp.array(diffraction_patterns) 
+        positions = cp.array(positions)
+        obj = cp.array(obj)
+        probe = cp.array(probe)
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as np
+        print("Using NumPy (CPU)")
 
     iterations = inputs['iterations']
     beta       = inputs['beta']
     epsilon    = inputs['epsilon']
     obj_pixel  = inputs['object_pixel']
     wavelength = inputs['wavelength']
-    distance_focus_sample  = inputs['distance_sample_focus']
     n_of_modes = inputs["incoherent_modes"]
-    fresnel_regime = inputs["fresnel_regime"]
     probe_support  = inputs["probe_support_array"] 
+    distance_focus_sample  = inputs['distance_sample_focus']
+    detector_distance = inputs['detector_distance']
+    detector_pixel_size = inputs['detector_pixel_size']
+    free_log_likelihood = inputs['free_log_likelihood']
+    propagator = inputs['regime']
 
-    if fresnel_regime == True:
-        pass
+    if free_log_likelihood > 0:
+        print(diffraction_patterns.shape[0],diffraction_patterns.shape[1],free_log_likelihood)
+        free_LLK_mask = create_random_binary_mask(diffraction_patterns.shape[0],diffraction_patterns.shape[1],free_log_likelihood)
     else:
-        inputs['source_distance'] = None
+        free_LLK_mask = np.ones_like(diffraction_patterns[0])
 
     if probe_support is None:
         probe_support = cp.ones_like(probe)
@@ -56,45 +71,65 @@ def RAAR_multiprobe_cupy(diffraction_patterns,positions,obj,probe,inputs):
         obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
         wavefronts[index] = probe_modes*obj_box
         
-    error = cp.zeros((iterations,1))
-    for iteration in range(0,iterations):
-        """
-        RAAR update function:
-        psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
-        psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi
-        psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
-        """
+    print('Object shape:',obj_matrix.shape)
+    print('Probe shape:',probe_modes.shape)
+    print('Diffraction patterns shape:',diffraction_patterns.shape)
+    print('Wavefronts shape:',wavefronts.shape)
+    print('Positions shape:',positions.shape)
 
+    error = cp.zeros((iterations,4))
+    for iteration in range(0,iterations):
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
-            
-            psi_after_Pr = probe_modes*obj_box
-            
-            psi_after_reflection_Rspace = 2*psi_after_Pr-wavefronts[index]
-            psi_after_projection_Fspace, _ = update_exit_wave_multiprobe_cupy(psi_after_reflection_Rspace,diffraction_patterns[index],inputs) # Projection in Fourier space
-            wavefronts[index] = beta*(wavefronts[index] + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+      
+            wavefronts[index], all_errors = RAAR_wavefront_update(wavefronts[index],diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask)
 
-        probe_modes, single_obj_box = projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe! Projection in Real space (consistency condition)
-        obj_matrix[:] = single_obj_box # update all obj slices to be the same;
+            error_r_factor_num, error_r_factor_den, error_nmse_num, error_llk = all_errors
+            error[iteration,0] += error_r_factor_num
+            error[iteration,1] += error_r_factor_den
+            error[iteration,2] += error_nmse_num
+            error[iteration,3] += error_llk
+            # print(error_llk,error[iteration,4])
+
+        probe_modes, single_obj = update_object_and_probe(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe. Projection in Real space (consistency condition)
+        obj_matrix[:] = single_obj # update all obj slices to be the same;
 
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
 
-        iteration_error = get_magnitude_error(diffraction_patterns,wavefronts[:,0,:,:],inputs) # should we insert more modes to calculate error?
-
         print('\r', end='')
-        print(f'\tIteration {iteration+1}/{iterations} \tError: {iteration_error:.2e}',end='')
+        print(f'\tIteration {iteration+1}/{iterations} \t Errors: R-factor={error[iteration,0]/error[iteration,1]:.2e}; MSE={error[iteration,2]:.2e}; Poisson LLK={error[iteration,3]:.2e}',end='')
 
-        error[iteration] = iteration_error
     print('\n')    
-    return obj_matrix[0].get(), probe_modes.get(), error.get()
 
-def projection_Rspace_multiprobe_RAAR_cupy(wavefronts,obj,probes,positions,epsilon):
-    probes = RAAR_multiprobe_update_probe_cupy(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
-    obj   = RAAR_multiprobe_update_object_cupy(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
+    error[:,0] = error[:,0]/error[:,1] # R-factor calculation
+    error = np.delete(error, 1, axis=1) # delete denominator column of R-factor, not needed anymore
+
+    if np == cp: # if using gpus
+        return obj_matrix[0].get(), probe_modes.get(), error.get()
+    else:
+        return obj_matrix[0], probe_modes, error
+
+def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask):
+    """
+    RAAR update function:
+    psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
+    psi' = beta*(Pf*Rr + I)*psi + (1-2*beta)*Pr*psi
+    psi' = beta*(Pf*Rr*psi + psi) + (1-2*beta)*Pr*psi (eq 1)
+    """
+    epsilon = 1e-3 # to avoid division by zero; #TODO: test with different values!
+    psi_after_Pr = probe_modes*obj_box
+    psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
+    psi_after_projection_Fspace, all_errors = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask,epsilon=epsilon) # Projection in Fourier space
+    updated_wavefront =  beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
+    return updated_wavefront, all_errors
+
+def update_object_and_probe(wavefronts,obj,probes,positions,epsilon):
+    probes = update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
+    obj   = update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
     return probes, obj
 
-def RAAR_multiprobe_update_object_cupy(wavefronts, probe, object_shape, positions,epsilon):
+def update_object(wavefronts, probe, object_shape, positions,epsilon):
 
     modes,m,n = probe.shape
     k,l = object_shape
@@ -113,7 +148,7 @@ def RAAR_multiprobe_update_object_cupy(wavefronts, probe, object_shape, position
 
     return obj
 
-def RAAR_multiprobe_update_probe_cupy(wavefronts, obj, probe_shape,positions, epsilon=0.01):
+def update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
     
     l,m,n = probe_shape
 
