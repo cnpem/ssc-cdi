@@ -90,7 +90,6 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
             error[iteration,1] += error_r_factor_den
             error[iteration,2] += error_nmse_num
             error[iteration,3] += error_llk
-            # print(error_llk,error[iteration,4])
 
         probe_modes, single_obj = update_object_and_probe(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe. Projection in Real space (consistency condition)
         obj_matrix[:] = single_obj # update all obj slices to be the same;
