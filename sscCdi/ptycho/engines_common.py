@@ -22,9 +22,9 @@ from ..misc import extract_values_from_all_slices
 
 """ COMMON FUNCTIONS FOR DIFFERENT PTYCHO ENGINES"""
 
-def update_exit_wave(wavefront_modes,measurement,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None,free_data_indices=None,epsilon=0.001):
+def update_exit_wave(wavefront_modes,measurement,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None,free_data_indices=None,fourier_power_bound=0,epsilon=0.001):
     wavefront_modes_at_detector = propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_pixel_size,propagator) # propagate to detector plane
-    updated_wavefront_modes_at_detector = update_wavefronts(wavefront_modes_at_detector.copy(),measurement,epsilon) # update wavefronts. # copy to use wavefront_modes_at_detector in errror calaculation
+    updated_wavefront_modes_at_detector = update_wavefronts(wavefront_modes_at_detector.copy(),measurement,fourier_power_bound,epsilon) # update wavefronts. # copy to use wavefront_modes_at_detector in errror calaculation
     wavefront_modes = propagate_wavefronts(updated_wavefront_modes_at_detector,-detector_distance,wavelength,detector_pixel_size,propagator) # propagate back to sample plane
 
     errors = calculate_errors(measurement, wavefront_modes_at_detector ,free_data=free_data, free_data_indices=free_data_indices)
@@ -47,7 +47,7 @@ def propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_p
     
     return wavefront_modes
 
-def update_wavefronts(wavefront_modes,measurement,epsilon=0.001):
+def update_wavefronts(wavefront_modes,measurement,fourier_power_bound = 0,epsilon=0.001,):
     
     total_wave_intensity = cp.zeros_like(wavefront_modes[0])
 
@@ -55,8 +55,15 @@ def update_wavefronts(wavefront_modes,measurement,epsilon=0.001):
         total_wave_intensity += cp.abs(mode)**2
     total_wave_intensity = cp.sqrt(total_wave_intensity)
     
-    for m, mode in enumerate(wavefront_modes): 
-        wavefront_modes[m][measurement>=0] = cp.sqrt(measurement[measurement>=0])*mode[measurement>=0]/(total_wave_intensity[measurement>=0]+epsilon)
+    # Create a mask where measurement >= 0
+    mask = measurement >= 0
+
+    # Compute the magnitude (shared across all modes).
+    # to understand fourier power bound, see equation S2 of Giewekemeyer et al. 10.1073/pnas.0905846107
+    magnitude = (1 - fourier_power_bound) * cp.sqrt(measurement[mask]) + fourier_power_bound * cp.sqrt(total_wave_intensity[mask])
+
+    # Update all wavefront modes using vectorized operations
+    wavefront_modes[:, mask] = magnitude * wavefront_modes[:, mask] / (total_wave_intensity[mask] + epsilon)
     
     return wavefront_modes
 
