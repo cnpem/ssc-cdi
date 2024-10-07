@@ -11,64 +11,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, h5py
-from matplotlib.colors import hsv_to_rgb
-from ipywidgets import IntSlider, FloatRangeSlider, VBox, HBox, Dropdown, Checkbox, Play, jslink, Layout
 
-def miqueles_colormap(img):
-    """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
+from matplotlib.patches import Rectangle
+from matplotlib.widgets import RectangleSelector
+from IPython.display import display
 
-    Args:
-        img : image to get the maximum value for proper colormap definition
 
-    Returns:
-        cmap: colormap
-        colors: list of colors 
-        bounds: colormap bounds
-        norm: normalized colors
-    """    
-
-    import matplotlib as mpl
-    import numpy
-
-    colors = [ 'white', '#FFC0CB', '#0000FF' , '#00FFFF', 'green', 'gold', 'orange', 'red', '#C20078', 'maroon', 'black' ]
-    
-    cmap = mpl.colors.ListedColormap(colors)
-    
-    maxv    = img.max()
-    epsilon = -0.1 
-    
-    bounds =  numpy.zeros([12,])
-    bounds[0] = -10
-    bounds[1] = epsilon
-    bounds[2] = 0
-    for k in range(3,11):
-        bounds[k] = 10**( (k-2) * numpy.log(maxv) / (9 * numpy.log(10) ))
-        bounds[11] = maxv
-        
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
-
-    return cmap, colors, bounds, norm
-
-def plotshow_miqueles(image,title=None,figsize=(20,20),savepath=None,show=False):
-    """ Function to plot and save figures using Miquele's colormap
-
-    Args:
-        image (_type_): 2d image to plot
-        title (_type_, optional): Defaults to None.
-        figsize (tuple, optional): Defaults to (20,20).
-        savepath (_type_, optional): output path to save figure. Defaults to None.
-        show (bool, optional): if true, plt.show(). Defaults to False.
-    """    
-    figure, subplot = plt.subplots(dpi=300,figsize=figsize)
-    cmap, colors, bounds, norm = miqueles_colormap(image)
-    handle = subplot.imshow(image, interpolation='nearest', cmap = cmap, norm=norm)
-    figure.colorbar(handle, boundaries=bounds,ax=subplot)
-    if title != None:
-        subplot.set_title(title)
-    if savepath != None:
-        figure.savefig(savepath)
-    if show:
-        plt.show()
+def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels):
+    return wavelength * detector_distance / (detector_pixel_size * n_of_pixels)
 
 def delete_files_if_not_empty_directory(directory):
     """ Checks if directory is empty and, if not, deletes files within it
@@ -766,6 +716,40 @@ def plot_volume_histogram(volume,bins=100):
     ax.grid()
     ax.set_title(f'Max={maximum:.2f}   Min={minimum:.2f}   Mean={mean:.2f}   StdDev={stddev:.2f}')
 
+def miqueles_colormap(img):
+    """ Definition of a colormap created by Miquele's for better visualizing diffraction patterns.
+
+    Args:
+        img : image to get the maximum value for proper colormap definition
+
+    Returns:
+        cmap: colormap
+        colors: list of colors 
+        bounds: colormap bounds
+        norm: normalized colors
+    """    
+
+    import matplotlib as mpl
+    import numpy
+
+    colors = [ 'white', '#FFC0CB', '#0000FF' , '#00FFFF', 'green', 'gold', 'orange', 'red', '#C20078', 'maroon', 'black' ]
+    
+    cmap = mpl.colors.ListedColormap(colors)
+    
+    maxv    = img.max()
+    epsilon = -0.1 
+    
+    bounds =  numpy.zeros([12,])
+    bounds[0] = -10
+    bounds[1] = epsilon
+    bounds[2] = 0
+    for k in range(3,11):
+        bounds[k] = 10**( (k-2) * numpy.log(maxv) / (9 * numpy.log(10) ))
+        bounds[11] = maxv
+        
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+    return cmap, colors, bounds, norm
 
 def convert_complex_to_RGB(ComplexImg,bias=0.01):
     """ Convert complex image into RGB image with amplitude encoded by intensity and phase encoded by color
@@ -882,165 +866,7 @@ def evaluate_shape(volume):
     else:
         return volume
 
-# def visualizer_volumes(volumes, step_size=0.1, figsize=(12, 6), initial_cmap='viridis', initial_real_type='real'):
-#     volumes = [evaluate_shape(volume) for volume in volumes]
-#     num_slices = [volume.shape for volume in volumes]
-#     mins = [volume.min() for volume in volumes]
-#     maxs = [volume.max() for volume in volumes]
 
-#     # List of main colormaps available in Matplotlib
-#     colormap_options = sorted(['viridis', 'plasma', 'inferno', 'magma', 'cividis', 
-#                                'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds', 
-#                                'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu', 
-#                                'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn', 'gray', 'hsv'])
-
-#     if len(volumes) == 1:
-#         fig, ax = plt.subplots(1, 1, figsize=figsize)
-#         axes = [ax]
-#     else:
-#         fig, axes = plt.subplots(1, len(volumes), figsize=(figsize[0] * len(volumes) / 2, figsize[1]))
-        
-#     plt.subplots_adjust(bottom=0.3)
-
-#     colorbars = []
-
-#     def update(change=None):
-#         nonlocal colorbars
-#         cmap = cmap_dropdown.value
-#         use_log_scale = log_scale_checkbox.value
-#         real_type = real_type_dropdown.value
-#         for i, volume in enumerate(volumes):
-#             if real_type == 'amplitude+phase':
-#                 magnitude, phase = select_real_data(volume, real_type)
-#                 slice_idx = sliders[f'slice_idx{i}'].value
-#                 vmin, vmax = sliders[f'range{i}'].value
-#                 axis = axis_dropdowns[f'axis{i}'].value
-
-#                 if vmin >= vmax:
-#                     vmin = vmax - step_size
-#                 if vmax <= vmin:
-#                     vmax = vmin + step_size
-
-#                 axes[i].cla()  # Clear the axis
-
-#                 # Normalize the magnitude and phase
-#                 magnitude = (magnitude - vmin) / (vmax - vmin)
-#                 magnitude = np.clip(magnitude, 0, 1)
-#                 phase = (phase + np.pi) / (2 * np.pi)  # Normalize phase to [0, 1] range
-#                 phase = np.clip(phase, 0, 1)
-                
-#                 hsv_img = np.zeros((*magnitude.shape, 3))
-#                 hsv_img[..., 0] = phase
-#                 hsv_img[..., 1] = 1
-#                 hsv_img[..., 2] = magnitude
-                
-#                 rgb_img = hsv_to_rgb(hsv_img)
-
-#                 slice_img = np.take(rgb_img, slice_idx, axis=axis)
-#                 if axis == 0:
-#                     slice_img = slice_img[:, :]
-#                 elif axis == 1:
-#                     slice_img = slice_img[:, :]
-#                 elif axis == 2:
-#                     slice_img = slice_img[:, :]
-
-#                 if use_log_scale:
-#                     axes[i].imshow(np.log1p(slice_img))
-#                 else:
-#                     axes[i].imshow(slice_img)
-#             else:
-#                 transformed_volume = select_real_data(volume, real_type)
-#                 slice_idx = sliders[f'slice_idx{i}'].value
-#                 vmin, vmax = sliders[f'range{i}'].value
-#                 axis = axis_dropdowns[f'axis{i}'].value
-
-#                 if vmin >= vmax:
-#                     vmin = vmax - step_size
-#                 if vmax <= vmin:
-#                     vmax = vmin + step_size
-
-#                 axes[i].cla()  # Clear the axis
-
-#                 slice_img = np.take(transformed_volume, slice_idx, axis=axis)
-#                 if axis == 0:
-#                     slice_img = slice_img[:, :]
-#                 elif axis == 1:
-#                     slice_img = slice_img[:, :]
-#                 elif axis == 2:
-#                     slice_img = slice_img[:, :]
-
-#                 if use_log_scale:
-#                     im = axes[i].imshow(np.log1p(slice_img), cmap=cmap, vmin=np.log1p(vmin), vmax=np.log1p(vmax))
-#                 else:
-#                     im = axes[i].imshow(slice_img, cmap=cmap, vmin=vmin, vmax=vmax)
-
-#                 # Clear the previous colorbar if it exists
-#                 if i < len(colorbars):
-#                     colorbars[i].remove()
-
-#                 cbar = fig.colorbar(im, ax=axes[i])
-#                 if i < len(colorbars):
-#                     colorbars[i] = cbar
-#                 else:
-#                     colorbars.append(cbar)
-
-#         fig.canvas.draw_idle()
-    
-#     sliders = {}
-#     axis_dropdowns = {}
-#     play_widgets = []
-    
-#     slider_boxes = []
-#     for i, (num_slice, vmin, vmax) in enumerate(zip(num_slices, mins, maxs)):
-#         slice_slider = IntSlider(min=0, max=num_slice[0]-1, step=1, value=0, description=f'Slice {i+1}', continuous_update=False)
-#         range_slider = FloatRangeSlider(min=vmin, max=vmax, step=step_size, value=[vmin, vmax], description=f'Range {i+1}', continuous_update=False, layout=Layout(width='400px'))
-#         axis_dropdown = Dropdown(options=[0, 1, 2], value=0, description='Axis', layout=Layout(width='130px'))
-        
-#         sliders[f'slice_idx{i}'] = slice_slider
-#         sliders[f'range{i}'] = range_slider
-#         axis_dropdowns[f'axis{i}'] = axis_dropdown
-        
-#         for widget in [slice_slider, range_slider, axis_dropdown]:
-#             widget.observe(update, 'value')
-        
-#         play = Play(
-#             value=0,
-#             min=0,
-#             max=num_slice[0]-1,
-#             step=1,
-#             interval=200,
-#             description="Press play",
-#             disabled=False
-#         )
-#         jslink((play, 'value'), (slice_slider, 'value'))
-        
-#         play_widgets.append(play)
-#         slider_boxes.append( HBox([play, slice_slider, range_slider, axis_dropdown]))
-    
-#     # Create a dropdown menu for colormap selection
-#     cmap_dropdown = Dropdown(options=colormap_options, value=initial_cmap, description='Colormap')
-#     cmap_dropdown.observe(update, 'value')
-
-#     # Create a dropdown menu for selecting the data transformation
-#     real_type_options = ['amplitude', 'phase', 'real', 'imaginary', 'amplitude+phase']
-#     real_type_dropdown = Dropdown(options=real_type_options, value=initial_real_type, description='Data type')
-#     real_type_dropdown.observe(update, 'value')
-
-#     # Create a checkbox for log scale
-#     log_scale_checkbox = Checkbox(value=False, description='Log scale')
-#     log_scale_checkbox.observe(update, 'value')
-    
-#     ui = VBox([HBox([cmap_dropdown, real_type_dropdown, log_scale_checkbox])] + slider_boxes)
-    
-#     display(ui)
-    
-#     update()  # Initial call to set up the plot
-
-
-
-from matplotlib.patches import Rectangle
-from matplotlib.widgets import RectangleSelector
-from IPython.display import display
 
 def draw_rectangles(array):
     class MultiRectangleDrawer:
@@ -1106,3 +932,5 @@ def list_h5_file_tree(file_path):
     """
     with h5py.File(file_path, 'r') as h5file:
         print_h5_tree("/", h5file)
+
+
