@@ -31,7 +31,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     - `ePIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
     - `RAAR`: Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
     - `AP`: Alternate Projections. Multi GPU, CUDA implementation
-    - `ePIE`: Extended Ptychographic Iterative Engine. Single GPU, CUDA implementation
+    - `rPIE`: regularized Ptychographic Iterative Engine. Single GPU, CUDA implementation
 
     Args:
         DPs (ndarray): Diffraction data with shape (N, Y, X). N is the number of diffraction patterns.
@@ -284,11 +284,14 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     error_llk = []
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
+        check_for_nans(obj,probe,DPs) # check if there are NaNs in the input data; exit program otherwise
+
         algo_inputs = {**input_dict, **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }  }
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
-            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
             
+
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
@@ -327,6 +330,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
+            DPs, obj, probe = check_dtypes(DPs,obj,probe) # check if dtypes are correct; exit program otherwise
 
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
@@ -352,13 +356,16 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         pixelsize_m=input_dict["object_pixel"],
                                                         distance_m=input_dict["distance_sample_focus"])
 
-            error.append(algo_error)
+            error_rfactor.append(algo_error)
+            error_nmse.append(np.full_like(algo_error, np.nan))
+            error_llk.append(np.full_like(algo_error, np.nan))
 
             if algo_inputs["position_correction"] > 0:
                 corrected_positions = probe_positions      
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            DPs, obj, probe = check_dtypes(DPs,obj,probe) # check if dtypes are correct; exit program otherwise
 
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
@@ -384,13 +391,16 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"])
 
-            error.append(algo_error)
+            error_rfactor.append(algo_error)
+            error_nmse.append(np.full_like(algo_error, np.nan))
+            error_llk.append(np.full_like(algo_error, np.nan))
 
             if algo_inputs["position_correction"] > 0:
                 corrected_positions = probe_positions      
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
-            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
+            DPs, obj, probe = check_dtypes(DPs,obj,probe) # check if dtypes are correct; exit program otherwise
 
             if len(input_dict["GPUs"]) > 1:
                 print(f"WARNING: PIE algorithm is not implemented for multi-GPU. Using single GPU {input_dict['GPUs'][0:1]} (batch size = 1) instead.")
@@ -414,7 +424,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
                                                         distance_m=input_dict["distance_sample_focus"],
                                                         params={'device': input_dict["GPUs"][0:1]})
 
-            error.append(algo_error)
+
+            error_rfactor.append(algo_error)
+            error_nmse.append(np.full_like(algo_error, np.nan))
+            error_llk.append(np.full_like(algo_error, np.nan))
 
             if algo_inputs["position_correction"] > 0:
                 corrected_positions = probe_positions                                        
@@ -431,6 +444,24 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     error_llk = np.concatenate(error_llk).ravel()
     error = np.column_stack((error_rfactor,error_nmse,error_llk)) # must be (iterartions,3) array shape
     return obj, probe, error, corrected_positions, initial_obj, initial_probe
+
+def check_for_nans(*arrays):
+    """
+    Check for NaN values in an arbitrary number of NumPy arrays and raise a ValueError if any are found.
+
+    Parameters:
+    arrays (any number of np.array): A variable number of NumPy arrays to check for NaNs.
+
+    Raises:
+    ValueError: If any NaN values are found in the arrays.
+    """
+    for idx, array in enumerate(arrays):
+        if not isinstance(array, np.ndarray):
+            raise TypeError(f"Input {idx+1} is not a NumPy array.")
+
+        # Check if there are any NaNs in the array
+        if np.isnan(array).any():
+            raise ValueError(f"Array {idx+1} contains NaN values.")
 
 def check_shape_of_inputs(DPs,positions,initial_probe):
 
