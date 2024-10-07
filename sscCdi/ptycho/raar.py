@@ -10,6 +10,7 @@
 
 import cupy as cp
 from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
 
@@ -44,10 +45,13 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     propagator = inputs['regime']
 
     if free_log_likelihood > 0:
-        print(diffraction_patterns.shape[0],diffraction_patterns.shape[1],free_log_likelihood)
-        free_LLK_mask = create_random_binary_mask(diffraction_patterns.shape[0],diffraction_patterns.shape[1],free_log_likelihood)
+        print('free_log_likelihood>0! Reconstruction will use FREE error metrics!')
+        free_indices = get_random_2D_indices(free_log_likelihood,diffraction_patterns[0].shape[0],diffraction_patterns[0].shape[1])
+        free_data = extract_values_from_all_slices(diffraction_patterns,free_indices)
+        slice_indices = np.arange(diffraction_patterns.shape[0])
+        diffraction_patterns[slice_indices[:, None], free_indices[0], free_indices[1]] = -1 # remove free data from diffraction patterns. Free data shall be used only for error estimation
     else:
-        free_LLK_mask = np.ones_like(diffraction_patterns[0])
+        free_data, free_indices = None, None
 
     if probe_support is None:
         probe_support = cp.ones_like(probe)
@@ -77,13 +81,15 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     print('Wavefronts shape:',wavefronts.shape)
     print('Positions shape:',positions.shape)
 
+
+
     error = cp.zeros((iterations,4))
     for iteration in range(0,iterations):
         for index, (posx, posy) in enumerate(positions):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
       
-            wavefronts[index], all_errors = RAAR_wavefront_update(wavefronts[index],diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask)
+            wavefronts[index], all_errors = RAAR_wavefront_update(wavefronts[index],diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data, free_indices)
 
             error_r_factor_num, error_r_factor_den, error_nmse_num, error_llk = all_errors
             error[iteration,0] += error_r_factor_num
@@ -109,7 +115,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     else:
         return obj_matrix[0], probe_modes, error
 
-def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask):
+def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None, free_data_indices=None):
     """
     RAAR update function:
     psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
@@ -119,7 +125,7 @@ def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,bet
     epsilon = 1e-3 # to avoid division by zero; #TODO: test with different values!
     psi_after_Pr = probe_modes*obj_box
     psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
-    psi_after_projection_Fspace, all_errors = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask,epsilon=epsilon) # Projection in Fourier space
+    psi_after_projection_Fspace, all_errors = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_data=free_data, free_data_indices=free_data_indices,epsilon=epsilon) # Projection in Fourier space
     updated_wavefront =  beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
     return updated_wavefront, all_errors
 

@@ -512,6 +512,7 @@ def check_and_set_defaults(input_dict):
         'object_padding': 0,
         'incoherent_modes': 1,
         'n_of_positions_to_remove':0,
+        'free_log_likelihood':0,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
@@ -1067,3 +1068,4 @@ def probe_model_fzp(wavelength,
         w = w*np.sqrt(grid_shape[0]*grid_shape[1]/np.sum(np.abs(w)**2,axis=(0,1)));
 
     return np.expand_dims(w,axis=0)
+
