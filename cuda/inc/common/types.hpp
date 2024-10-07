@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <driver_types.h>
+#include <thrust/functional.h>
 #ifdef __CUDACC__
 #define restrict __restrict__
 #else
@@ -625,11 +626,28 @@ struct Image {
     }
 
     /**
+     * Computes the minimum element in array.
+     * */
+    Type min() {
+        return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, thrust::identity<Type>(),
+                                        std::numeric_limits<Type>::infinity(), thrust::minimum<Type>());
+    }
+
+    /**
      * Computes the maximum element in array.
      * */
     Type max() {
         return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, thrust::identity<Type>(),
                                         std::numeric_limits<Type>::lowest(), thrust::maximum<Type>());
+    }
+
+
+    float minAbs2() {
+         return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
+                 [] __device__(const Type& t) {
+                    return t.abs2();
+                 },
+                 std::numeric_limits<float>::infinity(), thrust::minimum<float>());
     }
 
     float maxAbs2() {
