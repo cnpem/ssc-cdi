@@ -12,7 +12,7 @@ import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .common import calculate_errors
+from .engines_common import calculate_errors
 
 def calculate_gradients_obj_probe(obj, probe, positions, data):
     gradient_o = cp.zeros_like(obj, dtype=complex)

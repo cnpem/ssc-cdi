@@ -10,7 +10,7 @@
 
 import sys
 import cupy as cp
-from .common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 
 def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, inputs):
     """"
