@@ -16,7 +16,7 @@ from ..cditypes import AP, PIE, RAAR
 
 from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV
 from ..processing.propagation import fresnel_propagator_cone_beam
-from .pie import PIE_multiprobe_loop
+from .pie import PIE_python
 from .raar import RAAR_python
 from .ML import ML_cupy
 from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
@@ -279,7 +279,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
     print(f'Starting ptychography... using {len(input_dict["GPUs"])} GPUs {input_dict["GPUs"]} and {input_dict["CPUs"]} CPUs')
 
     corrected_positions = None
-    error = []
+    error_rfactor = []
     error_nmse = []
     error_llk = []
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
@@ -299,9 +299,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             algo_inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
             algo_inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
             
-            obj, probe, algo_error,probe_positions = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], algo_inputs)
-            error.append(algo_error[:,0])
-            error_llk.append(algo_error[:,1])
+            obj, probe, algo_error,probe_positions = PIE_python(DPs, probe_positions,obj,probe[0], algo_inputs)
+            error_rfactor.append(algo_error[:,0])
+            error_nmse.append(algo_error[:,1])
+            error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -313,15 +314,16 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
             
             obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
-            error.append(algo_error[:,0])
+            error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
             obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
             probe[0] = new_probe
-            error.append(algo_error[:,0])
-            error_llk.append(algo_error[:,1])
+            error_rfactor.append(algo_error[:,0])
+            error_nmse.append(algo_error[:,1])
+            error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
@@ -424,10 +426,10 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
             
 
-    error =  np.concatenate(error).ravel()
+    error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
     error_llk = np.concatenate(error_llk).ravel()
-    error = np.column_stack((error,error_nmse,error_llk)) # must be (iterartions,3) array shape
+    error = np.column_stack((error_rfactor,error_nmse,error_llk)) # must be (iterartions,3) array shape
     return obj, probe, error, corrected_positions, initial_obj, initial_probe
 
 def check_shape_of_inputs(DPs,positions,initial_probe):
