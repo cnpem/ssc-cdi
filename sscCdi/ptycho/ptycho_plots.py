@@ -83,8 +83,8 @@ def plot_ptycho_corrected_scan_points(positions, positions2, pixel_size=None):
     ax.legend(loc='best')
 
     # Add connectors between the points
-    for (x1, y1), (x2, y2) in zip(positions, positions2):
-        ax.plot([x1, x2], [y1, y2], 'k-', lw=0.5)
+    # for (y1, x1), (y2, x2) in zip(positions, positions2):
+        # ax.plot([x1, x2], [y1, y2], 'k-', lw=0.5)
 
     plt.show()
 
@@ -190,16 +190,49 @@ def get_extent_from_pixel_size(array_shape,pixel_size):
     y_max = (sy//2)*pixel_size    
     return [x_min,x_max,y_min,y_max] 
 
-def plot_iteration_error(error):
+def plot_iteration_error(errors):
+    fig, ax1 = plt.subplots(figsize=(13, 6))
 
-    fig, ax = plt.subplots(figsize=(13,6))
-    ax.plot(error,'.-',color='black')
-    ax.grid()
-    ax.set_xlabel('iteration')
-    ax.set_ylabel('error')
-    ax.set_title('Ptychography error')
+    # Create a second y-axis (ax2)
+    ax2 = ax1.twinx()
+
+    # Create a third y-axis (ax3), by offsetting ax2
+    ax3 = ax1.twinx()
+    ax3.spines['right'].set_position(('outward', 60))  # Move the third axis outward by 60 points
+
+    # Normalize and plot errors on the respective axes
+    lines = []
+    labels = []
+
+    for i in range(errors.shape[1]):
+        error = errors[:, i]
+        if i == 0:
+            line, = ax1.plot(error, '.-', label='R-factor', color='tab:blue')
+            lines.append(line)
+            labels.append('R-factor')
+        elif i == 1:
+            line, = ax2.plot(error, '.-', label='NMSE', color='tab:orange')
+            lines.append(line)
+            labels.append('NMSE')
+        elif i == 2:
+            line, = ax3.plot(error, '.-', label='LLK', color='tab:green')
+            lines.append(line)
+            labels.append('LLK')
+
+    # Labels for the axes
+    ax1.set_xlabel('Iteration')
+    ax1.set_ylabel('R-factor')
+    ax1.grid()
+
+    ax2.set_ylabel('NMSE')
+    ax3.set_ylabel('LLK')
+
+    # Place the legends below the plot
+    fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, -0.03), ncol=3)
+
+    # Adjust the layout to avoid overlap
+    fig.tight_layout()
     plt.show()
-
 
 def object_slice_visualizer(data, positions=None, axis=0, title='', cmap1='viridis', cmap2='viridis', aspect_ratio='', norm="normalize", vmin=None, vmax=None, extent=None):
     """

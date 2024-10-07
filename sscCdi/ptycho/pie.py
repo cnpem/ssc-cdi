@@ -10,11 +10,12 @@
 
 import sys
 import cupy as cp
-from .common import update_exit_wave_multiprobe_cupy, get_magnitude_error, apply_probe_support
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 
-def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_guess, inputs):
-
-    # TODO: write numpy/cupy agnostic code for use both with cpus or gpus
+def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, inputs):
+    """"
+    Implementation of rPIE and mPIE algorithms 
+    """
 
     r_o = inputs["regularization_object"]
     r_p = inputs["regularization_probe"]
@@ -29,21 +30,38 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     wavelength = inputs['wavelength']
     detector_distance = inputs['detector_distance']
     distance_focus_sample  = inputs['distance_sample_focus']
-    fresnel_regime = inputs["fresnel_regime"]
+    detector_pixel_size = inputs["detector_pixel_size"]
+    propagator = inputs['regime']
+    free_log_likelihood = inputs['free_log_likelihood']
     probe_support  = inputs["probe_support_array"] 
 
-    if fresnel_regime == True:
-        pass
+    try:
+        import cupy as cp
+
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+        np = cp  # np will be an alias for cupy
+
+        print('Transfering data to GPU...')
+
+        object_guess = cp.array(object_guess) # convert from numpy to cupy
+        probe_guess  = cp.array(probe_guess)
+        positions    = cp.array(positions)
+        diffraction_patterns = cp.array(diffraction_patterns)
+        probe_support = cp.array(probe_support)
+        obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
+
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as np
+        print("Using NumPy (CPU)")
+
+    if free_log_likelihood > 0:
+        free_LLK_mask = create_random_binary_mask(free_log_likelihood,diffraction_patterns.shape[0],diffraction_patterns.shape[1])
     else:
-        inputs['source_distance'] = None
+        free_LLK_mask = np.ones_like(diffraction_patterns[0])
 
-    object_guess = cp.array(object_guess) # convert from numpy to cupy
-    probe_guess  = cp.array(probe_guess)
-    positions    = cp.array(positions)
-    diffraction_patterns = cp.array(diffraction_patterns)
-    probe_support = cp.array(probe_support)
-
-    obj = cp.ones((n_of_modes,object_guess.shape[0],object_guess.shape[1]),dtype=complex)
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
 
     offset = probe_guess.shape
@@ -65,8 +83,8 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
     obj_velocity   = cp.zeros_like(obj,dtype=complex)
     
     momentum_counter = 0
-    error = cp.zeros((iterations,1))
-    for i in range(iterations):
+    error = cp.zeros((iterations,4))
+    for iteration in range(iterations):
         
         temporary_obj, temporary_probe = obj.copy(), probe_modes.copy()
         
@@ -81,27 +99,36 @@ def PIE_multiprobe_loop(diffraction_patterns, positions, object_guess, probe_gue
             wavefronts[j] = wavefront_modes[0] # save mode 0 wavefront to calculate recon error
  
             """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes, _ = update_exit_wave_multiprobe_cupy(wavefront_modes.copy(),diffraction_patterns[j],inputs) #copy so it doesn't work as a pointer!
+            updated_wavefront_modes, all_errors = update_exit_wave(wavefront_modes.copy(),diffraction_patterns[j],detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask,epsilon=0.001) #copy so it doesn't work as a pointer!
             
-            obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = PIE_update_func_multiprobe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
+            error_r_factor_num, error_r_factor_den, error_nmse_num, error_llk = all_errors
+            error[iteration,0] += error_r_factor_num
+            error[iteration,1] += error_r_factor_den
+            error[iteration,2] += error_nmse_num
+            error[iteration,3] += error_llk
+
+            obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = update_object_and_probe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
             if inputs["use_mPIE"] == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
 
-        iteration_error = get_magnitude_error(diffraction_patterns,wavefronts,inputs)
 
         print('\r', end='')
-        print(f'\tIteration {i+1}/{iterations} \tError: {iteration_error:.2e}')
+        print(f'\tIteration {iteration+1}/{iterations} \t Errors: R-factor={error[iteration,0]/error[iteration,1]:.2e}; MSE={error[iteration,2]:.2e}; Poisson LLK={error[iteration,3]:.2e}',end='')
 
-        error[i] = iteration_error
-   
     print('\n')    
 
-    return obj[0].get(), probe_modes.get(), error.get()
+    error[:,0] = error[:,0]/error[:,1] # R-factor calculation
+    error = np.delete(error, 1, axis=1) # delete denominator column of R-factor, not needed anymore   
 
-def PIE_update_func_multiprobe(obj,probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p):
+    if np == cp: # if using gpus
+        return obj[0].get(), probe_modes.get(), error.get(), positions.get()
+    else:
+        return obj[0], probe_modes, error, positions
+    
+def update_object_and_probe(obj,probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p):
 
     """ 
     s: step constant
