@@ -17,7 +17,7 @@ from ..cditypes import AP, PIE, RAAR
 from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_multiprobe_loop
-from .raar import RAAR_multiprobe_cupy
+from .raar import RAAR_python
 from .ML import ML_cupy
 from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
@@ -269,7 +269,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     if input_dict["distance_sample_focus"] == 0:
         input_dict['fresnel_number'] = 0
-    else:
+    else:   
         input_dict['fresnel_number'] = input_dict["object_pixel"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
 
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Corresponding Fresnel number: {input_dict["fresnel_number"]}')
@@ -280,15 +280,11 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
     corrected_positions = None
     error = []
-
-
-
+    error_nmse = []
+    error_llk = []
     for counter in range(1,1+len(input_dict['algorithms'].keys())):
 
-        algo_inputs = {
-            **input_dict,
-            **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }
-        }
+        algo_inputs = {**input_dict, **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }  }
 
         if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of ePIE algorithm...")
@@ -304,6 +300,8 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             algo_inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
             
             obj, probe, algo_error,probe_positions = PIE_multiprobe_loop(DPs, probe_positions,obj,probe[0], algo_inputs)
+            error.append(algo_error[:,0])
+            error_llk.append(algo_error[:,1])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -314,12 +312,16 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             
             algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
             
-            obj, probe, algo_error = RAAR_multiprobe_cupy(DPs,probe_positions,obj,probe[0],algo_inputs)
-
+            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            error.append(algo_error[:,0])
+            error_nmse.append(algo_error[:,1])
+            error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
             obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
             probe[0] = new_probe
+            error.append(algo_error[:,0])
+            error_llk.append(algo_error[:,1])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
@@ -396,19 +398,19 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             obj, probe, algo_error, probe_positions = PIE(iterations=algo_inputs['iterations'],
-                                                            step_obj=algo_inputs['step_object'],
-                                                            step_probe=algo_inputs['step_probe'],
-                                                            reg_obj=algo_inputs['regularization_object'],
-                                                            reg_probe=algo_inputs['regularization_probe'],
-                                                            poscorr_iter=algo_inputs["position_correction"],
-                                                            rois=probe_positions,
-                                                            difpads=DPs,
-                                                            obj=obj,
-                                                            probe=probe,
-                                                            wavelength_m=input_dict["wavelength"],
-                                                            pixelsize_m=input_dict["object_pixel"],
-                                                            distance_m=input_dict["distance_sample_focus"],
-                                                            params={'device': input_dict["GPUs"][0:1]})
+                                                        step_obj=algo_inputs['step_object'],
+                                                        step_probe=algo_inputs['step_probe'],
+                                                        reg_obj=algo_inputs['regularization_object'],
+                                                        reg_probe=algo_inputs['regularization_probe'],
+                                                        poscorr_iter=algo_inputs["position_correction"],
+                                                        rois=probe_positions,
+                                                        difpads=DPs,
+                                                        obj=obj,
+                                                        probe=probe,
+                                                        wavelength_m=input_dict["wavelength"],
+                                                        pixelsize_m=input_dict["object_pixel"],
+                                                        distance_m=input_dict["distance_sample_focus"],
+                                                        params={'device': input_dict["GPUs"][0:1]})
 
             error.append(algo_error)
 
@@ -423,6 +425,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             
 
     error =  np.concatenate(error).ravel()
+    error_nmse = np.concatenate(error_nmse).ravel()
+    error_llk = np.concatenate(error_llk).ravel()
+    error = np.column_stack((error,error_nmse,error_llk)) # must be (iterartions,3) array shape
     return obj, probe, error, corrected_positions, initial_obj, initial_probe
 
 def check_shape_of_inputs(DPs,positions,initial_probe):
