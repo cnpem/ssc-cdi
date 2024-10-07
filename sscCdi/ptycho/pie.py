@@ -35,6 +35,7 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     propagator = inputs['regime']
     free_log_likelihood = inputs['free_log_likelihood']
     probe_support  = inputs["probe_support_array"] 
+    fourier_power_bound = inputs['fourier_power_bound']
 
     try:
         import cupy as cp
@@ -100,7 +101,7 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
             wavefront_modes = obj_box*probe_modes
 
             """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes, all_errors = update_exit_wave(wavefront_modes.copy(),diffraction_patterns[j],detector_distance,wavelength,detector_pixel_size,propagator,free_data,free_indices,epsilon=0.001) #copy so it doesn't work as a pointer!
+            updated_wavefront_modes, all_errors = update_exit_wave(wavefront_modes.copy(),diffraction_patterns[j],detector_distance,wavelength,detector_pixel_size,propagator,free_data,free_indices,fourier_power_bound=fourier_power_bound,epsilon=0.001) #copy so it doesn't work as a pointer!
             
             error_r_factor_num, error_r_factor_den, error_nmse, error_llk = all_errors
             error[iteration,0] += error_r_factor_num

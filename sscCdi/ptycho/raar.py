@@ -43,6 +43,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     detector_pixel_size = inputs['detector_pixel_size']
     free_log_likelihood = inputs['free_log_likelihood']
     propagator = inputs['regime']
+    fourier_power_bound = inputs['fourier_power_bound']
 
     if free_log_likelihood > 0:
         print('free_log_likelihood>0! Reconstruction will use FREE error metrics!')
@@ -89,7 +90,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
             
             obj_box = obj_matrix[:,posy:posy + shapey , posx:posx+ shapex]
       
-            wavefronts[index], all_errors = RAAR_wavefront_update(wavefronts[index],diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data, free_indices)
+            wavefronts[index], all_errors = RAAR_wavefront_update(wavefronts[index],diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data, free_indices,fourier_power_bound)
 
             error_r_factor_num, error_r_factor_den, error_nmse_num, error_llk = all_errors
             error[iteration,0] += error_r_factor_num
@@ -115,7 +116,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     else:
         return obj_matrix[0], probe_modes, error
 
-def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None, free_data_indices=None):
+def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None, free_data_indices=None,fourier_power_bound=0):
     """
     RAAR update function:
     psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi
@@ -125,7 +126,7 @@ def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,bet
     epsilon = 1e-3 # to avoid division by zero; #TODO: test with different values!
     psi_after_Pr = probe_modes*obj_box
     psi_after_reflection_Rspace = 2*psi_after_Pr-wavefront
-    psi_after_projection_Fspace, all_errors = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_data=free_data, free_data_indices=free_data_indices,epsilon=epsilon) # Projection in Fourier space
+    psi_after_projection_Fspace, all_errors = update_exit_wave(psi_after_reflection_Rspace,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_data=free_data, free_data_indices=free_data_indices,fourier_power_bound=fourier_power_bound,epsilon=epsilon) # Projection in Fourier space
     updated_wavefront =  beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
     return updated_wavefront, all_errors
 

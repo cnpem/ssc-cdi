@@ -29,7 +29,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     Call Ptychography algorithms. Options are:
 
     - `RAAR_python`: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
-    - `ePIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
+    - `rPIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
     - `RAAR`: Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
     - `AP`: Alternate Projections. Multi GPU, CUDA implementation
     - `rPIE`: regularized Ptychographic Iterative Engine. Single GPU, CUDA implementation
@@ -106,7 +106,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                     'step_probe': 1.0,
                 },
                 '2': {
-                    'name': 'ePIE_python',
+                    'name': 'rPIE_python',
                     'iterations': 20,
                     'regularization_object': 0.25,
                     'regularization_probe': 0.5,
@@ -288,7 +288,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
 
         algo_inputs = {**input_dict, **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }  }
 
-        if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
+        if input_dict["algorithms"][str(counter)]['name'] == 'rPIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
             
 
@@ -502,7 +502,7 @@ def check_and_set_defaults(input_dict):
     default_values = {
         'CPUs': 32,
         'GPUs': [0],
-        'fresnel_regime': False,
+        'regime': 'fraunhoffer', # 'fraunhoffer' or 'fresnel'
         'energy': 10,  # keV
         'detector_distance': 10,  # meters
         'distance_sample_focus': 0,
@@ -513,6 +513,7 @@ def check_and_set_defaults(input_dict):
         'incoherent_modes': 1,
         'n_of_positions_to_remove':0,
         'free_log_likelihood':0,
+        'fourier_power_bound':0,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
