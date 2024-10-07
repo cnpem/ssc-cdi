@@ -943,3 +943,32 @@ def create_image_from_text(text):
     canvas.draw()
     img = 1- np.array(canvas.renderer.buffer_rgba())[:, :, 0]/255
     return img
+
+def get_random_2D_indices(N,Y,X):
+    """
+    Get N random indices from a 2D array of shape (Y, X) in a format similar to np.where.
+
+    Parameters:
+    Y (int): Number of rows of the array.
+    X (int): Number of columns of the array.
+    N (int): Number of random indices to return.
+
+    Returns:
+    Tuple of two arrays: row indices and column indices, in the same format as np.where.
+    """
+    # Ensure N is not greater than the number of elements in the array
+    if N > Y * X:
+        raise ValueError("N cannot be greater than the total number of elements in the array (Y * X).")
+    
+    # Get N random linear indices from the array
+    linear_indices = np.random.choice(Y * X, N, replace=False)
+    
+    # Convert linear indices to 2D row-column indices
+    row_indices, col_indices = np.unravel_index(linear_indices, (Y, X))
+    
+    return row_indices, col_indices
+
+def extract_values_from_all_slices(data, indices):
+    # Create an array for the slice indices (0 to M-1)
+    slice_indices = np.arange(data.shape[0])
+    return data[slice_indices[:, None], indices[0], indices[1]]
