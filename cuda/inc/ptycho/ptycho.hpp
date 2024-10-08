@@ -167,11 +167,13 @@ void RAARProjectProbe(RAAR& raar, int section, cudaStream_t st = 0);
 /**
  * Projects phistack to object subspace and updates the object estimate.
  * */
-void RAARApplyObjectUpdate(RAAR& raar, cImage& velocity, float stepsize, float momentum, float epsilon);
+void RAARApplyObjectUpdate(RAAR& raar, cImage& velocity,
+        float stepsize, float momentum, float epsilon, hcMImage& cur_temp_wavefront);
 /**
  * Projects phistack to the probe subspace and calls Super::ApplyProbeUpdate
  * */
-void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity, float stepsize, float momentum, float epsilon);
+void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity,
+        float stepsize, float momentum, float epsilon, hcMImage& cur_temp_wavefront);
 
 /**
  * Alternated projections with momentum.
