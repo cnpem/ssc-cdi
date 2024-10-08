@@ -174,7 +174,7 @@ void APRun(AP& ap, int iterations) {
   }
 
   auto time1 = sscTime();
-  sscInfo(format("End AP: {} ms", ssc_diff_time(time0, time1)));
+  sscInfo(format("End AP: {} ms", sscDiffTime(time0, time1)));
 }
 
 

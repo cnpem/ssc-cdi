@@ -273,6 +273,6 @@ void PieRun(Pie& pie, int iterations) {
     //cudaFree(probe_abs2_max);
 
     auto time1 = sscTime();
-    sscInfo(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
+    sscInfo(format("End PIE iteration: {} ms", sscDiffTime(time0, time1)));
 }
 

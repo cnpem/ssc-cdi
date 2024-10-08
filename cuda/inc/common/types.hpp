@@ -210,6 +210,13 @@ struct Image {
         memset(cpuptr, 0, size * sizeof(Type));
     }
 
+    void SetToZero() {
+        if (cpuptr != nullptr)
+            SetCPUToZero();
+        if (gpuptr != nullptr)
+            SetGPUToZero();
+    }
+
     static const size_t blocksize = 64;  //!< Default number of threads per block.
 
     dim3 Shape() const { return dim3(sizex, sizey, sizez); };
@@ -384,28 +391,33 @@ struct Image {
         if (cpysize == -1) cpysize = this->size;
 
         sscAssert(other != nullptr, "Syncing from empty pointer!");
-        sscAssert(gpuptr != nullptr && cpysize <= this->size, "Not enough space for sync.!");
+        sscAssert(cpysize <= this->size, "Not enough space for sync.!");
+        sscAssert(gpuptr || cpuptr, "CopyFrom needs cpuptr or gpuptr to be able to copy.");
 
+        void* outptr = gpuptr != nullptr ? gpuptr : cpuptr;
         if (stream == 0)
-            cudaMemcpy(this->gpuptr, other, cpysize * sizeof(Type), cudaMemcpyDefault);
+            cudaMemcpy(outptr, other, cpysize * sizeof(Type), cudaMemcpyDefault);
         else
-            cudaMemcpyAsync(this->gpuptr, other, cpysize * sizeof(Type), cudaMemcpyDefault, stream);
+            cudaMemcpyAsync(outptr, other, cpysize * sizeof(Type), cudaMemcpyDefault, stream);
     }
+
     /**
      * Copies memory to given pointer. Cpysize == -1 -> Cpysize = this->size
      * */
     void CopyTo(Type* outptr, cudaStream_t stream = 0, int64_t cpysize = -1) {
-        sscAssert(gpuptr && size != 0, "Call to gpu->cpu memcopy without allocated array.");
+        sscAssert(size != 0, "Call to gpu->cpu memcopy without allocated array.");
+        sscAssert(gpuptr || cpuptr, "Copy to needs cpuptr or gpuptr to be able to copy.");
 
         if (cpysize < 0)
             cpysize = size * sizeof(Type);
         else
             cpysize = cpysize * sizeof(Type);
 
+        void* inptr = gpuptr != nullptr ? gpuptr : cpuptr;
         if (stream == 0)
-            sscCudaCheck(cudaMemcpy((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault));
+            sscCudaCheck(cudaMemcpy((void*)outptr, inptr, cpysize, cudaMemcpyDefault));
         else
-            sscCudaCheck(cudaMemcpyAsync((void*)outptr, (void*)gpuptr, cpysize, cudaMemcpyDefault, stream));
+            sscCudaCheck(cudaMemcpyAsync((void*)outptr, inptr, cpysize, cudaMemcpyDefault, stream));
         SyncDebug;
     }
 
@@ -452,13 +464,25 @@ struct Image {
      * Copies from given array.
      */
     void CopyFrom(const Image<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
-        CopyFrom(other.gpuptr, stream, cpysize);
+        sscAssert(other.gpuptr || other.cpuptr, "CopyFrom: gpuptr or cpuptr must be available.");
+
+        if (other.gpuptr != nullptr) {
+            CopyFrom(other.gpuptr, stream, cpysize);
+        } else if (other.cpuptr != nullptr) {
+            CopyFrom(other.cpuptr, stream, cpysize);
+        }
     }
     /**
      * Copies to given array.
      * */
     void CopyTo(Image<Type>& other, cudaStream_t stream = 0, int64_t cpysize = -1) {
-        CopyTo(other.gpuptr, stream, cpysize);
+        sscAssert(other.gpuptr || other.cpuptr, "CopyFrom: gpuptr or cpuptr must be available.");
+
+        if (other.gpuptr != nullptr) {
+            CopyTo(other.gpuptr, stream, cpysize);
+        } else if (other.cpuptr != nullptr) {
+            CopyTo(other.cpuptr, stream, cpysize);
+        }
     }
 
     /**
@@ -969,6 +993,7 @@ struct MImage : public MultiGPU {
 
     void SetCPUToZero() { MGPULOOP(arrays[g]->SetCPUToZero();); };
     void SetGPUToZero() { MGPULOOP(arrays[g]->SetGPUToZero();); };
+    void SetToZero() { MGPULOOP(arrays[g]->SetToZero();); };
     void Clamp(Type a, Type b) { MGPULOOP(arrays[g]->Clamp(a, b);); }
 
     template <typename Type2 = Type>
