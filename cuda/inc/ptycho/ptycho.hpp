@@ -142,7 +142,7 @@ void ApplyPositionCorrection(Ptycho& ptycho);
  * */
 struct RAAR {
     Ptycho* ptycho = nullptr;
-    std::vector<hcMImage*> previous_wavefront;
+    std::vector<hcMImage*> temp_wavefront;
     const bool isGradPm = false;
     float beta = 0.9f;
 };
