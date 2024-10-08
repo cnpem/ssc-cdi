@@ -41,6 +41,10 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
 
     """    
 
+    if len(angles.shape) == 1:
+        numbering = np.linspace(0,angles.shape[0]-1,angles.shape[0])
+        angles = np.vstack((numbering,angles)).T
+
     start = time.time()
     sorted_angles = sort_angles(angles) # input colums with frame number and angle in rad
     sorted_object = reorder_slices_low_to_high_angle(object, sorted_angles)
@@ -219,12 +223,12 @@ def tomo_equalize3D(tomo,remove_outliers=3,threshold=20,local_offset=[],mask=[],
         bkg_window=dic["tomo_local_offset"]
     )
 
-    if savepath != {}:
+    if savepath != '':
         open_or_create_h5_dataset(savepath,'entry','data',equalized_tomogram,create_group=True)
         print('Saved equalized object at: ',savepath)
 
-    open_or_create_h5_dataset( savepath,'entry', 'data',  equalized_tomogram,create_group=True)
-    print(f'Time elapsed: {time.time() - start:.2f} s' )
+        open_or_create_h5_dataset( savepath,'entry', 'data',  equalized_tomogram,create_group=True)
+        print(f'Time elapsed: {time.time() - start:.2f} s' )
     return equalized_tomogram
 
 def remove_outliers(data,sigma):
@@ -362,7 +366,7 @@ def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,ro
 
     with ProcessPoolExecutor(max_workers=processes) as executor:
         equalized_sinogram = np.empty_like(sinogram)
-        results = list(tqdm(executor.map(equalize_frame_partial,[sinogram[i,:,:] for i in range(n_frames)]),total=n_frames))
+        results = list(tqdm(executor.map(equalize_frame_partial,sinogram),total=n_frames))
         for counter, result in enumerate(results):
             # minimum, maximum, mean, std = np.min(result), np.max(result), np.mean(result), np.std(result)
             equalized_sinogram[counter,:,:] = result

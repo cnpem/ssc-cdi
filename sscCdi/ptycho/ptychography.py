@@ -14,145 +14,17 @@ import random
 
 from ..cditypes import AP, PIE, RAAR
 
-from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV
+from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, calculate_object_pixel_size
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_python
 from .raar import RAAR_python
 from .ML import ML_cupy
-from .plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
+
+from .ptycho_plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
 
 random.seed(0)
 
 def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_probe=None,plot=True):
-    """
-    Call Ptychography algorithms. Options are:
-
-    - `RAAR_python`: Relaxed Averaged Alternating Reflections. Single GPU, Python implementation using CuPy
-    - `ePIE_python`: Extended Ptychographic Iterative Engine. Single GPU, Python implementation using CuPy
-    - `RAAR`: Relaxed Averaged Alternating Reflections. Multi GPU, CUDA implementation
-    - `AP`: Alternate Projections. Multi GPU, CUDA implementation
-    - `rPIE`: regularized Ptychographic Iterative Engine. Single GPU, CUDA implementation
-
-    Args:
-        DPs (ndarray): Diffraction data with shape (N, Y, X). N is the number of diffraction patterns.
-        positions (ndarray): Positions array with shape (N, 2) with (y, x) position pairs in each line.
-        initial_obj (ndarray, optional): Initial guess for object. Shape to be determined from DPs and positions. 
-            If None, will use the input in "input_dict" to determine the initial object. Defaults to None.
-        initial_probe (ndarray, optional): Initial guess for probe of shape (M, Y, X), where M is the number of probe modes. 
-            If None, will use the input in "input_dict" to determine the initial probe. Defaults to None.
-        input_dict (dict): Dictionary of inputs required for Ptychography.
-            
-    Returns:
-        obj: object matrix
-        probe: probe matrix
-        corrected_positions: None, except if AP_PC_CUDA is used
-        input_dict: updated input dictionary
-        error: Error metric along iterations
-
-    Example of input_dict::
-
-        input_dict = {
-            "hdf5_output": './output.h5',  # Path to hdf5 file to contain all outputs
-            'CPUs': 32,  # Number of CPUs to use in parallel execution
-            'GPUs': [0],  # List of GPU indices (e.g. [0,1,2])
-            "fresnel_regime": False,  # Only available for Python engines
-            'energy': 6,  # Energy in keV
-            'detector_distance': 13,  # Distance in meters
-            'distance_sample_focus': 0,  # Distance in meters between sample and focus or pinhole
-            'detector_pixel_size': 55e-6,  # Detector pixel size in meters
-            'binning': 1,  # Binning factor. Must be an even number. If 1, no binning occurs.
-            'position_rotation': 0,  # Rotation angle in radians to correct for misalignment
-            'positions_unit': 'pixels',  # Units of positions. Options are 'pixels' or 'meters'
-            'object_padding': 0,  # Number of pixels to add around the object matrix
-            'incoherent_modes': 1,  # Number of incoherent modes to use
-
-            'probe_support': {"type": "circular",  "radius": 1000,  "center_y": 0, "center_x": 0} , # support to be applied to the probe matrix after probe update. Options are:
-                                                                                                    # - {"type": "circular",  "radius": 300,  "center_y": 0, "center_x": 0} (0,0) is the center of the image
-                                                                                                    # - {"type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0} 
-                                                                                                    # - {"type": "array",  "data": myArray}
-
-
-            "initial_obj": {"obj": 'random'},     # 2d array. Initial guess for the object. Options are:
-                                                # - {"obj": my2darray}, numpy array 
-                                                # - {"obj": 'path/to/numpyFile.npy'}, path to .npy, 
-                                                # - {"obj": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                                                # - {"obj": 'random'}, random matrix with values between 0 and 1
-                                                # - {"obj": 'constant'}, constant matrix of 1s
-
-            'initial_probe': { "probe": 'fzp', # creates initial guess based on modelled FZP
-                            'beam_type': 'disc',  # 'disc' or 'gaussian'                 
-                            'distance_sample_fzpf': 2.9e-3, # distance between sample and fzp focus        
-                            'fzp_diameter': 50e-6,               
-                            'fzp_outer_zone_width': 50e-9,     
-                            'beamstopper_diameter': 20e-6,  # beamstopper placed before fzp. if 0, no beamstopper used      
-                            'probe_diameter': 50e-6, # if not included, will use the same diameter s the fzp
-                            'probe_normalize':False},  # normalizes fzp probe at end        
-                            # - {"probe": my2darray}, numpy array 
-                            # - {"probe": 'path/to/numpyFile.npy'}, path to .npy, 
-                            # - {"probe": 'path/to/hdf5File.h5'}, path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
-                            # - {"probe": 'random'}, random matrix with values between 0 and 1
-                            # - {"probe": 'constant'}, constant matrix of 1s
-                            # - {"probe": 'inverse'}, matrix of the Inverse Fourier Transform of the mean of DPs.
-                            # - {"probe": 'circular', "radius": 100, "distance":0},  circular mask with a pixel of "radius". If a distance (in meters) is given, it propagated the round probe using the ASM method 
-
-            'algorithms': {  # Algorithms to be used
-                '1': {
-                    'name': 'RAAR_python',
-                    'iterations': 50,
-                    'regularization_object': 0.01,
-                    'regularization_probe': 0.01,
-                    'step_object': 1.0,
-                    'step_probe': 1.0,
-                },
-                '2': {
-                    'name': 'ePIE_python',
-                    'iterations': 20,
-                    'regularization_object': 0.25,
-                    'regularization_probe': 0.5,
-                    'step_object': 0.5,
-                    'step_probe': 1,
-                    'use_mPIE': False,
-                    'mPIE_friction_obj': 0.9,
-                    'mPIE_friction_probe': 0.99,
-                    'mPIE_momentum_counter': 10,
-                },
-                '3': {
-                    'name':'RAAR',
-                    'iterations': 100,
-                    'beta': 0.9,
-                    'step_object': 1.0,
-                    'step_probe': 1.0,
-                    'regularization_object': 0.01,
-                    'regularization_probe': 0.01,
-                    'momentum_obj': 0.0,
-                    'momentum_probe': 0.0,
-                    'batch': 64
-                },
-                '4': {
-                    'name':'AP',
-                    'iterations': 50,
-                    'step_object': 1.0,
-                    'step_probe': 1.0,
-                    'regularization_object': 0.01,
-                    'regularization_probe': 0.01,
-                    'momentum_obj': 0.5,
-                    'momentum_probe': 0.5,
-                    'batch': 64,
-                },
-                '5': {
-                    'name':'PIE',
-                    'iterations': 50,
-                    'step_object': 1.0,
-                    'step_probe': 1.0,
-                    'regularization_object': 0.5,
-                    'regularization_probe': 0.5,
-                    'momentum_obj': 0.5,
-                    'momentum_probe': 0.5,
-                    'batch': 64,
-                }
-                }
-            }
-    """
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
@@ -213,7 +85,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
         create_output_h5_file(input_dict)
 
-    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
+    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_engines(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
     if plot == True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
@@ -239,8 +111,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     return obj, probe, corrected_positions, input_dict, error
 
-
-def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
+def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
     
     if initial_probe is None:
         initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
@@ -288,7 +159,7 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
 
         algo_inputs = {**input_dict, **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }  }
 
-        if input_dict["algorithms"][str(counter)]['name'] == 'ePIE_python':
+        if input_dict["algorithms"][str(counter)]['name'] == 'rPIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
             
 
@@ -297,10 +168,9 @@ def call_ptychography_algorithms(input_dict,DPs, positions, initial_obj=None, in
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
                         
-            algo_inputs['friction_object'] = input_dict['algorithms'][str(counter)]['mPIE_friction_obj'] 
-            algo_inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['mPIE_friction_probe'] 
+            algo_inputs['friction_object'] = input_dict['algorithms'][str(counter)]['momentum_obj'] 
+            algo_inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe'] 
             algo_inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
-            algo_inputs['use_mPIE'] = input_dict['algorithms'][str(counter)]['use_mPIE'] 
             
             obj, probe, algo_error,probe_positions = PIE_python(DPs, probe_positions,obj,probe[0], algo_inputs)
             error_rfactor.append(algo_error[:,0])
@@ -497,13 +367,12 @@ def remove_positions_randomly(arr1, arr2, R):
 
     return reduced_arr1, reduced_arr2
 
-
 def check_and_set_defaults(input_dict):
     # Define the default values
     default_values = {
         'CPUs': 32,
         'GPUs': [0],
-        'fresnel_regime': False,
+        'regime': 'fraunhoffer', # 'fraunhoffer' or 'fresnel'
         'energy': 10,  # keV
         'detector_distance': 10,  # meters
         'distance_sample_focus': 0,
@@ -513,6 +382,9 @@ def check_and_set_defaults(input_dict):
         'object_padding': 0,
         'incoherent_modes': 1,
         'n_of_positions_to_remove':0,
+        'clip_object_magnitude':False,
+        'free_log_likelihood':0,
+        'fourier_power_bound':0,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
@@ -573,7 +445,11 @@ def create_output_h5_file(input_dict):
         h5file["metadata"].create_dataset('position_rotation_rad',data=input_dict['position_rotation']) 
         h5file["metadata"].create_dataset('object_padding_pixels',data=input_dict['object_padding'])
         h5file["metadata"].create_dataset('incoherent_modes',data=input_dict['incoherent_modes'])
-        h5file["metadata"].create_dataset('fresnel_regime',data=input_dict['fresnel_regime']) 
+        h5file["metadata"].create_dataset('n_of_positions_to_remove',data=input_dict['n_of_positions_to_remove'])
+        h5file["metadata"].create_dataset('clip_object_magnitude',data=input_dict['clip_object_magnitude'])
+        h5file["metadata"].create_dataset('free_log_likelihood',data=input_dict['free_log_likelihood'])
+        h5file["metadata"].create_dataset('regime',data=input_dict['regime'])
+        h5file["metadata"].create_dataset('fourier_power_bound',data=input_dict['fourier_power_bound'])
 
         # lists, tuples, arrays
         h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
@@ -921,9 +797,6 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
     
     return mask
 
-def calculate_object_pixel_size(wavelength,detector_distance, detector_pixel_size,n_of_pixels):
-    return wavelength * detector_distance / (detector_pixel_size * n_of_pixels)
-
 def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size):
     """
     Calculate and display the object pixel size
@@ -951,7 +824,6 @@ def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP
     print(f"\tLimit thickness for resolution of 1 pixel: {PA_thickness*1e6:.3f} microns")
     return object_pixel_size
 
-
 def set_object_shape(object_padding, DP_shape, probe_positions):
     """ Determines shape (Y,X) of object matrix from size of probe and its positions.
 
@@ -978,9 +850,6 @@ def set_object_shape(object_padding, DP_shape, probe_positions):
     object_shape_y  = DP_size_y + maximum_probe_coordinate_y + offset_bottomright
 
     return (object_shape_y, object_shape_x)
-
-
-
 
 def probe_model_fzp(wavelength, 
                     grid_shape,
@@ -1075,3 +944,4 @@ def probe_model_fzp(wavelength,
         w = w*np.sqrt(grid_shape[0]*grid_shape[1]/np.sum(np.abs(w)**2,axis=(0,1)));
 
     return np.expand_dims(w,axis=0)
+

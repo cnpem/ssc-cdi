@@ -10,7 +10,8 @@
 
 import sys
 import cupy as cp
-from .common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, inputs):
     """"
@@ -34,6 +35,8 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     propagator = inputs['regime']
     free_log_likelihood = inputs['free_log_likelihood']
     probe_support  = inputs["probe_support_array"] 
+    fourier_power_bound = inputs['fourier_power_bound']
+    clip_object_magnitude = inputs['clip_object_magnitude']
 
     try:
         import cupy as cp
@@ -58,9 +61,13 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
         print("Using NumPy (CPU)")
 
     if free_log_likelihood > 0:
-        free_LLK_mask = create_random_binary_mask(free_log_likelihood,diffraction_patterns.shape[0],diffraction_patterns.shape[1])
+        print('free_log_likelihood>0! Reconstruction will use FREE error metrics!')
+        free_indices = get_random_2D_indices(free_log_likelihood,diffraction_patterns[0].shape[0],diffraction_patterns[0].shape[1])
+        free_data = extract_values_from_all_slices(diffraction_patterns,free_indices)
+        slice_indices = np.arange(diffraction_patterns.shape[0])
+        diffraction_patterns[slice_indices[:, None], free_indices[0], free_indices[1]] = -1 # remove free data from diffraction patterns. Free data shall be used only for error estimation
     else:
-        free_LLK_mask = np.ones_like(diffraction_patterns[0])
+        free_data, free_indices = None, None
 
     obj[:] = object_guess # object matrix repeats for each slice; each slice will operate with a different probe mode
 
@@ -76,8 +83,6 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
         probe_modes[:] = probe_guess
     else:
         sys.exit('Please select the correct amount of modes: ',inputs["incoherent_modes"])
-
-    wavefronts = cp.empty((len(diffraction_patterns),probe_guess.shape[0],probe_guess.shape[1]),dtype=complex)
 
     probe_velocity = cp.zeros_like(probe_modes,dtype=complex)
     obj_velocity   = cp.zeros_like(obj,dtype=complex)
@@ -96,20 +101,21 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
             """ Wavefront at object exit plane """
             wavefront_modes = obj_box*probe_modes
 
-            wavefronts[j] = wavefront_modes[0] # save mode 0 wavefront to calculate recon error
- 
             """ Propagate + Update + Backpropagate """
-            updated_wavefront_modes, all_errors = update_exit_wave(wavefront_modes.copy(),diffraction_patterns[j],detector_distance,wavelength,detector_pixel_size,propagator,free_LLK_mask,epsilon=0.001) #copy so it doesn't work as a pointer!
+            updated_wavefront_modes, all_errors = update_exit_wave(wavefront_modes.copy(),diffraction_patterns[j],detector_distance,wavelength,detector_pixel_size,propagator,free_data,free_indices,fourier_power_bound=fourier_power_bound,epsilon=0.001) #copy so it doesn't work as a pointer!
             
-            error_r_factor_num, error_r_factor_den, error_nmse_num, error_llk = all_errors
+            error_r_factor_num, error_r_factor_den, error_nmse, error_llk = all_errors
             error[iteration,0] += error_r_factor_num
             error[iteration,1] += error_r_factor_den
-            error[iteration,2] += error_nmse_num
+            error[iteration,2] += error_nmse
             error[iteration,3] += error_llk
 
             obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = update_object_and_probe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
-            if inputs["use_mPIE"] == True: # momentum addition                                                                                      
+            if clip_object_magnitude:
+                obj = cp.clip(cp.abs(obj),0,1)*cp.exp(1j*cp.angle(obj))
+
+            if f_o == True or f_p == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
