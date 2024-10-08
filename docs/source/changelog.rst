@@ -164,6 +164,14 @@ Added
 - Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
 
 
+[0.9.2] - 2024-05-02
+
+Added
+~~~~~
+- Alternative method for equalization using non-continuos mask
+- Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
+
+
 [0.9.1] - 2024-04-08
 ------------------------------
 
