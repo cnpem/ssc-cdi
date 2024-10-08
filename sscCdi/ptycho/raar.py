@@ -33,7 +33,8 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
 
     iterations = inputs['iterations']
     beta       = inputs['beta']
-    epsilon    = inputs['epsilon']
+    regularization_obj    = inputs['regularization_obj']
+    regularization_probe  = inputs['regularization_probe']
     obj_pixel  = inputs['object_pixel']
     wavelength = inputs['wavelength']
     n_of_modes = inputs["incoherent_modes"]
@@ -44,6 +45,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     free_log_likelihood = inputs['free_log_likelihood']
     propagator = inputs['regime']
     fourier_power_bound = inputs['fourier_power_bound']
+    clip_object_magnitude = inputs['clip_object_magnitude']
 
     if free_log_likelihood > 0:
         print('free_log_likelihood>0! Reconstruction will use FREE error metrics!')
@@ -98,7 +100,11 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
             error[iteration,2] += error_nmse_num
             error[iteration,3] += error_llk
 
-        probe_modes, single_obj = update_object_and_probe(wavefronts,obj_matrix[0],probe_modes,positions,epsilon) # Update Object and Probe. Projection in Real space (consistency condition)
+        probe_modes, single_obj = update_object_and_probe(wavefronts,obj_matrix[0],probe_modes,positions,regularization_obj,regularization_probe) # Update Object and Probe. Projection in Real space (consistency condition)
+
+        if clip_object_magnitude:
+            single_obj = cp.clip(cp.abs(single_obj),0,1)*cp.exp(1j*cp.angle(single_obj))
+
         obj_matrix[:] = single_obj # update all obj slices to be the same;
 
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
@@ -130,9 +136,18 @@ def RAAR_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,bet
     updated_wavefront =  beta*(wavefront + psi_after_projection_Fspace) + (1-2*beta)*psi_after_Pr 
     return updated_wavefront, all_errors
 
-def update_object_and_probe(wavefronts,obj,probes,positions,epsilon):
-    probes = update_probe(wavefronts, obj, probes.shape,positions, epsilon=epsilon) 
-    obj   = update_object(wavefronts, probes, obj.shape, positions,epsilon=epsilon)
+
+def AP_wavefront_update(wavefront,diffraction_patterns,probe_modes,obj_box,beta,index,detector_distance,wavelength,detector_pixel_size,propagator,free_data=None, free_data_indices=None,fourier_power_bound=0):
+    """
+    Alternating Projection update function:
+    """
+    psi_after_Pr = probe_modes*obj_box
+    updated_wavefront, all_errors = update_exit_wave(psi_after_Pr,diffraction_patterns[index],detector_distance,wavelength,detector_pixel_size,propagator,free_data=free_data, free_data_indices=free_data_indices,fourier_power_bound=fourier_power_bound,epsilon=epsilon) # Projection in Fourier space
+    return updated_wavefront, all_errors
+
+def update_object_and_probe(wavefronts,obj,probes,positions,regularization_obj,regularization_probe):
+    probes = update_probe(wavefronts, obj, probes.shape,positions, epsilon=regularization_probe) 
+    obj   = update_object(wavefronts, probes, obj.shape, positions,epsilon=regularization_obj)
     return probes, obj
 
 def update_object(wavefronts, probe, object_shape, positions,epsilon):

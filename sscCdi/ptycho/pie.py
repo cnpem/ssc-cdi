@@ -36,6 +36,7 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     free_log_likelihood = inputs['free_log_likelihood']
     probe_support  = inputs["probe_support_array"] 
     fourier_power_bound = inputs['fourier_power_bound']
+    clip_object_magnitude = inputs['clip_object_magnitude']
 
     try:
         import cupy as cp
@@ -111,7 +112,10 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
 
             obj[:,py:py+offset[0],px:px+offset[1]] , probe_modes = update_object_and_probe(obj_box[0],probe_modes,wavefront_modes,updated_wavefront_modes,s_o,s_p,r_o,r_p)
 
-            if inputs["use_mPIE"] == True: # momentum addition                                                                                      
+            if clip_object_magnitude:
+                obj = cp.clip(cp.abs(obj),0,1)*cp.exp(1j*cp.angle(obj))
+
+            if f_o == True or f_p == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
