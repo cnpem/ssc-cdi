@@ -131,13 +131,13 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
                         batchsize * raar->ptycho->probe->sizez, true,
                         raar->ptycho->gpus, MemoryType::EAllocGPU);
         newphistack->SetGPUToZero();
-        raar->previous_wavefront.push_back(newphistack);
+        raar->temp_wavefront.push_back(newphistack);
     }
     return raar;
 }
 
 void DestroyRAAR(RAAR *&raar) {
-    for (auto *phi : raar->previous_wavefront) {
+    for (auto *phi : raar->temp_wavefront) {
         delete phi;
     }
     DestroyPtycho(raar->ptycho);
@@ -166,7 +166,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity, float stepsize, float m
                 SetDevice(raar.ptycho->gpus, g);
 
                 KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0], raar.ptycho->probe->arrays[g][0],
-                                          raar.previous_wavefront[section]->arrays[g][0],
+                                          raar.temp_wavefront[section]->arrays[g][0],
                                           raar.ptycho->positions[section]->arrays[g][0],
                                           raar.ptycho->object_num->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
 
@@ -187,14 +187,14 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
 
     const size_t num_batches = PtychoNumBatches(*raar.ptycho);
     for (int d = 0; d < num_batches; d++) {
-          RAARProjectProbe(raar, d, *raar.previous_wavefront[d]);
+          RAARProjectProbe(raar, d, *raar.temp_wavefront[d]);
     }
 
     ApplyProbeUpdate(*raar.ptycho, velocity, stepsize, momentum, epsilon);
 }
 
 void init_wavefront(RAAR& raar) {
-    for (MImage<complex16> *wavefront : raar.previous_wavefront) {
+    for (MImage<complex16> *wavefront : raar.temp_wavefront) {
         if (wavefront != nullptr) {
             wavefront->SetGPUToZero();
         }
@@ -246,7 +246,7 @@ void RAARRun(RAAR& raar, int iterations) {
                 cImage* current_exit_wave = raar.ptycho->wavefront->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];
                 cImage* current_probe = raar.ptycho->probe->arrays[gpu_idx];
-                hcImage* previous_exit_wave = raar.previous_wavefront[batch_idx]->arrays[gpu_idx];
+                hcImage* previous_exit_wave = raar.temp_wavefront[batch_idx]->arrays[gpu_idx];
                 rImage* current_obj_div = raar.ptycho->object_div->arrays[gpu_idx];
                 cImage* current_obj_acc = raar.ptycho->object_num->arrays[gpu_idx];
 
