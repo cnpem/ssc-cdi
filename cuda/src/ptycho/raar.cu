@@ -24,9 +24,9 @@ __global__ void k_RAAR_reflect_Rspace(GArray<complex> exitwave, const GArray<com
     const complex obj = object(objposy, objposx);
 
     const int num_modes = probe.shape.z;
+
     for (size_t m = 0; m < num_modes; m++) {
-        complex ew = probe(m, idy, idx) * obj * 2.0f -
-            complex(wavefront(idz * probe.shape.z + m, idy, idx));
+        complex ew = probe(m, idy, idx) * obj * 2.0f - complex(wavefront(idz * probe.shape.z + m, idy, idx));
         exitwave(idz * probe.shape.z + m, idy, idx) = ew;
     }
 }
@@ -110,10 +110,10 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
                  int poscorr_iter,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
+
     RAAR *raar = new RAAR();
 
-    raar->ptycho =
-        CreatePtycho(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
+    raar->ptycho = CreatePtycho(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
                             gpus, objsupp, probesupp, numobjsupp,
                             wavelength_m, pixelsize_m, distance_m,
                             poscorr_iter,
@@ -124,12 +124,10 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
 
     const size_t num_batches = PtychoNumBatches(*raar->ptycho);
+
     for (int i = 0; i < num_batches; i++) {
         size_t batchsize = raar->ptycho->positions[i]->arrays[0]->sizez;
-        auto *newphistack =
-            new hcMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,
-                        batchsize * raar->ptycho->probe->sizez, true,
-                        raar->ptycho->gpus, MemoryType::EAllocGPU);
+        auto *newphistack = new hcMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,  batchsize * raar->ptycho->probe->sizez, true, raar->ptycho->gpus, MemoryType::EAllocGPU);
         newphistack->SetGPUToZero();
         raar->previous_wavefront.push_back(newphistack);
     }
@@ -144,9 +142,8 @@ void DestroyRAAR(RAAR *&raar) {
     raar = nullptr;
 }
 
-
 void RAARProjectProbe(RAAR& raar, int section, hcMImage& wavefront) {
-    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isGradPm);
+    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isAP);
 }
 
 /**
@@ -162,19 +159,20 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity, float stepsize, float m
     for (int section = 0; section < raar.ptycho->positions.size(); section++) {
 
         for (int g = 0; g < raar.ptycho->gpus.size(); g++)
+
             if (raar.ptycho->positions[section]->arrays[g]->sizez > 0) {
                 SetDevice(raar.ptycho->gpus, g);
 
-                KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0], raar.ptycho->probe->arrays[g][0],
+                KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0],
+                                          raar.ptycho->probe->arrays[g][0],
                                           raar.previous_wavefront[section]->arrays[g][0],
                                           raar.ptycho->positions[section]->arrays[g][0],
-                                          raar.ptycho->object_num->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
-
+                                          raar.ptycho->object_num->arrays[g][0], 
+                                          raar.ptycho->object_div->arrays[g][0]);
             }
     }
 
-    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div,
-            raar.ptycho->objstep, momentum, velocity, epsilon);
+    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div, raar.ptycho->objstep, momentum, velocity, epsilon);
 }
 
 /**
@@ -220,8 +218,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
     const dim3 difpadshape = raar.ptycho->diff_pattern_shape;
 
-    rMImage cur_difpad(difpadshape.x, difpadshape.y, raar.ptycho->multibatchsize,
-                false, raar.ptycho->gpus, MemoryType::EAllocGPU);
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, raar.ptycho->multibatchsize, false, raar.ptycho->gpus, MemoryType::EAllocGPU);
 
     for (int iter = 0; iter < iterations; iter++) {
 
@@ -234,8 +231,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
           const size_t difpad_batch_zsize = raar.ptycho->positions[batch_idx]->sizez;
           const size_t global_idx = batch_idx * raar.ptycho->multibatchsize;
-          float *difpad_batch_ptr = raar.ptycho->cpu_diff_pattern +
-              global_idx * difpadshape.x * difpadshape.y;
+          float *difpad_batch_ptr = raar.ptycho->cpu_diff_pattern +  global_idx * difpadshape.x * difpadshape.y;
 
           cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
           cur_difpad.LoadToGPU(difpad_batch_ptr);
@@ -263,8 +259,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *previous_exit_wave, ptr_roi, raar.beta);
 
-                    ProjectReciprocalSpace(*raar.ptycho,
-                            cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGradPm); // propagate, apply measured intensity and unpropagate
+                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isAP); // propagate, apply measured intensity and unpropagate
 
                     //normalize inverse cufft output
                     *current_exit_wave /= float(probeshape.x * probeshape.y);
@@ -284,21 +279,18 @@ void RAARRun(RAAR& raar, int iterations) {
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            RAARApplyProbeUpdate(raar, probevelocity,
-                    raar.ptycho->probestep, raar.ptycho->probemomentum, raar.ptycho->probereg); // updates in real space
-            RAARApplyObjectUpdate(raar, objvelocity,
-                    raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
+            RAARApplyProbeUpdate(raar, probevelocity, raar.ptycho->probestep, raar.ptycho->probemomentum, raar.ptycho->probereg); // updates in real space
+            RAARApplyObjectUpdate(raar, objvelocity,  raar.ptycho->objstep, raar.ptycho->objmomentum, raar.ptycho->objreg);
         }
 
-        if (raar.ptycho->poscorr_iter &&
-                (iter + 1) % raar.ptycho->poscorr_iter == 0)
+        if (raar.ptycho->poscorr_iter &&  (iter + 1) % raar.ptycho->poscorr_iter == 0){
             ApplyPositionCorrection(*raar.ptycho);
+        }
 
         raar.ptycho->cpuerror[iter] = sqrtf(raar.ptycho->error->SumGPU());
 
         if (iter % 10 == 0) {
-            sscInfo(format("iter {}/{} error: {}",
-                        iter, iterations, raar.ptycho->cpuerror[iter]));
+            sscInfo(format("iter {}/{} error: {}", iter, iterations, raar.ptycho->cpuerror[iter]));
         }
 
     }
