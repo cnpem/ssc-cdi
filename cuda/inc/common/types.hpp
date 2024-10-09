@@ -1224,8 +1224,7 @@ struct MImage : public MultiGPU {
      * Broadcast(this)
      * Meant for ptychography: object(all_gpus) = Sum_gpus(P+*Phi)/Sum_gpus(|P|^2) + beta*momentum
      * */
-    void WeightedLerpSync(MImage<Type>& acc, MImage<float>& div, float stepsize, float momentum,
-                          Image<Type>& velocity, float epsilon) {
+    void WeightedLerpSync(MImage<Type>& acc, MImage<float>& div, float stepsize, float momentum, Image<Type>& velocity, float epsilon) {
         acc.ReduceSync();
         div.ReduceSync();
 
