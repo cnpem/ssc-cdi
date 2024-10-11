@@ -9,7 +9,7 @@
 
 #include "complex.hpp"
 #include "logger.hpp"
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 #include "types.hpp"
 #include "utils.hpp"
 
