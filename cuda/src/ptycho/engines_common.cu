@@ -7,7 +7,7 @@
 #include <driver_types.h>
 
 #include "complex.hpp"
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 
 //host position correction offsets
 float const pos_offx[] = { 0, 1, -1, 0, 0, -1, -1, 1, 1};
