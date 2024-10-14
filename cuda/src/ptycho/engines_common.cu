@@ -40,12 +40,12 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
             exitwave(m + probe.shape.z*blockIdx.z,idy,idx) = obj * probe(m,idy,idx);
     }
 }
-__global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, const GArray<float> diffraction_patterns, const float* background, size_t nummodes)
+__global__ void KComputeError(float* error_errors_rfactor, const GArray<complex> exitwave, const GArray<float> diffraction_patterns, const float* background, size_t nummodes)
 {
-    __shared__ float shared_error_rfactor[64];
+    __shared__ float shared_error_error_rfactor[64];
 
     if(threadIdx.x<64)
-        shared_error_rfactor[threadIdx.x] = 0;
+        shared_error_error_rfactor[threadIdx.x] = 0;
 
     __syncthreads();
 
@@ -68,19 +68,19 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
         const int sigmask = (diff_pattern < 0);
-        atomicAdd(shared_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
+        atomicAdd(shared_error_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
     }
 
     __syncthreads();
 
-    Reduction::KSharedReduce(shared_error_rfactor,64);
+    Reduction::KSharedReduce(shared_error_error_rfactor,64);
     if(threadIdx.x==0)
-        atomicAdd(rfactors + blockIdx.z, shared_error_rfactor[0]);
+        atomicAdd(error_errors_rfactor + blockIdx.z, shared_error_error_rfactor[0]);
 }
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
         const GArray<complex> object, const GArray<complex> exitwave, const GArray<Position> positions,
-        bool bFTNorm, bool isAP) {
+        bool bFTNorm, bool isGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -105,7 +105,7 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
     size_t index = blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
 
     if (bFTNorm) pacc /= (float)(probe.shape.x * probe.shape.y);
-    if (!isAP) pacc -= probe[index] * pdiv;
+    if (!isGrad) pacc -= probe[index] * pdiv;
 
     probe_acc[index] += pacc;
     probe_div[index] += pdiv;
@@ -114,7 +114,7 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
 // the kernel code is replicated for complex16, for some reason cuda was not playing well with explicit instantiation on gpu kernels
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
         const GArray<complex> object, const GArray<complex16> exitwave, const GArray<Position> positions,
-        bool bFTNorm, bool isAP) {
+        bool bFTNorm, bool isGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -139,14 +139,14 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_a
     size_t index = blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
 
     if (bFTNorm) pacc /= (float)(probe.shape.x * probe.shape.y);
-    if (!isAP) pacc -= probe[index] * pdiv;
+    if (!isGrad) pacc -= probe[index] * pdiv;
 
     probe_acc[index] += pacc;
     probe_div[index] += pdiv;
 }
 
 template <typename dtype>
-void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isAP,
+void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGrad,
         cudaStream_t stream) {
     dim3 blk = pt.probe->ShapeBlock();
     dim3 thr = pt.probe->ShapeThread();
@@ -157,25 +157,25 @@ void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool b
         KProjectPhiToProbe<<<blk, thr, 0, stream>>>(
                 pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
                 pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0],
-                bNormalizeFFT, isAP);
+                bNormalizeFFT, isGrad);
     }
 }
 
 template void ProjectPhiToProbe<complex>(Ptycho& pt, int section,
-        const cMImage& Phi, bool bNormalizeFFT, bool isAP, cudaStream_t st);
+        const cMImage& Phi, bool bNormalizeFFT, bool isGrad, cudaStream_t st);
 
 template void ProjectPhiToProbe<complex16>(Ptycho& pt, int section,
-        const hcMImage& Phi, bool bNormalizeFFT, bool isAP, cudaStream_t st);
+        const hcMImage& Phi, bool bNormalizeFFT, bool isGrad, cudaStream_t st);
 
 extern "C" {
     void EnablePeerToPeer(const std::vector<int>& gpus);
     void DisablePeerToPeer(const std::vector<int>& gpus);
 
-    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_rfactor, size_t upsample, size_t nummodes,  bool isAP) {
+    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_error_rfactor, size_t upsample, size_t nummodes,  bool isGrad) {
         
-        __shared__ float shared_error_rfactor[64];
+        __shared__ float shared_error_error_rfactor[64];
 
-        if (threadIdx.x < 64) shared_error_rfactor[threadIdx.x] = 0;
+        if (threadIdx.x < 64) shared_error_error_rfactor[threadIdx.x] = 0;
 
         __syncthreads();
 
@@ -203,14 +203,14 @@ extern "C" {
 
             wabs = sqrtf(wabs2) / upsample; // can we kill upsample? not sure it is necessary anymore.
 
-            atomicAdd(shared_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
+            atomicAdd(shared_error_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
 
             // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew + ew_a
-            if (wabs > 0.0f && isAP) {  //AP
+            if (wabs > 0.0f && isGrad) {  //AP
                 exit_wave_factor = (sqrt_difpad / wabs - 1); // why -1 for AP and not for RAAR?
                 exit_wave_addend = 0.0f;
             }
-            else if (wabs > 0.0f && !isAP) { //RAAR
+            else if (wabs > 0.0f && !isGrad) { //RAAR
                 exit_wave_factor = sqrt_difpad / wabs; // why -1 for AP and not for RAAR?
                 exit_wave_addend = 0.0f;
             } else { // wabs <= 0.0f
@@ -218,7 +218,7 @@ extern "C" {
                 exit_wave_factor = 0.0f;
             }
 
-        } else if (isAP) { // if diff_pattern < 0 and isAP. Make invalid points to be zero in the wavefront
+        } else if (isGrad) { // if diff_pattern < 0 and isGrad. Make invalid points to be zero in the wavefront
             exit_wave_factor = 0.0f;
             exit_wave_addend = 0.0f;
         }
@@ -233,13 +233,13 @@ extern "C" {
 
         __syncthreads();
 
-        Reduction::KSharedReduce(shared_error_rfactor, 64);
-        if (threadIdx.x == 0) atomicAdd(error_rfactor + blockIdx.y, shared_error_rfactor[0]);
+        Reduction::KSharedReduce(shared_error_error_rfactor, 64);
+        if (threadIdx.x == 0) atomicAdd(error_error_rfactor + blockIdx.y, shared_error_error_rfactor[0]);
     }
 }
 
 
-void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront, int g, bool isAP, cudaStream_t stream) {
+void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront, int g, bool isGrad, cudaStream_t stream) {
 
     SetDevice(pt.gpus, g);
 
@@ -255,7 +255,7 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront,
 
     wavefront->FFTShift2(stream);
 
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, *diff_pattern, pt.error->Ptr(g), upsample,  pt.probe->sizez, isAP);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, *diff_pattern, pt.error->Ptr(g), upsample,  pt.probe->sizez, isGrad);
 
     wavefront->FFTShift2(stream);
 
@@ -264,7 +264,7 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront,
 }
 
 
-void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isAP, cudaStream_t stream) {
+void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad, cudaStream_t stream) {
 
     SetDevice(pt.gpus, g);
 
@@ -276,7 +276,7 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isAP, 
 
     pt.wavefront->arrays[g]->FFTShift2(stream);
 
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], *diff_pattern, pt.error->Ptr(g), upsample, pt.probe->sizez, isAP);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], *diff_pattern, pt.error->Ptr(g), upsample, pt.probe->sizez, isGrad);
 
     pt.wavefront->arrays[g]->FFTShift2(stream);
 
@@ -430,7 +430,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.objectsupport != nullptr) delete ptycho.objectsupport;
     if (ptycho.probesupport != nullptr) delete ptycho.probesupport;
 
-    sscDebug("Dealloc rfactors.");
+    sscDebug("Dealloc error_errors_rfactor.");
     delete ptycho.error;
 
     sscDebug("Dealloc errorcounter.");

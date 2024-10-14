@@ -130,7 +130,7 @@ void APRun(AP& ap, int iterations) {
                   
                   KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi);
 
-                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isAP);
+                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGrad);
 
                   KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],  *ptycho.object_num->arrays[g], *ptycho.object_div->arrays[g], *ptycho.wavefront->arrays[g], ptr_roi);
         }
@@ -174,7 +174,7 @@ void APRun(AP& ap, int iterations) {
 
 
 void APProjectProbe(AP& ap, int section) {
-    ProjectPhiToProbe(*ap.ptycho, section, *ap.ptycho->wavefront, true, ap.isAP);
+    ProjectPhiToProbe(*ap.ptycho, section, *ap.ptycho->wavefront, true, ap.isGrad);
 }
 
 AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
