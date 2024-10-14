@@ -40,12 +40,12 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
             exitwave(m + probe.shape.z*blockIdx.z,idy,idx) = obj * probe(m,idy,idx);
     }
 }
-__global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, const GArray<float> diffraction_patterns, const float* background, size_t nummodes)
+__global__ void KComputeError(float* error_errors_rfactor, const GArray<complex> exitwave, const GArray<float> diffraction_patterns, const float* background, size_t nummodes)
 {
-    __shared__ float shared_error_rfactor[64];
+    __shared__ float shared_error_error_rfactor[64];
 
     if(threadIdx.x<64)
-        shared_error_rfactor[threadIdx.x] = 0;
+        shared_error_error_rfactor[threadIdx.x] = 0;
 
     __syncthreads();
 
@@ -68,14 +68,14 @@ __global__ void KComputeError(float* rfactors, const GArray<complex> exitwave, c
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
         const int sigmask = (diff_pattern < 0);
-        atomicAdd(shared_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
+        atomicAdd(shared_error_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
     }
 
     __syncthreads();
 
-    Reduction::KSharedReduce(shared_error_rfactor,64);
+    Reduction::KSharedReduce(shared_error_error_rfactor,64);
     if(threadIdx.x==0)
-        atomicAdd(rfactors + blockIdx.z, shared_error_rfactor[0]);
+        atomicAdd(error_errors_rfactor + blockIdx.z, shared_error_error_rfactor[0]);
 }
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
@@ -171,11 +171,11 @@ extern "C" {
     void EnablePeerToPeer(const std::vector<int>& gpus);
     void DisablePeerToPeer(const std::vector<int>& gpus);
 
-    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_rfactor, size_t upsample, size_t nummodes,  bool isAP) {
+    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_error_rfactor, size_t upsample, size_t nummodes,  bool isAP) {
         
-        __shared__ float shared_error_rfactor[64];
+        __shared__ float shared_error_error_rfactor[64];
 
-        if (threadIdx.x < 64) shared_error_rfactor[threadIdx.x] = 0;
+        if (threadIdx.x < 64) shared_error_error_rfactor[threadIdx.x] = 0;
 
         __syncthreads();
 
@@ -203,7 +203,7 @@ extern "C" {
 
             wabs = sqrtf(wabs2) / upsample; // can we kill upsample? not sure it is necessary anymore.
 
-            atomicAdd(shared_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
+            atomicAdd(shared_error_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
 
             // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew + ew_a
             if (wabs > 0.0f && isAP) {  //AP
@@ -233,8 +233,8 @@ extern "C" {
 
         __syncthreads();
 
-        Reduction::KSharedReduce(shared_error_rfactor, 64);
-        if (threadIdx.x == 0) atomicAdd(error_rfactor + blockIdx.y, shared_error_rfactor[0]);
+        Reduction::KSharedReduce(shared_error_error_rfactor, 64);
+        if (threadIdx.x == 0) atomicAdd(error_error_rfactor + blockIdx.y, shared_error_error_rfactor[0]);
     }
 }
 
@@ -430,7 +430,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.objectsupport != nullptr) delete ptycho.objectsupport;
     if (ptycho.probesupport != nullptr) delete ptycho.probesupport;
 
-    sscDebug("Dealloc rfactors.");
+    sscDebug("Dealloc error_errors_rfactor.");
     delete ptycho.error;
 
     sscDebug("Dealloc errorcounter.");
