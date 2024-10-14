@@ -123,8 +123,13 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
 
-    const MemoryType wf_memtype = (sscGpuAvailableMem() * 0.9) >= (wavefront_size * sizeof(complex16)) ?
-        MemoryType::EAllocGPU : MemoryType::EAllocCPU;
+    MemoryType wf_memtype = MemoryType::EAllocGPU;
+
+    if ( (sscGpuAvailableMem() * 0.9) < (wavefront_size * sizeof(complex16)) ) {
+        sscWarning("Not enough memory to store RAAR in GPU, fallback to store data on CPU. "
+                "Expect some slowdown.");
+        wf_memtype = MemoryType::EAllocCPU;
+    }
 
     const size_t num_batches = PtychoNumBatches(*raar->ptycho);
     raar->temp_wavefront.reserve(num_batches);
