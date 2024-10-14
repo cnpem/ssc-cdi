@@ -230,7 +230,7 @@ void PieRun(Pie& pie, int iterations) {
 
             wavefront->CopyTo(wavefront_prev);
 
-            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isAP);
+            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGrad);
 
             *wavefront /= float(probeshape.x * probeshape.y);
 
