@@ -178,18 +178,50 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR_python':
+
+            """ RAAR update function:     psi' = [ beta*(Pf*Rr + I) + (1-2*beta)*Pr ]*psi 
+            beta = 0 -> AP
+            beta = 1 -> DM
+            """
+
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            algo_inputs['epsilon'] = 0.001 # small value to add to probe/object update denominator
-            
             obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'DM_python':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
+            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] = 1 # beta = 1 for DM
+
+            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            error_rfactor.append(algo_error[:,0])
+            error_nmse.append(algo_error[:,1])
+            error_llk.append(algo_error[:,2])
+
+        elif input_dict["algorithms"][str(counter)]['name'] == 'AP_python':
+            print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
+            if 'initial_probe' in input_dict["algorithms"][str(counter)]:
+                probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
+            if 'initial_obj' in input_dict["algorithms"][str(counter)]:
+                obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
+            
+            algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] = 0 # beta = 0 for AP
+
+            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            error_rfactor.append(algo_error[:,0])
+            error_nmse.append(algo_error[:,1])
+            error_llk.append(algo_error[:,2])                        
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
             obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes

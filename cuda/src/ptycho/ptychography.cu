@@ -1,5 +1,5 @@
 #include "complex.hpp"
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 
 int main()
 {

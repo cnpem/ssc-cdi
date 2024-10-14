@@ -1,7 +1,7 @@
 /** @file */
 #include <cstddef>
 
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 #include <common/logger.hpp>
 #include <common/types.hpp>
 #include <common/utils.hpp>
@@ -148,9 +148,8 @@ void DestroyRAAR(RAAR *&raar) {
     raar = nullptr;
 }
 
-
 void RAARProjectProbe(RAAR& raar, int section, hcMImage& wavefront) {
-    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isGradPm);
+    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isAP);
 }
 
 /**
@@ -173,6 +172,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
         raar.temp_wavefront[section]->CopyTo(cur_temp_wavefront);
 
         for (int g = 0; g < raar.ptycho->gpus.size(); g++)
+
             if (raar.ptycho->positions[section]->arrays[g]->sizez > 0) {
                 SetDevice(raar.ptycho->gpus, g);
 
@@ -186,8 +186,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
         raar.temp_wavefront[section]->CopyFrom(cur_temp_wavefront);
     }
 
-    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div,
-            raar.ptycho->objstep, momentum, velocity, epsilon);
+    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div, raar.ptycho->objstep, momentum, velocity, epsilon);
 }
 
 /**
@@ -290,8 +289,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *previous_exit_wave, ptr_roi, raar.beta);
 
-                    ProjectReciprocalSpace(*raar.ptycho,
-                            cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGradPm); // propagate, apply measured intensity and unpropagate
+                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isAP); // propagate, apply measured intensity and unpropagate
 
                     //normalize inverse cufft output
                     *current_exit_wave /= float(probeshape.x * probeshape.y);
@@ -320,15 +318,14 @@ void RAARRun(RAAR& raar, int iterations) {
                     raar.ptycho->objreg, cur_temp_wavefront);
         }
 
-        if (raar.ptycho->poscorr_iter &&
-                (iter + 1) % raar.ptycho->poscorr_iter == 0)
+        if (raar.ptycho->poscorr_iter &&  (iter + 1) % raar.ptycho->poscorr_iter == 0){
             ApplyPositionCorrection(*raar.ptycho);
+        }
 
         raar.ptycho->cpuerror[iter] = sqrtf(raar.ptycho->error->SumGPU());
 
         if (iter % 10 == 0) {
-            sscInfo(format("iter {}/{} error: {}",
-                        iter, iterations, raar.ptycho->cpuerror[iter]));
+            sscInfo(format("iter {}/{} error: {}", iter, iterations, raar.ptycho->cpuerror[iter]));
         }
 
     }

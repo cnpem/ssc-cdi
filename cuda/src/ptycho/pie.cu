@@ -9,7 +9,7 @@
 
 #include "complex.hpp"
 #include "logger.hpp"
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 #include "types.hpp"
 #include "utils.hpp"
 
@@ -230,7 +230,7 @@ void PieRun(Pie& pie, int iterations) {
 
             wavefront->CopyTo(wavefront_prev);
 
-            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGradPm);
+            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isAP);
 
             *wavefront /= float(probeshape.x * probeshape.y);
 

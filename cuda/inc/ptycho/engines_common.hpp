@@ -111,10 +111,10 @@ void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGradPm, cudaStream_t stream = 0);
+void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isAP, cudaStream_t stream = 0);
 
 
-void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, cImage* wavefront, int g, bool bIsGradPm, cudaStream_t stream = 0);
+void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, cImage* wavefront, int g, bool isAP, cudaStream_t stream = 0);
 
 void DestroyPtycho(Ptycho*& ptycho);
 
@@ -129,7 +129,7 @@ Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const
 
 
 template <typename dtype>
-void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGradPm,
+void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isAP,
         cudaStream_t st = 0);
 void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
@@ -143,7 +143,7 @@ void ApplyPositionCorrection(Ptycho& ptycho);
 struct RAAR {
     Ptycho* ptycho = nullptr;
     std::vector<hcMImage*> temp_wavefront;
-    const bool isGradPm = false;
+    const bool isAP = false;
     float beta = 0.9f;
 };
 
@@ -180,7 +180,7 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity,
  * */
 struct AP {
     Ptycho* ptycho;
-    const bool isGradPm = true;
+    const bool isAP = true;
 };
 
 void APRun(AP& glim, int iter);
@@ -199,7 +199,7 @@ void APProjectProbe(AP& glim, int section);
 
 struct Pie {
     Ptycho* ptycho;
-    const bool isGradPm = false;
+    const bool isAP = false;
 };
 
 Pie* CreatePie(float* difpads, const dim3& difshape,
