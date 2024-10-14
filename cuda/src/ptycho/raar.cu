@@ -149,7 +149,7 @@ void DestroyRAAR(RAAR *&raar) {
 }
 
 void RAARProjectProbe(RAAR& raar, int section, hcMImage& wavefront) {
-    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isAP);
+    ProjectPhiToProbe(*(raar.ptycho), section, wavefront, false, raar.isGrad);
 }
 
 /**
@@ -289,7 +289,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *previous_exit_wave, ptr_roi, raar.beta);
 
-                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isAP); // propagate, apply measured intensity and unpropagate
+                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGrad); // propagate, apply measured intensity and unpropagate
 
                     //normalize inverse cufft output
                     *current_exit_wave /= float(probeshape.x * probeshape.y);
