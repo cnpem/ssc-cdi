@@ -70,10 +70,9 @@ try:
     libcdi.piecall.argtypes = [
         ctypes.c_void_p, c_int, c_int, ctypes.c_void_p, c_int, c_int,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_int,
-        ctypes.c_void_p, c_int, ctypes.c_void_p,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, ctypes.c_void_p,
         ctypes.c_int,
         c_float, c_float, c_float, c_float,
-        ctypes.c_int,
         c_float, c_float, c_float
     ]
 
@@ -91,9 +90,9 @@ def ctypes_array(c: np.ndarray) -> Tuple[np.ndarray, c_void_p, list[c_int]]:
     return contiguous_array, cptr, cshape
 
 
-def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[c_void_p, list[c_int]]:
+def ctypes_opt_array(c: Optional[np.ndarray]) -> Tuple[np.ndarray, c_void_p, list[c_int]]:
     if c is None:
-        return c_void_p(0), c_void_p(0), [c_int(0)]
+        return np.empty(0, dtype='float32'), c_void_p(0), [c_int(0)]
     return ctypes_array(c)
 
 def sanitize_rois(rois, obj, difpads, probe) -> np.ndarray:
@@ -126,11 +125,12 @@ def PIE(obj: np.ndarray,
         difpads: np.ndarray,
         rois: np.ndarray,
         iterations: int,
-        poscorr_iter: int,
-        step_obj: float,
-        step_probe: float,
-        reg_obj: float,
-        reg_probe: float,
+        probesupp: Optional[np.ndarray] = None,
+        poscorr_iter: int = 0,
+        step_obj: float = 0.5,
+        step_probe: float = 0.5,
+        reg_obj: float = 1e-3,
+        reg_probe: float = 1e-3,
         wavelength_m: float = 0.0,
         pixelsize_m: float = 0.0,
         distance_m: float = 0.0,
@@ -146,7 +146,9 @@ def PIE(obj: np.ndarray,
             beta (float, optional): Relaxation parameter for object, 0 < objbeta < 1. Defaults to 0.95.
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
-            probef1 (float, optional): Fresnel number F1. Defaults to None.
+            wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
+            pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
+            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -196,16 +198,17 @@ def PIE(obj: np.ndarray,
     error_rfactor = np.zeros(iterations, dtype=np.float32)
     error_rfactor, error_rfactorptr, _ = ctypes_array(error_rfactor)
 
+    probesupp, probesuppptr, _ = ctypes_opt_array(probesupp)
+
     time0 = time()
 
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez,
                    difpadsptr, dsizex, roisptr, numrois,
-                   c_int(iterations), devicesptr, ndevices, error_rfactorptr,
+                   c_int(iterations), devicesptr, ndevices, error_rfactorptr, probesuppptr,
                    c_int(poscorr_iter),
                    c_float(step_obj), c_float(step_probe),
                    c_float(reg_obj), c_float(reg_probe),
-                   c_int(poscorr_iter),
-                    c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
+                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
@@ -244,7 +247,9 @@ def RAAR(obj: np.ndarray,
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
-            probef1 (float, optional): Fresnel number F1. Defaults to None.
+            wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
+            pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
+            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -297,7 +302,7 @@ def RAAR(obj: np.ndarray,
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
     probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
-    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    objsupp,objsuppptr, (numobjsupport,) = ctypes_opt_array(objsupp)
 
     # if objsupp is not None:
     # assert (objsupp.size >= obj.size)
@@ -358,7 +363,9 @@ def AP(obj: np.ndarray,
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
-            probef1 (float, optional): Fresnel number F1. Defaults to None.
+            wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
+            pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
+            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -409,7 +416,7 @@ def AP(obj: np.ndarray,
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
     probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
-    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    objsupp,objsuppptr, (numobjsupport,) = ctypes_opt_array(objsupp)
 
     libcdi.ap_call(objptr, probeptr, difpadsptr, psizex, osizex,
                   osizey, dsizex, roisptr, numrois, c_int(batch),
@@ -456,7 +463,9 @@ def PosCorrection(obj: np.ndarray,
             objsupp (int ndarray, optional): Object support. Defaults to None.
             probesupp (int ndarray, optional): Probe support. Defaults to None.
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
-            probef1 (float, optional): Fresnel number F1. Defaults to None.
+            wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
+            pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
+            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -507,7 +516,7 @@ def PosCorrection(obj: np.ndarray,
                 probesupp.shape[-2] == probe.shape[-2] and
                 probesupp.size == probe.size)
     probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
-    objsupp,objsuppptr, (numobjsupport, ) = ctypes_opt_array(objsupp)
+    objsupp,objsuppptr, (numobjsupport,) = ctypes_opt_array(objsupp)
 
     libcdi.poscorrcall(objptr, probeptr, difpadsptr, psizex, osizex,
                        osizey, dsizex, roisptr, numrois, c_int(batch),

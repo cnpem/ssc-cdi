@@ -131,6 +131,7 @@ Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const
 template <typename dtype>
 void ProjectPhiToProbe(Ptycho& ptycho, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGrad,
         cudaStream_t st = 0);
+void ApplyProbeSupport(Ptycho& pt);
 void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float momentum, float epsilon);
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
 void ApplyPositionCorrection(Ptycho& ptycho);

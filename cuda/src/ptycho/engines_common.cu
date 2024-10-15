@@ -172,7 +172,7 @@ extern "C" {
     void DisablePeerToPeer(const std::vector<int>& gpus);
 
     __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_error_rfactor, size_t upsample, size_t nummodes,  bool isGrad) {
-        
+
         __shared__ float shared_error_error_rfactor[64];
 
         if (threadIdx.x < 64) shared_error_error_rfactor[threadIdx.x] = 0;
@@ -190,7 +190,7 @@ extern "C" {
 
         float exit_wave_factor = 1.0f;
         float exit_wave_addend = 0.0f;
-        
+
         if (diff_pattern >= 0) {
             float wabs2 = 0.0f;
             float wabs = 0.0f;
@@ -284,6 +284,21 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad
 
 }
 
+void ApplyProbeSupport(Ptycho& pt) {
+    SetDevice(pt.gpus, 0);
+    const dim3 shape = dim3(pt.probe->sizex, pt.probe->sizey, pt.probe->sizez);
+    complex *probe_ptr = pt.probe->arrays[0]->gpuptr;
+    if (pt.distance_m > 0)
+        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape, +pt.distance_m);
+
+    pt.probe->arrays[0][0] *= pt.probesupport->arrays[0][0];
+
+    if (pt.distance_m > 0)
+        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape, -pt.distance_m);
+
+    pt.probe->BroadcastSync();
+}
+
 
 void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize, float momentum, float epsilon) {
 
@@ -294,17 +309,7 @@ void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize, float moment
     pt.probe->WeightedLerpSync(*(pt.probe_num), *(pt.probe_div), stepsize, momentum, velocity, epsilon);
 
     if (pt.probesupport != nullptr) {
-        dim3 shape = dim3(pt.probe->sizex, pt.probe->sizey, pt.probe->sizez);
-        complex* pointer = pt.probe->arrays[0]->gpuptr;
-        SetDevice(pt.gpus, 0);
-
-        if (pt.distance_m > 0) pt.probepropagator->Propagate(pointer, pointer, shape, +pt.distance_m);
-
-        pt.probe->arrays[0][0] *= pt.probesupport->arrays[0][0];
-
-        if (pt.distance_m > 0) pt.probepropagator->Propagate(pointer, pointer, shape, -pt.distance_m);
-
-        pt.probe->BroadcastSync();
+        ApplyProbeSupport(pt);
     }
 }
 
@@ -366,7 +371,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
                     Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
                     KSideExitwave<<<blk,thr>>>(*ptycho.wavefront->arrays[g],  *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi, pos_offx[k], pos_offy[k]);
-                    
+
                     ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,  ptycho.wavefront->arrays[g]->gpuptr,  ptycho.wavefront->arrays[g]->Shape(), 1);
 
                     KComputeError<<<blk,thr>>>(

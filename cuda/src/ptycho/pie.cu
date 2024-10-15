@@ -255,8 +255,10 @@ void PieRun(Pie& pie, int iterations) {
                     pie.ptycho->probereg,
                     pie.ptycho->probestep,
                     obj_abs2_max, rois);
-
         }
+
+        if (pie.ptycho->probesupport != nullptr)
+            ApplyProbeSupport(*pie.ptycho);
 
         if (pie.ptycho->poscorr_iter &&
                 (iter + 1) % pie.ptycho->poscorr_iter == 0)

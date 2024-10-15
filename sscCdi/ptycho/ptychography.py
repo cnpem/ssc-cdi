@@ -320,6 +320,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
                                                         rois=probe_positions,
                                                         difpads=DPs,
                                                         obj=obj,
+                                                        probesupp=algo_inputs["probe_support_array"],
                                                         probe=probe,
                                                         wavelength_m=input_dict["wavelength"],
                                                         pixelsize_m=input_dict["object_pixel"],
