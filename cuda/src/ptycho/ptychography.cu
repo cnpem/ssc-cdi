@@ -88,6 +88,7 @@ extern "C"
             int numiter,
             int* cpugpus, int ngpus,
             float* error_errors_rfactor,
+            float* probesupport,
             int poscorr_iter,
             float step_object, float step_probe,
             float reg_obj, float reg_probe,
@@ -104,7 +105,6 @@ extern "C"
         const int numobjsupport = 0;
 
         float* objsupport = nullptr;
-        float* probesupport = nullptr;
 
         Pie* pie = CreatePie((float*)cpudif,
                 dim3(dsizex,dsizex,numrois),
