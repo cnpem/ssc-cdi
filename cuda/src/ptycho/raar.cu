@@ -173,7 +173,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
     for (int section = 0; section < raar.ptycho->positions.size(); section++) {
         const size_t cur_batch_zsize = raar.ptycho->positions[section]->sizez;
 
-        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize);
+        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize * probeshape.z);
         raar.temp_wavefront[section]->CopyTo(cur_temp_wavefront);
 
         for (int g = 0; g < raar.ptycho->gpus.size(); g++)
@@ -206,7 +206,7 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
     const size_t num_batches = PtychoNumBatches(*raar.ptycho);
     for (int d = 0; d < num_batches; d++) {
         const size_t cur_batch_zsize = raar.ptycho->positions[d]->sizez;
-        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize);
+        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize * probeshape.z);
         raar.temp_wavefront[d]->CopyTo(cur_temp_wavefront);
         RAARProjectProbe(raar, d, cur_temp_wavefront);
         raar.temp_wavefront[d]->CopyFrom(cur_temp_wavefront);
@@ -266,7 +266,7 @@ void RAARRun(RAAR& raar, int iterations) {
             cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
             cur_difpad.LoadToGPU(difpad_batch_ptr);
 
-            cur_temp_wavefront.Resize(probeshape.x, probeshape.y, difpad_batch_zsize);
+            cur_temp_wavefront.Resize(probeshape.x, probeshape.y, difpad_batch_zsize * probeshape.z);
             raar.temp_wavefront[batch_idx]->CopyTo(cur_temp_wavefront);
 
             const size_t ngpus = PtychoNumGpus(*raar.ptycho);
