@@ -162,7 +162,6 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
         if input_dict["algorithms"][str(counter)]['name'] == 'rPIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
             
-
             if 'initial_probe' in input_dict["algorithms"][str(counter)]:
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
@@ -320,7 +319,6 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
                                                         rois=probe_positions,
                                                         difpads=DPs,
                                                         obj=obj,
-                                                        probesupp=algo_inputs["probe_support_array"],
                                                         probe=probe,
                                                         wavelength_m=input_dict["wavelength"],
                                                         pixelsize_m=input_dict["object_pixel"],
@@ -498,6 +496,7 @@ def create_output_h5_file(input_dict):
 
         h5file.create_group(f'metadata/initial_probe')
         for key in input_dict['initial_probe']: # save input probe
+            print(key)
             h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
         
         for key in input_dict['algorithms']: # save algorithms used
@@ -656,7 +655,7 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
             probe_diameter = input_dict['initial_probe'].get('probe_diameter',fzp_diameter)  
             probe_normalize = input_dict['initial_probe'].get('probe_normalize',False)
             probe = probe_model_fzp(wavelength = wavelength,
-                                    grid_shape = 2*input_dict["detector_ROI_radius"],
+                                    grid_shape = DPs.shape[-1],
                                     pixel_size_object = pixel_size_object , 
                                     beam_type =  beam_type,
                                     distance_sample_fzpf = distance_sample_fzpf,
@@ -671,7 +670,7 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
     elif type_of_initial_guess == 'path':
         path = input_dict['initial_probe']["probe"]        
         if os.path.splitext(path)[1] == '.hdf5' or os.path.splitext(path)[1] == '.h5':
-            probe = h5py.File(path,'r')['recon/probe'][()]
+            probe = h5py.File(path,'r')[input_dict['initial_probe']['h5_tree_path']][()]
         elif os.path.splitext(path)[1] == '.npy':
             probe = np.load(path) # load guess from file
     elif type_of_initial_guess == 'array':
@@ -720,7 +719,7 @@ def set_initial_object(input_dict,DPs, probe, obj_shape):
             pass #TODO: implement method from https://doi.org/10.1364/OE.465397
     elif type_of_initial_guess == 'path':
         if os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.hdf5' or os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.h5':
-            obj = h5py.File(input_dict['initial_obj']['obj'],'r')['recon/object'][0] # select first frame of object
+            obj = h5py.File(input_dict['initial_obj']['obj'],'r')[input_dict['initial_obj']['h5_tree_path']] # select first frame of object
         elif os.path.splitext(input_dict['initial_obj']['obj'])[1] == '.npy':
             obj = np.load(input_dict['initial_obj']['obj'])
         obj = np.squeeze(obj)
@@ -770,7 +769,7 @@ def get_probe_support(input_dict,probe_shape):
         probe[:] = create_cross_mask((probe_shape[1],probe_shape[2]),cross_width_y, border, center_square_side)
 
     elif input_dict["probe_support"]["type"] == "array":
-        probe = input_dict["probe_support"]["type"]["data"]
+        probe = input_dict["probe_support"]["data"]
 
     else: 
         raise ValueError(f"Select an appropriate probe support:{input_dict['probe_support']}")
