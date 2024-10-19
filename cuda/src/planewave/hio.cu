@@ -28,17 +28,26 @@ extern "C"{
  
   void hio(ssc_pwcdi_plan *workspace,
            ssc_pwcdi_params *params,
-           int globalIteration,
-           int shrinkWrapSubiter,
-           int initialShrinkWrapSubiter,
-           int extraConstraint,
-           int extraConstraintSubiter,
-           int initialExtraConstraintSubiter){
+           int global_iteration,
+           int shrinkwrap_subiter,
+           int initial_shrinkwrap_subiter,
+           int extra_constraint,
+           int extra_constraint_subiter,
+           int initial_extra_constraint_subiter,
+           float shrinkwrap_threshold,                       
+           int shrinkwrap_iter_filter,
+           int shrinkwrap_mask_multiply,
+           bool shrinkwrap_fftshift_gaussian,
+           float sigma, 
+           float sigma_mult, 
+           float beta,
+           float beta_update,
+           int beta_reset_subiter){
 
     if (workspace->gpus->ngpus == 1){
       // SINGLE-GPU VERSION
     
-      float total, time_projM, time_projS, time_shrinkWrap, time_projExtra, time_computeErr;
+      float total, time_projM, time_projS, time_shrinkwrap, time_projExtra, time_computeErr;
       total = 0.0f;
       time_projExtra = 0.0f;
       time_computeErr = 0.0f;
@@ -46,22 +55,15 @@ extern "C"{
       cudaEventCreate(&start);
       cudaEventCreate(&stop);
 
-      float initialBeta = params->beta;
-      float beta = params->beta;
-      float sigma = params->sigma;  
-      float sigma_mult  = params->sigma_mult;
-      float beta_update = params->beta_update;
-      float sw_threshold = params->sw_threshold;  
-      int sw_iter_filter = params->sw_iter_filter;
-      int sw_mask_multiply = params->sw_mask_multiply;
-    
+      float initial_beta = beta;
+ 
       const dim3 threadsPerBlock(tbx, tby, tbz);
       const dim3 gridBlock (ceil((workspace->dimension + threadsPerBlock.x - 1)/threadsPerBlock.x),
                             ceil((workspace->dimension + threadsPerBlock.y - 1)/threadsPerBlock.y),
                             ceil((workspace->dimension + threadsPerBlock.z - 1)/threadsPerBlock.z));
       
 
-      for (int iter=0; iter<globalIteration; ++iter){
+      for (int iter=0; iter<global_iteration; ++iter){
         // ===============================================
         // Operation: s_projection_M
         
@@ -103,16 +105,16 @@ extern "C"{
         getLastCudaError("ssc-cdi: error / kernel execution failed @ set_difference<<<.>>>\n");
 
         // operate projection_S
-        if (extraConstraintSubiter<=0 && iter>initialExtraConstraintSubiter){
-          // extraConstraint is applied inside projection_S
+        if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
+          // extra_constraint is applied inside projection_S
           s_projection_S(workspace->plan_C2C,
                          workspace->sgpu.d_x,
                          workspace->sgpu.d_y,
                          workspace->sgpu.d_support,
-                         extraConstraint,
+                         extra_constraint,
                          workspace->dimension);
         }else{
-          // extraConstraint is applied separately, after the shrinkWrap
+          // extra_constraint is applied separately, after the shrinkwrap
           s_projection_S(workspace->plan_C2C,
                          workspace->sgpu.d_x,
                          workspace->sgpu.d_y,
@@ -133,7 +135,7 @@ extern "C"{
         // =====================================================================
         // shrink wrap operation
        
-        if (iter%shrinkWrapSubiter==0 && iter>initialShrinkWrapSubiter){
+        if (iter%shrinkwrap_subiter==0 && iter>initial_shrinkwrap_subiter){
           // set timer
           if (workspace->timing){
             cudaEventRecord(start);
@@ -152,9 +154,9 @@ extern "C"{
           // choose how the iteration variable is handled during the filtering operation
           // FILTER_AMPLITUDE uses the absolute value of d_y, while FILTER_FULL uses the 
           // full data
-          if (sw_iter_filter == FILTER_AMPLITUDE){
+          if (shrinkwrap_iter_filter == FILTER_AMPLITUDE){
             // take the absolute value of the iter variable 
-            absolute_value<<<gridBlock, threadsPerBlock>>>(workspace->sgpu.d_y,   // dy 
+            absolute_value<<<gridBlock, threadsPerBlock>>>(workspace->sgpu.d_y,     
                                                             workspace->sgpu.d_x,
                                                             workspace->dimension);
             cudaDeviceSynchronize();
@@ -167,7 +169,7 @@ extern "C"{
                                          workspace->sgpu.d_y,
                                          CUFFT_FORWARD)); 
 
-          }else if (sw_iter_filter == FILTER_FULL){
+          }else if (shrinkwrap_iter_filter == FILTER_FULL){
             // compute fft of the iter variable directly
             checkCudaErrors(cufftExecC2C(workspace->plan_C2C,
                                          workspace->sgpu.d_x, // without the absolute value it is just d_x
@@ -176,7 +178,7 @@ extern "C"{
 
           }
 
-          // create classical gaussian with std sigma
+          // create gaussian function with std sigma
           if (params->swap_d_x==false){
             gaussian1<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_gaussian,
                                                       sigma,
@@ -184,13 +186,7 @@ extern "C"{
             cudaDeviceSynchronize();
             getLastCudaError("ssc-cdi: error / kernel execution failed @ gaussian1<<<.>>>\n");
 
-
-          // fftshift the gaussian kernel 
-          // fftshift<<<gridBlock, threadsPerBlock>>>((void *) workspace->sgpu.d_gaussian,
-          //                                            workspace->dimension,
-          //                                            SSC_DTYPE_CUFFTCOMPLEX);
-          // cudaDeviceSynchronize();
-          // getLastCudaError("ssc-cdi: error / Kernel execution failed @ fftshift<<<.>>>\n");
+ 
 
 
             // // gaussian = FFT(gaussian)
@@ -203,21 +199,21 @@ extern "C"{
             // This performs the convolution of d_y in with the blurring kernel as a multiplication
             // in the Fourier domain. The multiplication can be performed by using both real and
             // imaginary components of the blurring mask, or only its real component. 
-            if (sw_mask_multiply == MULTIPLY_FULL){
+            if (shrinkwrap_mask_multiply == MULTIPLY_FULL){
               multiply<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                        (cufftComplex*) workspace->sgpu.d_gaussian,
                                                        (cufftComplex*) workspace->sgpu.d_y,
                                                        workspace->dimension);
               cudaDeviceSynchronize();
               getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply<<<.>>>\n");
-            }else if (sw_mask_multiply == MULTIPLY_REAL){
+            }else if (shrinkwrap_mask_multiply == MULTIPLY_REAL){
               multiply_rc<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                          (cufftComplex*) workspace->sgpu.d_gaussian,
                                                          (cufftComplex*) workspace->sgpu.d_y,
                                                          workspace->dimension);
               cudaDeviceSynchronize();
               getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_rc<<<.>>>\n");
-            }else if (sw_mask_multiply == MULTIPLY_LEGACY){
+            }else if (shrinkwrap_mask_multiply == MULTIPLY_LEGACY){
               multiply_legacy<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                          (cufftComplex*) workspace->sgpu.d_gaussian,
                                                          (cufftComplex*) workspace->sgpu.d_y,
@@ -226,7 +222,7 @@ extern "C"{
               getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_rc<<<.>>>\n");
             }
 
-          // if d_x is to be swapped to the host during shrinkWrap, then create the 3D Gaussian
+          // if d_x is to be swapped to the host during shrinkwrap, then create the 3D Gaussian
           // function and store it in d_x directly. 
           }else if (params->swap_d_x==true){
             gaussian1<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_x,
@@ -253,21 +249,21 @@ extern "C"{
             // This performs the convolution of d_y in with the blurring kernel as a multiplication
             // in the Fourier domain. The multiplication can be performed by using both real and
             // imaginary components of the blurring mask, or only its real component. 
-            if (sw_mask_multiply == MULTIPLY_FULL){
+            if (shrinkwrap_mask_multiply == MULTIPLY_FULL){
               multiply<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                        (cufftComplex*) workspace->sgpu.d_x,
                                                        (cufftComplex*) workspace->sgpu.d_y,
                                                        workspace->dimension);
               cudaDeviceSynchronize();
               getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply<<<.>>>\n");
-            }else if (sw_mask_multiply == MULTIPLY_REAL){
+            }else if (shrinkwrap_mask_multiply == MULTIPLY_REAL){
               multiply_rc<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                          (cufftComplex*) workspace->sgpu.d_x,
                                                          (cufftComplex*) workspace->sgpu.d_y,
                                                          workspace->dimension);
               cudaDeviceSynchronize();
               getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_rc<<<.>>>\n");
-            }else if (sw_mask_multiply == MULTIPLY_LEGACY){
+            }else if (shrinkwrap_mask_multiply == MULTIPLY_LEGACY){
               multiply_legacy<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
                                                          (cufftComplex*) workspace->sgpu.d_x,
                                                          (cufftComplex*) workspace->sgpu.d_y,
@@ -283,8 +279,6 @@ extern "C"{
                                        cudaMemcpyHostToDevice));
           }
 
-
-
           // dy = IFFT(dy)
           checkCudaErrors(cufftExecC2C(workspace->plan_C2C,
                                        workspace->sgpu.d_y,
@@ -293,7 +287,7 @@ extern "C"{
     
           // normalize 
           normalize<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_y,
-                    workspace->dimension);
+                                                    workspace->dimension);
           cudaDeviceSynchronize();
           getLastCudaError("ssc-cdi: error / kernel execution failed @ normalize<<<.>>>\n");
       
@@ -301,67 +295,56 @@ extern "C"{
  
 
           // find max value
-          float globalMax;
-          cufftComplex cglobalMax;
-          int idxMax;
-          cublasHandle_t handle;
-          cublasStatus_t stat;
-          cublasCreate(&handle);
+          float global_max, global_min;
+          cufftComplex cglobal_max, cglobal_min;
+          int idx_max, idx_min;
+          cublasHandle_t handle_max, handle_min;
+          cublasStatus_t stat_max, stat_min;
+
+          cublasCreate(&handle_max);
+          cublasCreate(&handle_min);
         
-          stat = cublasIcamax(handle, workspace->dimension, workspace->sgpu.d_y, 1, &idxMax);
+          stat_max = cublasIcamax(handle_max, workspace->dimension, workspace->sgpu.d_y, 1, &idx_max);
           
-          if (stat == CUBLAS_STATUS_NOT_INITIALIZED )
+          if (stat_max == CUBLAS_STATUS_NOT_INITIALIZED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-          
-          if (stat == CUBLAS_STATUS_ALLOC_FAILED )
+          if (stat_max == CUBLAS_STATUS_ALLOC_FAILED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-          
-          if (stat == CUBLAS_STATUS_EXECUTION_FAILED )
+          if (stat_max == CUBLAS_STATUS_EXECUTION_FAILED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-          
-          if (stat == CUBLAS_STATUS_INVALID_VALUE )
+          if (stat_max == CUBLAS_STATUS_INVALID_VALUE)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
           
-          cudaMemcpy(&cglobalMax,
-               (cufftComplex*) workspace->sgpu.d_y + idxMax - 1,
-               sizeof(cufftComplex),
-               cudaMemcpyDeviceToHost);
+          cudaMemcpy(&cglobal_max,
+                     (cufftComplex*) workspace->sgpu.d_y + idx_max - 1,
+                     sizeof(cufftComplex),
+                     cudaMemcpyDeviceToHost);
           
-          globalMax = sqrtf(powf(fabs(cglobalMax.x),2.0) + powf(fabs(cglobalMax.y),2.0));
-          cublasDestroy(handle);
+          global_max = sqrtf(powf(fabs(cglobal_max.x),2.0) + powf(fabs(cglobal_max.y),2.0));
+          cublasDestroy(handle_max);
       
-          //find min value
-          float globalMin;
-          cufftComplex cglobalMin;
-          int idxMin;
-          cublasHandle_t handleMin;
-          cublasStatus_t statMin;
-          cublasCreate(&handleMin);
-        
-          statMin = cublasIcamin(handleMin, workspace->dimension, workspace->sgpu.d_y, 1, &idxMin);
+          //find min value        
+          stat_min = cublasIcamin(handle_min, workspace->dimension, workspace->sgpu.d_y, 1, &idx_min);
           
-          if (statMin == CUBLAS_STATUS_NOT_INITIALIZED)
+          if (stat_min == CUBLAS_STATUS_NOT_INITIALIZED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMin<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-          
-          if (statMin == CUBLAS_STATUS_ALLOC_FAILED)
+          if (stat_min == CUBLAS_STATUS_ALLOC_FAILED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMin<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-          
-          if (statMin == CUBLAS_STATUS_EXECUTION_FAILED)
+          if (stat_min == CUBLAS_STATUS_EXECUTION_FAILED)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMin<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-          
-          if (statMin == CUBLAS_STATUS_INVALID_VALUE)
+          if (stat_min == CUBLAS_STATUS_INVALID_VALUE)
             fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMin<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
           
-          cudaMemcpy(&cglobalMin,
-               (cufftComplex*) workspace->sgpu.d_y + idxMin - 1,
-               sizeof(cufftComplex),
-               cudaMemcpyDeviceToHost);
+          cudaMemcpy(&cglobal_min,
+                    (cufftComplex*) workspace->sgpu.d_y + idx_min - 1,
+                    sizeof(cufftComplex),
+                    cudaMemcpyDeviceToHost);
           
-          globalMin = sqrtf(powf(fabs(cglobalMin.x),2.0) + powf(fabs(cglobalMin.y),2.0));
-          cublasDestroy(handleMin);
+          global_min = sqrtf(powf(fabs(cglobal_min.x),2.0) + powf(fabs(cglobal_min.y),2.0));
+          cublasDestroy(handle_min);
     
-          printf("ssc-cdi: GlobalMax (single gpu) = %lf \n", globalMax);
-          printf("ssc-cdi: GlobalMin (single gpu) = %lf \n", globalMin);
+          printf("ssc-cdi: global_max (single gpu, cublasIcamin) = %lf \n", global_max);
+          printf("ssc-cdi: global_min (single gpu, cublasIcamin) = %lf \n", global_min);
 
           // dsupp = abs( dy ) > (threshold/100) * Max ( abs(dy) )
           //
@@ -369,11 +352,11 @@ extern "C"{
           // true: use index(globalMax) as the index for the thresholing inside kernel
           update_support_sw<<<gridBlock, threadsPerBlock>>>(workspace->sgpu.d_support,
                                                             workspace->sgpu.d_y,
-                                                            sw_threshold,
-                                                            globalMax,
-                                                            globalMin, //0.0f, // globalMin, // 0.0f;
-                                                            idxMax,
-                                                            idxMin,
+                                                            shrinkwrap_threshold,
+                                                            global_max,
+                                                            global_min, // 0.0f;
+                                                            idx_max,
+                                                            idx_min,
                                                             workspace->dimension,
                                                             false);
           cudaDeviceSynchronize();
@@ -381,8 +364,8 @@ extern "C"{
 
           // // fftshift the support computing it    
           fftshift<<<gridBlock, threadsPerBlock>>>((void *) workspace->sgpu.d_support,
-                                                     workspace->dimension,
-                                                     SSC_DTYPE_BYTE);
+                                                   workspace->dimension,
+                                                   SSC_DTYPE_BYTE);
           cudaDeviceSynchronize();
           getLastCudaError("ssc-cdi: error / Kernel execution failed @ fftshift<<<.>>>\n");
 
@@ -390,15 +373,15 @@ extern "C"{
           
 
           //  update sigma 
-          sigma = sigma_mult * sigma;
+          sigma = sigma_mult*sigma;
           
-          // // update beta
-          // if (params->betaResetSubiter>0 && iter%params->betaResetSubiter==0 && iter>0){
+          // update beta
+          // if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){
           //   // reset beta
-          //   beta = initialBeta;
+          //   beta = initial_Beta;
           // }else{
           //   // update beta
-          //   beta = initialBeta + (1 - initialBeta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
+          //   beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
           // }
 
           // debug new values for beta and sigma  
@@ -408,34 +391,34 @@ extern "C"{
 
           cudaEventRecord(stop);
           cudaEventSynchronize(stop);
-          cudaEventElapsedTime(&time_shrinkWrap, start, stop);
+          cudaEventElapsedTime(&time_shrinkwrap, start, stop);
           if (workspace->timing){
-            fprintf(stdout,"ssc-cdi: ShrinkWrap() time: %lf ms\n", time_shrinkWrap);   
+            fprintf(stdout,"ssc-cdi: Shrinkwrap() time: %lf ms\n", time_shrinkwrap);   
           }
       
         }else{
-          time_shrinkWrap = 0;
+          time_shrinkwrap = 0;
         }        
 
 
         // update beta
-        if (params->betaResetSubiter>0 && iter%params->betaResetSubiter==0 && iter>0){
+        if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){ // params->
           // reset beta
-          beta = initialBeta;
+          beta = initial_beta;
         }else{
           // update beta
-          beta = initialBeta + (1 - initialBeta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
+          beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
         }
 
 
       // ===============================================
-      // Operation s_projection_extraConstraint
+      // Operation s_projection_extra_constraint
 
 
-        // operation projection extraconstraint 
-        if (extraConstraint != NO_EXTRA_CONSTRAINT &&
-            extraConstraintSubiter>0 && 
-            iter>initialExtraConstraintSubiter && iter%extraConstraintSubiter==0){
+        // operation projection extra_constraint 
+        if (extra_constraint != NO_EXTRA_CONSTRAINT &&
+            extra_constraint_subiter>0 && 
+            iter>initial_extra_constraint_subiter && iter%extra_constraint_subiter==0){
 
           // set timer 
           if (workspace->timing){
@@ -443,9 +426,9 @@ extern "C"{
           }
           
           // perform the projection 
-          s_projection_extraConstraint(workspace->sgpu.d_x,
+          s_projection_extra_constraint(workspace->sgpu.d_x,
                                        workspace->sgpu.d_x,  
-                                       extraConstraint,
+                                       extra_constraint,
                                        workspace->dimension);
 
           // stop timer
@@ -463,22 +446,22 @@ extern "C"{
 
  
         // compute and store errors 
-        if (params->errType!=NO_ERR && iter%params->errSubiter==0){
+        if (params->err_type!=NO_ERR && iter%params->err_subiter==0){
           // set timer 
           if (workspace->timing){
            cudaEventRecord(start);
           }
 
           // ITER_DIFF case 
-          if (params->errType==ITER_DIFF){
-            if (iter>params->errSubiter){
+          if (params->err_type==ITER_DIFF){
+            if (iter>params->err_subiter){
               // if this is not the first subiter, then compute the error
               set_difference<<<gridBlock, threadsPerBlock>>>(workspace->sgpu.d_x_lasterr,  
-                                                                 workspace->sgpu.d_x, 
-                                                                 workspace->sgpu.d_x_lasterr,
-                                                                 1.0, 
-                                                                 1.0,
-                                                                 workspace->dimension);
+                                                             workspace->sgpu.d_x, 
+                                                             workspace->sgpu.d_x_lasterr,
+                                                             1.0, 
+                                                             1.0,
+                                                             workspace->dimension);
               cudaDeviceSynchronize();
               getLastCudaError("ssc-cdi: error / Kernel execution failed @ set_difference<<<.>>>\n");
 
@@ -536,11 +519,11 @@ extern "C"{
 
         // debug timers 
         if (workspace->timing){
-          total = total + (time_projM + time_projS + time_shrinkWrap + time_projExtra + time_computeErr);
+          total = total + (time_projM + time_projS + time_shrinkwrap + time_projExtra + time_computeErr);
           fprintf(stdout,
                   "ssc-cdi: Iteration %d takes %lf ms ** \n\n", 
                   iter, 
-                  time_projM + time_projS + time_shrinkWrap + time_projExtra + time_computeErr); 
+                  time_projM + time_projS + time_shrinkwrap + time_projExtra + time_computeErr); 
         }
 
 
@@ -568,7 +551,7 @@ extern "C"{
 
 
   
-      float total, time_projM, time_projS, time_shrinkWrap, time_projExtra, time_computeErr;
+      float total, time_projM, time_projS, time_shrinkwrap, time_projExtra, time_computeErr;
       total = 0.0f;
       time_projExtra = 0.0f;
       time_computeErr = 0.0f;
@@ -589,21 +572,8 @@ extern "C"{
       idxMinvalue = (int *)malloc( sizeof(int) * n_gpus);
       minvalue    = (float *)malloc( sizeof(float) * n_gpus);
       cminvalue   = (cufftComplex *)malloc( sizeof(cufftComplex) * n_gpus);
-
-      // status = cudaMallocHost((void**)&idxMaxvalue, (size_t) (n_gpus*sizeof(int)));
-      // status = cudaMallocHost((void**)&maxvalue, (size_t) (n_gpus*sizeof(float)));
-      // status = cudaMallocHost((void**)&cmaxvalue, (size_t) (n_gpus*sizeof(cufftComplex)));
-
     
-      float initialBeta = params->beta;
-      float beta = params->beta;
-      float sw_threshold = params->sw_threshold;
-      int sw_iter_filter = params->sw_iter_filter;
-      int sw_mask_multiply = params->sw_mask_multiply;
-      float sigma = params->sigma; //0.1;  
-      float sigma_mult = params->sigma_mult;
-      float beta_update = params->beta_update;
-
+      float initial_beta = beta;
 
     
       //-----------------------------------------------------------
@@ -613,7 +583,7 @@ extern "C"{
       // reminder: workspace->dx already contains the initial point
        
 
-      for (int iter=0; iter<globalIteration; iter++){
+      for (int iter=0; iter<global_iteration; iter++){
         // =======================================================
         // operation m_projection_M
 
@@ -676,17 +646,17 @@ extern "C"{
         }
          
         // compute the projection
-        if (extraConstraintSubiter<=0 && iter>initialExtraConstraintSubiter){
-          // extraConstraint is applied inside projection_S
+        if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
+          // extra_constraint is applied inside projection_S
           m_projection_S(workspace->mgpu.d_x, //  
                          workspace->mgpu.d_y,              
                          workspace->mgpu.d_support,
-                         extraConstraint,   
+                         extra_constraint,   
                          dim,
                          perGPUDim,
                          workspace->gpus);
         }else{
-          // extraConstraint is applied separately, after shrinkWrap
+          // extra_constraint is applied separately, after shrinkwrap
           m_projection_S(workspace->mgpu.d_x, //  
                          workspace->mgpu.d_y,              
                          workspace->mgpu.d_support,
@@ -706,16 +676,16 @@ extern "C"{
 
 
         // ============================================================
-        // operation: shrink wrap  
+        // operation: shrinkwrap  
 
         // set timer 
         if (workspace->timing){  
           cudaEventRecord(start);
         }
 
-        if (iter%shrinkWrapSubiter==0 && iter>initialShrinkWrapSubiter){
+        if (iter%shrinkwrap_subiter==0 && iter>initial_shrinkwrap_subiter){
 
-          // store no pointer during shrinkWrap
+          // store no pointer during shrinkwrap
           if (params->swap_d_x==false){
 
             // copy the content of d_x, which is in natural ordering format, to d_s
@@ -744,7 +714,7 @@ extern "C"{
             for(int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
               
-              if (params->sw_fftshift_gaussian == true){
+              if (shrinkwrap_fftshift_gaussian == true){ // params->sw_fftshift_gaussian
                 gaussian1_freq_fftshift_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_y->descriptor->data[i],
                                                                              sigma,
                                                                              workspace->dimension,
@@ -768,7 +738,7 @@ extern "C"{
             // choose how the iteration variable is handled during the filtering operation
             // FILTER_AMPLITUDE uses the absolute value of d_y, while FILTER_FULL uses the 
             // full data
-            if (sw_iter_filter==FILTER_AMPLITUDE){
+            if (shrinkwrap_iter_filter==FILTER_AMPLITUDE){
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
                 absolute_value_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*)workspace->mgpu.d_z->descriptor->data[i],
@@ -781,7 +751,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ absolute_value_mgpu<<<.>>>\n");
               }
-            }else if (sw_iter_filter==FILTER_FULL){
+            }else if (shrinkwrap_iter_filter==FILTER_FULL){
             }
             
             // FFT of d_y, which is holding the gaussian volume
@@ -798,7 +768,7 @@ extern "C"{
             // This performs the convolution of d_y in with the blurring kernel as a multiplication
             // in the Fourier domain. The multiplication can be performed by using both real and
             // imaginary components of the blurring mask, or only its real component. 
-            if (sw_mask_multiply == MULTIPLY_FULL){
+            if (shrinkwrap_mask_multiply == MULTIPLY_FULL){
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
                 multiply_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], //to
@@ -811,7 +781,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_mgpu<<<.>>>\n");
               }
-            }else if (sw_mask_multiply == MULTIPLY_REAL){
+            }else if (shrinkwrap_mask_multiply == MULTIPLY_REAL){
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors( cudaSetDevice(  workspace->gpus->gpus[i] ) );
                 multiply_rc_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], //to
@@ -824,7 +794,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_rc_mgpu<<<.>>>\n");
               }
-            }else if (sw_mask_multiply==MULTIPLY_LEGACY){
+            }else if (shrinkwrap_mask_multiply==MULTIPLY_LEGACY){
 
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors( cudaSetDevice(  workspace->gpus->gpus[i] ) );
@@ -857,99 +827,72 @@ extern "C"{
               getLastCudaError("ssc-cdi: error / kernel execution failed @ normalize_mgpu<<<.>>>\n");
             }
 
-            // permuted2natural(workspace->mgpu.d_z, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
+            // make sure the subFormat is inplace
             workspace->mgpu.d_y->subFormat = CUFFT_XT_FORMAT_INPLACE;
 
 
-            //     // debug mgpu (cudaLibXtDesc*)
-            // printf("MGPU NORMALIZER = %d\n",workspace->nvoxels);
-            // workspace->mgpu.d_x->subFormat = CUFFT_XT_FORMAT_INPLACE;
-            // for(int i = 0; i < n_gpus; i++){
-            //   checkCudaErrors( cudaSetDevice(  workspace->gpus->gpus[i] ) );
-            //   checkCudaErrors(cudaMemcpy(workspace->mgpu.d_x->descriptor->data[i],  //to
-            //    workspace->mgpu.d_y->descriptor->data[i],  //from
-            //    perGPUDim * sizeof(cufftComplex),
-            //    cudaMemcpyDeviceToDevice)); 
-            // } 
-            // return;
 
-
-            // int *version = (int*)malloc(sizeof(int));
-            // cudaDeviceSynchronize();
-            // cufftGetVersion(version);
-            // printf("version ======= %d",*version);
-     
-
-            // fix the ordering of d_y, but it's not necessary to be executed since ifft already fixes the indexes
-            // permuted2natural(workspace->mgpu.d_y, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
-
- 
             // find max value of abs(d_y)
             // TODO: unify both calls into a single one 
             //https://forums.developer.nvidia.com/t/how-to-get-the-max-value-in-a-vector-when-using-cublas/15360
 
-            float globalMax;
-            cublasHandle_t handle;
-            cublasStatus_t stat;
-            cublasCreate(&handle);
-
-            // globalmin
-            float globalMin;
-            cublasHandle_t handleMin;
-            cublasStatus_t statMin;
-            cublasCreate(&handleMin);
+            float global_max, global_min;
+            cublasHandle_t handle_max, handle_min;
+            cublasStatus_t stat_max, stat_min;
+            cublasCreate(&handle_max);
+            cublasCreate(&handle_min);
 
      
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              stat = cublasIcamax(handle, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMaxvalue[i] );
-              statMin = cublasIcamin(handleMin, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMinvalue[i] );
+              stat_max = cublasIcamax(handle_max, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMaxvalue[i] );
+              stat_min = cublasIcamin(handle_min, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMinvalue[i] );
      
-
-              if (stat == CUBLAS_STATUS_NOT_INITIALIZED ){
+              // debug possible errors in stat_max
+              if (stat_max == CUBLAS_STATUS_NOT_INITIALIZED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-              }else if (stat == CUBLAS_STATUS_ALLOC_FAILED ){
+              }else if (stat_max == CUBLAS_STATUS_ALLOC_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-              }else if (stat == CUBLAS_STATUS_EXECUTION_FAILED ){
+              }else if (stat_max == CUBLAS_STATUS_EXECUTION_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-              }else if (stat == CUBLAS_STATUS_INVALID_VALUE ){
+              }else if (stat_max == CUBLAS_STATUS_INVALID_VALUE){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
               }     
 
-
-              if (statMin == CUBLAS_STATUS_NOT_INITIALIZED ){
+              // debug possible errors in stat_min  
+              if (stat_min == CUBLAS_STATUS_NOT_INITIALIZED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-              }else if (statMin == CUBLAS_STATUS_ALLOC_FAILED ){
+              }else if (stat_min == CUBLAS_STATUS_ALLOC_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-              }else if (statMin == CUBLAS_STATUS_EXECUTION_FAILED ){
+              }else if (stat_min == CUBLAS_STATUS_EXECUTION_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-              }else if (statMin == CUBLAS_STATUS_INVALID_VALUE ){
+              }else if (stat_min == CUBLAS_STATUS_INVALID_VALUE){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
               }     
 
               cudaMemcpy(&cmaxvalue[i],
-                 (cufftComplex *)workspace->mgpu.d_z->descriptor->data[i] + idxMaxvalue[i]-1,
-                 sizeof(cufftComplex),
-                 cudaMemcpyDeviceToHost);
+                         (cufftComplex *)workspace->mgpu.d_z->descriptor->data[i] + idxMaxvalue[i]-1,
+                         sizeof(cufftComplex),
+                         cudaMemcpyDeviceToHost);
 
               maxvalue[i] = sqrtf(powf(fabs(cmaxvalue[i].x),2.0) + powf(fabs(cmaxvalue[i].y), 2.0));
               // fprintf(stdout, "ssc-cdi: (%lf) ",maxvalue[i] );
 
 
               cudaMemcpy(&cminvalue[i],
-                 (cufftComplex *)workspace->mgpu.d_z->descriptor->data[i] + idxMinvalue[i]-1,
-                 sizeof(cufftComplex),
-                 cudaMemcpyDeviceToHost);
+                         (cufftComplex *)workspace->mgpu.d_z->descriptor->data[i] + idxMinvalue[i]-1,
+                         sizeof(cufftComplex),
+                         cudaMemcpyDeviceToHost);
 
               minvalue[i] = sqrtf(powf(fabs(cminvalue[i].x),2.0) + powf(fabs(cminvalue[i].y), 2.0));
               // fprintf(stdout, "ssc-cdi: (%lf) ",minvalue[i]);
 
             }
         
-            cublasDestroy(handle);
-            largest (&globalMax, maxvalue, n_gpus);
-            cublasDestroy(handleMin);
-            smallest (&globalMin, minvalue, n_gpus);
+            cublasDestroy(handle_max);
+            largest(&global_max, maxvalue, n_gpus);
+            cublasDestroy(handle_min);
+            smallest(&global_min, minvalue, n_gpus);
             
             // sync all gpus
             for(int i=0; i<n_gpus; i++){
@@ -958,13 +901,10 @@ extern "C"{
             }
 
             // debug 
-            fprintf(stdout,"ssc-cdi: globalMax:= %lf\n", globalMax);     
-            fprintf(stdout,"ssc-cdi: globalMin:= %lf\n", globalMin);     
+            fprintf(stdout,"ssc-cdi: global_max:= %lf\n", global_max);     
+            fprintf(stdout,"ssc-cdi: global_min:= %lf\n", global_min);     
 
 
-  
-
- 
             // update support 
             for(int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
@@ -972,9 +912,9 @@ extern "C"{
               // dsupp = abs( dz ) > (threshold/100) * Max ( abs(dz) )
               update_support_sw_mgpu<<<gridBlock, threadsPerBlock>>>(workspace->mgpu.d_support[i],
                                                                     (cufftComplex *) workspace->mgpu.d_z->descriptor->data[i],
-                                                                    sw_threshold,
-                                                                    globalMax,
-                                                                    globalMin, //0.0f, //globalMin,
+                                                                    shrinkwrap_threshold,
+                                                                    global_max,
+                                                                    global_min,
                                                                     perGPUDim);
             }
         
@@ -985,14 +925,14 @@ extern "C"{
             }
      
             
-            if (params->sw_fftshift_gaussian==false){
+            if (shrinkwrap_fftshift_gaussian==false){  
               // fftshift the support after computing it 
               m_fftshift(workspace->mgpu.d_support, 
-                                    (size_t) cbrt((double)workspace->nvoxels), 
-                                    SSC_DTYPE_BYTE, 
-                                    workspace->host_swap_byte,
-                                    perGPUDim,
-                                    workspace->gpus);
+                         (size_t) cbrt((double)workspace->nvoxels), 
+                         SSC_DTYPE_BYTE, 
+                         workspace->host_swap_byte,
+                         perGPUDim,
+                         workspace->gpus);
             }
           
 
@@ -1001,12 +941,12 @@ extern "C"{
             sigma = sigma_mult * sigma;
             
             // // update beta
-            // if (params->betaResetSubiter>0 && iter%params->betaResetSubiter==0 && iter>0){
+            // if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){
             //   // reset beta
-            //   beta = initialBeta;
+            //   beta = initial_beta;
             // }else{
             //   // update beta
-            //   beta = initialBeta + (1 - initialBeta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
+            //   beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
             // }
 
 
@@ -1026,7 +966,7 @@ extern "C"{
             // create shifted Gaussian directly 
             for(int i = 0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              if (params->sw_fftshift_gaussian==true){
+              if (shrinkwrap_fftshift_gaussian==true){ //params->sw_fftshift_gaussian
                 gaussian1_freq_fftshift_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i],
                                                                              sigma,
                                                                              workspace->dimension,
@@ -1049,7 +989,7 @@ extern "C"{
             // choose how the iteration variable is handled during the filtering operation
             // FILTER_AMPLITUDE uses the absolute value of d_y, while FILTER_FULL uses the 
             // full data
-            if (sw_iter_filter == FILTER_AMPLITUDE){
+            if (shrinkwrap_iter_filter == FILTER_AMPLITUDE){
               for (int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
                 absolute_value_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*)workspace->mgpu.d_x->descriptor->data[i],
@@ -1062,7 +1002,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ absolute_value_mgpu<<<.>>>\n");
               }
-            }else if (sw_iter_filter==FILTER_FULL){
+            }else if (shrinkwrap_iter_filter==FILTER_FULL){
             }
    
             // FFT of d_y, which is holding the gaussian volume
@@ -1079,7 +1019,7 @@ extern "C"{
             // This performs the convolution of d_y in with the blurring kernel as a multiplication
             // in the Fourier domain. The multiplication can be performed by using both real and
             // imaginary components of the blurring mask, or only its real component. 
-            if (sw_mask_multiply==MULTIPLY_FULL){
+            if (shrinkwrap_mask_multiply==MULTIPLY_FULL){
               for(int i = 0; i < n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
           
@@ -1095,7 +1035,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_mgpu<<<.>>>\n");
               }
-            }else if(sw_mask_multiply==MULTIPLY_REAL){
+            }else if(shrinkwrap_mask_multiply==MULTIPLY_REAL){
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
                 multiply_rc_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //to
@@ -1110,7 +1050,7 @@ extern "C"{
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
                 getLastCudaError("ssc-cdi: error / kernel execution failed @ multiply_rc_mgpu<<<.>>>\n");
               }
-            }else if(sw_mask_multiply==MULTIPLY_LEGACY){
+            }else if(shrinkwrap_mask_multiply==MULTIPLY_LEGACY){
               for(int i = 0; i < n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
           
@@ -1156,42 +1096,37 @@ extern "C"{
             // todo: unify these calls into a single one 
             //https://forums.developer.nvidia.com/t/how-to-get-the-max-value-in-a-vector-when-using-cublas/15360
 
-            float globalMax;
-            cublasHandle_t handle;
-            cublasStatus_t stat;
-            cublasCreate(&handle);
-
-            // globalmin
-            float globalMin;
-            cublasHandle_t handleMin;
-            cublasStatus_t statMin;
-            cublasCreate(&handleMin);
+            float global_max, global_min;
+            cublasHandle_t handle_max, handle_min;
+            cublasStatus_t stat_max, stat_min;
+            cublasCreate(&handle_max);
+            cublasCreate(&handle_min);
 
      
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              stat = cublasIcamax(handle, perGPUDim, (const cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], 1, &idxMaxvalue[i]);
-              statMin = cublasIcamin(handleMin, perGPUDim, (const cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], 1, &idxMinvalue[i]);
+              stat_max = cublasIcamax(handle_max, perGPUDim, (const cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], 1, &idxMaxvalue[i]);
+              stat_min = cublasIcamin(handle_min, perGPUDim, (const cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], 1, &idxMinvalue[i]);
      
-
-              if (stat == CUBLAS_STATUS_NOT_INITIALIZED ){
+              // debug possible error in stat_max  
+              if (stat_max == CUBLAS_STATUS_NOT_INITIALIZED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-              }else if (stat == CUBLAS_STATUS_ALLOC_FAILED ){
+              }else if (stat_max == CUBLAS_STATUS_ALLOC_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-              }else if (stat == CUBLAS_STATUS_EXECUTION_FAILED ){
+              }else if (stat_max == CUBLAS_STATUS_EXECUTION_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-              }else if (stat == CUBLAS_STATUS_INVALID_VALUE ){
+              }else if (stat_max == CUBLAS_STATUS_INVALID_VALUE){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
               }     
 
 
-              if (statMin == CUBLAS_STATUS_NOT_INITIALIZED ){
+              if (stat_min == CUBLAS_STATUS_NOT_INITIALIZED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_NOT_INITIALIZED\n");
-              }else if (statMin == CUBLAS_STATUS_ALLOC_FAILED ){
+              }else if (stat_min == CUBLAS_STATUS_ALLOC_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_ALLOC_FAILED\n");
-              }else if (statMin == CUBLAS_STATUS_EXECUTION_FAILED ){
+              }else if (stat_min == CUBLAS_STATUS_EXECUTION_FAILED){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_EXECUTION_FAILED\n");
-              }else if (statMin == CUBLAS_STATUS_INVALID_VALUE ){
+              }else if (stat_min == CUBLAS_STATUS_INVALID_VALUE){
                 fprintf(stderr,"ssc-cdi: cublas error / cublasIsaMax<<<.>>> failed: CUBLAS_STATUS_INVALID_VALUE\n");
               }     
 
@@ -1214,16 +1149,16 @@ extern "C"{
 
             }
         
-            cublasDestroy(handle);
-            largest (&globalMax, maxvalue, n_gpus);
-            cublasDestroy(handleMin);
-            smallest (&globalMin, minvalue, n_gpus);
+            cublasDestroy(handle_max);
+            largest (&global_max, maxvalue, n_gpus);
+            cublasDestroy(handle_min);
+            smallest (&global_min, minvalue, n_gpus);
 
 
-            fprintf(stdout,"ssc-cdi: computed globalMax:= %lf\n", globalMax);     
-            fprintf(stdout,"ssc-cdi: computed globalMin:= %lf\n", globalMin);     
+            fprintf(stdout,"ssc-cdi: computed global_max:= %lf\n", global_max);     
+            fprintf(stdout,"ssc-cdi: computed global_min:= %lf\n", global_min);     
 
-            // sync
+            // sync all gpus
             for(int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i])); 
                 checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i])); 
@@ -1231,16 +1166,15 @@ extern "C"{
 
 
 
-            // update support, other variables  
-            // update support 
+            // update support
             for(int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
               update_support_sw_mgpu<<<gridBlock, threadsPerBlock>>>(workspace->mgpu.d_support[i],
-                                                                    (cufftComplex *) workspace->mgpu.d_x->descriptor->data[i],
-                                                                    sw_threshold,
-                                                                    globalMax,
-                                                                    globalMin, //0.0f, //globalMin,
-                                                                    perGPUDim);
+                                                                     (cufftComplex *) workspace->mgpu.d_x->descriptor->data[i],
+                                                                     shrinkwrap_threshold,
+                                                                     global_max,
+                                                                     global_min,  
+                                                                     perGPUDim);
             }
             for(int i = 0; i < n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i])); 
@@ -1249,7 +1183,7 @@ extern "C"{
             }
      
             
-            if (params->sw_fftshift_gaussian==false){
+            if (shrinkwrap_fftshift_gaussian==false){  // params->sw_fftshift_gaussian
               // fftshift the support after computing it 
               m_fftshift(workspace->mgpu.d_support, 
                          (size_t) cbrt((double)workspace->nvoxels), 
@@ -1276,35 +1210,35 @@ extern "C"{
 
  
         }else{ 
-          time_shrinkWrap = 0;
+          time_shrinkwrap = 0;
         } // end of shrinkwrap
 
         // stop timer 
         if (workspace->timing){
           cudaEventRecord(stop);
           cudaEventSynchronize(stop);
-          cudaEventElapsedTime(&time_shrinkWrap, start, stop);
-          fprintf(stdout, "ssc-cdi: time_shrinkWrap = %f\n", time_shrinkWrap);
+          cudaEventElapsedTime(&time_shrinkwrap, start, stop);
+          fprintf(stdout, "ssc-cdi: time_shrinkwrap = %f\n", time_shrinkwrap);
         }
 
 
         // update beta
-        if (params->betaResetSubiter>0 && iter%params->betaResetSubiter==0 && iter>0){
+        if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){
           // reset beta
-          beta = initialBeta;
+          beta = initial_beta;
         }else{
           // update beta
-          beta = initialBeta + (1 - initialBeta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
+          beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
         }
 
 
         // ==========================
-        // operation: m_projection_extraConstraint
+        // operation: m_projection_extra_constraint
 
-        // projection_extraConstraint is only performed in the following case
-        if (extraConstraint != NO_EXTRA_CONSTRAINT &&
-            extraConstraintSubiter>0 && 
-            iter>initialExtraConstraintSubiter && iter%extraConstraintSubiter==0){
+        // projection_extra_constraint is only performed in the following case
+        if (extra_constraint != NO_EXTRA_CONSTRAINT &&
+            extra_constraint_subiter>0 && 
+            iter>initial_extra_constraint_subiter && iter%extra_constraint_subiter==0){
 
           // set timer 
           if (workspace->timing){  
@@ -1312,9 +1246,9 @@ extern "C"{
           }
 
           // perform the projection with extra constraint
-          m_projection_extraConstraint(workspace->mgpu.d_x,
+          m_projection_extra_constraint(workspace->mgpu.d_x,
                                        workspace->mgpu.d_x,  
-                                       extraConstraint, 
+                                       extra_constraint, 
                                        dim,
                                        perGPUDim,
                                        workspace->gpus);
@@ -1329,7 +1263,7 @@ extern "C"{
 
         // ==========================
         // operation: compute and store errors 
-        if (params->errType!=NO_ERR && iter%params->errSubiter==0){
+        if (params->err_type!=NO_ERR && iter%params->err_subiter==0){
 
           // set timer
           if (workspace->timing){  
@@ -1337,8 +1271,8 @@ extern "C"{
           }
 
           // ITER_DIFF case
-          if (params->errType==ITER_DIFF){
-            if (iter>params->errSubiter){
+          if (params->err_type==ITER_DIFF){
+            if (iter>params->err_subiter){
               // if this is not the first subiter, then compute the error
               for(int i=0; i<n_gpus; i++){
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
@@ -1433,13 +1367,13 @@ extern "C"{
 
         // debug iteration timers 
         if (workspace->timing){  
-          total = total + (time_projM + time_projS + time_shrinkWrap + time_projExtra + time_computeErr);
+          total = total + (time_projM + time_projS + time_shrinkwrap + time_projExtra + time_computeErr);
           fprintf(stdout,
                   "ssc-cdi: Iteration %d takes %lf ms ** \n\n", 
                   iter, 
                   time_projM + 
                   time_projS + 
-                  time_shrinkWrap + 
+                  time_shrinkwrap + 
                   time_projExtra + 
                   time_computeErr);        
         }

@@ -9,12 +9,21 @@
 extern "C"{
   void er(ssc_pwcdi_plan *workspace,
 		  ssc_pwcdi_params *params,
-		  int globalIteration,
-		  int shrinkWrapSubiter,
-		  int initialShrinkWrapSubiter,
-		  int extraConstraint,
-		  int extraConstraintSubiter,
-		  int initialExtraConstraintSubiter){
+		  int global_iteration,
+		  int shrinkwrap_subiter,
+		  int initial_shrinkwrap_subiter,
+		  int extra_constraint,
+		  int extra_constraint_subiter,
+		  int initial_extra_constraint_subiter,
+		  float shrinkwrap_threshold,                      
+      int shrinkwrap_iter_filter,
+      int shrinkwrap_mask_multiply,
+      bool shrinkwrap_fftshift_gaussian,
+      float sigma, 
+      float sigma_mult, 
+      float beta,
+      float beta_update,
+      int beta_reset_subiter){
   	
     if(workspace->gpus->ngpus==1){
 		// SINGLE-GPU CASE
@@ -32,7 +41,7 @@ extern "C"{
 
 			// reminder: workspace->dx already contains the starting point
 		
-			for (int iter=0; iter<globalIteration; ++iter){
+			for (int iter=0; iter<global_iteration; ++iter){
 		    // ===============================================
 		    // Operation: s_projection_M()
 		    
@@ -45,8 +54,8 @@ extern "C"{
 		    
         // perform the projection onto the set M
 		    s_projection_M(workspace->plan_C2C,
-										   workspace->sgpu.d_y, //to
-										   workspace->sgpu.d_x, //from
+										   workspace->sgpu.d_y,       //to
+										   workspace->sgpu.d_x,       //from
 										   workspace->sgpu.d_signal,
 											 params->eps_zeroamp,
 										   workspace->dimension);
@@ -71,7 +80,7 @@ extern "C"{
 														workspace->sgpu.d_x,
 														workspace->sgpu.d_y,
 														workspace->sgpu.d_support,
-														extraConstraint,
+														extra_constraint,
 														workspace->dimension);
 		    
         // stop time
@@ -114,7 +123,7 @@ extern "C"{
 			// reminder: workspace->dx already contains the starting point
 		
 
-			for (int iter = 0; iter < globalIteration; ++iter){
+			for (int iter = 0; iter < global_iteration; ++iter){
 
 
 	    // ==========================================
@@ -127,8 +136,8 @@ extern "C"{
 
       // perform the s_projection_M
 			m_projection_M(workspace->plan_C2C,
-              		   workspace->mgpu.d_y, //to  
-              		   workspace->mgpu.d_x, // from  
+              		   workspace->mgpu.d_y,       //to  
+              		   workspace->mgpu.d_x,       // from  
               		   workspace->mgpu.d_signal,
               			 params->eps_zeroamp,
               		   dim,
@@ -158,7 +167,7 @@ extern "C"{
 	    m_projection_S_only(workspace->mgpu.d_x, //to   
 													workspace->mgpu.d_y, //from (dz) depois d_x
 													workspace->mgpu.d_support,
-													extraConstraint,
+													extra_constraint,
 													dim,
 													perGPUDim,
 													workspace->gpus);

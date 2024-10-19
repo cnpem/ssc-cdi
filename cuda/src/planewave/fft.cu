@@ -84,9 +84,9 @@ __global__ void clip_to_zero(cufftComplex *a,
 
 
 
-__global__ void update_extraConstraint(cufftComplex *a,
+__global__ void update_extra_constraint(cufftComplex *a,
                                        cufftComplex *b,
-                                       int extraConstraint, 
+                                       int extra_constraint, 
                                        int dimension){
 
   const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
@@ -97,22 +97,22 @@ __global__ void update_extraConstraint(cufftComplex *a,
 
   if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
     // impose real(b)>0 or real(b)<0 
-    if (extraConstraint==RIGHT_SEMIPLANE || extraConstraint==FIRST_QUADRANT || extraConstraint==FOURTH_QUADRANT){
+    if (extra_constraint==RIGHT_SEMIPLANE || extra_constraint==FIRST_QUADRANT || extra_constraint==FOURTH_QUADRANT){
       if (b[index].x<0){        
         a[index].x = 0.0f;
       }
-    }else if(extraConstraint==LEFT_SEMIPLANE || extraConstraint==SECOND_QUADRANT || extraConstraint==THIRD_QUADRANT){
+    }else if(extra_constraint==LEFT_SEMIPLANE || extra_constraint==SECOND_QUADRANT || extra_constraint==THIRD_QUADRANT){
       if (b[index].x>0){        
         a[index].x = 0.0f;
       }
     }
 
     // impose imag(b)>0 or imag(b)<0
-    if(extraConstraint==TOP_SEMIPLANE || extraConstraint==FIRST_QUADRANT || extraConstraint==SECOND_QUADRANT){
+    if(extra_constraint==TOP_SEMIPLANE || extra_constraint==FIRST_QUADRANT || extra_constraint==SECOND_QUADRANT){
       if (b[index].y<0){
         a[index].y = 0.0f;
       }
-    }else if(extraConstraint==BOTTOM_SEMIPLANE || extraConstraint==THIRD_QUADRANT || extraConstraint==FOURTH_QUADRANT){
+    }else if(extra_constraint==BOTTOM_SEMIPLANE || extra_constraint==THIRD_QUADRANT || extra_constraint==FOURTH_QUADRANT){
       if (b[index].y>0){
         a[index].y = 0.0f;
       }
@@ -121,31 +121,31 @@ __global__ void update_extraConstraint(cufftComplex *a,
   }
 }
 
-__global__ void update_extraConstraint_mgpu(cufftComplex *a,
+__global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                             cufftComplex *b,
-                                            int extraConstraint,
+                                            int extra_constraint,
                                             size_t perGPUDim){
  
   const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (index < perGPUDim){
     // impose real(b)>0 or real(b)<0 
-    if (extraConstraint==RIGHT_SEMIPLANE || extraConstraint==FIRST_QUADRANT || extraConstraint==FOURTH_QUADRANT){
+    if (extra_constraint==RIGHT_SEMIPLANE || extra_constraint==FIRST_QUADRANT || extra_constraint==FOURTH_QUADRANT){
       if (b[index].x<0){        
         a[index].x = 0.0f;
       }
-    }else if(extraConstraint==LEFT_SEMIPLANE || extraConstraint==SECOND_QUADRANT || extraConstraint==THIRD_QUADRANT){
+    }else if(extra_constraint==LEFT_SEMIPLANE || extra_constraint==SECOND_QUADRANT || extra_constraint==THIRD_QUADRANT){
       if (b[index].x>0){        
         a[index].x = 0.0f;
       }
     }
 
     // impose imag(b)>0 or imag(b)<0
-    if(extraConstraint==TOP_SEMIPLANE || extraConstraint==FIRST_QUADRANT || extraConstraint==SECOND_QUADRANT){
+    if(extra_constraint==TOP_SEMIPLANE || extra_constraint==FIRST_QUADRANT || extra_constraint==SECOND_QUADRANT){
       if (b[index].y<0){
         a[index].y = 0.0f;
       }
-    }else if(extraConstraint==BOTTOM_SEMIPLANE || extraConstraint==THIRD_QUADRANT || extraConstraint==FOURTH_QUADRANT){
+    }else if(extra_constraint==BOTTOM_SEMIPLANE || extra_constraint==THIRD_QUADRANT || extra_constraint==FOURTH_QUADRANT){
       if (b[index].y>0){
         a[index].y = 0.0f;
       }
@@ -181,41 +181,41 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
     // float eps = 0.001f;
 
 
-    // if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
-    //   if (m[index]<0){
-    //     // handle -1 values
-    //     a[index].x = b[index].x/((float)(dimension*dimension*dimension));
-    //     a[index].y = b[index].y/((float)(dimension*dimension*dimension));
-    //     // a[index] = b[index];
-    //   }else if(eps>=0 && sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0))<=eps){
-    //     a[index].x = m[index]/((float) (dimension*dimension*dimension));
-    //     a[index].y = 0.0f;
-    //   }else{
-    //     theta = atan2f(b[index].y, b[index].x);
-    //     __sincosf(theta, &sin, &cos);
-    //     a[index].x = (m[index]*cos)/((float) (dimension*dimension*dimension));
-    //     a[index].y = (m[index]*sin)/((float) (dimension*dimension*dimension));
-    //   }
-    // }
-
     if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
       if (m[index]<0){
         // handle -1 values
         a[index].x = b[index].x/((float)(dimension*dimension*dimension));
         a[index].y = b[index].y/((float)(dimension*dimension*dimension));
         // a[index] = b[index];
+      }else if(eps>=0 && sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0))<=eps){
+        a[index].x = m[index]/((float) (dimension*dimension*dimension));
+        a[index].y = 0.0f;
       }else{
-        const float fft_abs = sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0));
-        if(eps>=0 && fft_abs<=eps){
-          a[index].x = m[index]/((float) (dimension*dimension*dimension));
-          a[index].y = 0.0f;
-        }else{
-          
-          a[index].x = (m[index]*b[index].x)/((float) fft_abs*(dimension*dimension*dimension));
-          a[index].y = (m[index]*b[index].y)/((float) fft_abs*(dimension*dimension*dimension));
-        }
+        theta = atan2f(b[index].y, b[index].x);
+        __sincosf(theta, &sin, &cos);
+        a[index].x = (m[index]*cos)/((float) (dimension*dimension*dimension));
+        a[index].y = (m[index]*sin)/((float) (dimension*dimension*dimension));
       }
     }
+
+    // if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
+    //   if (m[index]<0){
+    //     // handle -1 values
+    //     a[index].x = b[index].x/((float)(dimension*dimension*dimension));
+    //     a[index].y = b[index].y/((float)(dimension*dimension*dimension));
+    //     // a[index] = b[index];
+    //   }else{
+    //     const float fft_abs = sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0));
+    //     if(eps>=0 && fft_abs<=eps){
+    //       a[index].x = m[index]/((float) (dimension*dimension*dimension));
+    //       a[index].y = 0.0f;
+    //     }else{
+          
+    //       a[index].x = (m[index]*b[index].x)/((float) fft_abs*(dimension*dimension*dimension));
+    //       a[index].y = (m[index]*b[index].y)/((float) fft_abs*(dimension*dimension*dimension));
+    //     }
+    //   }
+    // }
 
 
   }
@@ -240,14 +240,19 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
         a[index].x = b[index].x/((float) totalDim);
         a[index].y = b[index].y/((float) totalDim);
         // a[index] = b[index];
-      }else if(eps>=0 && sqrt(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0))<=eps){ 
+      }else{
+        const float fft_abs = sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0));
+        if(eps>=0 && fft_abs<=eps){ 
         a[index].x = m[index]/((float) totalDim);
         a[index].y = 0.0f;
-      }else{
-        theta = atan2f(b[index].y, b[index].x);
-        __sincosf(theta, &sin, &cos);
-        a[index].x = (m[index]*cos)/((float) totalDim);
-        a[index].y = (m[index]*sin)/((float) totalDim);
+        }else{
+          // theta = atan2f(b[index].y, b[index].x);
+          // __sincosf(theta, &sin, &cos);
+          // a[index].x = (m[index]*cos)/((float) totalDim);
+          // a[index].y = (m[index]*sin)/((float) totalDim);
+          a[index].x = (m[index]*b[index].x)/((float) fft_abs*totalDim);
+          a[index].y = (m[index]*b[index].y)/((float) fft_abs*totalDim);
+        }
       }
     }
   }
@@ -258,7 +263,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   __global__ void update_with_support_extra(cufftComplex *a,
                                             cufftComplex *b,
                                             uint8_t *c,
-                                            int extraConstraint,
+                                            int extra_constraint,
                                             int dimension){
 
 
@@ -272,8 +277,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       const float supp = (float) c[index];
       float supp_mod;
 
-      // resolve extraConstraint
-      switch (extraConstraint){
+      // resolve extra_constraint
+      switch (extra_constraint){
         case NO_EXTRA_CONSTRAINT:
           supp_mod = 1.0f;
           break;
@@ -313,7 +318,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   __global__ void update_with_support_extra_mgpu(cufftComplex *a,
                                                  cufftComplex *b,
                                                  uint8_t *c,
-                                                 int extraConstraint,
+                                                 int extra_constraint,
                                                  size_t perGPUDim){
 
 
@@ -323,8 +328,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       float supp = (float) c[index];
       float supp_mod;
 
-      // resolve extraConstraint
-      switch (extraConstraint){
+      // resolve extra_constraint
+      switch (extra_constraint){
         case NO_EXTRA_CONSTRAINT:
           supp_mod = 1.0f;
           break;
@@ -366,15 +371,15 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   __global__ void multiply_support_extra_mgpu(cufftComplex *a,
                                               cufftComplex *b,
                                               uint8_t *c,
-                                              int extraConstraint,
+                                              int extra_constraint,
                                               size_t perGPUDim){
   /**
    * @brief Updates a complex array `a` by performing a constrained projection of the array `b` onto a support array `c`, with additional constraints if specified. 
    * This version is designed for execution across multiple GPUs.
    *
    * This CUDA kernel function updates a complex array `a` by performing a projection of the array `b` onto the support array `c`, 
-   * with an additional optional constraint specified by `extraConstraint`. The projection is performed based on the support array `c` 
-   * and an additional modulation factor `supp_mod` determined by `extraConstraint`.
+   * with an additional optional constraint specified by `extra_constraint`. The projection is performed based on the support array `c` 
+   * and an additional modulation factor `supp_mod` determined by `extra_constraint`.
    *
    * The update rule is given by:
    * 
@@ -382,9 +387,9 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *  a[index].y = b[index].y * supp * supp_mod
    * 
    * where `index` is the linear index within the arrays `a`, `b`, and `c`, and `perGPUDim` is the total number of elements per GPU segment.
-   * `supp` is the support value from `c`, and `supp_mod` is a modulation factor that depends on `extraConstraint`.
+   * `supp` is the support value from `c`, and `supp_mod` is a modulation factor that depends on `extra_constraint`.
    *
-   * The `extraConstraint` parameter determines how `supp_mod` is calculated:
+   * The `extra_constraint` parameter determines how `supp_mod` is calculated:
    * - `NO_EXTRA_CONSTRAINT`: No additional constraint (supp_mod = 1.0f).
    * - `LEFT_SEMIPLANE`, `RIGHT_SEMIPLANE`, `TOP_SEMIPLANE`, `BOTTOM_SEMIPLANE`: Constraints based on the sign of `b[index].x` or `b[index].y`.
    * - `FIRST_QUADRANT`, `SECOND_QUADRANT`, `THIRD_QUADRANT`, `FOURTH_QUADRANT`: Constraints based on the quadrant of the complex number `b[index]`.
@@ -392,7 +397,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
    * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
-   * @param extraConstraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
+   * @param extra_constraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
    * @param perGPUDim Size of the array segment allocated per GPU (total elements per GPU).
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for execution across multiple GPUs.
@@ -406,8 +411,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       float supp = (float) c[index];      
       float supp_mod;
 
-      // resolve extraConstraint
-      switch (extraConstraint){
+      // resolve extra_constraint
+      switch (extra_constraint){
         case NO_EXTRA_CONSTRAINT:
           supp_mod = 1.0f;
           break;
@@ -447,13 +452,13 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
   __global__ void multiply_support_extra(cufftComplex *a,
                                          cufftComplex *b,
                                          uint8_t *c,
-                                         int extraConstraint,
+                                         int extra_constraint,
                                          int dimension){
   /**
    * @brief Updates a complex array `a` by performing a constrained projection of the array `b` onto a support array `c`, with additional constraints if specified.
    *
-   * This CUDA kernel function updates a complex array `a` by performing a projection of the array `b` onto the support array `c`, with an additional optional constraint specified by `extraConstraint`.
-   * The projection is performed based on the support array `c` and an additional modulation factor `supp_mod` determined by `extraConstraint`.
+   * This CUDA kernel function updates a complex array `a` by performing a projection of the array `b` onto the support array `c`, with an additional optional constraint specified by `extra_constraint`.
+   * The projection is performed based on the support array `c` and an additional modulation factor `supp_mod` determined by `extra_constraint`.
    *
    * The update rule is given by:
    * 
@@ -461,9 +466,9 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    *  a[index].y = b[index].y * supp * supp_mod
    * 
    * where `index` is the linear index within the arrays `a`, `b`, and `c`, and `dimension` is the total dimension size of each dimension of the cube.
-   * `supp` is the support value from `c`, and `supp_mod` is a modulation factor that depends on `extraConstraint`.
+   * `supp` is the support value from `c`, and `supp_mod` is a modulation factor that depends on `extra_constraint`.
    *
-   * The `extraConstraint` parameter determines how `supp_mod` is calculated:
+   * The `extra_constraint` parameter determines how `supp_mod` is calculated:
    * - `NO_EXTRA_CONSTRAINT`: No additional constraint (supp_mod = 1.0f).
    * - `LEFT_SEMIPLANE`, `RIGHT_SEMIPLANE`, `TOP_SEMIPLANE`, `BOTTOM_SEMIPLANE`: Constraints based on the sign of `b[index].x` or `b[index].y`.
    * - `FIRST_QUADRANT`, `SECOND_QUADRANT`, `THIRD_QUADRANT`, `FOURTH_QUADRANT`: Constraints based on the quadrant of the complex number `b[index]`.
@@ -471,7 +476,7 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
    * @param a Pointer to the output array of complex values (`cufftComplex`) after the update.
    * @param b Pointer to the input array of complex values (`cufftComplex`) to be projected and updated.
    * @param c Pointer to the input array of support constraints (`uint8_t`) defining which elements to update and blend.
-   * @param extraConstraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
+   * @param extra_constraint Additional constraint type (0 for no extra constraint, other values for quadrant/semiplane constraints).
    * @param dimension Size of each dimension of the cubic array.
    *
    * @note This function assumes that `a`, `b`, and `c` are preallocated and have dimensions aligned for the single GPU execution.
@@ -488,8 +493,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       float supp = (float) c[index];      
       float supp_mod;
 
-      // resolve extraConstraint
-      switch (extraConstraint){
+      // resolve extra_constraint
+      switch (extra_constraint){
         case NO_EXTRA_CONSTRAINT:
           supp_mod = 1.0f;
           break;
@@ -819,8 +824,8 @@ __global__ void update_extraConstraint_mgpu(cufftComplex *a,
       __sincosf(theta, &sin, &cos);
 
       if (m[index]<=0){
-        a[index].x = 0.0f; // cos;
-        a[index].y = 0.0f; // sin;
+        a[index].x = cos; //0.0f; // cos;
+        a[index].y = sin; // 0.0f; // sin;
       }else{
         a[index].x = m[index]*cos;
         a[index].y = m[index]*sin;
