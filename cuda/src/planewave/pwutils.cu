@@ -7,7 +7,6 @@
 #include "gpus.h"
 
 extern "C" {
-  
   void alloc_workspace(ssc_pwcdi_plan *workspace,
                        ssc_pwcdi_params *params,
                        int *gpus,
@@ -113,7 +112,7 @@ extern "C" {
       }
 
       // malloc err swap variables 
-      if (params->errType==ITER_DIFF){
+      if (params->err_type==ITER_DIFF){
         checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_x_lasterr, sizeof(cufftComplex)*pow(workspace->dimension, 3)));
       }
       
@@ -271,7 +270,7 @@ extern "C" {
       }
 
       // allocate d_x_lasterr, if needed
-      if (params->errType==ITER_DIFF){
+      if (params->err_type==ITER_DIFF){
         checkCudaErrors(cufftXtMalloc(workspace->plan_C2C, (cudaLibXtDesc**) &workspace->mgpu.d_x_lasterr, CUFFT_XT_FORMAT_INPLACE)); 
       }
 
@@ -317,7 +316,7 @@ extern "C" {
         checkCudaErrors(cudaFreeHost(workspace->sgpu.d_x_swap));
       }
       
-      if (params->errType==ITER_DIFF){
+      if (params->err_type==ITER_DIFF){
         checkCudaErrors(cudaFree(workspace->sgpu.d_x_lasterr));
       }
 
@@ -388,7 +387,7 @@ extern "C" {
       }
 
       // free d_x_lasterr, if it was used
-      if (params->errType==ITER_DIFF){
+      if (params->err_type==ITER_DIFF){
         checkCudaErrors(cufftXtFree(workspace->mgpu.d_x_lasterr)); 
       }
 
@@ -799,21 +798,6 @@ extern "C" {
         permuted2natural(workspace->mgpu.d_x, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
  
 
-        // // shift back the data 
-        // for (int i=0; i<n_gpus; i++){
-        //   checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-        //   m_fftshift_cufftcomplex((cufftComplex*) workspace->mgpu.d_x->descriptor->data[i],
-        //                           (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], 
-        //                           (size_t) cbrt((double)workspace->nvoxels),
-        //                           workspace->gpus,
-        //                           i);
-        // // }
-        // m_fftshift(workspace->mgpu.d_x, 
-        //                 (size_t) cbrt((double)workspace->nvoxels), 
-        //                 SSC_DTYPE_BYTE, 
-        //                 workspace->host_swap_byte,
-        //                 perGPUDim,
-        //                 workspace->gpus);
       }else{
         // load initial object data from input
         printf("ssc-cdi: Using initial object data from input parameters. \n");
@@ -1274,110 +1258,6 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
   }
 
 
-// __global__ void m_fftshift_cufftcomplex(cufftComplex *d_x, 
-//                                        cufftComplex *d_x_in, 
-//                                        int dimension,
-//                                        int n_gpus,
-//                                        int gpuId) {
-//   // ... (rest of the code is similar to gaussian1_freq_fftshift_mgpu)
-
-//   const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
-//   const size_t globalIndex = index + gpuId * perGPUDim;
-
-//   // map 1D index to 3D
-//   index3 i, ii;
-//   int ix, iy, iz;
-  
-//   i = get3Dindex(globalIndex, ndimy, ndimz);
-
-//   // Handle multi-GPU FFT shift based on quadrant
-//   int ddimx = dimension / n_gpus; // dimension per GPU
-
-//   if (i.ix < ddimx) {
-//     ix = i.ix;
-//   } else {
-//     ix = dimension - 1 - (i.ix - ddimx);
-//   }
-
-//   if (i.iy < dimension) {
-//     iy = i.iy;
-//   } else {
-//     iy = dimension - 1 - (i.iy - dimension);
-//   }
-
-//   if (i.iz < dimension) {
-//     iz = i.iz;
-//   } else {
-//     iz = dimension - 1 - (i.iz - dimension);
-//   }
-
-//   // Calculate the final index after FFT shift
-//   size_t shiftedIndex = iz * dimension * dimension + iy * dimension + ix;
-
-//   // Copy the data from input considering multi-GPU distribution
-//   d_x[index].x = d_x_in[shiftedIndex].x;
-//   d_x[index].y = d_x_in[shiftedIndex].y;
-// }
-
-
-// void m_fftshift_cufftcomplex(uint8_t** data, 
-//                               size_t dimension, 
-//                               int dtype, 
-//                               cufftComplex* host_swap,
-//                               size_t perGPUDim,
-//                               ssc_gpus* gpus){
-//   //
-//   // Currently this only works for dtype=SSC_DTYPE_BYTE data, since it is
-//   // small enough to be performed in a single GPU. The SSC_DTYPE_COMPLEX
-//   // case should be handled in multiple GPUs.
-
-//   printf("m_fftshift: dimension = %d\n", dimension);
-
-
-//   const int n_gpus = (dimension*dimension*dimension)/perGPUDim;
-//   const dim3 threadsPerBlock(tbx, tby, tbz);
-//   const dim3 gridBlock (ceil((dimension + threadsPerBlock.x - 1) / threadsPerBlock.x),
-//                         ceil((dimension + threadsPerBlock.y - 1) / threadsPerBlock.y),
-//                         ceil((dimension + threadsPerBlock.z - 1) / threadsPerBlock.z));
-      
-
-  
-//   // copy data (uint8_t**) to host_swap_byte (uint8_t*)
-//   for (int i=0; i<n_gpus; i++){
-//     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-//     checkCudaErrors(cudaMemcpy((void*) &host_swap_byte[i*perGPUDim], // Async
-//                                     (void*) data[i], 
-//                                     perGPUDim*sizeof(cufftComplex), 
-//                                     cudaMemcpyDeviceToHost)); 
-//   }
-//   for (int i=0; i<gpus->ngpus; ++i){
-//     checkCudaErrors(cudaSetDevice(gpus->gpus[i])); 
-//     checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
-//   }
-
-
-//   // fftshift in a single GPU 
-//   fftshift<<<gridBlock, threadsPerBlock>>>((void*) host_swap,
-//                                            dimension,
-//                                            SSC_DTYPE_CUFFTCOMPLEX);
-//   cudaDeviceSynchronize();
-//   getLastCudaError("ssc-cdi: error / Kernel execution failed @ fftshift<<<.>>>\n");
-
-//   // copy back to data pointer
-//   for (int i=0; i<n_gpus; i++){
-//     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-//     checkCudaErrors(cudaMemcpy((void*) data[i], //Async
-//                                     (void*) &host_swap_byte[i*perGPUDim],
-//                                     perGPUDim*sizeof(cufftComplex), 
-//                                     cudaMemcpyHostToDevice));   
-//   }
-//   for (int i=0; i<gpus->ngpus; ++i){
-//     checkCudaErrors(cudaSetDevice(gpus->gpus[i])); 
-//     checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
-//   }
-// }
-
-
 
 void m_fftshift(uint8_t** data, 
                 size_t dimension, 
@@ -1446,7 +1326,7 @@ void m_fftshift(uint8_t** data,
   void m_projection_S(cudaLibXtDesc* d_z,
                       cudaLibXtDesc* d_y,
                       uint8_t** d_support,
-                      int extraConstraint,
+                      int extra_constraint,
                       size_t totalDim,
                       size_t perGPUDim,
                       ssc_gpus *gpus){
@@ -1461,7 +1341,7 @@ void m_fftshift(uint8_t** data,
       checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
 
       // decide wether to use the extra constraint kernel or the vanilla one 
-      if (extraConstraint==NO_EXTRA_CONSTRAINT){
+      if (extra_constraint==NO_EXTRA_CONSTRAINT){
         // project onto the support alone 
         update_with_support_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                                  (cufftComplex*) d_y->descriptor->data[i], //from
@@ -1472,7 +1352,7 @@ void m_fftshift(uint8_t** data,
         update_with_support_extra_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                                        (cufftComplex*) d_y->descriptor->data[i], //from
                                                                        (uint8_t*) d_support[i], 
-                                                                       extraConstraint,
+                                                                       extra_constraint,
                                                                        perGPUDim); 
       }
     }
@@ -1488,14 +1368,13 @@ void m_fftshift(uint8_t** data,
   void m_projection_S_only(cudaLibXtDesc* d_z,
                            cudaLibXtDesc* d_y,
                            uint8_t** d_support,
-                           int extraConstraint,
+                           int extra_constraint,
                            size_t totalDim,
                            size_t perGPUDim,
                            ssc_gpus *gpus){
     //
     // dz = support * dy
     //
-    
     int n_gpus = totalDim/perGPUDim;
     const dim3 threadsPerBlock(tbx*tby*tbz);
     const dim3 gridBlock (ceil((perGPUDim + threadsPerBlock.x - 1)/threadsPerBlock.x));
@@ -1504,7 +1383,7 @@ void m_fftshift(uint8_t** data,
       checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
 
       // decide wether to use the extra constraint kernel or the vanilla one 
-      if (extraConstraint==NO_EXTRA_CONSTRAINT){
+      if (extra_constraint==NO_EXTRA_CONSTRAINT){
         // project onto the support alone 
         multiply_support_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                               (cufftComplex*) d_y->descriptor->data[i], //from
@@ -1515,7 +1394,7 @@ void m_fftshift(uint8_t** data,
         multiply_support_extra_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z->descriptor->data[i], //to
                                                                     (cufftComplex*) d_y->descriptor->data[i], //from
                                                                     d_support[i], 
-                                                                    extraConstraint,
+                                                                    extra_constraint,
                                                                     perGPUDim);
       }
     }
@@ -1573,7 +1452,7 @@ void m_fftshift(uint8_t** data,
                       cufftComplex* d_z,
                       cufftComplex* d_y,
                       uint8_t* d_support,
-                      int extraConstraint,
+                      int extra_constraint,
                       int dimension){
     //
     // dz = support * dy + (1 - support) * dz
@@ -1585,7 +1464,7 @@ void m_fftshift(uint8_t** data,
   
 
     // decide wether to use the extra constraint kernel or the vanilla one 
-    if (extraConstraint==NO_EXTRA_CONSTRAINT){
+    if (extra_constraint==NO_EXTRA_CONSTRAINT){
       // project onto the support alone 
       update_with_support<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                           (cufftComplex*) d_y,
@@ -1596,7 +1475,7 @@ void m_fftshift(uint8_t** data,
       update_with_support_extra<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                                 (cufftComplex*) d_y,
                                                                 (uint8_t*) d_support,
-                                                                extraConstraint,
+                                                                extra_constraint,
                                                                 dimension);
     }
 
@@ -1609,7 +1488,7 @@ void m_fftshift(uint8_t** data,
                            cufftComplex* d_z,
                            cufftComplex* d_y,
                            uint8_t* d_support,
-                           int extraConstraint,
+                           int extra_constraint,
                            int dimension){
     //
     // d_z = support * dy 
@@ -1621,7 +1500,7 @@ void m_fftshift(uint8_t** data,
 
 
     // decide wether to use the extra constraint kernel or the vanilla one 
-    if (extraConstraint==NO_EXTRA_CONSTRAINT){
+    if (extra_constraint==NO_EXTRA_CONSTRAINT){
       // project onto the support alone 
       multiply_support<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                        (cufftComplex*) d_y,
@@ -1633,7 +1512,7 @@ void m_fftshift(uint8_t** data,
       multiply_support_extra<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_z,
                                                              (cufftComplex*) d_y,
                                                              d_support, 
-                                                             extraConstraint,
+                                                             extra_constraint,
                                                              dimension); 
     }
 
@@ -1643,9 +1522,9 @@ void m_fftshift(uint8_t** data,
 
   
 
-  void s_projection_extraConstraint(cufftComplex* d_x,
+  void s_projection_extra_constraint(cufftComplex* d_x,
                                     cufftComplex* d_y,
-                                    int extraConstraint,
+                                    int extra_constraint,
                                     int dimension){
  
     
@@ -1656,23 +1535,23 @@ void m_fftshift(uint8_t** data,
   
 
 
-    update_extraConstraint<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_x,
+    update_extra_constraint<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_x,
                                                         (cufftComplex*) d_y,
-                                                        extraConstraint,
+                                                        extra_constraint,
                                                         dimension);
     cudaDeviceSynchronize();
-    getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_extraConstraint<<<.>>>\n");
+    getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_extra_constraint<<<.>>>\n");
  
   }
 
 
 
-    void m_projection_extraConstraint(cudaLibXtDesc* d_x,
-                                      cudaLibXtDesc* d_y,
-                                      int extraConstraint,
-                                      size_t totalDim,
-                                      size_t perGPUDim,
-                                      ssc_gpus *gpus){
+    void m_projection_extra_constraint(cudaLibXtDesc* d_x,
+                                       cudaLibXtDesc* d_y,
+                                       int extra_constraint,
+                                       size_t totalDim,
+                                       size_t perGPUDim,
+                                       ssc_gpus *gpus){
  
     int n_gpus = totalDim/perGPUDim;
     const dim3 threadsPerBlock(tbx*tby*tbz);
@@ -1682,16 +1561,16 @@ void m_fftshift(uint8_t** data,
       checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
 
       // to = support * from
-      update_extraConstraint_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_x->descriptor->data[i], //to
-                                                            (cufftComplex*) d_y->descriptor->data[i], //from
-                                                            extraConstraint, 
-                                                            perGPUDim);
+      update_extra_constraint_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_x->descriptor->data[i], //to
+                                                                   (cufftComplex*) d_y->descriptor->data[i], //from
+                                                                   extra_constraint, 
+                                                                   perGPUDim);
     }
 
     for(int i=0; i<n_gpus; i++){
       checkCudaErrors(cudaSetDevice(gpus->gpus[i])); 
        checkCudaErrors(cudaStreamSynchronize(gpus->streams[i])); 
-      getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_extraConstraint_mgpu<<<.>>>\n");
+      getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_extra_constraint_mgpu<<<.>>>\n");
     }
   }
 

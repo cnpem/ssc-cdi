@@ -17,8 +17,8 @@
 
 #include "gpus.h"
 
-#define tbx 16    // 16 // 
-#define tby 8     // 4 // 
+#define tbx 16     // 16 // 
+#define tby 8      // 4 // 
 #define tbz 4      // 4 // 
 
 #define SSC_MIN( a, b ) ( ( ( a ) < ( b ) ) ? ( a ) : ( b ) )
@@ -58,7 +58,7 @@
 
 
 #define checkMyCudaErrors(call)                               \
-  do{                                                        \
+  do{                                                         \
     cudaError_t err = call;                                   \
     if (err != cudaSuccess) {                                 \
       printf("CUDA error at %s %d: %s\n", __FILE__, __LINE__, \
@@ -78,7 +78,7 @@ extern "C" {
 
   typedef struct{
     cudaLibXtDesc *d_x, *d_y, *d_z;
-    cudaLibXtDesc *d_x_lasterr;                               // only allocated if errType==ITER_DIFF 
+    cudaLibXtDesc *d_x_lasterr;                               // only allocated if err_type==ITER_DIFF 
     float **d_signal, **d_signal_host;  
     uint8_t **d_support, **d_support_host;
     cufftComplex **d_gaussian;
@@ -87,7 +87,7 @@ extern "C" {
 
   typedef struct{
     cufftComplex *d_x, *d_y, *d_z, *d_gaussian, *d_x_swap;
-    cufftComplex *d_x_lasterr;                                // only allocated if errType==ITER_DIFF 
+    cufftComplex *d_x_lasterr;                                // only allocated if err_type==ITER_DIFF 
     float *d_signal, *d_signal_host;
     uint8_t *d_support, *d_support_host;
   }single_t;
@@ -110,43 +110,40 @@ extern "C" {
   }ssc_pwcdi_plan;
 
   typedef struct{
-    float beta;
     int timing;
     int N;
     int sthreads;
     int pnorm;
     float radius;
-    uint8_t* sup_data;
-    bool sup_positive_imag;
-    float sw_threshold;
-    int sw_iter_filter;
-    int sw_mask_multiply;
-    bool sw_fftshift_gaussian;
-    float sigma;
-    float sigma_mult;
-    float beta_update; 
-    int betaResetSubiter;
+    uint8_t* sup_data; 
     float eps_zeroamp;
 
-    int errType;
-    int errSubiter;
+    int err_type;
+    int err_subiter;
 
     // memory parameters 
     bool map_d_signal;
     bool map_d_support;
     bool swap_d_x;
-
   }ssc_pwcdi_params;
   
   typedef struct{
     char *name;
     int iteration;
-    int shrinkWrap; 
-    int initialShrinkWrapSubiter;
-    int extraConstraint;
-    int extraConstraintSubiter;
-    int initialExtraConstraintSubiter;
-
+    int shrinkwrap_subiter; 
+    int initial_shrinkwrap_subiter;
+    int extra_constraint;
+    int extra_constraint_subiter;
+    int initial_extra_constraint_subiter;
+    float shrinkwrap_threshold;                      
+    int shrinkwrap_iter_filter;
+    int shrinkwrap_mask_multiply;
+    bool shrinkwrap_fftshift_gaussian;
+    float sigma;
+    float sigma_mult; 
+    float beta;
+    float beta_update;
+    int beta_reset_subiter;
   }ssc_pwcdi_method;
   
   

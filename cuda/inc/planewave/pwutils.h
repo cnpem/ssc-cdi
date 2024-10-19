@@ -65,7 +65,7 @@ extern "C" {
   void m_projection_S(cudaLibXtDesc* d_z,
                       cudaLibXtDesc* d_y,
                       uint8_t** d_support, 
-                      int extraConstraint,
+                      int extra_constraint,
                       size_t totalDim, 
                       size_t perGPUDim, 
                       ssc_gpus *gpus);
@@ -79,7 +79,7 @@ extern "C" {
   void m_projection_S_only(cudaLibXtDesc* d_z,
                            cudaLibXtDesc* d_y,
                            uint8_t** d_support,
-                           int extraConstraint,
+                           int extra_constraint,
                            size_t totalDim,
                            size_t perGPUDim,
                            ssc_gpus *gpus);
@@ -95,14 +95,14 @@ extern "C" {
                       cufftComplex* d_z,
                       cufftComplex* d_y,
                       uint8_t* d_support,
-                      int extraConstraint,
+                      int extra_constraint,
                       int dimension);
 
   void s_projection_S_only(cufftHandle& plan_input,
                            cufftComplex* d_z,
                            cufftComplex* d_y,
                            uint8_t* d_support,
-                           int extraConstraint,
+                           int extra_constraint,
                            int dimension);
   
   void s_projection_N(cufftComplex* d_x,
@@ -126,17 +126,17 @@ extern "C" {
 
 
 
-  void m_projection_extraConstraint(cudaLibXtDesc* d_x,
+  void m_projection_extra_constraint(cudaLibXtDesc* d_x,
                                  cudaLibXtDesc* d_y,
-                                 int extraConstraint,
+                                 int extra_constraint,
                                  size_t totalDim,
                                  size_t perGPUDim,
                                  ssc_gpus *gpus);
 
 
-  void s_projection_extraConstraint(cufftComplex* d_x,
+  void s_projection_extra_constraint(cufftComplex* d_x,
                                     cufftComplex* d_y,
-                                    int extraConstraint,
+                                    int extra_constraint,
                                     int dimension);
  
 

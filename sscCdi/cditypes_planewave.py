@@ -60,25 +60,15 @@ def getPointer(darray,dtype=np.float32):
     
 class SSC_PWCDI_PARAMS(ctypes.Structure):
   """A ssc_pwcdi_params C structure:"""
-  _fields_ = [("beta", ctypes.c_float ),
-              ("timing", ctypes.c_int ),
+  _fields_ = [("timing", ctypes.c_int ),
               ("N", ctypes.c_int ),
               ("sthreads", ctypes.c_int ),
               ("pnorm", ctypes.c_int ),
               ("radius", ctypes.c_float ),
               ("sup_data", ctypes.POINTER(ctypes.c_ubyte)),
-              ("sup_positive_imag", ctypes.c_bool),
-              ("sw_threshold", ctypes.c_float ),
-              ("sw_iter_filter", ctypes.c_int),
-              ("sw_mask_multiply", ctypes.c_int),
-              ("sw_fftshift_gaussian", ctypes.c_bool),
-              ("sigma", ctypes.c_float),
-              ("sigma_mult", ctypes.c_float),
-              ("beta_update", ctypes.c_float),
-              ("betaResetSubiter", ctypes.c_int),
               ("eps_zeroamp", ctypes.c_float),
-              ("errType", ctypes.c_int),
-              ("errSubiter", ctypes.c_int),
+              ("err_type", ctypes.c_int),
+              ("err_subiter", ctypes.c_int),
               ("map_d_signal", ctypes.c_bool),
               ("map_d_support", ctypes.c_bool),
               ("swap_d_x", ctypes.c_bool)]
@@ -87,37 +77,36 @@ class SSC_PWCDI_METHOD(ctypes.Structure):
   """A ssc_pwcdi_method C structure:"""
   _fields_ = [("name", ctypes.c_char_p),
               ("iteration", ctypes.c_int),
-              ("shrinkWrap", ctypes.c_int),
-              ("initialShrinkWrapSubiter", ctypes.c_int),
-              ("extraConstraint", ctypes.c_int),
-              ("extraConstraintSubiter", ctypes.c_int),
-              ("initialExtraConstraintSubiter", ctypes.c_int)]
+              ("shrinkwrap_subiter", ctypes.c_int),
+              ("initial_shrinkwrap_subiter", ctypes.c_int),
+              ("extra_constraint", ctypes.c_int),
+              ("extra_constraint_subiter", ctypes.c_int),
+              ("initial_extra_constraint_subiter", ctypes.c_int),
+              ("shrinkwrap_threshold", ctypes.c_float),
+              ("shrinkwrap_iter_filter", ctypes.c_int),
+              ("shrinkwrap_mask_multiply", ctypes.c_int),
+              ("shrinkwrap_fftshift_gaussian", ctypes.c_bool),
+              ("sigma", ctypes.c_float),
+              ("sigma_mult", ctypes.c_float),
+              ("beta", ctypes.c_float),
+              ("beta_update", ctypes.c_float),
+              ("beta_beta_reset_subiter", ctypes.c_int)]
 
 # Define the make_SSC_PWCDI_PARAMS function
 def make_SSC_PWCDI_PARAMS(tupla):
   """Make a ssc_pwcdi_params from a Python tuple"""
-  return SSC_PWCDI_PARAMS(tupla[0],                      # beta
-                          tupla[1],                      # timing
-                          tupla[2],                      # N
-                          tupla[3],                      # sthreads
-                          tupla[4],                      # pnorm
-                          tupla[5],                      # radius
-                          tupla[6],                      # sup_data
-                          tupla[7],                      # sup_positive_imag
-                          tupla[8],                      # sw_threshold
-                          tupla[9],                      # sw_iter_filter
-                          tupla[10],                     # sw_mask_multiply
-                          tupla[11],                     # sw_fftshift_gaussian
-                          tupla[12],                     # sigma
-                          tupla[13],                     # sigma_mult
-                          tupla[14],                     # beta_update
-                          tupla[15],                     # betaResetSubiter
-                          tupla[16],                     # eps_zeroamp
-                          tupla[17],                     # errType
-                          tupla[18],                     # errSubiter
-                          tupla[19],                     # map_d_signal
-                          tupla[20],                     # map_d_support
-                          tupla[21])                     # swap_d_x
+  return SSC_PWCDI_PARAMS(tupla[0],                      # timing
+                          tupla[1],                      # N
+                          tupla[2],                      # sthreads
+                          tupla[3],                      # pnorm
+                          tupla[4],                      # radius
+                          tupla[5],                      # sup_data
+                          tupla[6],                      # eps_zeroamp
+                          tupla[7],                      # err_type
+                          tupla[8],                      # err_subiter
+                          tupla[9],                      # map_d_signal
+                          tupla[10],                     # map_d_support
+                          tupla[11])                     # swap_d_x
 
 
 def make_SSC_PWCDI_METHOD(tupla):
@@ -125,18 +114,28 @@ def make_SSC_PWCDI_METHOD(tupla):
 
   return SSC_PWCDI_METHOD(ctypes.c_char_p(tupla[0].encode('utf-8')),   # name 
                           ctypes.c_int(tupla[1]),                      # niter
-                          ctypes.c_int(tupla[2]),                      # shrinkWrapSubiter
-                          ctypes.c_int(tupla[3]),                      # initialShrinkWrapSubiter
-                          ctypes.c_int(tupla[4]),                      # extraConstraint
-                          ctypes.c_int(tupla[5]),                      # extraConstraintSubiter
-                          ctypes.c_int(tupla[6]))                      # initialExtraConstraintSubiter
+                          ctypes.c_int(tupla[2]),                      # shrinkwrap_subiter
+                          ctypes.c_int(tupla[3]),                      # initial_shrinkwrap_subiter
+                          ctypes.c_int(tupla[4]),                      # extra_constraint
+                          ctypes.c_int(tupla[5]),                      # extra_constraint_subiter
+                          ctypes.c_int(tupla[6]),                      # initial_extra_constraint_subiter 
+                          ctypes.c_float(tupla[7]),                    # shrinkwrap_threshold                 # here 
+                          ctypes.c_int(tupla[8]),                      # shrinkwrap_iter_filter
+                          ctypes.c_int(tupla[9]),                      # shrinkwrap_mask_multiply
+                          ctypes.c_bool(tupla[10]),                    # shrinkwrap_fftshift_gaussian 
+                          ctypes.c_float(tupla[11]),                   # sigma 
+                          ctypes.c_float(tupla[12]),                   # sigma_mult
+                          ctypes.c_float(tupla[13]),                   # beta  
+                          ctypes.c_float(tupla[14]),                   # beta_update
+                          ctypes.c_int(tupla[15]))                     # beta_reset_subiter
+
  
 
 try:
   libssccdi.pwcdi.argtypes = [np.ctypeslib.ndpointer(dtype=np.complex64, ndim=3, flags='C_CONTIGUOUS'),  # obj_output
                               np.ctypeslib.ndpointer(dtype=np.uint8, ndim=3, flags='C_CONTIGUOUS'),      # finsup_output
                               ctypes.POINTER(ctypes.c_float),                                            # data
-                              np.ctypeslib.ndpointer(dtype=np.complex64, ndim=3, flags='C_CONTIGUOUS'),  # obj_input
+                              ctypes.c_void_p, # np.ctypeslib.ndpointer(dtype=np.complex64, ndim=3, flags='C_CONTIGUOUS'),  # obj_input, 
                               ctypes.POINTER(ctypes.c_int),                                              # ngpus
                               ctypes.c_int,
                               ctypes.c_int,

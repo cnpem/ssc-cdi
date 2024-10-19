@@ -48,25 +48,25 @@ extern "C" {
   __global__ void update_with_support_extra(cufftComplex *a,
                                             cufftComplex *b,
                                             uint8_t *c,
-                                            int extraConstraint,
+                                            int extra_constraint,
                                             int dimension);
 
   __global__ void update_with_support_extra_mgpu(cufftComplex *a,
                                                  cufftComplex *b,
                                                  uint8_t *c,
-                                                 int extraConstraint,
+                                                 int extra_constraint,
                                                  size_t perGPUDim); 
 
   __global__ void multiply_support_extra_mgpu(cufftComplex *a, 
                                               cufftComplex *b, 
                                               uint8_t *c, 
-                                              int extraConstraint, 
+                                              int extra_constraint, 
                                               size_t perGPUDim);
 
   __global__ void multiply_support_extra(cufftComplex *a, 
                                          cufftComplex *b, 
                                          uint8_t *c, 
-                                         int extraConstraint, 
+                                         int extra_constraint, 
                                          int dimension);
 
   __global__ void update_with_support(cufftComplex *a, 
@@ -233,15 +233,15 @@ extern "C" {
                     int dimension);
  
 
-  __global__ void update_extraConstraint(cufftComplex *a,
+  __global__ void update_extra_constraint(cufftComplex *a,
                                          cufftComplex *b,
-                                         int extraConstraint, 
+                                         int extra_constraint, 
                                          int dimension);
 
 
-  __global__ void update_extraConstraint_mgpu(cufftComplex *a,
+  __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                               cufftComplex *b,
-                                              int extraConstraint,
+                                              int extra_constraint,
                                               size_t perGPUDim);
  
 
