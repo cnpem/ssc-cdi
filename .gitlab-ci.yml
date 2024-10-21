@@ -4,6 +4,7 @@ variables:
 
 stages:
     - build
+    - test
     - deploy
 
 build_dgx:
@@ -20,6 +21,20 @@ build_dgx:
             - ./dist/*whl
         expire_in: 1 day
 
+test_dgx:
+    stage: test
+    image: gccdockers/python-builder
+    script:
+        - module load cuda/11.2 python3
+        - python3 /ibira/lnls/labs/gcc/automated_tests/ssc-cdi/autotest_sscCdi.py 
+    tags:
+        - x86_64
+        - cuda11
+        - docker
+    dependencies:
+        - build_dgx
+
+
 deploy_dgx:
     stage: deploy
     image: gccdockers/python-builder
@@ -30,7 +45,7 @@ deploy_dgx:
         - cuda11
         - docker
     dependencies:
-        - build_dgx
+        - test_dgx
     only:
         - tags
 
