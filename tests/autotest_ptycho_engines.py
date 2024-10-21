@@ -10,9 +10,7 @@ import os
 import json
 from scipy import ndimage
 
-import sscCdi
-print(f'sscCdi version: {sscCdi.__version__}')
-
+from sscCdi.ptycho import call_ptychography
 
 def shift_ctr_of_mass_to_img_ctr(image):
 
@@ -231,7 +229,7 @@ input_dict['algorithms']['3'] = {
 }  
 
 print(json.dumps(input_dict, indent=4))
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 np.save(os.path.join(output_folder, 'object.npy'), obj)
 np.save(os.path.join(output_folder, 'probe.npy'), probe)
@@ -261,7 +259,7 @@ input_dict['algorithms']['1'] = {
     'momentum_probe': 0.0,
     'position_correction': 0, # 0: no correction. N: performs correction every N iterations
 } 
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 save_results_as_pngs(obj,probe,'01_RAAR_CUDA',output_folder)
 
 error_obj, error_probe = compare_model_to_recon(obj,probe,model_obj,model_probe,input_dict, error_threshold,N=50)
@@ -280,7 +278,7 @@ input_dict['algorithms']['1'] = {
     'momentum_probe': 0.0,
     'position_correction': 0,       # 0: no correction. N: performs correction every N iterations
 }  
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 save_results_as_pngs(obj,probe,'02_AP_CUDA',output_folder)
 
 error_obj, error_probe = compare_model_to_recon(obj,probe,model_obj,model_probe,input_dict, error_threshold,N=50)
@@ -299,7 +297,7 @@ input_dict['algorithms']['1'] = {       # rPIE and mPIE engines. mPIE used if mo
     'momentum_probe': 0.0,              # if > 0, uses mPIE with the given friction value
     'position_correction': 0,           # 0: no correction. N: performs correction every N iterations
 }  
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 save_results_as_pngs(obj,probe,'03_PIE_CUDA',output_folder)
 
 error_obj, error_probe = compare_model_to_recon(obj,probe,model_obj,model_probe,input_dict, error_threshold,N=50)
@@ -347,7 +345,7 @@ input_dict['algorithms']['1'] = {            # rPIE and mPIE engines. mPIE used 
     'mPIE_momentum_counter': 10,             # if == N, performs mPIE update every N iterations
 }  
 
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 save_results_as_pngs(obj,probe,'04_PIE_python',output_folder)
 
 error_obj, error_probe = compare_model_to_recon(obj,probe,model_obj,model_probe,input_dict, error_threshold,N=50)
@@ -362,7 +360,7 @@ input_dict['algorithms']['1'] = {
     'regularization_obj': 0.01,      # avoid division by zero in object update
     'regularization_probe': 0.01,       # avoid division by zero in probe update
 }  
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 save_results_as_pngs(obj,probe,'05_RAAR_python',output_folder)
 
 
@@ -394,77 +392,77 @@ input_dict['algorithms']['1'] = {
 print("\n################################################ PROBE SUPPORT CIRCULAR ##########################################\n")
 input_dict['probe_support'] = {"type": "circular",  "radius": 100,  "center_y": 0, "center_x": 0}  # Support to be applied to the probe matrix after probe update.
 print("input_dict['probe_support'] = ", input_dict['probe_support'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ PROBE SUPPORT CROSS ##########################################\n")
 input_dict['probe_support'] = {"type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0} 
 print("input_dict['probe_support'] = ", input_dict['probe_support'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ PROBE SUPPORT FROM ARRAY ##########################################\n")
 input_dict['probe_support'] =  {"type": "array",  "data": np.ones_like(probe,dtype=np.float32)}
 print("input_dict['probe_support'] = ", input_dict['probe_support'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL RANDOM OBJECT ##########################################\n")
 input_dict["initial_obj"] = {"obj": 'random'}  # Initial guess for the object
 print("input_dict['initial_obj'] = ", input_dict['initial_obj'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL OBJECT FROM ARRAY ##########################################\n")
 input_dict["initial_obj"] = {"obj": np.ones_like(obj)} # numpy array 
 print("input_dict['initial_obj'] = ", input_dict['initial_obj'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL OBJECT FROM .NPY ##########################################\n")
 input_dict["initial_obj"] = {"obj": path_npy_obj} # path to .npy, 
 print("input_dict['initial_obj'] = ", input_dict['initial_obj'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL OBJECT FROM .HDF5 ##########################################\n")
 input_dict["initial_obj"] = {"obj": path_hdf5_obj,'h5_tree_path':'data'} # path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
 print("input_dict['initial_obj'] = ", input_dict['initial_obj'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL OBJECT CONSTANT ##########################################\n")
 input_dict["initial_obj"] = {"obj": 'constant'} # constant matrix of 1s
 print("input_dict['initial_obj'] = ", input_dict['initial_obj'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE IFT ##########################################\n")
 input_dict['initial_probe'] = { "probe": 'inverse'}  # IFT of the average data
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE FROM ARRAY ##########################################\n")
 input_dict['initial_probe'] = {"probe": np.ones_like(probe)} # numpy array 
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE FROM .NPY ##########################################\n")
 input_dict['initial_probe'] = {"probe": path_npy_probe} # path to .npy, 
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE FROM .HDF5 ##########################################\n")
 input_dict['initial_probe'] = {"probe": path_hdf5_probe,"h5_tree_path":'data'} # path to .hdf5 of previous recon containing the reconstructed object in 'recon/object'
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE RANDOM ##########################################\n")
 input_dict['initial_probe'] = {"probe": 'random'} # random matrix with values between 0 and 1
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE CONSTANT ##########################################\n")
 input_dict['initial_probe'] = {"probe": 'constant'} # constant matrix of 1s
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE CIRCULAR ##########################################\n")
 input_dict['initial_probe'] = {"probe": 'circular', "radius": 100, "distance":0} # circular mask with a pixel of "radius".  If a distance (in meters) is given, it propagates the round probe using the ASM method.
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n################################################ INITIAL PROBE FZP ##########################################\n")
 input_dict['initial_probe'] = {"probe": 'fzp', 
@@ -476,7 +474,7 @@ input_dict['initial_probe'] = {"probe": 'fzp',
                                 'probe_diameter': 50e-6,
                                 'probe_normalize': False} # boolean
 print("input_dict['initial_probe'] = ", input_dict['initial_probe'])
-obj, probe, new_positions, input_dict, error = sscCdi.call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
+obj, probe, new_positions, input_dict, error = call_ptychography(input_dict.copy(),data, positions, initial_obj=initial_obj, initial_probe=initial_probe)
 
 print("\n##############################################################################################################")
 print("################################################ SSC-CDI TESTS PASSED #########################################")
