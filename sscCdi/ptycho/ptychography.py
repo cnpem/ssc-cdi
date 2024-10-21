@@ -83,8 +83,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
             print('Folder does not exist. Creating it...')
             os.makedirs(os.path.dirname(input_dict['hdf5_output']))
 
-        create_output_h5_file(input_dict)
-
     obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_engines(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
 
     if plot == True and corrected_positions is not None:
@@ -106,8 +104,12 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         plot_iteration_error(error)
 
     if input_dict['hdf5_output'] is not None:
-        print('Saving output hdf5 file at: ', input_dict['hdf5_output'])
-        save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj)
+        print('Saving output hdf5 file... ')
+        create_parent_folder(input_dict["hdf5_output"]) # create parent folder to output file if it does not exist
+        if input_dict['save_restored_data'] == True:
+            save_h5_output(input_dict,obj, probe, positions, error,initial_obj,initial_probe,corrected_positions,restored_data=DPs)
+        else:
+            save_h5_output(input_dict,obj, probe, positions, error,initial_obj,initial_probe,corrected_positions,restored_data=None)
 
     return obj, probe, corrected_positions, input_dict, error
 
@@ -458,13 +460,31 @@ def check_dtypes(DPs,initial_obj,initial_probe):
 
     return DPs, initial_obj, initial_probe
 
-def create_output_h5_file(input_dict):
 
-    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
+def create_parent_folder(file_path):
+    """
+    Create the parent folder of the specified file path if it does not exist.
+    
+    Parameters:
+    file_path : str
+        The path of the file for which to create the parent directory.
+    """
+    parent_folder = os.path.dirname(file_path)
+    if not os.path.exists(parent_folder):
+        os.makedirs(parent_folder, exist_ok=True)
+        print(f"Created directory: {parent_folder}")
+    else:
+        # print(f"Directory already exists: {parent_folder}")
+        pass
+
+def save_h5_output(input_dict,obj, probe, positions, error,initial_obj=None,initial_probe=None,corrected_positions=None,restored_data=None):
+
+    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
 
         h5file.create_group("recon")
         h5file.create_group("metadata")
 
+        h5file["metadata"].create_dataset('datetime',data=input_dict['datetime']) 
         h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
         h5file["metadata"].create_dataset('wavelength_meters',data=input_dict['wavelength']) 
         h5file["metadata"].create_dataset('detector_distance_meters',data=input_dict['detector_distance']) 
@@ -482,10 +502,11 @@ def create_output_h5_file(input_dict):
         h5file["metadata"].create_dataset('regime',data=input_dict['regime'])
         h5file["metadata"].create_dataset('fourier_power_bound',data=input_dict['fourier_power_bound'])
 
+
         # lists, tuples, arrays
         h5file["metadata"].create_dataset('gpus',data=input_dict['GPUs']) 
         h5file["metadata"].create_dataset('object_shape',data=list(input_dict['object_shape']))
-        
+
         h5file.create_group(f'metadata/probe_support')
         for key in input_dict['probe_support']: # save input probe
             h5file[f'metadata/probe_support'].create_dataset(key,data=input_dict['probe_support'][key])
@@ -496,7 +517,6 @@ def create_output_h5_file(input_dict):
 
         h5file.create_group(f'metadata/initial_probe')
         for key in input_dict['initial_probe']: # save input probe
-            print(key)
             h5file[f'metadata/initial_probe'].create_dataset(key,data=input_dict['initial_probe'][key])
         
         for key in input_dict['algorithms']: # save algorithms used
@@ -511,7 +531,23 @@ def create_output_h5_file(input_dict):
                 else:
                     h5file[f'metadata/algorithms/{key}'].create_dataset(subkey,data=input_dict['algorithms'][key][subkey])
 
+        if restored_data is not None:
+            h5file["recon"].create_dataset('restored_data',data=restored_data) 
+
+        h5file["recon"].create_dataset('object',data=obj) 
+        h5file["recon"].create_dataset('probe',data=probe) 
+        h5file["recon"].create_dataset('positions',data=positions)
+        h5file["recon"].create_dataset('probe_support_array',data=input_dict['probe_support_array'])
+        if initial_probe is not None:
+            h5file["recon"].create_dataset('initial_probe',data=initial_probe)
+        if initial_obj is not None:
+            h5file["recon"].create_dataset('initial_obj',data=initial_obj) 
+        if corrected_positions is not None:
+            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
+        h5file["recon"].create_dataset('error',data=error) 
+
     h5file.close()
+    print('Results saved at: ',input_dict["hdf5_output"])
 
 def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
     """
@@ -576,20 +612,7 @@ def bin_volume(volume, downsampling_factor):
 
     return binned_volume
 
-def save_recon_output_h5_file(input_dict, obj, probe, positions,corrected_positions, error,initial_probe,initial_obj):
 
-    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
-
-        h5file["recon"].create_dataset('object',data=obj) 
-        h5file["recon"].create_dataset('probe',data=probe) 
-        h5file["recon"].create_dataset('positions',data=positions)
-        h5file["recon"].create_dataset('initial_probe',data=initial_probe)
-        h5file["recon"].create_dataset('initial_obj',data=initial_obj) 
-        h5file["recon"].create_dataset('error',data=error) 
-        if corrected_positions is not None:
-            h5file["recon"].create_dataset('corrected_positions',data=corrected_positions) 
-
-    h5file.close()
 
 def append_ones(probe_positions):
     """ Adjust shape and column order of positions array to be accepted by Giovanni's code
