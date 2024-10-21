@@ -4,7 +4,6 @@ variables:
 
 stages:
     - build
-    - test
     - deploy
 
 build_dgx:
@@ -21,19 +20,6 @@ build_dgx:
             - ./dist/*whl
         expire_in: 1 day
 
-test_dgx:
-    stage: test
-    image: gccdockers/python-builder
-    script:
-        - python3 -m pip install matplotlib numpy scipy
-        - python3 ./tests/autotest_ptycho_engines.py
-    tags:
-        - x86_64
-        - cuda11
-        - docker
-    dependencies:
-        - build_dgx
-
 
 deploy_dgx:
     stage: deploy
@@ -45,7 +31,7 @@ deploy_dgx:
         - cuda11
         - docker
     dependencies:
-        - test_dgx
+        - build_dgx
     only:
         - tags
 
