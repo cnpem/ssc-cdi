@@ -25,6 +25,7 @@ test_dgx:
     stage: test
     image: gccdockers/python-builder
     script:
+        - pip install dist/*.whl
         - python3 ./tests/autotest_ptycho_engines.py
     tags:
         - x86_64
