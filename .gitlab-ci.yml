@@ -25,7 +25,7 @@ test_dgx:
     stage: test
     image: gccdockers/python-builder
     script:
-        - python3 -m pip install matplotlib numpy os json scipy
+        - python3 -m pip install matplotlib numpy json scipy
         - python3 ./tests/autotest_ptycho_engines.py
     tags:
         - x86_64
