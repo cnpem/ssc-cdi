@@ -10,7 +10,7 @@ import os
 import json
 from scipy import ndimage
 
-from sscCdi.ptycho import call_ptychography
+from ..sscCdi.ptycho.ptychography import call_ptychography
 
 def shift_ctr_of_mass_to_img_ctr(image):
 
