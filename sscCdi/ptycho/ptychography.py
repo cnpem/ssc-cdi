@@ -12,6 +12,8 @@ import numpy as np
 import sys, os, h5py
 import random
 
+from concurrent.futures import ProcessPoolExecutor
+
 from ..cditypes import AP, PIE, RAAR
 
 from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, calculate_object_pixel_size
@@ -34,7 +36,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     if check_consecutive_keys(input_dict['algorithms']) == False:
         raise ValueError('Keys in algorithms dictionary should be consecutive integers starting from 1. For example: {1: {...}, 2: {...}, 3: {...}}')
-
 
     if input_dict['n_of_positions_to_remove'] > 0:
         positions,DPs = remove_positions_randomly(positions,DPs, input_dict['n_of_positions_to_remove'])
@@ -610,9 +611,94 @@ def bin_volume(volume, downsampling_factor):
 
     print('Binned data to new shape: ', binned_volume.shape)
 
+    # THESE ARE OLD STRATEGIES FOR BINNING
+    # if input_dict["binning"] > 0:
+    #     DPs = binning_G_parallel(DPs,input_dict["binning"],input_dict["CPUs"]) # binning strategy by G. Baraldi
+    # if input_dict["binning"] < 0:
+    #     DPs = DPs[:,0::np.abs(input_dict["binning"]),0::np.abs(input_dict["binning"])]
+    #     input_dict["binning"] = np.abs(input_dict["binning"])
+
     return binned_volume
 
+def binning_G(binning,DP):
+    """
+    Binning strategy of a 2D diffraction pattern implemented by Giovanni Baraldi
+    """
 
+    if binning % 2 != 0: # no binning
+        sys.error(f'Please select an EVEN integer value for the binning parameters. Selected value: {binning}')
+    else:
+        while binning % 2 == 0 and binning > 0:
+            avg = DP + np.roll(DP, -1, -1) + np.roll(DP, -1, -2) + np.roll(np.roll(DP, -1, -1), -1, -2)  # sum 4 neigboors at the top-left value
+
+            div = 1 * (DP >= 0) + np.roll(1 * (DP >= 0), -1, -1) + np.roll(1 * (DP >= 0), -1, -2) + np.roll( np.roll(1 * (DP >= 0), -1, -1), -1, -2)  # Boolean array! Results in the n of valid points in the 2x2 neighborhood
+
+            avg = avg + 4 - div  # results in the sum of valid points only. +4 factor needs to be there to compensate for -1 values that exist when there is an invalid neighbor
+
+            avgmask = (DP < 0) & ( div > 0)  # div > 0 means at least 1 neighbor is valid. DP < 0 means top-left values is invalid.
+
+            DP[avgmask] = avg[avgmask] / div[ avgmask]  # sum of valid points / number of valid points IF NON-NULL REGION and IF TOP-LEFT VALUE INVALID. What about when all 4 pixels are valid? No normalization in that case?
+
+            DP = DP[:, 0::2] + DP[:, 1::2]  # binning columns
+            DP = DP[0::2] + DP[1::2]  # binning lines
+
+            DP[DP < 0] = -1
+
+            DP[div[0::2, 0::2] < 3] = -1  # why div < 3 ? Every neighborhood that had 1 or 2 invalid points is considered invalid?
+
+            binning = binning // 2
+
+        if binning > 1:
+            print('Entering binning > 1 only')
+            avg = -DP * 1.0 + binning ** 2 - 1
+            div = DP * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    avg += np.roll(np.roll(DP, j, -2), i, -1)
+                    div += np.roll(np.roll(DP > 0, j, -2), i, -1)
+
+            avgmask = (DP < 0) & (div > 0)
+            DP[avgmask] = avg[avgmask] / div[avgmask]
+
+            DPold = DP + 0
+            DP = DP[0::binning, 0::binning] * 0
+            for j in range(0, binning):
+                for i in range(0, binning):
+                    DP += DPold[j::binning, i::binning]
+
+            DP[DP < 0] = -1
+
+    return DP
+
+
+def binning_G_parallel(DPs,binning, processes):
+    """
+    Calls binning function in parallel for certain number of processes
+    """
+
+    # def call_binning_parallel(DP):
+    #     return binning_G(DP,binning) # binning strategy by G. Baraldi
+
+    def binning_G2(binning,DP):
+        return binning_G(DP,binning)
+
+    from functools import partial
+    call_binning_parallel = partial(binning_G, binning)
+
+    n_frames = DPs.shape[0]
+
+    binned_DPs = np.empty((DPs.shape[0],DPs.shape[1]//binning,DPs.shape[2]//binning))
+    with ProcessPoolExecutor(max_workers=processes) as executor:
+        results = executor.map(call_binning_parallel,[DPs[i,:,:] for i in range(n_frames)])
+        for counter, result in enumerate(results):
+            binned_DPs[counter,:,:] = result
+
+    if binned_DPs.shape[1] % 2 != 0: # make shape even
+        binned_DPs = binned_DPs[:,0:-1,:]
+    if binned_DPs.shape[2] % 2 != 0:    
+        binned_DPs = binned_DPs[:,:,0:-1]
+
+    return binned_DPs
 
 def append_ones(probe_positions):
     """ Adjust shape and column order of positions array to be accepted by Giovanni's code
