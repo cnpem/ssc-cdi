@@ -354,7 +354,7 @@ extern "C"{
                                                             workspace->sgpu.d_y,
                                                             shrinkwrap_threshold,
                                                             global_max,
-                                                            global_min, // 0.0f;
+                                                            global_min,  
                                                             idx_max,
                                                             idx_min,
                                                             workspace->dimension,
@@ -845,8 +845,8 @@ extern "C"{
      
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              stat_max = cublasIcamax(handle_max, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMaxvalue[i] );
-              stat_min = cublasIcamin(handle_min, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMinvalue[i] );
+              stat_max = cublasIcamax(handle_max, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMaxvalue[i]);
+              stat_min = cublasIcamin(handle_min, perGPUDim, (const cufftComplex*) workspace->mgpu.d_z->descriptor->data[i], 1, &idxMinvalue[i]);
      
               // debug possible errors in stat_max
               if (stat_max == CUBLAS_STATUS_NOT_INITIALIZED){
@@ -966,7 +966,7 @@ extern "C"{
             // create shifted Gaussian directly 
             for(int i = 0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              if (shrinkwrap_fftshift_gaussian==true){ //params->sw_fftshift_gaussian
+              if (shrinkwrap_fftshift_gaussian==true){  
                 gaussian1_freq_fftshift_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i],
                                                                              sigma,
                                                                              workspace->dimension,
@@ -1010,7 +1010,7 @@ extern "C"{
 
    
             // ds = FFT(ds) : after FFT forward, ds is in natural order
-            checkCudaErrors(cufftXtExecDescriptorC2C(workspace->plan_C2C, workspace->mgpu.d_x, workspace->mgpu.d_x, CUFFT_FORWARD));    // (d_s,d_s)
+            checkCudaErrors(cufftXtExecDescriptorC2C(workspace->plan_C2C, workspace->mgpu.d_x, workspace->mgpu.d_x, CUFFT_FORWARD));    
 
             // permuted2natural(workspace->mgpu.d_y, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
             // permuted2natural(workspace->mgpu.d_z, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
@@ -1026,7 +1026,7 @@ extern "C"{
                 multiply_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //to
                                                               // (cufftComplex*) workspace->mgpu.d_gaussian[i], //from1
                                                               (cufftComplex*) workspace->mgpu.d_y->descriptor->data[i], // from1 
-                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //from2  (d_s)
+                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //from2  
                                                               perGPUDim); 
                       
               }
@@ -1041,7 +1041,7 @@ extern "C"{
                 multiply_rc_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //to
                                                               // (cufftComplex*) workspace->mgpu.d_gaussian[i], //from1
                                                               (cufftComplex*) workspace->mgpu.d_y->descriptor->data[i], // from1 
-                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //from2  (d_s)
+                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //from2   
                                                               perGPUDim); 
                       
               }
@@ -1055,9 +1055,9 @@ extern "C"{
                 checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
           
                 multiply_legacy_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //to
-                                                              // (cufftComplex*) workspace->mgpu.d_gaussian[i], //from1
-                                                              (cufftComplex*) workspace->mgpu.d_y->descriptor->data[i], // from1 
-                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i], //from2  (d_s)
+                                                              // (cufftComplex*) workspace->mgpu.d_gaussian[i],                //from1
+                                                              (cufftComplex*) workspace->mgpu.d_y->descriptor->data[i],        // from1 
+                                                              (cufftComplex*) workspace->mgpu.d_x->descriptor->data[i],        //from2  
                                                               perGPUDim); 
                       
               }
@@ -1069,7 +1069,7 @@ extern "C"{
             }
    
             // compute IFFT
-            checkCudaErrors( cufftXtExecDescriptorC2C(workspace->plan_C2C, workspace->mgpu.d_x, workspace->mgpu.d_x, CUFFT_INVERSE) );
+            checkCudaErrors(cufftXtExecDescriptorC2C(workspace->plan_C2C, workspace->mgpu.d_x, workspace->mgpu.d_x, CUFFT_INVERSE));
          
 
             // normalize
