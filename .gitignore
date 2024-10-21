@@ -20,3 +20,5 @@ bin/._.DS_Store
 **/._.DS_Store
 data/dev/*
 examples/output.h5
+tests/*.png
+tests/test_output.h5
