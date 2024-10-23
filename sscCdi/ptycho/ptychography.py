@@ -61,8 +61,8 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1]) # meters
         print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
     
-    if 'positions_unit' not in input_dict:
-        pass
+    if input_dict['positions_unit'] is None:
+        print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")
     elif input_dict['positions_unit'] == 'meters' or input_dict['positions_unit'] == 'm':
         positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1)
     elif input_dict['positions_unit'] == 'millimeters' or input_dict['positions_unit'] == 'mm':
@@ -419,6 +419,7 @@ def check_and_set_defaults(input_dict):
         'clip_object_magnitude':False,
         'free_log_likelihood':0,
         'fourier_power_bound':0,
+        'positions_unit': None,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
