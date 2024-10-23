@@ -14,6 +14,25 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.14.0] - 2024-10-23
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Bug fixes for use of different initial guesses for object and probe
+
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Renamed Python function in ptycho engines for better understanding
+- Variable renaming in python codes and input dictionary
+- Variable renaming in CUDA codes for better understanding
+- Python and CUDA modules renamed to follow a similar standard
+
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- New RAAR option in CUDA storing temporary wavefront in CPU when not enough VRAM is available
+- New loglikelihood and MSE error metrics in Python engines
+- Added Fourier Power Bound variable to Ptycho python engines
+
 [0.13.5] - 2024-10-01
 ------------------------------
 Fixed
