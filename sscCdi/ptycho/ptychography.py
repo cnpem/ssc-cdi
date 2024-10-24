@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 from ..cditypes import AP, PIE, RAAR
 
-from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, calculate_object_pixel_size
+from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, calculate_object_pixel_size, get_datetime
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_python
 from .raar import RAAR_python
@@ -27,6 +27,8 @@ from .ptycho_plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_
 random.seed(0)
 
 def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_probe=None,plot=True):
+
+    input_dict["datetime"] = get_datetime()
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
 
@@ -404,6 +406,7 @@ def remove_positions_randomly(arr1, arr2, R):
 def check_and_set_defaults(input_dict):
     # Define the default values
     default_values = {
+        'datetime': get_datetime(),
         'CPUs': 32,
         'GPUs': [0],
         'regime': 'fraunhoffer', # 'fraunhoffer' or 'fresnel'
