@@ -65,20 +65,25 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
     
     if input_dict['positions_unit'] is None:
         print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")
+        if plot: plot_ptycho_scan_points(positions,pixel_size=None)
     elif input_dict['positions_unit'] == 'meters' or input_dict['positions_unit'] == 'm':
         positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1)
+        if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'millimeters' or input_dict['positions_unit'] == 'mm':
         positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-3)
+        if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'microns' or input_dict['positions_unit'] == 'micrometers' or input_dict['positions_unit'] == 'um':
         positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-6)
+        if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'pixels':
+        if plot: plot_ptycho_scan_points(positions,pixel_size=None)
         pass
+
 
     if "object_shape" not in input_dict:
         input_dict["object_shape"] = set_object_shape(input_dict["object_padding"], DPs.shape, positions)
         print(f"Object shape: {input_dict['object_shape']}")
     
-    if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
 
     if input_dict['hdf5_output'] is not None:
         print('Creating output hdf5 file...')
@@ -487,8 +492,13 @@ def save_h5_output(input_dict,obj, probe, positions, error,initial_obj=None,init
 
     with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
 
-        h5file.create_group("recon")
-        h5file.create_group("metadata")
+        # Check if the group "recon" already exists
+        if "recon" not in h5file:
+            h5file.create_group("recon")
+        
+        # Check if the group "metadata" already exists
+        if "metadata" not in h5file:
+            h5file.create_group("metadata")
 
         h5file["metadata"].create_dataset('datetime',data=input_dict['datetime']) 
         h5file["metadata"].create_dataset('energy_keV',data=input_dict['energy']) 
