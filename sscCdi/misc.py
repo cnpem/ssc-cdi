@@ -219,6 +219,14 @@ def wavelength_meters_from_energy_keV(energy_keV):
     planck         = 4.135667662E-18  # Plank constant [keV*s]
     return planck * speed_of_light / energy_keV
 
+def get_datetime():
+
+    from datetime import datetime
+    now = datetime.now()
+    dt_string = now.strftime("%Y-%m-%d-%Hh%Mm")
+    return dt_string 
+
+
 def get_array_size_bytes(array):
     """ Calculate size of array in multiples units
 
