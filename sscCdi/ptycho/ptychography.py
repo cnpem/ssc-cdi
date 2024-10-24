@@ -373,7 +373,7 @@ def check_shape_of_inputs(DPs,positions,initial_probe):
         raise ValueError(f'There is a problem with input data!\nThere are {DPs.shape[0]} diffractiom patterns and {positions.shape[0]} positions. These values should be the same.')    
 
     if initial_probe is not None: # mudei como conversado com Mauro
-        if DPs[0].shape[0] != initial_probe.shape[1] or DPs[0].shape[1] != initial_probe.shape[2]:
+        if DPs[0].shape[0] != initial_probe.shape[-2] or DPs[0].shape[1] != initial_probe.shape[-1]:
             raise ValueError(f'There is a problem with your input data!\nThe dimensions of input_probe and diffraction pattern differ in the X,Y directions: {DPs.shape} vs {initial_probe.shape}')
 
 def remove_positions_randomly(arr1, arr2, R):
@@ -420,6 +420,7 @@ def check_and_set_defaults(input_dict):
         'free_log_likelihood':0,
         'fourier_power_bound':0,
         'positions_unit': None,
+        'save_restored_data':False,
         'probe_support': {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0},
         'initial_obj': {"obj": 'random'},
         'initial_probe': {"probe": 'inverse'},
