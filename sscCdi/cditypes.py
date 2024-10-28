@@ -198,6 +198,8 @@ def PIE(obj: np.ndarray,
     error_rfactor = np.zeros(iterations, dtype=np.float32)
     error_rfactor, error_rfactorptr, _ = ctypes_array(error_rfactor)
 
+    if probesupp is not None:
+        probesupp = probesupp.astype('float32')
     probesupp, probesuppptr, _ = ctypes_opt_array(probesupp)
 
     time0 = time()

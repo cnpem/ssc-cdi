@@ -330,6 +330,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
                                                         difpads=DPs,
                                                         obj=obj,
                                                         probe=probe,
+                                                        probesupp = algo_inputs['probe_support_array'],
                                                         wavelength_m=input_dict["wavelength"],
                                                         pixelsize_m=input_dict["object_pixel"],
                                                         distance_m=input_dict["distance_sample_focus"],
@@ -490,7 +491,7 @@ def create_parent_folder(file_path):
 
 def save_h5_output(input_dict,obj, probe, positions, error,initial_obj=None,initial_probe=None,corrected_positions=None,restored_data=None):
 
-    with  h5py.File(input_dict["hdf5_output"], "a") as h5file:
+    with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
 
         # Check if the group "recon" already exists
         if "recon" not in h5file:
