@@ -77,7 +77,7 @@ extern "C" {
 #endif
 
   typedef struct{
-    cudaLibXtDesc *d_x, *d_y, *d_z;
+    cudaLibXtDesc *d_x, *d_y, *d_z; 
     cudaLibXtDesc *d_x_lasterr;                               // only allocated if err_type==ITER_DIFF 
     float **d_signal, **d_signal_host;  
     uint8_t **d_support, **d_support_host;
@@ -95,7 +95,7 @@ extern "C" {
   typedef struct{
     int dimension;
     size_t nvoxels;        
-    cufftHandle plan_C2C;
+    cufftHandle plan_C2C; 
     ssc_gpus *gpus;
     bool timing; 
 

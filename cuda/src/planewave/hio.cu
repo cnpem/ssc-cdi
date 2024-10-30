@@ -6,7 +6,17 @@
 #include "gpus.h"
 #include "pwutils.h"
 
+// #include <cstddef>
+// #include <stdio.h> 
+// #include <stddef.h>
+// #include <algorithm>
+// #include <cuda_runtime.h>
+
+
+
+
 extern "C"{
+
 
   void largest(float *max, float *arr, int n){
     *max = arr[0];
@@ -95,8 +105,9 @@ extern "C"{
         }
 
         // compute difference to be used in projection S
-        set_difference<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_x,   //to
-                                                       (cufftComplex*) workspace->sgpu.d_x,    //from
+        // 
+        set_difference<<<gridBlock, threadsPerBlock>>>((cufftComplex*) workspace->sgpu.d_x,     //to
+                                                       (cufftComplex*) workspace->sgpu.d_x,     //from
                                                        (cufftComplex*) workspace->sgpu.d_y,
                                                        1.0,
                                                        beta,
@@ -105,7 +116,8 @@ extern "C"{
         getLastCudaError("ssc-cdi: error / kernel execution failed @ set_difference<<<.>>>\n");
 
         // operate projection_S
-        if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
+        if (iter%extra_constraint_subiter==0 && iter>initial_extra_constraint_subiter){
+        // if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
           // extra_constraint is applied inside projection_S
           s_projection_S(workspace->plan_C2C,
                          workspace->sgpu.d_x,
@@ -157,8 +169,8 @@ extern "C"{
           if (shrinkwrap_iter_filter == FILTER_AMPLITUDE){
             // take the absolute value of the iter variable 
             absolute_value<<<gridBlock, threadsPerBlock>>>(workspace->sgpu.d_y,     
-                                                            workspace->sgpu.d_x,
-                                                            workspace->dimension);
+                                                           workspace->sgpu.d_x,
+                                                           workspace->dimension);
             cudaDeviceSynchronize();
             getLastCudaError("ssc-cdi: error / kernel execution failed @ absolute_value<<<.>>>\n");  
 
@@ -274,7 +286,7 @@ extern "C"{
 
             // restore d_x from host 
             checkCudaErrors(cudaMemcpy(workspace->sgpu.d_x,             //to
-                                       workspace->sgpu.d_x_swap,       //from
+                                       workspace->sgpu.d_x_swap,         //from
                                        workspace->nvoxels*sizeof(cufftComplex),
                                        cudaMemcpyHostToDevice));
           }
@@ -374,16 +386,7 @@ extern "C"{
 
           //  update sigma 
           sigma = sigma_mult*sigma;
-          
-          // update beta
-          // if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){
-          //   // reset beta
-          //   beta = initial_Beta;
-          // }else{
-          //   // update beta
-          //   beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
-          // }
-
+        
           // debug new values for beta and sigma  
           printf("ssc-cdi: new sigma = %lf \n",sigma);
           printf("ssc-cdi: new beta = %lf \n",beta);
@@ -402,7 +405,7 @@ extern "C"{
 
 
         // update beta
-        if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){ // params->
+        if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){  
           // reset beta
           beta = initial_beta;
         }else{
@@ -427,9 +430,9 @@ extern "C"{
           
           // perform the projection 
           s_projection_extra_constraint(workspace->sgpu.d_x,
-                                       workspace->sgpu.d_x,  
-                                       extra_constraint,
-                                       workspace->dimension);
+                                        workspace->sgpu.d_x,  
+                                        extra_constraint,
+                                        workspace->dimension);
 
           // stop timer
           cudaEventRecord(stop);
@@ -547,7 +550,7 @@ extern "C"{
       float *minvalue;
       cufftComplex *cmaxvalue;
       cufftComplex *cminvalue;
-      // cudaError_t status; 
+      cudaError_t status; 
 
 
   
@@ -575,6 +578,100 @@ extern "C"{
     
       float initial_beta = beta;
 
+  
+  
+
+      // if (params->swap_d_x==false){ 
+      //   int threadsPerBlock_ = 256;
+      //   int blocksPerGrid = (perGPUDim + threadsPerBlock_ - 1) / threadsPerBlock_;
+
+        
+        
+        // Copy from d_signal (float) to d_z (cufftComplex) in bulk on each GPU
+        // for (int i = 0; i < n_gpus; i++) {
+        //   floatToCufftComplex<<<blocksPerGrid, threadsPerBlock_>>>(
+        //     workspace->mgpu.d_signal[i], 
+        //     (cufftComplex*)workspace->mgpu.d_y->descriptor->data[i], 
+        //     perGPUDim);
+        //   checkCudaErrors(cudaGetLastError());  // Check for kernel launch errors
+        // }
+        // for (int i=0; i<n_gpus; i++){
+        //       checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+        //       checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
+        // }
+        // Iterate over each GPU
+        // for (int i=0; i<n_gpus; i++) {
+        //   // Iterate over each element for the current GPU
+        //   for (int j=0; j<perGPUDim; j++) {
+        //     float real_value;
+            
+        //     // Copy the cufftComplex value from device to host
+        //     checkCudaErrors(cudaMemcpy((void*) &real_value, 
+        //                                (void*) &workspace->mgpu.d_signal[i][j],  // Source: cufftComplex device pointer
+        //                                sizeof(float),     
+        //                                cudaMemcpyDeviceToHost));  // Copy from device to host
+            
+        //     // Extract the real part (assuming the imaginary part is zero)
+        //     cufftComplex complex_value = {real_value, 0.0f};
+
+        //     // Copy the float value to the destination float array on the device
+        //     checkCudaErrors(cudaMemcpy((void*)((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i] + j), 
+        //                                (void*) &complex_value, 
+        //                                sizeof(cufftComplex),    
+        //                                cudaMemcpyHostToDevice));  // Copy from host to device
+        //   }
+        // }
+
+
+        // workspace->mgpu.d_z->subFormat = CUFFT_XT_FORMAT_INPLACE_SHUFFLED;
+        // workspace->mgpu.d_y->subFormat = CUFFT_XT_FORMAT_INPLACE;
+        // checkCudaErrors(cufftXtMemcpy(workspace->plan_C2C,
+        //                               workspace->mgpu.d_y,
+        //                               workspace->mgpu.d_z,
+        //                               CUFFT_COPY_DEVICE_TO_DEVICE));
+        
+        // workspace->mgpu.d_y->subFormat = CUFFT_XT_FORMAT_INPLACE;
+        // workspace->mgpu.d_z->subFormat = CUFFT_XT_FORMAT_INPLACE;
+
+        // // Iterate over each GPU
+        // for (int i=0; i<n_gpus; i++) {
+        //   // Iterate over each element for the current GPU
+        //   for (int j=0; j<perGPUDim; j++) {
+        //     cufftComplex complex_value;
+            
+        //     // Copy the cufftComplex value from device to host
+        //     checkCudaErrors(cudaMemcpy((void*)&complex_value, 
+        //                                (void*)((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i] + j),  // Source: cufftComplex device pointer
+        //                                sizeof(cufftComplex),     
+        //                                cudaMemcpyDeviceToHost));  // Copy from device to host
+            
+        //     // Extract the real part (assuming the imaginary part is zero)
+        //     float real_value = complex_value.x;
+
+        //     // Copy the float value to the destination float array on the device
+        //     checkCudaErrors(cudaMemcpy((void*)&workspace->mgpu.d_signal[i][j], 
+        //                                (void*)&complex_value, 
+        //                                sizeof(float),    
+        //                                cudaMemcpyHostToDevice));  // Copy from host to device
+        //   }
+        // }
+        // Copy back from d_y (cufftComplex) to d_signal (float) in bulk on each GPU
+        // for (int i = 0; i < n_gpus; i++) {
+        //   cufftComplexToFloat<<<blocksPerGrid, threadsPerBlock_>>>(
+        //       (cufftComplex*)workspace->mgpu.d_y->descriptor->data[i], 
+        //       workspace->mgpu.d_signal[i], 
+        //       perGPUDim);
+        //   checkCudaErrors(cudaGetLastError());  // Check for kernel launch errors
+        // }
+        // for (int i=0; i<n_gpus; i++){
+        //   checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
+        //   checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
+        // }
+      // }
+
+      // return;
+
+ 
     
       //-----------------------------------------------------------
       // start iterations
@@ -592,17 +689,32 @@ extern "C"{
           cudaEventRecord(start);
         }
 
-        m_projection_M(workspace->plan_C2C,
-                       workspace->mgpu.d_y,
-                       workspace->mgpu.d_x,  
-                       workspace->mgpu.d_signal,
-                       params->eps_zeroamp,
-                       dim,
-                       perGPUDim,
-                       workspace->gpus,
-                       workspace->host_swap,
-                       workspace->timing);
-
+ 
+        
+        // this will use one implementation or another depending if a host swap variable was allocated or not
+        if (params->swap_d_x==true){
+          m_projection_M(workspace->plan_C2C,
+                         workspace->mgpu.d_y,
+                         workspace->mgpu.d_x,  
+                         workspace->mgpu.d_signal,
+                         params->eps_zeroamp,
+                         dim,
+                         perGPUDim,
+                         workspace->gpus,
+                         workspace->host_swap,                     // host swap
+                         workspace->timing);
+        }else{
+          m_projection_M_swapdevice(workspace->plan_C2C,
+                                    workspace->mgpu.d_y,
+                                    workspace->mgpu.d_x,  
+                                    workspace->mgpu.d_signal,
+                                    params->eps_zeroamp,
+                                    dim,
+                                    perGPUDim,
+                                    workspace->gpus,
+                                    workspace->mgpu.d_z,          // device swap  
+                                    workspace->timing);
+        }
 
         if (workspace->timing){  
           cudaEventRecord(stop);
@@ -611,7 +723,7 @@ extern "C"{
           printf("ssc-cdi: m_projection_M() time: %lf ms\n", time_projM);
         }
 
-
+ 
         // ==================================
         // operation: projection_S
         
@@ -639,14 +751,15 @@ extern "C"{
           getLastCudaError("ssc-cdi: error / kernel execution failed @ set_difference_mgpu<<<.>>>\n");
         }
  
- 
+
         // set timer        
         if (workspace->timing){  
           cudaEventRecord(start);
         }
          
         // compute the projection
-        if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
+        if (iter%extra_constraint_subiter==0 && iter>initial_extra_constraint_subiter){
+        // if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
           // extra_constraint is applied inside projection_S
           m_projection_S(workspace->mgpu.d_x, //  
                          workspace->mgpu.d_y,              
@@ -666,6 +779,8 @@ extern "C"{
                          workspace->gpus);
         }
 
+ 
+
         // stop timer 
         if (workspace->timing){  
           cudaEventRecord(stop);
@@ -673,7 +788,7 @@ extern "C"{
           cudaEventElapsedTime(&time_projS, start, stop);
           printf("ssc-cdi: m_projection_S(): %lf ms\n", time_projS);
         }
-
+ 
 
         // ============================================================
         // operation: shrinkwrap  
@@ -688,7 +803,7 @@ extern "C"{
           // store no pointer during shrinkwrap
           if (params->swap_d_x==false){
 
-            // copy the content of d_x, which is in natural ordering format, to d_s
+            // copy the content of d_x, which is in natural ordering format, to d_z
             // note that this copy is done directly on the content.
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
@@ -939,18 +1054,7 @@ extern "C"{
 
             //  update sigma 
             sigma = sigma_mult * sigma;
-            
-            // // update beta
-            // if (beta_reset_subiter>0 && iter%beta_reset_subiter==0 && iter>0){
-            //   // reset beta
-            //   beta = initial_beta;
-            // }else{
-            //   // update beta
-            //   beta = initial_beta + (1 - initial_beta)*(1 - exp( -(iter/beta_update)*(iter/beta_update)*(iter/beta_update)));
-            // }
-
-
-
+ 
         
           // store one pointer during shrinkwrap
           }else if (params->swap_d_x==true){
@@ -1247,11 +1351,11 @@ extern "C"{
 
           // perform the projection with extra constraint
           m_projection_extra_constraint(workspace->mgpu.d_x,
-                                       workspace->mgpu.d_x,  
-                                       extra_constraint, 
-                                       dim,
-                                       perGPUDim,
-                                       workspace->gpus);
+                                        workspace->mgpu.d_x,  
+                                        extra_constraint, 
+                                        dim,
+                                        perGPUDim,
+                                        workspace->gpus);
           // stop timer
           if (workspace->timing){  
             cudaEventRecord(stop);
