@@ -8,22 +8,22 @@
 
 extern "C"{
   void er(ssc_pwcdi_plan *workspace,
-		  ssc_pwcdi_params *params,
-		  int global_iteration,
-		  int shrinkwrap_subiter,
-		  int initial_shrinkwrap_subiter,
-		  int extra_constraint,
-		  int extra_constraint_subiter,
-		  int initial_extra_constraint_subiter,
-		  float shrinkwrap_threshold,                      
-      int shrinkwrap_iter_filter,
-      int shrinkwrap_mask_multiply,
-      bool shrinkwrap_fftshift_gaussian,
-      float sigma, 
-      float sigma_mult, 
-      float beta,
-      float beta_update,
-      int beta_reset_subiter){
+    		  ssc_pwcdi_params *params,
+    		  int global_iteration,
+    		  int shrinkwrap_subiter,
+    		  int initial_shrinkwrap_subiter,
+    		  int extra_constraint,
+    		  int extra_constraint_subiter,
+    		  int initial_extra_constraint_subiter,
+    		  float shrinkwrap_threshold,                      
+  	      int shrinkwrap_iter_filter,
+  	      int shrinkwrap_mask_multiply,
+  	      bool shrinkwrap_fftshift_gaussian,
+  	      float sigma, 
+  	      float sigma_mult, 
+  	      float beta,
+  	      float beta_update,
+  	      int beta_reset_subiter){
   	
     if(workspace->gpus->ngpus==1){
 		// SINGLE-GPU CASE
@@ -114,7 +114,7 @@ extern "C"{
 			cudaEventCreate(&stop);
 		    
 			const size_t dim = workspace->nvoxels;
-			const int n_gpus =  workspace->gpus->ngpus;
+			const int n_gpus = workspace->gpus->ngpus;
 			const size_t perGPUDim = dim/n_gpus;
 
 			const dim3 threadsPerBlock(tbx*tby*tbz);
@@ -123,7 +123,7 @@ extern "C"{
 			// reminder: workspace->dx already contains the starting point
 		
 
-			for (int iter = 0; iter < global_iteration; ++iter){
+			for (int iter=0; iter<global_iteration; ++iter){
 
 
 	    // ==========================================

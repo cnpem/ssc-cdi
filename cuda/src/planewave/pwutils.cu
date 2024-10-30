@@ -89,8 +89,7 @@ extern "C" {
 
       // malloc other variables
       checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_x, sizeof(cufftComplex)*pow(workspace->dimension, 3)));
-      checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_y, sizeof(cufftComplex)*pow(workspace->dimension, 3)));
-      // checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_z, sizeof(cufftComplex)*pow(workspace->dimension, 3)));
+      checkCudaErrors(cudaMalloc((void**) &workspace->sgpu.d_y, sizeof(cufftComplex)*pow(workspace->dimension, 3))); 
 
 
       // allocate d_signal 
@@ -118,21 +117,14 @@ extern "C" {
       
       // profile GPU (after)
       ssc_gpus_get_info(workspace->gpus->ngpus, workspace->gpus->gpus, ASTATE);
-    
+
+
+    // multi GPU case  
     }else if (ngpu>1){
-      // multi GPU case 
 
-      // Memory allocation (Heavy):
-      // -----------------
-      // d_x, d_y, d_z - cufftComplex data type
-      // d_signal      - float data type
-      // d_support     - uint8_t data type
-      // plan_C2C      - ~ 3x cufftComplex data type
-
-  
       // allocate gpus workspace
-      workspace->gpus        = (ssc_gpus*) malloc(sizeof(ssc_gpus));
-      workspace->gpus->gpus  = (int*) malloc(sizeof(int)*ngpu);
+      workspace->gpus = (ssc_gpus*) malloc(sizeof(ssc_gpus));
+      workspace->gpus->gpus = (int*) malloc(sizeof(int)*ngpu);
       workspace->gpus->ngpus = ngpu;
       for(int k=0; k < ngpu; k++){
           workspace->gpus->gpus[k] = gpus[k];
@@ -199,7 +191,7 @@ extern "C" {
         hostalloc_status = cudaMallocHost((void**)&workspace->mgpu.d_support, n_gpus*sizeof(uint8_t*));
 
         // allocate d_support_host as pinned host memory. After that, 
-        // allocate a device pointer for d_signal containing a reference to d_support_host only. 
+        // allocate a device pointer for d_support containing a reference to d_support_host only. 
         hostalloc_status = cudaMallocHost((void **)&workspace->mgpu.d_support_host, n_gpus*sizeof(uint8_t*));
         for (int i=0; i<n_gpus; i++){
            hostalloc_status =cudaMallocHost((void **)&workspace->mgpu.d_support_host[i], (size_t) (N*N*N*sizeof(uint8_t)/n_gpus), cudaHostAllocMapped);
@@ -228,9 +220,8 @@ extern "C" {
       // workspace->mgpu.d_gaussian = (cufftComplex**)calloc(n_gpus, sizeof(cufftComplex*));
       // checkCudaErrors(cudaMalloc((void**)&workspace->mgpu.d_support, (size_t) (n_gpus*sizeof(uint8_t*))));
     
-
-      ///////////////////////////////////// 
-      // dynamic allocation: allocate host swap variable 
+ 
+      //  allocate host swap variable 
       // workspace->host_swap = (cufftComplex*)malloc(N*N*N*sizeof(cufftComplex));
       hostalloc_status = cudaMallocHost((void **)&workspace->host_swap, N*N*N*sizeof(cufftComplex));
 
@@ -265,6 +256,9 @@ extern "C" {
       // allocate main variables: d_x, d_y and d_z
       checkCudaErrors(cufftXtMalloc(workspace->plan_C2C, (cudaLibXtDesc**) &workspace->mgpu.d_x, CUFFT_XT_FORMAT_INPLACE)); 
       checkCudaErrors(cufftXtMalloc(workspace->plan_C2C, (cudaLibXtDesc**) &workspace->mgpu.d_y, CUFFT_XT_FORMAT_INPLACE)); 
+      
+  
+
       if (params->swap_d_x==false){
         checkCudaErrors(cufftXtMalloc(workspace->plan_C2C, (cudaLibXtDesc**) &workspace->mgpu.d_z, CUFFT_XT_FORMAT_INPLACE)); 
       }
@@ -477,6 +471,10 @@ extern "C" {
   }
 
 
+
+
+
+
   void permuted2natural(cudaLibXtDesc* var, cufftHandle& plan_input, size_t dim_size, cufftComplex* host_var){
   /**
    * @brief  Fixes the ordering of a cudaLibXtDesc variable by copying it to host memory and then back to the device. 
@@ -517,6 +515,16 @@ extern "C" {
                                   var,
                                   host_var,
                                   CUFFT_COPY_HOST_TO_DEVICE));
+
+    // fprintf(stdout, "subFormat before: %d\n", var->subFormat);
+    // // perform cufftXtMemcpy() with CUFFT_COPY_DEVICE_TO_DEVICE flag
+    // checkCudaErrors(cufftXtMemcpy(plan_input,
+    //                               var,
+    //                               var,
+    //                               CUFFT_COPY_DEVICE_TO_DEVICE));
+    // fprintf(stdout, "subFormat after: %d\n", var->subFormat);
+    // fprintf(stdout, "ssc-cdi: permuted2natural: ordering fixed.\n");
+    // fflush(stdout);
 
   }
 
@@ -1054,6 +1062,49 @@ extern "C" {
   } 
 
 
+__global__ void inplaceRedistributeKernel(cufftComplex *data, 
+                                          int width, int height, int depth,
+                                          int subDepth, int srcOffset, int dstOffset) {
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int z = blockIdx.z * blockDim.z + threadIdx.z;
+
+    // Temporary staging area in shared memory (if needed)
+    __shared__ cufftComplex tile[8][8][8];  // Adjust size based on block dimensions
+
+    if (x < width && y < height && z < subDepth) {
+        int srcIndex = srcOffset + z * (width * height) + y * width + x;
+        int dstIndex = dstOffset + z * (width * height) + y * width + x;
+
+        // Load data into shared memory
+        tile[threadIdx.z][threadIdx.y][threadIdx.x] = data[srcIndex];
+        __syncthreads();
+
+        // Write data from shared memory to in-place position
+        data[dstIndex] = tile[threadIdx.z][threadIdx.y][threadIdx.x];
+    }
+}
+
+void RedistributeDataInPlace(cufftComplex *data[], int width, int height, int depth, int numGPUs) {
+    int subDepth = depth / numGPUs;
+
+    for (int gpu = 0; gpu < numGPUs; ++gpu) {
+        cudaSetDevice(gpu);
+        int srcOffset = gpu * (width * height * subDepth);
+        int dstOffset = srcOffset;  // Adjust if needed
+
+        // Launch kernel with 3D block and grid dimensions
+        dim3 blockDim(8, 8, 8);
+        dim3 gridDim((width + blockDim.x - 1) / blockDim.x,
+                     (height + blockDim.y - 1) / blockDim.y,
+                     (subDepth + blockDim.z - 1) / blockDim.z);
+
+        inplaceRedistributeKernel<<<gridDim, blockDim>>>(data[gpu], width, height, depth,
+                                                         subDepth, srcOffset, dstOffset);
+        cudaDeviceSynchronize();  // Sync each GPU separately
+    }
+}
+
 
 void m_projection_M(cufftHandle& plan_C2C,
                     cudaLibXtDesc* d_y,  
@@ -1112,54 +1163,69 @@ void m_projection_M(cufftHandle& plan_C2C,
   // note that this copy is done directly on the content.
   for (int i=0; i<n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-    checkCudaErrors(cudaMemcpy((void*) d_y->descriptor->data[i], // d_z  (d_x) // versus cudaMemcpyAsync
-                                    (void*) d_x->descriptor->data[i],
-                                    perGPUDim*sizeof(cufftComplex),
-                                    cudaMemcpyDeviceToDevice));
-                                    // gpus->streams[i]));
+    checkCudaErrors(cudaMemcpy((void*) d_y->descriptor->data[i], //  versus cudaMemcpyAsync
+                               (void*) d_x->descriptor->data[i],
+                                perGPUDim*sizeof(cufftComplex),
+                                cudaMemcpyDeviceToDevice));
+                                // gpus->streams[i]));
   }     
   for (int i = 0; i <n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
     checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
-    getLastCudaError("ssc-cdi: error at memcpy.\n");
+    getLastCudaError("ssc-cdi: error / cudaMemcpy() failed @ m_projection_M()\n");
   }
 
   // this should work too, but it is not. I guess a driver update would solve  
   // checkCudaErrors(cufftXtMemcpy(plan_C2C,
-  //                               d_y, // d_z (d_x)
+  //                               d_y,  
   //                               d_x,
   //                               CUFFT_COPY_DEVICE_TO_DEVICE));
 
 
-  // perform FFT on d_z 
-  checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C, d_y, d_y, CUFFT_FORWARD)); // d_z  (d_x)
+  // perform FFT on d_y
+  checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C, 
+                                           d_y,               // input
+                                           d_y,               // output
+                                           CUFFT_FORWARD));  
 
- 
-  // fix the ordering of d_z
-  permuted2natural(d_y, plan_C2C, totalDim, host_swap); // d_z  (d_x)
+  
+  printf("ssc-cdi true: d_y->subFormat = %d\n", d_y->subFormat); 
+  fflush(stdout);
  
 
-  // adjust the phase of the fft of d_z, but copy the results directly to d_y
+  // fix the ordering of d_y
+  permuted2natural(d_y, plan_C2C, totalDim, host_swap);  
+
+
+
+  printf("ssc-cdi true: d_y->subFormat = %d\n", d_y->subFormat); 
+  fflush(stdout);
+
+
+
+  // adjust the phase of the fft of d_y, but copy the results directly to d_y
   // to = signal * exp( i * from ) / totalDim 
-  for(int i = 0; i < n_gpus; i++){
+  for(int i=0; i<n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
     update_with_phase_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_y->descriptor->data[i], //to 
-                                                           (cufftComplex*) d_y->descriptor->data[i], //from d_z  (d_x)
+                                                           (cufftComplex*) d_y->descriptor->data[i], //from  
                                                            d_signal[i],
                                                            eps,
                                                            totalDim,
                                                            perGPUDim);
   }
-  for(int i = 0; i < n_gpus; i++){
+  for(int i=0; i<n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i])); 
     checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
     getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_with_phase_mgpu<<<.>>>\n");
   }
  
-  // compute the ifft of d_y. Note that we didn't need to convert the subformat to natural ordering 
+ 
+  // compute the ifft of d_y. Note that we wouldn't need to convert the subformat to natural ordering
+  // if we had not corrected the data subformat in the previous step. 
   checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C,
-                                           d_y, //input
-                                           d_y, //output
+                                           d_y,                 //input
+                                           d_y,                 //output
                                            CUFFT_INVERSE));
 
   // fix the ordering of d_y
@@ -1167,65 +1233,62 @@ void m_projection_M(cufftHandle& plan_C2C,
 }
   
 
+  void m_projection_M_swapdevice(cufftHandle& plan_C2C,
+                                  cudaLibXtDesc* d_y,  
+                                  cudaLibXtDesc* d_x, 
+                                  float** d_signal,
+                                  float eps,
+                                  size_t totalDim, 
+                                  size_t perGPUDim,
+                                  ssc_gpus *gpus,                    
+                                  cudaLibXtDesc* device_swap, 
+                                  bool timing){
 
-
-
-void m_projection_M_nswap1(cufftHandle& plan_C2C,
-                           cudaLibXtDesc* d_y, //output  
-                           cudaLibXtDesc* d_x, // input
-                           cufftComplex* d_x_swap,
-                           float** d_signal,
-                           float eps,
-                           size_t totalDim, 
-                           size_t perGPUDim,
-                           ssc_gpus *gpus,
-                           cufftComplex* host_swap,
-                           bool timing){
-  
-  //
-  //
-  // This assumes that both d_x->subFormat and d_y->subformat are equal to
-  // CUFFT_XT_FORMAT_INPLACE. 
-
+ 
   int n_gpus = totalDim/perGPUDim;
-
   const dim3 threadsPerBlock(tbx*tby*tbz);
   const dim3 gridBlock(ceil((perGPUDim + threadsPerBlock.x - 1)/threadsPerBlock.x));
      
 
-
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-  float time_copydsignal;
+  float time_copydx;
 
 
-  // // dynamic allocation: store d_x data in host pinned memory 
-  // cufftComplex* d_x_swap = 
-  // copy to host
-  checkCudaErrors(cufftXtMemcpy(plan_C2C,
-                                d_x_swap,
-                                d_x,
-                                CUFFT_COPY_DEVICE_TO_HOST));
- 
 
-  // perform FFT on d_z 
-  checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C, d_x, d_x, CUFFT_FORWARD)); // (d_z, d_z)
+  // copy the content of d_x, which is in natural ordering format, to d_y
+  // note that this copy is done directly on the content.
+  for (int i=0; i<n_gpus; i++){
+    checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
+    checkCudaErrors(cudaMemcpy((void*) d_y->descriptor->data[i],  // to   
+                               (void*) d_x->descriptor->data[i],  // from
+                               perGPUDim*sizeof(cufftComplex),
+                               cudaMemcpyDeviceToDevice));
+  }     
+  for (int i = 0; i <n_gpus; i++){
+    checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
+    checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
+    getLastCudaError("ssc-cdi: error / cudaMemcpy() failed @ m_projection_M()\n");
+  }
  
-  // fix the ordering of d_z
-  permuted2natural(d_x, plan_C2C, totalDim, host_swap); // d_z
- 
- 
- 
-  // adjust the phase of the fft of d_z, but copy the results directly to d_y
+  // perform FFT on d_y
+  checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C, 
+                                           d_y,               // input
+                                           d_y,               // output
+                                           CUFFT_FORWARD));  
+
+  
+
+  // adjust the phase of the fft of d_y, but copy the results directly to d_y
   // to = signal * exp( i * from ) / totalDim 
   for(int i=0; i<n_gpus; i++){
     checkCudaErrors(cudaSetDevice(gpus->gpus[i]));
-    update_with_phase_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_y->descriptor->data[i], //to
-                                                           (cufftComplex*) d_x->descriptor->data[i], //from (d_z)
+    update_with_phase_mgpu<<<gridBlock, threadsPerBlock>>>((cufftComplex*) d_y->descriptor->data[i], //to 
+                                                           (cufftComplex*) d_y->descriptor->data[i], //from  
                                                            d_signal[i],
                                                            eps,
-                                                           totalDim, 
+                                                           totalDim,
                                                            perGPUDim);
   }
   for(int i=0; i<n_gpus; i++){
@@ -1233,31 +1296,20 @@ void m_projection_M_nswap1(cufftHandle& plan_C2C,
     checkCudaErrors(cudaStreamSynchronize(gpus->streams[i]));
     getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_with_phase_mgpu<<<.>>>\n");
   }
+   
 
-
- 
-
-  // compute the ifft of d_y. Note that we didn't need to convert the subformat to natural ordering 
+  // compute the ifft of d_y. Note that we wouldn't need to convert the subformat to natural ordering
+  // if we had not corrected the data subformat in the previous step. 
   checkCudaErrors(cufftXtExecDescriptorC2C(plan_C2C,
-                                           d_y, //input
-                                           d_y, //output
+                                           d_y,                 //input
+                                           d_y,                 //output
                                            CUFFT_INVERSE));
  
+}
 
-  // fix the ordering of d_y
-  permuted2natural(d_y, plan_C2C, totalDim, host_swap);
+ 
 
-
-
-
-  // copy d_x_swap back to the device in d_x 
-  checkCudaErrors(cufftXtMemcpy(plan_C2C,
-                                d_x,
-                                d_x_swap,
-                                CUFFT_COPY_HOST_TO_DEVICE));
-  }
-
-
+ 
 
 void m_fftshift(uint8_t** data, 
                 size_t dimension, 
@@ -1330,9 +1382,40 @@ void m_fftshift(uint8_t** data,
                       size_t totalDim,
                       size_t perGPUDim,
                       ssc_gpus *gpus){
-    //
-    // dz = support * dy + (1 - support) * dz
-    //
+  /**
+   * @brief Performs a multi-GPU projection operation, updating the complex array `d_z` with the values of `d_y` based on the support mask `d_support`.
+   * Optionally applies an extra constraint during the projection.
+   *
+   * This function distributes the computation across multiple GPUs, where each GPU processes a segment of the input arrays.
+   * For each GPU, it projects the array `d_y` onto `d_z` according to the support mask `d_support`. If an extra constraint is specified,
+   * it applies a phase constraint in addition to the support constraint.
+   *
+   * The update rule is defined as:
+   * 
+   * \code
+   * d_z[index] = d_support[index] * d_y[index] + (1 - d_support[index]) * d_z[index]
+   * \endcode
+   * 
+   * When an extra constraint is applied, the update rule is modified to incorporate phase restrictions.
+   *
+   * @param d_z Pointer to a `cudaLibXtDesc` structure containing the output array segments across multiple GPUs. 
+   *            Each GPU handles a portion of the total dataset (`perGPUDim` elements per GPU).
+   * @param d_y Pointer to a `cudaLibXtDesc` structure containing the input array segments across multiple GPUs.
+   *            The values from this array are projected onto `d_z` based on `d_support`.
+   * @param d_support Array of pointers to the support masks (`uint8_t`) for each GPU, where 1 indicates support, 
+   *                  and 0 indicates the region outside the support.
+   * @param extra_constraint Specifies whether an additional phase constraint is applied:
+   *                         - `NO_EXTRA_CONSTRAINT` applies only the support constraint.
+   *                         - Other values apply the support and a phase constraint.
+   * @param totalDim The total number of elements across all GPUs (combined size of `d_z` and `d_y`).
+   * @param perGPUDim The number of elements assigned to each GPU for processing.
+   * @param gpus Structure containing information about the available GPUs and their associated CUDA streams.
+   *
+   * @note The function assumes that the input arrays (`d_z`, `d_y`, `d_support`) are preallocated and distributed across the GPUs.
+   *       Each GPU processes its own segment independently, with synchronization handled after the kernel execution.
+   */
+
+
     int n_gpus = totalDim/perGPUDim;
     const dim3 threadsPerBlock(tbx*tby*tbz);
     const dim3 gridBlock(ceil((perGPUDim + threadsPerBlock.x - 1)/threadsPerBlock.x));
@@ -1441,6 +1524,8 @@ void m_fftshift(uint8_t** data,
     getLastCudaError("ssc-cdi: error / Kernel execution failed @ update_with_phase<<<.>>>\n");
     
 
+
+
     // dy = IFFT (dy)
     checkCudaErrors(cufftExecC2C(plan_input, d_y, d_y, CUFFT_INVERSE));
     // cudaDeviceSynchronize();
@@ -1454,8 +1539,35 @@ void m_fftshift(uint8_t** data,
                       uint8_t* d_support,
                       int extra_constraint,
                       int dimension){
-    //
-    // dz = support * dy + (1 - support) * dz
+  /**
+   * @brief Projects the complex array `d_y` onto the complex array `d_z` based on a support mask, with an optional extra constraint.
+   *
+   * This function applies a projection of the input array `d_y` onto the output array `d_z`, constrained by the support mask `d_support`.
+   * The update is performed in-place using a CUDA kernel. If specified, an extra constraint can be applied to enforce phase conditions
+   * in addition to the support constraint.
+   *
+   * The update rule is defined as:
+   * 
+   * \code
+   * d_z[index] = d_support[index] * d_y[index] + (1 - d_support[index]) * d_z[index]
+   * \endcode
+   * 
+   * When an extra constraint is applied, the projection rule is modified to account for phase restrictions.
+   *
+   * @param plan_input A reference to the CUFFT plan (`cufftHandle`) for executing FFT transformations, though it is not used directly in this function.
+   *                   It can be useful for applying future transformations if required.
+   * @param d_z Pointer to the output complex array (`cufftComplex`) that will be updated with projected values from `d_y`.
+   * @param d_y Pointer to the input complex array (`cufftComplex`) to be projected and used for updating `d_z`.
+   * @param d_support Pointer to the support mask (`uint8_t`) that defines which regions of `d_z` are updated based on `d_y`.
+   *                  A value of `1` indicates a region inside the support, and `0` indicates outside the support.
+   * @param extra_constraint Specifies whether an additional constraint is applied:
+   *                         - `NO_EXTRA_CONSTRAINT` applies only the support constraint.
+   *                         - Other values apply the support and a phase constraint.
+   * @param dimension Specifies the total dimension size of the arrays (assumed cubic, i.e., `dimension x dimension x dimension`).
+   *
+   * @note This function assumes that the input arrays (`d_z`, `d_y`, and `d_support`) are preallocated and have dimensions aligned with the grid and block sizes for CUDA execution.
+   *       The grid and block dimensions are calculated based on `dimension`, and kernel synchronization is handled after execution.
+   */
     
     const dim3 threadsPerBlock(tbx, tby, tbz);
     const dim3 gridBlock (ceil(dimension + threadsPerBlock.x - 1)/threadsPerBlock.x,
@@ -1523,9 +1635,9 @@ void m_fftshift(uint8_t** data,
   
 
   void s_projection_extra_constraint(cufftComplex* d_x,
-                                    cufftComplex* d_y,
-                                    int extra_constraint,
-                                    int dimension){
+                                     cufftComplex* d_y,
+                                     int extra_constraint,
+                                     int dimension){
  
     
     const dim3 threadsPerBlock(tbx, tby, tbz);

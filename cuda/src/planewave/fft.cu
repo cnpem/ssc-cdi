@@ -178,8 +178,22 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
 
     const size_t index = threadIDx + threadIDy*dimension + threadIDz*dimension*dimension;
 
-    // float eps = 0.001f;
-
+    // if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
+    //   if (m[index]<0){
+    //     // handle -1 values
+    //     a[index].x = b[index].x/((float)(dimension*dimension*dimension));
+    //     a[index].y = b[index].y/((float)(dimension*dimension*dimension));
+    //     // a[index] = b[index];
+    //   }else if(eps>=0 && sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0))<=eps){
+    //     a[index].x = m[index]/((float) (dimension*dimension*dimension));
+    //     a[index].y = 0.0f;
+    //   }else{
+    //     theta = atan2f(b[index].y, b[index].x);
+    //     __sincosf(theta, &sin, &cos);
+    //     a[index].x = (m[index]*cos)/((float) (dimension*dimension*dimension));
+    //     a[index].y = (m[index]*sin)/((float) (dimension*dimension*dimension));
+    //   }
+    // }
 
     if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
       if (m[index]<0){
@@ -187,35 +201,17 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
         a[index].x = b[index].x/((float)(dimension*dimension*dimension));
         a[index].y = b[index].y/((float)(dimension*dimension*dimension));
         // a[index] = b[index];
-      }else if(eps>=0 && sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0))<=eps){
-        a[index].x = m[index]/((float) (dimension*dimension*dimension));
-        a[index].y = 0.0f;
       }else{
-        theta = atan2f(b[index].y, b[index].x);
-        __sincosf(theta, &sin, &cos);
-        a[index].x = (m[index]*cos)/((float) (dimension*dimension*dimension));
-        a[index].y = (m[index]*sin)/((float) (dimension*dimension*dimension));
+        const float fft_abs = sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0));
+        if(eps>=0 && fft_abs<=eps){
+          a[index].x = m[index]/((float) (dimension*dimension*dimension));
+          a[index].y = 0.0f;
+        }else{
+          a[index].x = (m[index]*b[index].x)/((float) fft_abs*(dimension*dimension*dimension));
+          a[index].y = (m[index]*b[index].y)/((float) fft_abs*(dimension*dimension*dimension));
+        }
       }
     }
-
-    // if (threadIDx<dimension && threadIDy<dimension && threadIDz<dimension){
-    //   if (m[index]<0){
-    //     // handle -1 values
-    //     a[index].x = b[index].x/((float)(dimension*dimension*dimension));
-    //     a[index].y = b[index].y/((float)(dimension*dimension*dimension));
-    //     // a[index] = b[index];
-    //   }else{
-    //     const float fft_abs = sqrtf(powf(fabs(b[index].x),2.0)+powf(fabs(b[index].y),2.0));
-    //     if(eps>=0 && fft_abs<=eps){
-    //       a[index].x = m[index]/((float) (dimension*dimension*dimension));
-    //       a[index].y = 0.0f;
-    //     }else{
-          
-    //       a[index].x = (m[index]*b[index].x)/((float) fft_abs*(dimension*dimension*dimension));
-    //       a[index].y = (m[index]*b[index].y)/((float) fft_abs*(dimension*dimension*dimension));
-    //     }
-    //   }
-    // }
 
 
   }
