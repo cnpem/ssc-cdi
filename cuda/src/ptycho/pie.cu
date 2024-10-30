@@ -9,7 +9,7 @@
 
 #include "complex.hpp"
 #include "logger.hpp"
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 #include "types.hpp"
 #include "utils.hpp"
 
@@ -230,7 +230,7 @@ void PieRun(Pie& pie, int iterations) {
 
             wavefront->CopyTo(wavefront_prev);
 
-            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGradPm);
+            ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGrad);
 
             *wavefront /= float(probeshape.x * probeshape.y);
 
@@ -256,6 +256,8 @@ void PieRun(Pie& pie, int iterations) {
                     pie.ptycho->probestep,
                     obj_abs2_max, rois);
 
+            if (pie.ptycho->probesupport != nullptr)
+                ApplyProbeSupport(*pie.ptycho);
         }
 
         if (pie.ptycho->poscorr_iter &&
@@ -273,6 +275,6 @@ void PieRun(Pie& pie, int iterations) {
     //cudaFree(probe_abs2_max);
 
     auto time1 = sscTime();
-    sscInfo(format("End PIE iteration: {} ms", ssc_diff_time(time0, time1)));
+    sscInfo(format("End PIE iteration: {} ms", sscDiffTime(time0, time1)));
 }
 
