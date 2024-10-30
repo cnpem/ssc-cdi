@@ -20,6 +20,7 @@ build_dgx:
             - ./dist/*whl
         expire_in: 1 day
 
+
 deploy_dgx:
     stage: deploy
     image: gccdockers/python-builder

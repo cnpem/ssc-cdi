@@ -1,4 +1,4 @@
-#include "ptycho.hpp"
+#include "engines_common.hpp"
 #include <common/logger.hpp>
 #include <common/utils.hpp>
 #include <cstddef>
@@ -20,8 +20,7 @@ __global__ void KAPExitwave(GArray<complex> exitwave, const GArray<complex> prob
     const complex& obj = object(objposy, objposx);
 
     for (size_t m = 0; m < probe.shape.z; m++)  // for each incoherent mode
-      exitwave(m + probe.shape.z * p + rois.shape.x * probe.shape.z * idz,
-              idy, idx) = obj * probe(m, idy, idx);
+      exitwave(m + probe.shape.z * p + rois.shape.x * probe.shape.z * idz, idy, idx) = obj * probe(m, idy, idx);
   }
 }
 
@@ -128,16 +127,12 @@ void APRun(AP& ap, int iterations) {
                   dim3 thr = ptycho.wavefront->ShapeThread();
 
                   Image<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
-                  KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g],
-                          *ptycho.probe->arrays[g],
-                          *ptycho.object->arrays[g], ptr_roi);
+                  
+                  KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi);
 
-                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGradPm);
+                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGrad);
 
-                  KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],
-                          *ptycho.object_num->arrays[g],
-                          *ptycho.object_div->arrays[g],
-                          *ptycho.wavefront->arrays[g], ptr_roi);
+                  KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],  *ptycho.object_num->arrays[g], *ptycho.object_div->arrays[g], *ptycho.wavefront->arrays[g], ptr_roi);
         }
       }
       if (bIterProbe) APProjectProbe(ap, batch_idx);
@@ -174,12 +169,12 @@ void APRun(AP& ap, int iterations) {
   }
 
   auto time1 = sscTime();
-  sscInfo(format("End AP: {} ms", ssc_diff_time(time0, time1)));
+  sscInfo(format("End AP: {} ms", sscDiffTime(time0, time1)));
 }
 
 
 void APProjectProbe(AP& ap, int section) {
-    ProjectPhiToProbe(*ap.ptycho, section, *ap.ptycho->wavefront, true, ap.isGradPm);
+    ProjectPhiToProbe(*ap.ptycho, section, *ap.ptycho->wavefront, true, ap.isGrad);
 }
 
 AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,

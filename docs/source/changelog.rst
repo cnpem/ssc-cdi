@@ -14,6 +14,31 @@ Types of changes:
  - *Documentation* added or modified documentation
 
 
+[0.14.0] - 2024-10-23
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Bug fixes for use of different initial guesses for object and probe
+
+Changed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Renamed Python function in ptycho engines for better understanding
+- Variable renaming in python codes and input dictionary
+- Variable renaming in CUDA codes for better understanding
+- Python and CUDA modules renamed to follow a similar standard
+
+Added
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- New RAAR option in CUDA storing temporary wavefront in CPU when not enough VRAM is available
+- New loglikelihood and MSE error metrics in Python engines
+- Added Fourier Power Bound variable to Ptycho python engines
+
+[0.13.5] - 2024-10-01
+------------------------------
+Fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~
+- Bug fix of slice_visualizer for jupyter notebooks. Vmax and Vmin inputs should be working as well as the colorbar
+
 [0.13.4] - 2024-09-27
 ------------------------------
 Added
@@ -154,6 +179,14 @@ Changed
 
 Added
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+- Alternative method for equalization using non-continuos mask
+- Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
+
+
+[0.9.2] - 2024-05-02
+
+Added
+~~~~~
 - Alternative method for equalization using non-continuos mask
 - Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping
 
