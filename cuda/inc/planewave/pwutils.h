@@ -51,16 +51,16 @@ extern "C" {
                       bool timing);
 
 
-  void m_projection_M_swapdevice(cufftHandle& plan_C2C,
-                                 cudaLibXtDesc* d_y,  
-                                 cudaLibXtDesc* d_x, 
-                                 float** d_signal,
-                                 float eps,
-                                 size_t totalDim, 
-                                 size_t perGPUDim,
-                                 ssc_gpus *gpus,
-                                 cudaLibXtDesc* device_swap,
-                                 bool timing);
+  void m_projection_M_shuffleddata(cufftHandle& plan_C2C,
+                                   cudaLibXtDesc* d_y,  
+                                   cudaLibXtDesc* d_x, 
+                                   float** d_signal,
+                                   float eps,
+                                   size_t totalDim, 
+                                   size_t perGPUDim,
+                                   ssc_gpus *gpus,
+                                   // cudaLibXtDesc* device_swap,
+                                   bool timing);
         
   void m_projection_S(cudaLibXtDesc* d_z,
                       cudaLibXtDesc* d_y,

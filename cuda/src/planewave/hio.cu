@@ -692,19 +692,19 @@ extern "C"{
  
         
         // this will use one implementation or another depending if a host swap variable was allocated or not
-        if (params->swap_d_x==true){
-          m_projection_M(workspace->plan_C2C,
-                         workspace->mgpu.d_y,
-                         workspace->mgpu.d_x,  
-                         workspace->mgpu.d_signal,
-                         params->eps_zeroamp,
-                         dim,
-                         perGPUDim,
-                         workspace->gpus,
-                         workspace->host_swap,                     // host swap
-                         workspace->timing);
-        }else{
-          m_projection_M_swapdevice(workspace->plan_C2C,
+        // if (params->swap_d_x==true){
+        //   m_projection_M(workspace->plan_C2C,
+        //                  workspace->mgpu.d_y,
+        //                  workspace->mgpu.d_x,  
+        //                  workspace->mgpu.d_signal,
+        //                  params->eps_zeroamp,
+        //                  dim,
+        //                  perGPUDim,
+        //                  workspace->gpus,
+        //                  workspace->host_swap,                     // host swap
+        //                  workspace->timing);
+        // }else{
+        m_projection_M_shuffleddata(workspace->plan_C2C,
                                     workspace->mgpu.d_y,
                                     workspace->mgpu.d_x,  
                                     workspace->mgpu.d_signal,
@@ -712,9 +712,9 @@ extern "C"{
                                     dim,
                                     perGPUDim,
                                     workspace->gpus,
-                                    workspace->mgpu.d_z,          // device swap  
+                                    // workspace->mgpu.d_z,          // device swap  
                                     workspace->timing);
-        }
+        // }
 
         if (workspace->timing){  
           cudaEventRecord(stop);
