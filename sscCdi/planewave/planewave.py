@@ -8,21 +8,26 @@ from   ctypes import c_void_p  as void_p
 from ..cditypes_planewave import *
 
 
+def subformat_shuffle(data, num_gpus):
+    M = data.shape[0]
+    split_data_x = np.array_split(data, num_gpus, axis=1)
+    final_data = np.concatenate(split_data_x, axis=0)
+    return final_data
+
+ 
+ 
 def pwcdi3d(data, dic):
   N = dic['dimension']
   ngpus = len(dic['gpus'])
   gpus = dic['gpus']
   timing = dic['timing']
 
-
-  # sigma = dic.get('sigma',0.1)
-  # sigma_mult = dic.get('sigma_mult',0.99)
-  # beta = dic['beta']
-  # beta_update = dic.get('beta_update',7.0)
-  # beta_reset_subiter = dic.get("beta_reset_subiter", -1) # by default, it doesnt reset 
-
+  # change to subformat to shuffled if necessary
+  if ngpus>1:
+    data = subformat_shuffle(data, ngpus)
+  
   # handle misc parameters 
-  eps_zeroamp = dic.get('eps_zeroamp',0.001)
+  eps_zeroamp = dic.get('eps_zeroamp',0.0)
   
   # handle output pointers 
   obj_output = np.zeros((N,N,N), dtype=np.complex64)  

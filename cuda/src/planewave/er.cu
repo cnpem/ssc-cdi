@@ -16,14 +16,14 @@ extern "C"{
     		  int extra_constraint_subiter,
     		  int initial_extra_constraint_subiter,
     		  float shrinkwrap_threshold,                      
-  	      int shrinkwrap_iter_filter,
-  	      int shrinkwrap_mask_multiply,
-  	      bool shrinkwrap_fftshift_gaussian,
-  	      float sigma, 
-  	      float sigma_mult, 
-  	      float beta,
-  	      float beta_update,
-  	      int beta_reset_subiter){
+			  int shrinkwrap_iter_filter,
+			  int shrinkwrap_mask_multiply,
+			  bool shrinkwrap_fftshift_gaussian,
+			  float sigma, 
+			  float sigma_mult, 
+			  float beta,
+			  float beta_update,
+			  int beta_reset_subiter){
   	
     if(workspace->gpus->ngpus==1){
 		// SINGLE-GPU CASE
@@ -77,11 +77,11 @@ extern "C"{
         }
 
 		    s_projection_S_only(workspace->plan_C2C,
-														workspace->sgpu.d_x,
-														workspace->sgpu.d_y,
-														workspace->sgpu.d_support,
-														extra_constraint,
-														workspace->dimension);
+								workspace->sgpu.d_x,
+								workspace->sgpu.d_y,
+								workspace->sgpu.d_support,
+								extra_constraint,
+								workspace->dimension);
 		    
         // stop time
 		    if (workspace->timing){
@@ -129,30 +129,42 @@ extern "C"{
 	    // ==========================================
 	    // operation: s_projection_M 
     	 
-      // set timer 
+        // set timer 
 	    if (workspace->timing){
 	    	cudaEventRecord(start);
 	    }
 
-      // perform the s_projection_M
-			m_projection_M(workspace->plan_C2C,
-              		   workspace->mgpu.d_y,       //to  
-              		   workspace->mgpu.d_x,       // from  
-              		   workspace->mgpu.d_signal,
-              			 params->eps_zeroamp,
-              		   dim,
-              		   perGPUDim,
-              		   workspace->gpus,
-              		   workspace->host_swap,
-              		   workspace->timing);
- 
-			
-      // stop timer
+        // perform the s_projection_M
+		// m_projection_M(workspace->plan_C2C,
+		// 				workspace->mgpu.d_y,       //to  
+		// 				workspace->mgpu.d_x,       // from  
+		// 				workspace->mgpu.d_signal,
+		// 				params->eps_zeroamp,
+		// 				dim,
+		// 				perGPUDim,
+		// 				workspace->gpus,
+		// 				workspace->host_swap,
+		// 				workspace->timing);
+		
+
+		m_projection_M_shuffleddata(workspace->plan_C2C,
+									workspace->mgpu.d_y,
+									workspace->mgpu.d_x,  
+									workspace->mgpu.d_signal,
+									params->eps_zeroamp,
+									dim,
+									perGPUDim,
+									workspace->gpus,
+									// workspace->mgpu.d_z,          // device swap  
+									workspace->timing);
+
+	
+      	// stop timer
 	    if (workspace->timing){
 		    cudaEventRecord(stop);
 		    cudaEventSynchronize(stop);
 		    cudaEventElapsedTime(&time_projM, start, stop);
-	      fprintf(stdout,"ssc-cdi: m_projection_M() time: %lf ms\n", time_projM);
+	        fprintf(stdout,"ssc-cdi: m_projection_M() time: %lf ms\n", time_projM);
       }
 
 	    // =============================== 
