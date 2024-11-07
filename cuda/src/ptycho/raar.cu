@@ -173,22 +173,23 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
     for (int section = 0; section < raar.ptycho->positions.size(); section++) {
         const size_t cur_batch_zsize = raar.ptycho->positions[section]->sizez;
 
-        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize * probeshape.z);
-        raar.temp_wavefront[section]->CopyTo(cur_temp_wavefront);
-
-        for (int g = 0; g < raar.ptycho->gpus.size(); g++)
-
-            if (raar.ptycho->positions[section]->arrays[g]->sizez > 0) {
+        for (int g = 0; g < raar.ptycho->gpus.size(); g++) {
+            const int gpu_batch_size = raar.ptycho->positions[section]->arrays[g]->sizez;
+            if (gpu_batch_size > 0) {
                 SetDevice(raar.ptycho->gpus, g);
+
+                cur_temp_wavefront.arrays[g]->Resize(probeshape.x, probeshape.y, gpu_batch_size * probeshape.z);
+                raar.temp_wavefront[section]->arrays[g]->CopyTo(*cur_temp_wavefront.arrays[g]);
 
                 KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0], raar.ptycho->probe->arrays[g][0],
                         cur_temp_wavefront.arrays[g][0],
                         raar.ptycho->positions[section]->arrays[g][0],
                         raar.ptycho->object_num->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
 
-            }
+                raar.temp_wavefront[section]->arrays[g]->CopyFrom(*cur_temp_wavefront.arrays[g]);
 
-        raar.temp_wavefront[section]->CopyFrom(cur_temp_wavefront);
+            }
+        }
     }
 
     raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div, raar.ptycho->objstep, momentum, velocity, epsilon);
@@ -202,14 +203,22 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
     raar.ptycho->probe_num->SetGPUToZero();
     raar.ptycho->probe_div->SetGPUToZero();
 
+    const int ngpus = PtychoNumGpus(*raar.ptycho);
     const dim3 probeshape = raar.ptycho->probe->Shape();
     const size_t num_batches = PtychoNumBatches(*raar.ptycho);
     for (int d = 0; d < num_batches; d++) {
-        const size_t cur_batch_zsize = raar.ptycho->positions[d]->sizez;
-        cur_temp_wavefront.Resize(probeshape.x, probeshape.y, cur_batch_zsize * probeshape.z);
-        raar.temp_wavefront[d]->CopyTo(cur_temp_wavefront);
+        for (int g = 0; g < ngpus; ++g) {
+            SetDevice(raar.ptycho->gpus, g);
+            const size_t gpu_batch_zsize = raar.ptycho->positions[d]->arrays[g]->sizez;
+            cur_temp_wavefront.arrays[g]->Resize(probeshape.x, probeshape.y, gpu_batch_zsize * probeshape.z);
+            raar.temp_wavefront[d]->arrays[g]->CopyTo(*cur_temp_wavefront.arrays[g]);
+        }
         RAARProjectProbe(raar, d, cur_temp_wavefront);
-        raar.temp_wavefront[d]->CopyFrom(cur_temp_wavefront);
+
+        for (int g = 0; g < ngpus; ++g) {
+            SetDevice(raar.ptycho->gpus, g);
+            raar.temp_wavefront[d]->CopyFrom(cur_temp_wavefront);
+        }
     }
 
     ApplyProbeUpdate(*raar.ptycho, velocity, stepsize, momentum, epsilon);
@@ -266,12 +275,8 @@ void RAARRun(RAAR& raar, int iterations) {
             cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
             cur_difpad.LoadToGPU(difpad_batch_ptr);
 
-            cur_temp_wavefront.Resize(probeshape.x, probeshape.y, difpad_batch_zsize * probeshape.z);
-            raar.temp_wavefront[batch_idx]->CopyTo(cur_temp_wavefront);
-
             const size_t ngpus = PtychoNumGpus(*raar.ptycho);
             for (int gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
-
 
                 cImage* current_exit_wave = raar.ptycho->wavefront->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];
@@ -285,6 +290,10 @@ void RAARRun(RAAR& raar, int iterations) {
 
                 if (cur_difpad_zsize > 0) {
                     SetDevice(raar.ptycho->gpus, gpu_idx);
+
+                    cur_temp_wavefront.arrays[gpu_idx]->Resize(
+                            probeshape.x, probeshape.y, cur_difpad_zsize * probeshape.z);
+                    raar.temp_wavefront[batch_idx]->arrays[gpu_idx]->CopyTo(*cur_temp_wavefront.arrays[gpu_idx]);
 
                     dim3 blk = raar.ptycho->wavefront->ShapeBlock();
                     blk.z = cur_difpad_zsize;
