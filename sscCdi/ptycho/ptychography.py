@@ -60,7 +60,11 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
     
     if "object_pixel" not in input_dict:
-        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],input_dict['detector_distance'], input_dict['detector_pixel_size'],DPs.shape[1]) # meters
+        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
+                                                                 input_dict['detector_distance'], 
+                                                                 input_dict['detector_pixel_size'],
+                                                                 DPs.shape[1]) # meters
+        
         print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
     
     if input_dict['positions_unit'] is None:
@@ -91,9 +95,17 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
             print('Folder does not exist. Creating it...')
             os.makedirs(os.path.dirname(input_dict['hdf5_output']))
 
-    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_engines(input_dict,DPs, positions, initial_obj=initial_obj, initial_probe=initial_probe,plot=plot)
+    # call engines
+    obj, probe, error, corrected_positions, initial_obj, initial_probe = call_ptychography_engines(input_dict, 
+                                                                                                   DPs, 
+                                                                                                   positions,
+                                                                                                   initial_obj=initial_obj, 
+                                                                                                   initial_probe=initial_probe, 
+                                                                                                   plot=plot)
+    print(positions)
+    print(corrected_positions)
 
-    if plot == True and corrected_positions is not None:
+    if plot is True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
 
     if plot: 
@@ -121,22 +133,38 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     return obj, probe, corrected_positions, input_dict, error
 
-def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initial_probe=None,plot=True):
-    
+def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, initial_probe=None, plot=True):
+       
+    # define initial guess probe
     if initial_probe is None:
-        initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes']) # probe initial guess
+        initial_probe = set_initial_probe(input_dict, DPs, input_dict['incoherent_modes'])  
     probe = initial_probe.copy()
 
+    # define initial guess object 
     if initial_obj is None:
-        initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"]) # object initial guess
+        initial_obj = set_initial_object(input_dict,DPs,probe[0],input_dict["object_shape"])  
     obj = initial_obj.copy()
 
-    print('Plotting initial guesses...')
-    if plot: plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
-    if plot: plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+    # copy probe positions
+    # probe_positions = positions
 
+    # copy probe positions and type cast from float to int
+    # notice that simply np.round()'ing the positions could cause some roi to exceed boundaries. 
+    # check sanitize_rois() function in cditypes.py to see if that makes sense indeed. 
     probe_positions = positions.astype(np.int32)
-    probe_positions = np.roll(probe_positions,shift=1,axis=1) # change from (Y,X) to (X,Y) for the algorithms
+
+
+    # change from (Y,X) to (X,Y) for the algorithms
+    probe_positions = np.roll(probe_positions, shift=1, axis=1) 
+
+    print('Plotting initial guesses...')
+    if plot: 
+        plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
+    if plot: 
+        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2, extent=get_plot_extent_from_positions(positions))
+    
+
+
 
     if np.any(probe_positions < 0):
         raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")  
@@ -199,7 +227,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
             
-            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            obj, probe, algo_error = RAAR_python(DPs, probe_positions, obj,probe[0], algo_inputs)
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
@@ -213,7 +241,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             
             algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] = 1 # beta = 1 for DM
 
-            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            obj, probe, algo_error = RAAR_python(DPs, probe_positions, obj, probe[0], algo_inputs)
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
@@ -227,13 +255,13 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             
             algo_inputs['beta'] = input_dict['algorithms'][str(counter)]['beta'] = 0 # beta = 0 for AP
 
-            obj, probe, algo_error = RAAR_python(DPs,probe_positions,obj,probe[0],algo_inputs)
+            obj, probe, algo_error = RAAR_python(DPs, probe_positions, obj, probe[0], algo_inputs)
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])                        
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
-            obj, new_probe, algo_error = ML_cupy(DPs,positions,obj,probe[0],algo_inputs) #TODO: expand to deal with multiple probe modes
+            obj, new_probe, algo_error = ML_cupy(DPs,positions, obj, probe[0], algo_inputs) #TODO: expand to deal with multiple probe modes
             probe[0] = new_probe
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
@@ -354,6 +382,9 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
     # at this point, corrected_position should be holding either the corrected version of the probe_positions or the original one,
     # depending on whether algo_inputs["position_correction"]>0 or not,
     corrected_positions = probe_positions
+
+    # change from (Y,X) back to (X,Y) for visualization
+    corrected_positions = np.roll(corrected_positions, shift=1, axis=1) 
 
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
