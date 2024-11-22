@@ -181,7 +181,7 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             algo_inputs['friction_probe'] = input_dict['algorithms'][str(counter)]['momentum_probe'] 
             algo_inputs['momentum_counter'] = input_dict['algorithms'][str(counter)]['mPIE_momentum_counter'] 
             
-            obj, probe, algo_error,probe_positions = PIE_python(DPs, probe_positions,obj,probe[0], algo_inputs)
+            obj, probe, algo_error, probe_positions = PIE_python(DPs, probe_positions,obj,probe[0], algo_inputs)
             error_rfactor.append(algo_error[:,0])
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
@@ -249,30 +249,31 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
 
             obj, probe, algo_error, probe_positions = AP(iterations=algo_inputs['iterations'],
-                                                        objbeta=algo_inputs['momentum_obj'],
-                                                        probebeta=algo_inputs['momentum_probe'],
-                                                        batch=algo_inputs['batch'],
-                                                        step_obj=algo_inputs['step_object'],
-                                                        step_probe=algo_inputs['step_probe'],
-                                                        reg_obj=algo_inputs['regularization_object'],
-                                                        reg_probe=algo_inputs['regularization_probe'],
-                                                        difpads=DPs,
-                                                        obj=obj,
-                                                        rois=probe_positions,
-                                                        probe=probe,
-                                                        probesupp = algo_inputs['probe_support_array'],
-                                                        params={'device': input_dict["GPUs"]},
-                                                        poscorr_iter=algo_inputs["position_correction"],
-                                                        wavelength_m=input_dict["wavelength"],
-                                                        pixelsize_m=input_dict["object_pixel"],
-                                                        distance_m=input_dict["distance_sample_focus"])
+                                                         objbeta=algo_inputs['momentum_obj'],
+                                                         probebeta=algo_inputs['momentum_probe'],
+                                                         batch=algo_inputs['batch'],
+                                                         step_obj=algo_inputs['step_object'],
+                                                         step_probe=algo_inputs['step_probe'],
+                                                         reg_obj=algo_inputs['regularization_object'],
+                                                         reg_probe=algo_inputs['regularization_probe'],
+                                                         difpads=DPs,
+                                                         obj=obj,
+                                                         rois=probe_positions,
+                                                         probe=probe,
+                                                         probesupp = algo_inputs['probe_support_array'],
+                                                         params={'device': input_dict["GPUs"]},
+                                                         poscorr_iter=algo_inputs["position_correction"],
+                                                         wavelength_m=input_dict["wavelength"],
+                                                         pixelsize_m=input_dict["object_pixel"],
+                                                         distance_m=input_dict["distance_sample_focus"])
 
             error_rfactor.append(algo_error)
             error_nmse.append(np.full_like(algo_error, np.nan))
             error_llk.append(np.full_like(algo_error, np.nan))
 
-            if algo_inputs["position_correction"] > 0:
-                corrected_positions = probe_positions      
+            # if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions    
+
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -306,8 +307,8 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             error_nmse.append(np.full_like(algo_error, np.nan))
             error_llk.append(np.full_like(algo_error, np.nan))
 
-            if algo_inputs["position_correction"] > 0:
-                corrected_positions = probe_positions      
+            #if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions      
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
@@ -341,8 +342,8 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
             error_nmse.append(np.full_like(algo_error, np.nan))
             error_llk.append(np.full_like(algo_error, np.nan))
 
-            if algo_inputs["position_correction"] > 0:
-                corrected_positions = probe_positions                                        
+            #if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions                                        
             
         else:
             sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
@@ -350,6 +351,9 @@ def call_ptychography_engines(input_dict,DPs, positions, initial_obj=None, initi
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
             
+    # at this point, corrected_position should be holding either the corrected version of the probe_positions or the original one,
+    # depending on whether algo_inputs["position_correction"]>0 or not,
+    corrected_positions = probe_positions
 
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
