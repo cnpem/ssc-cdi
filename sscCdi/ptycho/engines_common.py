@@ -8,14 +8,16 @@
 ##################################################################################################################################################################
 
 
-try:
-    import cupy as cp
-    # Check if a GPU is available
-    cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
-    np = cp  # np will be an alias for cupy
-except (ImportError, cp.cuda.runtime.CUDARuntimeError):
-    # Fallback to NumPy if GPU is not available or cupy is not installed
-    import numpy as np
+import cupy as cp
+import numpy as np
+#try:
+#    import cupy as cp
+#    # Check if a GPU is available
+#    cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+#    np = cp  # np will be an alias for cupy
+#except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+#    # Fallback to NumPy if GPU is not available or cupy is not installed
+#    import numpy as np
 
 from ..processing.propagation import fresnel_propagator
 from ..misc import extract_values_from_all_slices
