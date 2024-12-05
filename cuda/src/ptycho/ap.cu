@@ -160,11 +160,12 @@ void APRun(AP& ap, int iterations) {
                 (iter + 1) % ptycho.poscorr_iter == 0)
             ApplyPositionCorrection(ptycho);
 
+    // reduce errors 
     ptycho.cpuerror[iter] = sqrtf(ptycho.error->SumCPU());
 
     if (iter % 10 == 0) {
         sscInfo(format("iter {}/{} error = {}",
-                    iter, iterations, ptycho.cpuerror[iter]));
+                iter, iterations, ptycho.cpuerror[iter]));
     }
   }
 

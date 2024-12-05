@@ -111,21 +111,30 @@ void ProjectProbe(Ptycho& ptycho, int section);
 /**
  * Fourier project exitwaves from a given section of the list.
  * */
-void ProjectReciprocalSpace(Ptycho& ptycho, rImage* difpads, int g, bool isGrad, cudaStream_t stream = 0);
+void ProjectReciprocalSpace(Ptycho& ptycho, 
+                            rImage* difpads, 
+                            int g, 
+                            bool isGrad, 
+                            cudaStream_t stream = 0);
 
 
-void ProjectReciprocalSpace(Ptycho &pt, rImage* difpad, cImage* wavefront, int g, bool isGrad, cudaStream_t stream = 0);
+void ProjectReciprocalSpace(Ptycho &pt, 
+                            rImage* difpad, 
+                            cImage* wavefront, 
+                            int g, 
+                            bool isGrad, 
+                            cudaStream_t stream = 0);
 
 void DestroyPtycho(Ptycho*& ptycho);
 
 Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
-                                   complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
-                                   float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
-                                   int numobjsupp,
-                                   float wavelength_m, float pixelsize_m, float distance_m,
-                                   int poscorr_iter,
-                                   float step_obj, float step_probe,
-                                   float reg_obj, float reg_probe);
+                     complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
+                     float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
+                     int numobjsupp,
+                     float wavelength_m, float pixelsize_m, float distance_m,
+                     int poscorr_iter,
+                     float step_obj, float step_probe,
+                     float reg_obj, float reg_probe);
 
 
 template <typename dtype>
