@@ -59,17 +59,20 @@ extern "C"
 {
     void ap_call(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, 
+            float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
-        sscInfo(format("Starting AP - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, bsize, numiter));
+        sscInfo(format("Starting AP - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex, psizex, 
+                       osizey,osizex, numrois, bsize, numiter));
 
         {
             std::vector<int> gpus;
             for(int g=0; g<ngpus; g++)
                 gpus.push_back(cpugpus[g]);
 
-            AP *ap = CreateAP((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, objsupport, probesupport, numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
+            AP *ap = CreateAP((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, 
+                              dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, objsupport, probesupport, 
+                              numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
 
             ap->ptycho->objmomentum = objbeta;
             ap->ptycho->probemomentum = probebeta;
@@ -126,7 +129,8 @@ extern "C"
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
             int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float objbeta, float probebeta, int psizez,
-            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
+            float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, 
+            float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
         sscInfo(format("Starting RAAR - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, bsize, numiter));
         {
@@ -134,11 +138,10 @@ extern "C"
             for(int g=0; g<ngpus; g++)
                 gpus.push_back(cpugpus[g]);
 
-            RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, dim3(osizex, osizey),
-                    (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, objsupport, probesupport, numobjsupport,
-                    wavelength_m, pixelsize_m, distance_m,
-                    poscorr_iter,
-                    step_obj, step_probe, reg_obj, reg_probe);
+            RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), 
+                                    (complex*)cpuobj, dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, 
+                                    objsupport, probesupport, numobjsupport, wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, 
+                                    step_probe, reg_obj, reg_probe);
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probemomentum = probebeta;

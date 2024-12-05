@@ -20,7 +20,12 @@ __device__ float const d_pos_offy[] = { 0, 0, 0, 1, -1, -1, 1, -1, 1};
 constexpr int n_pos_neighbors = 8;
 
 
-__global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object, const GArray<Position> positions, int offx, int offy)
+__global__ void KSideExitwave(GArray<complex> exitwave, 
+                              const GArray<complex> probe, 
+                              const GArray<complex> object, 
+                              const GArray<Position> positions, 
+                              int offx, 
+                              int offy)
 {
     int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if(idx >= probe.shape.x)
@@ -40,7 +45,11 @@ __global__ void KSideExitwave(GArray<complex> exitwave, const GArray<complex> pr
             exitwave(m + probe.shape.z*blockIdx.z,idy,idx) = obj * probe(m,idy,idx);
     }
 }
-__global__ void KComputeError(float* error_errors_rfactor, const GArray<complex> exitwave, const GArray<float> diffraction_patterns, const float* background, size_t nummodes)
+__global__ void KComputeError(float* error_errors_rfactor, 
+                              const GArray<complex> exitwave, 
+                              const GArray<float> diffraction_patterns, 
+                              const float* background, 
+                              size_t nummodes)
 {
     __shared__ float shared_error_error_rfactor[64];
 
@@ -52,6 +61,7 @@ __global__ void KComputeError(float* error_errors_rfactor, const GArray<complex>
     size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
     size_t idy = blockIdx.y;
 
+    // halo regions
     if(idx >= diffraction_patterns.shape.x)
         return;
 
@@ -62,7 +72,7 @@ __global__ void KComputeError(float* error_errors_rfactor, const GArray<complex>
     if(diff_pattern >= 0)
     {
         float wabs2 = 0.0f;
-        if( bApplyBkg ) wabs2 = sq( background[idy*diffraction_patterns.shape.x+idx] );
+        if(bApplyBkg) wabs2 = sq(background[idy*diffraction_patterns.shape.x+idx]);
 
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
@@ -171,7 +181,12 @@ extern "C" {
     void EnablePeerToPeer(const std::vector<int>& gpus);
     void DisablePeerToPeer(const std::vector<int>& gpus);
 
-    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  const GArray<float> diffraction_patterns, float* error_error_rfactor, size_t upsample, size_t nummodes,  bool isGrad) {
+    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  
+                                            const GArray<float> diffraction_patterns, 
+                                            float* error_error_rfactor, 
+                                            size_t upsample, 
+                                            size_t nummodes,  
+                                            bool isGrad) {
 
         __shared__ float shared_error_error_rfactor[64];
 
@@ -198,7 +213,6 @@ extern "C" {
             for (int m = 0; m < nummodes; m++)
                 for (int v = 0; v < upsample; v++)
                     for (int u = 0; u < upsample; u++)
-
                         wabs2 += exitwave(idz * nummodes + m,  v + idy * upsample,  u + idx * upsample).abs2();
 
             wabs = sqrtf(wabs2) / upsample; // can we kill upsample? not sure it is necessary anymore.
@@ -227,7 +241,9 @@ extern "C" {
             for (int v = 0; v < upsample; v++)
                 for (int u = 0; u < upsample; u++) {
                     complex ew = exitwave(idz * nummodes + m,  v + idy * upsample,   u + idx * upsample);
-                    ew = ew * exit_wave_factor + exit_wave_addend; // application of the measured intensity to the exitwave (projection in reciprocal space)
+
+                    // application of the measured intensity to the exitwave (projection in reciprocal space)
+                    ew = ew * exit_wave_factor + exit_wave_addend; 
                     exitwave(idz * nummodes + m,  v + idy * upsample,   u + idx * upsample) = ew;
                 }
 
@@ -255,7 +271,12 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront,
 
     wavefront->FFTShift2(stream);
 
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, *diff_pattern, pt.error->Ptr(g), upsample,  pt.probe->sizez, isGrad);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, 
+                                                                                                    *diff_pattern, 
+                                                                                                    pt.error->Ptr(g), 
+                                                                                                    upsample,  
+                                                                                                    pt.probe->sizez, 
+                                                                                                    isGrad);
 
     wavefront->FFTShift2(stream);
 
@@ -276,7 +297,12 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad
 
     pt.wavefront->arrays[g]->FFTShift2(stream);
 
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], *diff_pattern, pt.error->Ptr(g), upsample, pt.probe->sizez, isGrad);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], 
+                                                                                                    *diff_pattern, 
+                                                                                                    pt.error->Ptr(g), 
+                                                                                                    upsample, 
+                                                                                                    pt.probe->sizez, 
+                                                                                                    isGrad);
 
     pt.wavefront->arrays[g]->FFTShift2(stream);
 
@@ -374,11 +400,12 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
                     ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,  ptycho.wavefront->arrays[g]->gpuptr,  ptycho.wavefront->arrays[g]->Shape(), 1);
 
-                    KComputeError<<<blk,thr>>>(
-                            ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
-                            *ptycho.wavefront->arrays[g], *cur_difpad.arrays[g],
-                            nullptr,
-                            ptycho.probe->sizez);
+                    // compute errors 
+                    KComputeError<<<blk,thr>>>(ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
+                                               *ptycho.wavefront->arrays[g], 
+                                               *cur_difpad.arrays[g],
+                                               nullptr,
+                                               ptycho.probe->sizez);
                 }
             }
         }
