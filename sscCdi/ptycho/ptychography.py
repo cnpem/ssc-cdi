@@ -163,8 +163,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     if plot: 
         plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2, extent=get_plot_extent_from_positions(positions))
     
-
-
+ 
 
     if np.any(probe_positions < 0):
         raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")  
@@ -276,7 +275,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
 
-            obj, probe, algo_error, probe_positions = AP(iterations=algo_inputs['iterations'],
+            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions = AP(iterations=algo_inputs['iterations'],
                                                          objbeta=algo_inputs['momentum_obj'],
                                                          probebeta=algo_inputs['momentum_probe'],
                                                          batch=algo_inputs['batch'],
@@ -295,9 +294,11 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          pixelsize_m=input_dict["object_pixel"],
                                                          distance_m=input_dict["distance_sample_focus"])
 
+
+            # error_nmse.append(np.full_like(algo_error, np.nan))
             error_rfactor.append(algo_error)
-            error_nmse.append(np.full_like(algo_error, np.nan))
-            error_llk.append(np.full_like(algo_error, np.nan))
+            error_nmse.append(algo_error_mse)
+            error_llk.append(algo_error_llk)
 
             # if algo_inputs["position_correction"] > 0:
             # corrected_positions = probe_positions    
@@ -311,7 +312,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            obj, probe, algo_error, probe_positions  = RAAR(iterations=algo_inputs['iterations'],
+            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions  = RAAR(iterations=algo_inputs['iterations'],
                                                             probebeta=algo_inputs['momentum_probe'],
                                                             objbeta=algo_inputs['momentum_obj'],
                                                             beta=algo_inputs['beta'],
@@ -332,8 +333,9 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             distance_m=input_dict["distance_sample_focus"])
 
             error_rfactor.append(algo_error)
-            error_nmse.append(np.full_like(algo_error, np.nan))
-            error_llk.append(np.full_like(algo_error, np.nan))
+            # error_nmse.append(np.full_like(algo_error, np.nan))
+            error_nmse.append(algo_error_mse)
+            error_llk.append(algo_error_llk)
 
             #if algo_inputs["position_correction"] > 0:
             # corrected_positions = probe_positions      
@@ -349,26 +351,26 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            obj, probe, algo_error, probe_positions = PIE(iterations=algo_inputs['iterations'],
-                                                        step_obj=algo_inputs['step_object'],
-                                                        step_probe=algo_inputs['step_probe'],
-                                                        reg_obj=algo_inputs['regularization_object'],
-                                                        reg_probe=algo_inputs['regularization_probe'],
-                                                        poscorr_iter=algo_inputs["position_correction"],
-                                                        rois=probe_positions,
-                                                        difpads=DPs,
-                                                        obj=obj,
-                                                        probe=probe,
-                                                        probesupp = algo_inputs['probe_support_array'],
-                                                        wavelength_m=input_dict["wavelength"],
-                                                        pixelsize_m=input_dict["object_pixel"],
-                                                        distance_m=input_dict["distance_sample_focus"],
-                                                        params={'device': input_dict["GPUs"][0:1]})
+            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions = PIE(iterations=algo_inputs['iterations'],
+                                                                                          step_obj=algo_inputs['step_object'],
+                                                                                          step_probe=algo_inputs['step_probe'],
+                                                                                          reg_obj=algo_inputs['regularization_object'],
+                                                                                          reg_probe=algo_inputs['regularization_probe'],
+                                                                                          poscorr_iter=algo_inputs["position_correction"],
+                                                                                            rois=probe_positions,
+                                                                                            difpads=DPs,
+                                                                                            obj=obj,
+                                                                                            probe=probe,
+                                                                                            probesupp = algo_inputs['probe_support_array'],
+                                                                                            wavelength_m=input_dict["wavelength"],
+                                                                                            pixelsize_m=input_dict["object_pixel"],
+                                                                                            distance_m=input_dict["distance_sample_focus"],
+                                                                                            params={'device': input_dict["GPUs"][0:1]})
 
-
+            # fill errors
             error_rfactor.append(algo_error)
-            error_nmse.append(np.full_like(algo_error, np.nan))
-            error_llk.append(np.full_like(algo_error, np.nan))
+            error_nmse.append(algo_error_mse)
+            error_llk.append(algo_error_llk)
 
             #if algo_inputs["position_correction"] > 0:
             # corrected_positions = probe_positions                                        
@@ -389,7 +391,11 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
     error_llk = np.concatenate(error_llk).ravel()
-    error = np.column_stack((error_rfactor,error_nmse,error_llk)) # must be (iterartions,3) array shape
+    error = np.column_stack((error_rfactor, error_nmse, error_llk)) # must be (iterartions,3) array shape
+    
+    # save errors in input dict (debug)
+    # input_dict['errors'] = error
+    
     return obj, probe, error, corrected_positions, initial_obj, initial_probe
 
 def check_for_nans(*arrays):
@@ -907,8 +913,7 @@ def get_probe_support(input_dict,probe_shape):
         probesupp: mask containing probe support
 
     """
-
-    
+ 
     print('Setting probe support...')
 
     probe = np.zeros(probe_shape)

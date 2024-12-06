@@ -104,7 +104,7 @@ extern "C" {
 }
 
 RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim3 &probeshape, complex *object,
-        const dim3 &objshape, Position *rois, int numrois, int batchsize, float *rfact,
+        const dim3 &objshape, Position *rois, int numrois, int batchsize, float *rfact, float *llk, float* mse,
         const std::vector<int> &gpus, float *objsupp, float *probesupp, int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
         int poscorr_iter,
@@ -113,7 +113,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
     RAAR *raar = new RAAR();
 
     raar->ptycho =
-        CreatePtycho(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact,
+        CreatePtycho(difpads, difshape, probe, probeshape, object, objshape, rois, numrois, batchsize, rfact, llk, mse,
                 gpus, objsupp, probesupp, numobjsupp,
                 wavelength_m, pixelsize_m, distance_m,
                 poscorr_iter,
@@ -261,6 +261,9 @@ void RAARRun(RAAR& raar, int iterations) {
     for (int iter = 0; iter < iterations; iter++) {
 
         raar.ptycho->error->SetGPUToZero();
+        raar.ptycho->error_llk->SetGPUToZero();
+        raar.ptycho->error_mse->SetGPUToZero();
+
         raar.ptycho->object_num->SetGPUToZero();
         raar.ptycho->object_div->SetGPUToZero();
 
@@ -337,9 +340,11 @@ void RAARRun(RAAR& raar, int iterations) {
         }
 
         raar.ptycho->cpuerror[iter] = sqrtf(raar.ptycho->error->SumGPU());
+        raar.ptycho->cpuerror_llk[iter] = raar.ptycho->error_llk->SumGPU();
+        raar.ptycho->cpuerror_mse[iter] = raar.ptycho->error_mse->SumGPU();
 
         if (iter % 10 == 0) {
-            sscInfo(format("iter {}/{} error: {}", iter, iterations, raar.ptycho->cpuerror[iter]));
+            sscInfo(format("iter {}/{} rfactor: {}, llk = {}, mse = {}", iter, iterations, raar.ptycho->cpuerror[iter], raar.ptycho->cpuerror_llk[iter], raar.ptycho->cpuerror_mse[iter]));
         }
 
     }

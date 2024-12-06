@@ -52,7 +52,7 @@ try:
     libcdi.ap_call.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float,
         c_float, c_float, c_float, c_float
@@ -61,7 +61,7 @@ try:
     libcdi.raarcall.argtypes = [
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_int, c_int, c_int,
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
-        ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
+        ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         c_float, c_float, c_float, c_float
@@ -70,7 +70,7 @@ try:
     libcdi.piecall.argtypes = [
         ctypes.c_void_p, c_int, c_int, ctypes.c_void_p, c_int, c_int,
         ctypes.c_void_p, c_int, ctypes.c_void_p, c_int, c_int,
-        ctypes.c_void_p, c_int, ctypes.c_void_p, ctypes.c_void_p,
+        ctypes.c_void_p, c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
         ctypes.c_int,
         c_float, c_float, c_float, c_float,
         c_float, c_float, c_float
@@ -195,8 +195,15 @@ def PIE(obj: np.ndarray,
         np.asarray(params['device']).astype(np.int32))
     devices, devicesptr, (ndevices, ) = ctypes_array(devices)
 
+    # allocate memory for errors 
     error_rfactor = np.zeros(iterations, dtype=np.float32)
     error_rfactor, error_rfactorptr, _ = ctypes_array(error_rfactor)
+
+    error_llk = np.zeros(iterations, dtype=np.float32)
+    error_llk, error_llkptr, _ = ctypes_array(error_llk)
+
+    error_mse = np.zeros(iterations, dtype=np.float32)
+    error_mse, error_mseptr, _ = ctypes_array(error_mse)
 
     if probesupp is not None:
         probesupp = probesupp.astype('float32')
@@ -206,7 +213,7 @@ def PIE(obj: np.ndarray,
 
     libcdi.piecall(objptr, osizex, osizey, probeptr, psizex, psizez,
                    difpadsptr, dsizex, roisptr, numrois,
-                   c_int(iterations), devicesptr, ndevices, error_rfactorptr, probesuppptr,
+                   c_int(iterations), devicesptr, ndevices, error_rfactorptr, error_llkptr, error_mseptr, probesuppptr,
                    c_int(poscorr_iter),
                    c_float(step_obj), c_float(step_probe),
                    c_float(reg_obj), c_float(reg_probe),
@@ -214,7 +221,7 @@ def PIE(obj: np.ndarray,
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
-    return obj, probe, error_rfactor, rois
+    return obj, probe, error_rfactor, error_llk, error_mse, rois
 
 def RAAR(obj: np.ndarray,
          probe: np.ndarray,
@@ -289,14 +296,21 @@ def RAAR(obj: np.ndarray,
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)
 
     rois = sanitize_rois(rois, obj, difpads, probe)
-    rois,roisptr, (numrois, *_) = ctypes_array(rois)
+    rois, roisptr, (numrois, *_) = ctypes_array(rois)
 
     devices = np.ascontiguousarray(
         np.asarray(params['device']).astype(np.int32))
     devices,devicesptr, (ndevices, ) = ctypes_array(devices)
 
+    # allocate memory for errors 
     error_rfactor = np.zeros(iterations, dtype=np.float32)
-    error_rfactor,error_rfactorptr, _ = ctypes_array(error_rfactor)
+    error_rfactor, error_rfactorptr, _ = ctypes_array(error_rfactor)
+
+    error_llk = np.zeros(iterations, dtype=np.float32)
+    error_llk, error_llkptr, _ = ctypes_array(error_llk)
+
+    error_mse = np.zeros(iterations, dtype=np.float32)
+    error_mse, error_mseptr, _ = ctypes_array(error_mse)
 
     nummodes = psizez
 
@@ -320,7 +334,7 @@ def RAAR(obj: np.ndarray,
 
     libcdi.raarcall(objptr, probeptr, difpadsptr, psizex, osizex,
                     osizey, dsizex, roisptr, numrois, c_int(batch),
-                    c_int(iterations), ndevices, devicesptr, error_rfactorptr,
+                    c_int(iterations), ndevices, devicesptr, error_rfactorptr, error_llkptr, error_mseptr,
                     c_float(objbeta), c_float(probebeta), nummodes,
                     objsuppptr, probesuppptr, numobjsupport, c_int(poscorr_iter),
                     c_float(step_obj), c_float(step_probe),
@@ -328,7 +342,7 @@ def RAAR(obj: np.ndarray,
                     c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m),
                     c_float(beta))
 
-    return obj, probe, error_rfactor, rois
+    return obj, probe, error_rfactor, error_llk, error_mse, rois
 
 
 
@@ -409,8 +423,15 @@ def AP(obj: np.ndarray,
         np.asarray(params['device']).astype(np.int32))
     devices,devicesptr, (ndevices, ) = ctypes_array(devices)
 
+    # allocate memory for errors 
     error_rfactor = np.zeros(iterations, dtype=np.float32)
-    error_rfactor,error_rfactorptr, _ = ctypes_array(error_rfactor)
+    error_rfactor, error_rfactorptr, _ = ctypes_array(error_rfactor)
+
+    error_llk = np.zeros(iterations, dtype=np.float32)
+    error_llk, error_llkptr, _ = ctypes_array(error_llk)
+
+    error_mse = np.zeros(iterations, dtype=np.float32)
+    error_mse, error_mseptr, _ = ctypes_array(error_mse)
 
     nummodes = psizez
 
@@ -422,7 +443,7 @@ def AP(obj: np.ndarray,
 
     libcdi.ap_call(objptr, probeptr, difpadsptr, psizex, osizex,
                   osizey, dsizex, roisptr, numrois, c_int(batch),
-                  c_int(iterations), ndevices, devicesptr, error_rfactorptr,
+                  c_int(iterations), ndevices, devicesptr, error_rfactorptr, error_llkptr, error_mseptr,
                   c_float(objbeta), c_float(probebeta), nummodes, objsuppptr,
                   probesuppptr, numobjsupport,
                   c_int(poscorr_iter),
@@ -430,7 +451,7 @@ def AP(obj: np.ndarray,
                   c_float(reg_obj), c_float(reg_probe),
                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
 
-    return obj, probe, error_rfactor, rois
+    return obj, probe, error_rfactor, error_llk, error_mse, rois
 
 
 def PosCorrection(obj: np.ndarray,
@@ -515,8 +536,8 @@ def PosCorrection(obj: np.ndarray,
     nummodes = psizez
 
     assert (probesupp.shape[-1] == probe.shape[-1] and
-                probesupp.shape[-2] == probe.shape[-2] and
-                probesupp.size == probe.size)
+            probesupp.shape[-2] == probe.shape[-2] and
+            probesupp.size == probe.size)
     probesupp,probesuppptr, _ = ctypes_array(probesupp.astype(np.float32))
     objsupp,objsuppptr, (numobjsupport,) = ctypes_opt_array(objsupp)
 
