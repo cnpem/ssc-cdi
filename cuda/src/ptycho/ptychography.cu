@@ -58,7 +58,7 @@ extern "C" {
 extern "C"
 {
     void ap_call(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float objbeta, float probebeta, int psizez,
+            int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float* error_errors_llk, float* error_errors_mse, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, 
             float reg_probe, float wavelength_m, float pixelsize_m, float distance_m)
     {
@@ -71,7 +71,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             AP *ap = CreateAP((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj, 
-                              dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, objsupport, probesupport, 
+                              dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, error_errors_llk, error_errors_mse, gpus, objsupport, probesupport, 
                               numobjsupport,  wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, step_probe, reg_obj, reg_probe);
 
             ap->ptycho->objmomentum = objbeta;
@@ -85,19 +85,19 @@ extern "C"
     }
 
     void piecall(void* cpuobj, int osizex, int osizey,
-            void* cpuprobe, int psizex, int psizez,
-            void* cpudif, int dsizex,
-            void* cpurois, int numrois,
-            int numiter,
-            int* cpugpus, int ngpus,
-            float* error_errors_rfactor,
-            float* probesupport,
-            int poscorr_iter,
-            float step_object, float step_probe,
-            float reg_obj, float reg_probe,
-            float wavelength_m, float pixelsize_m, float distance_m) {
+                 void* cpuprobe, int psizex, int psizez,
+                 void* cpudif, int dsizex,
+                 void* cpurois, int numrois,
+                 int numiter,
+                 int* cpugpus, int ngpus,
+                 float* error_errors_rfactor, float* error_errors_llk, float* error_errors_mse,
+                 float* probesupport,
+                 int poscorr_iter,
+                 float step_object, float step_probe,
+                 float reg_obj, float reg_probe,
+                 float wavelength_m, float pixelsize_m, float distance_m) {
 
-        sscInfo(format("Starting PIE - Probe: ({},{}), Object: ({},{}), Positions: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, numiter));
+        sscInfo(format("Starting PIE - Probe: ({},{}), Object: ({},{}), Positions: {}, Iterations: {}",  psizex, psizex, osizey, osizex, numrois, numiter));
 
         std::vector<int> gpus;
         gpus.reserve(ngpus);
@@ -114,7 +114,7 @@ extern "C"
                 (complex*)cpuprobe, dim3(psizex,psizex,psizez),
                 (complex*)cpuobj, dim3(osizex, osizey),
                 (Position*)cpurois, numrois,
-                batchsize, error_errors_rfactor,
+                batchsize, error_errors_rfactor, error_errors_llk, error_errors_mse,
                 gpus, objsupport,
                 probesupport, numobjsupport,
                 wavelength_m, pixelsize_m, distance_m,
@@ -128,7 +128,7 @@ extern "C"
     }
 
     void raarcall(void* cpuobj, void* cpuprobe, void* cpudif, int psizex, int osizex, int osizey, int dsizex, void* cpurois, int numrois,
-            int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float objbeta, float probebeta, int psizez,
+            int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float* error_errors_llk, float* error_errors_mse, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, 
             float reg_probe, float wavelength_m, float pixelsize_m, float distance_m, float raarbeta)
     {
@@ -139,7 +139,7 @@ extern "C"
                 gpus.push_back(cpugpus[g]);
 
             RAAR* raar = CreateRAAR((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), 
-                                    (complex*)cpuobj, dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, gpus, 
+                                    (complex*)cpuobj, dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, error_errors_llk, error_errors_mse, gpus, 
                                     objsupport, probesupport, numobjsupport, wavelength_m, pixelsize_m, distance_m, poscorr_iter, step_obj, 
                                     step_probe, reg_obj, reg_probe);
 

@@ -90,6 +90,8 @@ void APRun(AP& ap, int iterations) {
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
     ptycho.error->SetGPUToZero();
+    ptycho.error_llk->SetGPUToZero();
+    ptycho.error_mse->SetGPUToZero();
     ptycho.object_num->SetGPUToZero();
     ptycho.object_div->SetGPUToZero();
     ptycho.probe_num->SetGPUToZero();
@@ -162,10 +164,12 @@ void APRun(AP& ap, int iterations) {
 
     // reduce errors 
     ptycho.cpuerror[iter] = sqrtf(ptycho.error->SumCPU());
+    ptycho.cpuerror_llk[iter] = ptycho.error_llk->SumCPU();
+    ptycho.cpuerror_mse[iter] = ptycho.error_mse->SumCPU();
 
     if (iter % 10 == 0) {
-        sscInfo(format("iter {}/{} error = {}",
-                iter, iterations, ptycho.cpuerror[iter]));
+        sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",
+                iter, iterations, ptycho.cpuerror[iter], ptycho.cpuerror_llk[iter], ptycho.cpuerror_mse[iter]));
     }
   }
 
@@ -179,7 +183,7 @@ void APProjectProbe(AP& ap, int section) {
 }
 
 AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
-                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
+                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact, float* llk, float* mse,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
                  int poscorr_iter,
@@ -188,7 +192,7 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
     AP* ap = new AP;
     ap->ptycho =
         CreatePtycho(difpads, difshape, probe, probeshape,
-                object, objshape, rois, numrois, batchsize, rfact,
+                object, objshape, rois, numrois, batchsize, rfact, llk, mse,
                 gpus, objsupp, probesupp, numobjsupp,
                 wavelength_m, pixelsize_m, distance_m,
                 poscorr_iter,

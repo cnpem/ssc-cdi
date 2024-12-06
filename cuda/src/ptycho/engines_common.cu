@@ -1,7 +1,6 @@
-#include <cmath>
+#include <cmath> 
 #include <common/types.hpp>
-#include <common/logger.hpp>
-#include <cmath>
+#include <common/logger.hpp> 
 #include <cstddef>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
@@ -49,12 +48,14 @@ __global__ void KComputeError(float* error_errors_rfactor,
                               const GArray<complex> exitwave, 
                               const GArray<float> diffraction_patterns, 
                               const float* background, 
-                              size_t nummodes)
-{
-    __shared__ float shared_error_error_rfactor[64];
+                              size_t nummodes){
 
-    if(threadIdx.x<64)
+    __shared__ float shared_error_error_rfactor[64]; 
+
+    if(threadIdx.x<64){
         shared_error_error_rfactor[threadIdx.x] = 0;
+        // shared_error_error_llk[threadIdx.x] = 0;
+    }
 
     __syncthreads();
 
@@ -77,15 +78,28 @@ __global__ void KComputeError(float* error_errors_rfactor,
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
 
+        
         const int sigmask = (diff_pattern < 0);
+
+        // compute rfactor error 
         atomicAdd(shared_error_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
+
+        // Compute Poisson log-likelihood
+        // float llk = sigmask * diff_pattern * logf(wabs2) - wabs2;
+        // atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
+
     }
 
     __syncthreads();
 
     Reduction::KSharedReduce(shared_error_error_rfactor,64);
-    if(threadIdx.x==0)
+    // Reduction::KSharedReduce(shared_error_error_llk, 64);
+
+
+    if(threadIdx.x==0){
         atomicAdd(error_errors_rfactor + blockIdx.z, shared_error_error_rfactor[0]);
+        // atomicAdd(error_errors_llk + blockIdx.z, shared_error_error_llk[0]);
+    }
 }
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, complex* probe_acc, float* probe_div,
@@ -184,13 +198,21 @@ extern "C" {
     __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  
                                             const GArray<float> diffraction_patterns, 
                                             float* error_error_rfactor, 
+                                            float* error_error_llk,
+                                            float* error_error_mse,
                                             size_t upsample, 
                                             size_t nummodes,  
                                             bool isGrad) {
 
         __shared__ float shared_error_error_rfactor[64];
+        __shared__ float shared_error_error_llk[64];
+        __shared__ float shared_error_error_mse[64];
 
-        if (threadIdx.x < 64) shared_error_error_rfactor[threadIdx.x] = 0;
+        if (threadIdx.x < 64){
+            shared_error_error_rfactor[threadIdx.x] = 0;
+            shared_error_error_llk[threadIdx.x] = 0;
+            shared_error_error_mse[threadIdx.x] = 0;
+        }
 
         __syncthreads();
 
@@ -209,6 +231,7 @@ extern "C" {
         if (diff_pattern >= 0) {
             float wabs2 = 0.0f;
             float wabs = 0.0f;
+            const float eps = 1e-3f;
 
             for (int m = 0; m < nummodes; m++)
                 for (int v = 0; v < upsample; v++)
@@ -217,7 +240,26 @@ extern "C" {
 
             wabs = sqrtf(wabs2) / upsample; // can we kill upsample? not sure it is necessary anymore.
 
+            // compute rfactor error 
             atomicAdd(shared_error_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
+
+            // poisson negative log-likelihood 
+            float llk =  + wabs2 - diff_pattern * logf(wabs2 + eps); 
+
+            // // this constant term does not depend on wabs2, so it is not actually useful to see the
+            // // general behavior of the negative log-likelihood curve. You can remove it, but then the 
+            // // error curve will probably assume negative values. Also, the correct constant would be
+            // // log(diff_pattern!), but the factorial is too expensive, so we approximate
+            // llk = llk + diff_pattern*logf(diff_pattern + eps) 
+            //           - diff_pattern 
+            //           + 0.5*logf(2*3.141592*diff_pattern + eps);
+
+            // compute negative llk error 
+            atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
+
+            // compute mse 
+            float mse = fabs(diff_pattern - wabs2)/(eps + diffraction_patterns.shape.x*diffraction_patterns.shape.y);
+            atomicAdd(shared_error_error_mse + threadIdx.x % 64, mse);
 
             // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew + ew_a
             if (wabs > 0.0f && isGrad) {  //AP
@@ -249,8 +291,17 @@ extern "C" {
 
         __syncthreads();
 
+        // reduce errors 
         Reduction::KSharedReduce(shared_error_error_rfactor, 64);
-        if (threadIdx.x == 0) atomicAdd(error_error_rfactor + blockIdx.y, shared_error_error_rfactor[0]);
+        Reduction::KSharedReduce(shared_error_error_llk, 64);
+        Reduction::KSharedReduce(shared_error_error_mse, 64);
+
+        if (threadIdx.x == 0){
+            atomicAdd(error_error_rfactor + blockIdx.y, shared_error_error_rfactor[0]);
+            atomicAdd(error_error_llk + blockIdx.y, shared_error_error_llk[0]);
+            atomicAdd(error_error_mse + blockIdx.y, shared_error_error_mse[0]);
+        }
+
     }
 }
 
@@ -274,6 +325,8 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront,
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, 
                                                                                                     *diff_pattern, 
                                                                                                     pt.error->Ptr(g), 
+                                                                                                    pt.error_llk->Ptr(g),
+                                                                                                    pt.error_mse->Ptr(g),
                                                                                                     upsample,  
                                                                                                     pt.probe->sizez, 
                                                                                                     isGrad);
@@ -300,11 +353,13 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], 
                                                                                                     *diff_pattern, 
                                                                                                     pt.error->Ptr(g), 
+                                                                                                    pt.error_llk->Ptr(g),
+                                                                                                    pt.error_mse->Ptr(g),
                                                                                                     upsample, 
                                                                                                     pt.probe->sizez, 
                                                                                                     isGrad);
 
-    pt.wavefront->arrays[g]->FFTShift2(stream);
+    pt.wavefront->arrays[g]->FFTShift2(stream); 
 
     pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1, stream);
 
@@ -465,6 +520,12 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     sscDebug("Dealloc error_errors_rfactor.");
     delete ptycho.error;
 
+    sscDebug("Dealloc error_errors_llk.");
+    delete ptycho.error_llk;
+
+    sscDebug("Dealloc error_errors_mse.");
+    delete ptycho.error_mse;
+
     sscDebug("Dealloc errorcounter.");
     delete ptycho.errorcounter;
 
@@ -481,7 +542,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
 
 Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
         complex* _object, const dim3& objshape, Position* positions, int numrois, int batchsize,
-        float* _rfact, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
+        float* _rfact, float* _llk, float* _mse, const std::vector<int>& gpus, float* _objectsupport, float* _probesupport,
         int numobjsupp,  float wavelength_m, float pixelsize_m, float distance_m,
         int poscorr_iter,
         float step_obj, float step_probe,
@@ -537,6 +598,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->cpuobject = _object;
     ptycho->cpupositions = positions;
     ptycho->cpuerror = _rfact;
+    ptycho->cpuerror_llk = _llk;
+    ptycho->cpuerror_mse = _mse;
 
     sscDebug("Alloc probe.");
     ptycho->probe = new cMImage(_probe, probeshape, true, gpus);
@@ -567,8 +630,17 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     sscDebug("Alloc r-factor error");
     ptycho->error = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
     ptycho->error->SetGPUToZero();
+    
+    sscDebug("Alloc Poisson Log-Likelihood");
+    ptycho->error_llk = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
+    ptycho->error_llk->SetGPUToZero();
 
+    sscDebug("Alloc Mean Squared Error");
+    ptycho->error_mse = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
+    ptycho->error_mse->SetGPUToZero();
+    
     ptycho->errorcounter = new rMImage(n_pos_neighbors + 1, 1, batchsize, true, ptycho->gpus);
+
 
     SetDevice(ptycho->gpus, 0);
     ptycho->roibatch_offset = std::vector<int>();

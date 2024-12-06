@@ -17,7 +17,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         complex* probe, const dim3& probeshape,
         complex* object, const dim3& objshape,
         Position* rois, int numrois,
-        int batchsize, float* rfact,
+        int batchsize, float* rfact, float *llk, float* mse,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
@@ -29,7 +29,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             probe, probeshape,
             object, objshape,
             rois, numrois,
-            batchsize, rfact,
+            batchsize, rfact, llk, mse,
             gpus,
             objsupp, probesupp, numobjsupp,
             wavelength_m, pixelsize_m, distance_m,
@@ -206,6 +206,8 @@ void PieRun(Pie& pie, int iterations) {
     rangeArray(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
         pie.ptycho->error->SetGPUToZero();
+        pie.ptycho->error_llk->SetGPUToZero();
+        pie.ptycho->error_mse->SetGPUToZero();
 
         shuffleArray(random_idx, num_rois);
         for (int pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
@@ -263,11 +265,15 @@ void PieRun(Pie& pie, int iterations) {
         if (pie.ptycho->poscorr_iter &&
                 (iter + 1) % pie.ptycho->poscorr_iter == 0)
             ApplyPositionCorrection(*pie.ptycho);
-
+        
+        // reduce errors 
         pie.ptycho->cpuerror[iter] = sqrtf(pie.ptycho->error->SumGPU());
+        pie.ptycho->cpuerror_llk[iter] = pie.ptycho->error_llk->SumGPU();
+        pie.ptycho->cpuerror_mse[iter] = pie.ptycho->error_mse->SumGPU();
+
         if (iter % 10 == 0) {
-            sscInfo(format("iter {}/{} error = {}",
-                        iter, iterations, pie.ptycho->cpuerror[iter]));
+            sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",
+                        iter, iterations, pie.ptycho->cpuerror[iter], pie.ptycho->cpuerror_llk[iter], pie.ptycho->cpuerror_mse[iter]));
         }
     }
 

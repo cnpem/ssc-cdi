@@ -31,7 +31,11 @@ struct Ptycho {
     cMImage* object = nullptr;      //!< Current object estimate.
     cMImage* probe = nullptr;       //!< Current probe estimate.
     cMImage* wavefront = nullptr;    //!< Temporary exitwave estimates to be amplitude projected.
+
     rMImage* error = nullptr;    //!< GPU Buffer for the error metric.
+    rMImage* error_llk = nullptr; //!< GPU buffer for the llk error metric.
+    rMImage* error_mse = nullptr; //!< GPU buffer for the llk error metric.
+
     rMImage* errorcounter = nullptr;
 
     rMImage* objectsupport = nullptr;  //!< List of object supports to be applied.
@@ -49,7 +53,11 @@ struct Ptycho {
     complex* cpuobject = nullptr;  //!< Copy of the object's memory location passed to the algorithm.
     complex* cpuprobe = nullptr;   //!< Copy of the probe's memory location passed to the algorithm.
     Position* cpupositions = nullptr;        //!< Copy of the rois' memory location passed to the algorithm.
+
     float* cpuerror = nullptr;     //!< Copy of the output error metric's memory location passed to the algorithm.
+    float* cpuerror_llk = nullptr;     //!< Copy of the outut error metric's memory location passed to the algorithm.
+    float* cpuerror_mse = nullptr;     //!< Copy of the outut error metric's memory location passed to the algorithm.
+
     std::vector<int> roibatch_offset;
     size_t singlebatchsize;
     size_t multibatchsize;
@@ -129,7 +137,7 @@ void DestroyPtycho(Ptycho*& ptycho);
 
 Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape,
                      complex* object, const dim3& objshape, Position* rois, int numrois, int batchsize,
-                     float* rfact, const std::vector<int>& gpus, float* objsupp, float* probesupp,
+                     float* rfact, float* llk, float* mse, const std::vector<int>& gpus, float* objsupp, float* probesupp,
                      int numobjsupp,
                      float wavelength_m, float pixelsize_m, float distance_m,
                      int poscorr_iter,
@@ -161,7 +169,7 @@ struct RAAR {
  * Constructor: Allocates phistack.
  * */
 RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
-                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
+                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact, float* llk, float* mse,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
                  int poscorr_iter,
@@ -196,7 +204,7 @@ struct AP {
 void APRun(AP& glim, int iter);
 
 AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
-                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact,
+                 const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact, float* llk, float* mse,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
                  float wavelength_m, float pixelsize_m, float distance_m,
                  int poscorr_iter,
@@ -217,7 +225,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         complex* object, const dim3& objshape,
         Position* rois, int numrois,
         int batchsize,
-        float* rfact,
+        float* rfact, float* llk, float* mse,
         const std::vector<int>& gpus,
         float* objsupp, float* probesupp, int numobjsupp,
         float wavelength_m, float pixelsize_m, float distance_m,
