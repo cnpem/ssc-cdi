@@ -205,7 +205,7 @@ void PieRun(Pie& pie, int iterations) {
     int random_idx[num_rois];
     rangeArray(random_idx, num_rois);
     for (int iter = 0; iter < iterations; ++iter) {
-        pie.ptycho->error->SetGPUToZero();
+        pie.ptycho->error_rfactor->SetGPUToZero();
         pie.ptycho->error_llk->SetGPUToZero();
         pie.ptycho->error_mse->SetGPUToZero();
 
@@ -267,13 +267,13 @@ void PieRun(Pie& pie, int iterations) {
             ApplyPositionCorrection(*pie.ptycho);
         
         // reduce errors 
-        pie.ptycho->cpuerror[iter] = sqrtf(pie.ptycho->error->SumGPU());
+        pie.ptycho->cpuerror_rfactor[iter] = sqrtf(pie.ptycho->error_rfactor->SumGPU());
         pie.ptycho->cpuerror_llk[iter] = pie.ptycho->error_llk->SumGPU();
         pie.ptycho->cpuerror_mse[iter] = pie.ptycho->error_mse->SumGPU();
 
         if (iter % 10 == 0) {
             sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",
-                        iter, iterations, pie.ptycho->cpuerror[iter], pie.ptycho->cpuerror_llk[iter], pie.ptycho->cpuerror_mse[iter]));
+                        iter, iterations, pie.ptycho->cpuerror_rfactor[iter], pie.ptycho->cpuerror_llk[iter], pie.ptycho->cpuerror_mse[iter]));
         }
     }
 

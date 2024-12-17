@@ -324,7 +324,7 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront,
 
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, 
                                                                                                     *diff_pattern, 
-                                                                                                    pt.error->Ptr(g), 
+                                                                                                    pt.error_rfactor->Ptr(g), 
                                                                                                     pt.error_llk->Ptr(g),
                                                                                                     pt.error_mse->Ptr(g),
                                                                                                     upsample,  
@@ -352,7 +352,7 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad
 
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], 
                                                                                                     *diff_pattern, 
-                                                                                                    pt.error->Ptr(g), 
+                                                                                                    pt.error_rfactor->Ptr(g), 
                                                                                                     pt.error_llk->Ptr(g),
                                                                                                     pt.error_mse->Ptr(g),
                                                                                                     upsample, 
@@ -518,7 +518,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.probesupport != nullptr) delete ptycho.probesupport;
 
     sscDebug("Dealloc error_errors_rfactor.");
-    delete ptycho.error;
+    delete ptycho.error_rfactor;
 
     sscDebug("Dealloc error_errors_llk.");
     delete ptycho.error_llk;
@@ -597,7 +597,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;
     ptycho->cpupositions = positions;
-    ptycho->cpuerror = _rfact;
+    ptycho->cpuerror_rfactor = _rfact;
     ptycho->cpuerror_llk = _llk;
     ptycho->cpuerror_mse = _mse;
 
@@ -628,8 +628,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
         ptycho->probesupport = nullptr;
 
     sscDebug("Alloc r-factor error");
-    ptycho->error = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
-    ptycho->error->SetGPUToZero();
+    ptycho->error_rfactor = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
+    ptycho->error_rfactor->SetGPUToZero();
     
     sscDebug("Alloc Poisson Log-Likelihood");
     ptycho->error_llk = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);

@@ -32,9 +32,9 @@ struct Ptycho {
     cMImage* probe = nullptr;       //!< Current probe estimate.
     cMImage* wavefront = nullptr;    //!< Temporary exitwave estimates to be amplitude projected.
 
-    rMImage* error = nullptr;    //!< GPU Buffer for the error metric.
-    rMImage* error_llk = nullptr; //!< GPU buffer for the llk error metric.
-    rMImage* error_mse = nullptr; //!< GPU buffer for the llk error metric.
+    rMImage* error_rfactor = nullptr;    //!< GPU Buffer for the rfactor error metric.
+    rMImage* error_llk = nullptr; //!< GPU buffer for the Poisson negative log-likelihood error metric.
+    rMImage* error_mse = nullptr; //!< GPU buffer for the mean squared error metric.
 
     rMImage* errorcounter = nullptr;
 
@@ -54,7 +54,7 @@ struct Ptycho {
     complex* cpuprobe = nullptr;   //!< Copy of the probe's memory location passed to the algorithm.
     Position* cpupositions = nullptr;        //!< Copy of the rois' memory location passed to the algorithm.
 
-    float* cpuerror = nullptr;     //!< Copy of the output error metric's memory location passed to the algorithm.
+    float* cpuerror_rfactor = nullptr;     //!< Copy of the output error metric's memory location passed to the algorithm.
     float* cpuerror_llk = nullptr;     //!< Copy of the outut error metric's memory location passed to the algorithm.
     float* cpuerror_mse = nullptr;     //!< Copy of the outut error metric's memory location passed to the algorithm.
 

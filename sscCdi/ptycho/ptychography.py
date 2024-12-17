@@ -102,8 +102,9 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                                                                                                    initial_obj=initial_obj, 
                                                                                                    initial_probe=initial_probe, 
                                                                                                    plot=plot)
-    print(positions)
-    print(corrected_positions)
+    # print(positions)
+    # print(corrected_positions)
+    # input_dict['positions'] = corrected_positions 
 
     if plot is True and corrected_positions is not None:
         plot_ptycho_corrected_scan_points(positions,corrected_positions)
@@ -275,7 +276,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
 
-            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions = AP(iterations=algo_inputs['iterations'],
+            obj, probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = AP(iterations=algo_inputs['iterations'],
                                                          objbeta=algo_inputs['momentum_obj'],
                                                          probebeta=algo_inputs['momentum_probe'],
                                                          batch=algo_inputs['batch'],
@@ -296,7 +297,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
 
 
             # error_nmse.append(np.full_like(algo_error, np.nan))
-            error_rfactor.append(algo_error)
+            error_rfactor.append(algo_error_rfactor)
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
@@ -312,7 +313,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions  = RAAR(iterations=algo_inputs['iterations'],
+            obj, probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions  = RAAR(iterations=algo_inputs['iterations'],
                                                             probebeta=algo_inputs['momentum_probe'],
                                                             objbeta=algo_inputs['momentum_obj'],
                                                             beta=algo_inputs['beta'],
@@ -332,7 +333,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"])
 
-            error_rfactor.append(algo_error)
+            error_rfactor.append(algo_error_rfactor)
             # error_nmse.append(np.full_like(algo_error, np.nan))
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
@@ -351,7 +352,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                 probe = set_initial_probe(input_dict["algorithms"][str(counter)], DPs, input_dict['incoherent_modes'])
             if 'initial_obj' in input_dict["algorithms"][str(counter)]:
                 obj = set_initial_object(input_dict["algorithms"][str(counter)],DPs,probe[0],input_dict["object_shape"])
-            obj, probe, algo_error, algo_error_llk, algo_error_mse, probe_positions = PIE(iterations=algo_inputs['iterations'],
+            obj, probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = PIE(iterations=algo_inputs['iterations'],
                                                                                           step_obj=algo_inputs['step_object'],
                                                                                           step_probe=algo_inputs['step_probe'],
                                                                                           reg_obj=algo_inputs['regularization_object'],
@@ -368,7 +369,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             params={'device': input_dict["GPUs"][0:1]})
 
             # fill errors
-            error_rfactor.append(algo_error)
+            error_rfactor.append(algo_error_rfactor)
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
