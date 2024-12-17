@@ -260,7 +260,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
     for (int iter = 0; iter < iterations; iter++) {
 
-        raar.ptycho->error->SetGPUToZero();
+        raar.ptycho->error_rfactor->SetGPUToZero();
         raar.ptycho->error_llk->SetGPUToZero();
         raar.ptycho->error_mse->SetGPUToZero();
 
@@ -339,12 +339,12 @@ void RAARRun(RAAR& raar, int iterations) {
             ApplyPositionCorrection(*raar.ptycho);
         }
 
-        raar.ptycho->cpuerror[iter] = sqrtf(raar.ptycho->error->SumGPU());
+        raar.ptycho->cpuerror_rfactor[iter] = sqrtf(raar.ptycho->error_rfactor->SumGPU());
         raar.ptycho->cpuerror_llk[iter] = raar.ptycho->error_llk->SumGPU();
         raar.ptycho->cpuerror_mse[iter] = raar.ptycho->error_mse->SumGPU();
 
         if (iter % 10 == 0) {
-            sscInfo(format("iter {}/{} rfactor: {}, llk = {}, mse = {}", iter, iterations, raar.ptycho->cpuerror[iter], raar.ptycho->cpuerror_llk[iter], raar.ptycho->cpuerror_mse[iter]));
+            sscInfo(format("iter {}/{} rfactor: {}, llk = {}, mse = {}", iter, iterations, raar.ptycho->cpuerror_rfactor[iter], raar.ptycho->cpuerror_llk[iter], raar.ptycho->cpuerror_mse[iter]));
         }
 
     }

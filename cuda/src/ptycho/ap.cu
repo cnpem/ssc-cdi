@@ -89,7 +89,7 @@ void APRun(AP& ap, int iterations) {
   for (int iter = 0; iter < iterations; iter++) {
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
-    ptycho.error->SetGPUToZero();
+    ptycho.error_rfactor->SetGPUToZero();
     ptycho.error_llk->SetGPUToZero();
     ptycho.error_mse->SetGPUToZero();
     ptycho.object_num->SetGPUToZero();
@@ -163,13 +163,13 @@ void APRun(AP& ap, int iterations) {
             ApplyPositionCorrection(ptycho);
 
     // reduce errors 
-    ptycho.cpuerror[iter] = sqrtf(ptycho.error->SumCPU());
+    ptycho.cpuerror_rfactor[iter] = sqrtf(ptycho.error_rfactor->SumCPU());
     ptycho.cpuerror_llk[iter] = ptycho.error_llk->SumCPU();
     ptycho.cpuerror_mse[iter] = ptycho.error_mse->SumCPU();
 
     if (iter % 10 == 0) {
         sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",
-                iter, iterations, ptycho.cpuerror[iter], ptycho.cpuerror_llk[iter], ptycho.cpuerror_mse[iter]));
+                iter, iterations, ptycho.cpuerror_rfactor[iter], ptycho.cpuerror_llk[iter], ptycho.cpuerror_mse[iter]));
     }
   }
 
