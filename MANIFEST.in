@@ -1,2 +1,5 @@
-include cuda/sscPtycho/*
+include sscCdi/*
+recursive-include cuda *.*
 recursive-include docs *.txt
+include *.txt
+
