@@ -55,7 +55,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     print(f'Energy = {input_dict["energy"]} keV')
 
-    if "wavenlength" not in input_dict:
+    if "wavelength" not in input_dict:
         input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
 
