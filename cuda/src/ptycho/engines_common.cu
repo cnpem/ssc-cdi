@@ -120,17 +120,10 @@ __global__ void KComputeError(float* error_errors_rfactor,
 
         for(int m=0; m<nummodes; m++)
             wabs2 += exitwave(blockIdx.z*nummodes + m, idy, idx).abs2();
-
-        
-        const int sigmask = (diff_pattern < 0);
+ 
 
         // compute rfactor error 
-        atomicAdd(shared_error_error_rfactor + threadIdx.x%64, sigmask * sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
-
-        // Compute Poisson log-likelihood
-        // float llk = sigmask * diff_pattern * logf(wabs2) - wabs2;
-        // atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
-
+        atomicAdd(shared_error_error_rfactor + threadIdx.x%64, sq(sqrtf(diff_pattern)-sqrtf(wabs2)));
     }
 
     __syncthreads();
@@ -724,6 +717,6 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     for (int i=0; i<=n_pos_neighbors; i++){
     	printf("pos_offx,y = (%f, %f) \n", pos_offx[i], pos_offy[i]);
     }
-    
+
     return ptycho;
 }
