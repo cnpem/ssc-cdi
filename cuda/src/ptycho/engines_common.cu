@@ -9,7 +9,7 @@
 #include "engines_common.hpp"
 
 
-constexpr int maximum_n_neighborhoods = 1; 
+constexpr int maximum_n_neighborhoods = 3; 
 constexpr int n_pos_neighbors = (2*maximum_n_neighborhoods+1)*(2*maximum_n_neighborhoods+1) -1 ;
 
  
@@ -90,6 +90,7 @@ __global__ void KSideExitwave(GArray<complex> exitwave,
         exitwave(m + probe.shape.z*blockIdx.z, idy, idx) = obj*probe(m, idy, idx);
     }
 }
+ 
 __global__ void KComputeError(float* errors, 
                               const GArray<complex> exitwave, 
                               const GArray<float> diffraction_patterns, 
@@ -99,8 +100,7 @@ __global__ void KComputeError(float* errors,
     __shared__ float shared_error_error_rfactor[64]; 
 
     if(threadIdx.x<64){
-        shared_error_error_rfactor[threadIdx.x] = 0;
-        // shared_error_error_llk[threadIdx.x] = 0;
+        shared_error_error_rfactor[threadIdx.x] = 0; 
     }
     __syncthreads();
 
@@ -139,7 +139,8 @@ __global__ void KComputeError(float* errors,
     if(threadIdx.x==0){
         atomicAdd(errors + idz, shared_error_error_rfactor[0]); 
     }
-}
+} 
+ 
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, 
                                    complex* probe_acc, 
@@ -524,7 +525,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                                                 ptr_roi, 
                                                 d_pos_offx[k], 
                                                 d_pos_offx[k]);
-                    cudaDeviceSynchronize(); // <-
+                    //cudaDeviceSynchronize(); // <-
 
                     ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,  
                                                     ptycho.wavefront->arrays[g]->gpuptr,  
@@ -537,7 +538,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                                                 *cur_difpad.arrays[g],
                                                 nullptr,
                                                 ptycho.probe->sizez);
-                    cudaDeviceSynchronize();    // <-
+                    //cudaDeviceSynchronize();    // <-
                 }
             }
         }
@@ -551,7 +552,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                     ptycho.positions[d][0][g].gpuptr, batchsize,
                     ptycho.object->Shape(), ptycho.probe->Shape());
                 
-                cudaDeviceSynchronize(); // <-
+                //cudaDeviceSynchronize(); // <-
             }
         }
     }
