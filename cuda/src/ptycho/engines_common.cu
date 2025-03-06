@@ -8,16 +8,59 @@
 #include "complex.hpp"
 #include "engines_common.hpp"
 
-//host position correction offsets
-float const pos_offx[] = { 0, 1, -1, 0, 0, -1, -1, 1, 1};
-float const pos_offy[] = { 0, 0, 0, 1, -1, -1, 1, -1, 1};
-//device position correction offsets, should be the same as the host
-__device__ float const d_pos_offx[] = { 0, 1, -1, 0, 0, -1, -1, 1, 1};
-__device__ float const d_pos_offy[] = { 0, 0, 0, 1, -1, -1, 1, -1, 1};
 
-// 4-neighborhood, 8-neighborhood
-constexpr int n_pos_neighbors = 8;
+constexpr int maximum_n_neighborhoods = 1; 
+constexpr int n_pos_neighbors = (2*maximum_n_neighborhoods+1)*(2*maximum_n_neighborhoods+1) -1 ;
 
+ 
+float pos_offx[n_pos_neighbors + 1]; 
+float pos_offy[n_pos_neighbors + 1];  
+__device__ float d_pos_offx[n_pos_neighbors + 1]; 
+__device__ float d_pos_offy[n_pos_neighbors + 1]; 
+ 
+ 
+void init_offsets(){ 
+	int idx = 1;
+	
+    for (int curr_amplitude=1; curr_amplitude<=maximum_n_neighborhoods; curr_amplitude++){
+	// store the upper row
+        for (int j=-curr_amplitude; j<=curr_amplitude; j++){
+			pos_offx[idx] = (float) -curr_amplitude;
+			pos_offy[idx] = (float) j;
+			
+			idx++;
+		}
+	
+		// store the two side columns and store them row major
+		for (int i=-curr_amplitude+1; i<curr_amplitude; i++){
+			// left column
+			pos_offx[idx] = (float) i;
+			pos_offy[idx] = (float) -curr_amplitude;			
+			idx++;
+			
+			// right column
+			pos_offx[idx] = (float) i;
+			pos_offy[idx] = (float) curr_amplitude;
+			d_pos_offx[idx] = (float) i;
+			d_pos_offy[idx] = (float) curr_amplitude;
+			idx++;
+		}
+	
+		// store the bottom row
+		for (int j=-curr_amplitude; j<=curr_amplitude; j++){
+			pos_offx[idx] = (float) curr_amplitude;
+			pos_offy[idx] = (float) j;
+			idx++;
+		}
+	}	
+	
+    // Copy directly to __device__ variables
+    cudaMemcpyToSymbol(d_pos_offx, pos_offx, (n_pos_neighbors + 1) * sizeof(float));
+    cudaMemcpyToSymbol(d_pos_offy, pos_offy, (n_pos_neighbors + 1) * sizeof(float));
+
+}
+
+ 
 
 __global__ void KSideExitwave(GArray<complex> exitwave, 
                               const GArray<complex> probe, 
@@ -672,5 +715,15 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->probe_div = new rMImage(ptycho->probe->Shape(), true, gpus);
     ptycho->probe_num = new cMImage(ptycho->probe->Shape(), true, gpus);
 
+
+    // init shifts 
+    init_offsets();
+    
+    // show all possible shifts 
+    printf("----------------------------------------------------------------------\n");
+    for (int i=0; i<=n_pos_neighbors; i++){
+    	printf("pos_offx,y = (%f, %f) \n", pos_offx[i], pos_offy[i]);
+    }
+    
     return ptycho;
 }
