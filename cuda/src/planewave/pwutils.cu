@@ -516,16 +516,7 @@ extern "C" {
                                   host_var,
                                   CUFFT_COPY_HOST_TO_DEVICE));
 
-    // fprintf(stdout, "subFormat before: %d\n", var->subFormat);
-    // // perform cufftXtMemcpy() with CUFFT_COPY_DEVICE_TO_DEVICE flag
-    // checkCudaErrors(cufftXtMemcpy(plan_input,
-    //                               var,
-    //                               var,
-    //                               CUFFT_COPY_DEVICE_TO_DEVICE));
-    // fprintf(stdout, "subFormat after: %d\n", var->subFormat);
-    // fprintf(stdout, "ssc-cdi: permuted2natural: ordering fixed.\n");
-    // fflush(stdout);
-
+  
   }
 
 
@@ -1240,10 +1231,39 @@ void m_projection_M(cufftHandle& plan_C2C,
                                    float eps,
                                    size_t totalDim, 
                                    size_t perGPUDim,
-                                   ssc_gpus *gpus,                    
-                                  //  cudaLibXtDesc* device_swap, 
+                                   ssc_gpus *gpus,                  
                                    bool timing){
-
+/**
+ * @brief This function performs a projection onto the space of points that satisfy the measured data constraint, 
+ * adjusting the phase of the Fourier transform of the data.
+ *
+ * The projection is done by copying the data from `d_x` (natural ordering) to `d_y`, performing a forward FFT on 
+ * `d_y`, applying a phase adjustment based on the signal, and then performing an inverse FFT on `d_y`. The result 
+ * is the projection of the data in the space of points that satisfy the measured data constraint, ensuring that 
+ * the adjusted signal complies with the measured data.
+ *
+ * The process involves multiple GPUs, with each GPU handling a portion of the data, and it uses CUDA streams 
+ * for asynchronous execution and synchronization across the devices.
+ *
+ * **Steps:**
+ * 1. Copy `d_x` to `d_y`.
+ * 2. Perform a forward FFT on `d_y`.
+ * 3. Adjust the phase of the Fourier transform based on the signal.
+ * 4. Perform an inverse FFT on `d_y` to return to the spatial domain.
+ *
+ * @param `plan_C2C`: The FFT plan for complex-to-complex transformations.
+ * @param `d_y`: The descriptor holding the data that will be projected onto the measured data space.
+ * @param `d_x`: The descriptor holding the input data in natural ordering format.
+ * @param `d_signal`: The signal data used for phase adjustment.
+ * @param `eps`: The epsilon parameter for phase adjustment.
+ * @param `totalDim`: The total dimension of the data.
+ * @param `perGPUDim`: The number of elements each GPU will handle.
+ * @param `gpus`: A pointer to a `ssc_gpus` struct containing GPU information.
+ * @param `timing`: A boolean flag to enable or disable timing.
+ * 
+ * @note This projection is done by adjusting the phase of the Fourier-transformed data (`d_y`), ensuring that it 
+ * satisfies the measured data constraint based on the input signal (`d_signal`).
+ */
  
   int n_gpus = totalDim/perGPUDim;
   const dim3 threadsPerBlock(tbx*tby*tbz);
@@ -1317,13 +1337,30 @@ void m_fftshift(uint8_t** data,
                 uint8_t* host_swap_byte,
                 size_t perGPUDim,
                 ssc_gpus* gpus){  
-
-  // Currently this only works for dtype=SSC_DTYPE_BYTE data, since it is
-  // small enough to be performed in a single GPU. The SSC_DTYPE_COMPLEX
-  // case should be handled in multiple GPUs.
-
-  printf("m_fftshift: dimension = %d\n", dimension);
-
+                  /**
+ * @brief Experimental function to perform an FFT shift operation across multiple GPUs, currently only supports byte data type (`SSC_DTYPE_BYTE`).
+ *
+ * **WARNING:** This function is experimental and **should not be used in production environments**. It is designed to handle FFT shifting on a single GPU for small datasets (`dtype = SSC_DTYPE_BYTE`). The multi-GPU handling for complex data types (`SSC_DTYPE_COMPLEX`) is incomplete and likely to be unreliable.
+ *
+ * This kernel:
+ * 1. Transfers data from the device memory to the host memory (`host_swap_byte`).
+ * 2. Performs an FFT shift on the data on a single GPU.
+ * 3. Copies the result back from the host to device memory.
+ *
+ * The number of GPUs used is determined by dividing the total data size by `perGPUDim`. The kernel for `fftshift` is launched on a single GPU (i.e., the operation does not fully utilize multiple GPUs for `SSC_DTYPE_BYTE` data).
+ *
+ * @param data Pointer to an array of device memory pointers, each holding data on a different GPU.
+ * @param dimension The size of the data dimension.
+ * @param dtype Data type for the input data (`SSC_DTYPE_BYTE` for now).
+ * @param host_swap_byte Host-side memory to temporarily hold the data during the FFT shift operation.
+ * @param perGPUDim The number of elements to be processed per GPU.
+ * @param gpus A pointer to a `ssc_gpus` struct containing GPU device information.
+ *
+ * @note The current implementation does not fully support multiple GPUs for complex data types (`SSC_DTYPE_COMPLEX`). 
+ * Currently this only works for dtype=SSC_DTYPE_BYTE data, since it is small enough to be performed in a single GPU. 
+ * The SSC_DTYPE_COMPLEX case should be handled in multiple GPUs.
+ */
+ 
 
   const int n_gpus = (dimension*dimension*dimension)/perGPUDim;
   const dim3 threadsPerBlock(tbx, tby, tbz);

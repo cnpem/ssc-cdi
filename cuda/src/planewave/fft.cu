@@ -15,6 +15,41 @@ extern "C" {
                                           int n_gpus,
                                           int gpuId,
                                           bool isNaturalOrder){
+/**
+ * @brief Generates a 3D support array for use in multi-GPU computations, defining a support region 
+ *        based on an Lp-norm distance constraint.
+ *
+ * This CUDA kernel initializes a 3D support array `support` based on an Lp-norm condition. The function 
+ * calculates whether each voxel in a distributed 3D grid falls within a specified radius from a given 
+ * center `(x0, y0, z0)`, assigning `1` to elements inside the support and `0` otherwise.
+ * The computation is distributed across multiple GPUs.
+ *
+ * Each thread computes its corresponding 3D coordinate within the grid and checks whether it lies within 
+ * the support region defined by:
+ *
+ *    norm = |x - x0|^p + |y - y0|^p + |z - z0|^p
+ *
+ * If `norm < radius^p`, the voxel is set to `1` (inside support); otherwise, it is set to `0`.
+ *
+ * The function supports two memory layouts:
+ * - **Natural Order (`isNaturalOrder = true`)**: The x-dimension is divided across GPUs.
+ * - **Alternative Order (`isNaturalOrder = false`)**: The y-dimension is divided across GPUs.
+ *
+ * @param support Pointer to the output support array (`uint8_t`), where each element is either `1` (inside) or `0` (outside).
+ * @param p Power parameter for the Lp-norm computation.
+ * @param radius Radius of the support region in Lp-norm.
+ * @param x0 X-coordinate of the support center.
+ * @param y0 Y-coordinate of the support center.
+ * @param z0 Z-coordinate of the support center.
+ * @param dimension Size of the 3D grid in each dimension.
+ * @param n_gpus Number of GPUs used for parallel execution.
+ * @param gpuId ID of the current GPU, determining its assigned subdomain.
+ * @param isNaturalOrder Boolean flag indicating the memory layout (true for x-split, false for y-split).
+ *
+ * @note The function assumes that the `support` array is preallocated and distributed among GPUs. Each 
+ *       thread computes a single voxel based on its index within the CUDA grid.
+ */
+
 
     const size_t index = blockIdx.x*blockDim.x + threadIdx.x; 
 
@@ -65,6 +100,29 @@ __global__ void clip_to_zero(cufftComplex *a,
                          cufftComplex *b,
                          float eps,
                          int dimension){
+/**
+ * @brief Sets elements of a complex array `a` to zero where the corresponding values in `b` have a magnitude below a given threshold `eps`.
+ *
+ * This CUDA kernel iterates over a 3D volume, checking the absolute value of each element in `b`. If the magnitude 
+ * is less than or equal to `eps`, the corresponding element in `a` is set to zero. Otherwise, `a` remains unchanged.
+ *
+ * The absolute value is computed as:
+ * 
+ *  absolute_value = sqrt(fabs(b[index].x)^2 + fabs(b[index].y)^2)
+ * 
+ * If `absolute_value ≤ eps`, then:
+ * 
+ *  a[index].x = 0
+ *  a[index].y = 0
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), which is modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`), whose magnitude is checked.
+ * @param eps Threshold value below which elements in `b` are set to zero in `a`.
+ * @param dimension Size of the 3D array along each axis (assumes a cubic volume `dimension × dimension × dimension`).
+ *
+ * @note The kernel operates on a 3D CUDA grid and processes elements in parallel. It assumes `a` and `b` are preallocated 
+ *       and have the same dimensions.
+ */
 
   const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
   const int threadIDy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -88,6 +146,26 @@ __global__ void update_extra_constraint(cufftComplex *a,
                                        cufftComplex *b,
                                        int extra_constraint, 
                                        int dimension){
+/**
+ * @brief Applies an extra constraint to the complex array `a` based on the values of `b`.
+ *
+ * This CUDA kernel iterates over a 3D volume and enforces constraints on the real and imaginary components 
+ * of `b`, setting corresponding elements in `a` to zero if they violate the constraint.
+ *
+ * The constraints are defined as follows:
+ * - **RIGHT_SEMIPLANE** / **FIRST_QUADRANT** / **FOURTH_QUADRANT**: Set `a[index].x = 0` if `b[index].x < 0`.
+ * - **LEFT_SEMIPLANE** / **SECOND_QUADRANT** / **THIRD_QUADRANT**: Set `a[index].x = 0` if `b[index].x > 0`.
+ * - **TOP_SEMIPLANE** / **FIRST_QUADRANT** / **SECOND_QUADRANT**: Set `a[index].y = 0` if `b[index].y < 0`.
+ * - **BOTTOM_SEMIPLANE** / **THIRD_QUADRANT** / **FOURTH_QUADRANT**: Set `a[index].y = 0` if `b[index].y > 0`.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), which is modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`), whose real and imaginary parts are checked.
+ * @param extra_constraint The constraint type to apply (should match predefined quadrant/semiplane conditions).
+ * @param dimension Size of the 3D array along each axis (assumes a cubic volume `dimension × dimension × dimension`).
+ *
+ * @note The kernel operates on a 3D CUDA grid and processes elements in parallel. It assumes `a` and `b` are preallocated 
+ *       and have the same dimensions.
+ */
 
   const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
   const int threadIDy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -125,7 +203,28 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                             cufftComplex *b,
                                             int extra_constraint,
                                             size_t perGPUDim){
- 
+ /**
+ * @brief Applies an extra constraint to the complex array `a` in a multi-GPU setting.
+ *
+ * This CUDA kernel iterates over a 1D partition of a 3D volume assigned to a specific GPU. 
+ * It enforces constraints on the real and imaginary components of `b`, setting corresponding 
+ * elements in `a` to zero if they violate the constraint.
+ *
+ * The constraints are defined as follows:
+ * - **RIGHT_SEMIPLANE** / **FIRST_QUADRANT** / **FOURTH_QUADRANT**: Set `a[index].x = 0` if `b[index].x < 0`.
+ * - **LEFT_SEMIPLANE** / **SECOND_QUADRANT** / **THIRD_QUADRANT**: Set `a[index].x = 0` if `b[index].x > 0`.
+ * - **TOP_SEMIPLANE** / **FIRST_QUADRANT** / **SECOND_QUADRANT**: Set `a[index].y = 0` if `b[index].y < 0`.
+ * - **BOTTOM_SEMIPLANE** / **THIRD_QUADRANT** / **FOURTH_QUADRANT**: Set `a[index].y = 0` if `b[index].y > 0`.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`), whose real and imaginary parts are checked.
+ * @param extra_constraint The constraint type to apply (should match predefined quadrant/semiplane conditions).
+ * @param perGPUDim The number of elements assigned to the current GPU.
+ *
+ * @note This kernel is optimized for a multi-GPU execution model, assuming data partitioning across GPUs. 
+ *       The processing is done in a 1D CUDA grid for efficiency.
+ */
+
   const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (index < perGPUDim){
@@ -162,15 +261,28 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                     float *m,
                                     float eps,
                                     int dimension){
-    // 
-    // This function receives b = fft(x) and m = measured signal (real), computes  
-    //      a = m * exp(i * phase(b))/nvoxels  
-    // that is, storing the result in a, the first pointer in the arguments. 
-    //  
-    // Some of the values of m are probably missing, and they are flagged as -1. 
-    // This kernel handles the -1 values by substituting them with the computed fft(x)
-    // values stored in b, the second pointer in the arguments.
-    // 
+/**
+ * @brief Updates `a` using the phase of `b` and the measured magnitude `m`.
+ *
+ * This CUDA kernel computes:
+ *      a = m * exp(i * phase(b)) / nvoxels
+ * where `b = FFT(x)`, `m` is the real-valued measured signal, and `nvoxels` is the total number of elements.
+ *
+ * Handling of missing values in `m`:
+ * - If `m[index] < 0`, `a[index]` is set to `b[index] / nvoxels`, preserving the original FFT value.
+ * - If `eps >= 0` and `|b[index]| <= eps`, `a[index]` is set to `m[index] / nvoxels`, with zero imaginary part.
+ * - Otherwise, the phase of `b[index]` is applied to `m[index]`:
+ *      a[index] = (m[index] * b[index]) / (|b[index]| * nvoxels)
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`), containing FFT values.
+ * @param m Pointer to the real-valued measured signal (`float`), possibly containing missing values (-1).
+ * @param eps Small threshold for handling low-magnitude `b[index]` values.
+ * @param dimension The size of the 3D volume along one axis.
+ *
+ * @note The kernel assumes a 3D grid decomposition with `(dimension, dimension, dimension)` total elements.
+ */
+
     float cos, sin, theta;
     const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
     const int threadIDy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -212,21 +324,37 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
         }
       }
     }
-
-
   }
-
-  // for multiple GPU 
+ 
   __global__ void update_with_phase_mgpu(cufftComplex *a,
                                          cufftComplex *b,
                                          float *m,
                                          float eps,
                                          size_t totalDim,
                                          size_t perGPUDim){
-    //
-    // a = m * exp(i * phase(b))/nvoxels :  m is real
-    // All variables a,b and m should have the same ordering.
-    //
+/**
+ * @brief Updates `a` using the phase of `b` and the measured magnitude `m` in a multi-GPU setup.
+ *
+ * This CUDA kernel computes:
+ *      a = m * exp(i * phase(b)) / totalDim
+ * where `b = FFT(x)`, `m` is the real-valued measured signal, and `totalDim` is the total number of elements across GPUs.
+ *
+ * Handling of missing values in `m`:
+ * - If `m[index] < 0`, `a[index]` is set to `b[index] / totalDim`, preserving the original FFT value.
+ * - If `eps >= 0` and `|b[index]| <= eps`, `a[index]` is set to `m[index] / totalDim`, with zero imaginary part.
+ * - Otherwise, the phase of `b[index]` is applied to `m[index]`:
+ *      a[index] = (m[index] * b[index]) / (|b[index]| * totalDim)
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`), containing FFT values.
+ * @param m Pointer to the real-valued measured signal (`float`), possibly containing missing values (-1).
+ * @param eps Small threshold for handling low-magnitude `b[index]` values.
+ * @param totalDim The total number of elements in the full dataset across GPUs.
+ * @param perGPUDim The number of elements processed by this GPU.
+ *
+ * @note The kernel assumes a 1D grid decomposition, with each GPU processing `perGPUDim` elements.
+ */
+
     float cos, sin, theta;
     const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -261,7 +389,35 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                             uint8_t *c,
                                             int extra_constraint,
                                             int dimension){
-
+/**
+ * @brief Applies support constraints and optional extra constraints to update `a` using `b`.
+ *
+ * This CUDA kernel enforces support constraints (`c`) and optional phase constraints (`extra_constraint`) on `b`,
+ * updating `a` accordingly. The update rule is:
+ *      a[index] = b[index] * supp * supp_mod + a[index] * (1 - supp * supp_mod)
+ * where:
+ * - `supp = c[index]` determines whether the support constraint is active (binary mask).
+ * - `supp_mod` applies an additional phase constraint based on `extra_constraint`.
+ *
+ * Available `extra_constraint` options:
+ * - `NO_EXTRA_CONSTRAINT`: No modification (`supp_mod = 1`).
+ * - `LEFT_SEMIPLANE`: Enforces `Re(b) > 0`.
+ * - `RIGHT_SEMIPLANE`: Enforces `Re(b) < 0`.
+ * - `TOP_SEMIPLANE`: Enforces `Im(b) > 0`.
+ * - `BOTTOM_SEMIPLANE`: Enforces `Im(b) < 0`.
+ * - `FIRST_QUADRANT`: Enforces `Re(b) > 0` and `Im(b) > 0`.
+ * - `SECOND_QUADRANT`: Enforces `Re(b) < 0` and `Im(b) > 0`.
+ * - `THIRD_QUADRANT`: Enforces `Re(b) < 0` and `Im(b) < 0`.
+ * - `FOURTH_QUADRANT`: Enforces `Re(b) > 0` and `Im(b) < 0`.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`).
+ * @param c Pointer to the binary support mask (`uint8_t`), where 1 indicates inclusion in the support.
+ * @param extra_constraint Integer flag specifying the additional phase constraint.
+ * @param dimension The size of the cubic 3D volume.
+ *
+ * @note The kernel assumes a 3D grid decomposition, with each thread handling a single voxel.
+ */
 
     const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
     const int threadIDy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -317,6 +473,38 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                                                  int extra_constraint,
                                                  size_t perGPUDim){
 
+/**
+ * @brief Multi-GPU version of the support and extra phase constraint update.
+ *
+ * This CUDA kernel applies support constraints (`c`) and optional extra phase constraints (`extra_constraint`) 
+ * to `b`, updating `a` accordingly. It is designed for execution on multiple GPUs, with each GPU handling 
+ * a portion of the data (`perGPUDim` elements).
+ *
+ * The update rule is:
+ *      a[index] = b[index] * supp * supp_mod + a[index] * (1 - supp * supp_mod)
+ * where:
+ * - `supp = c[index]` determines whether the support constraint is active (binary mask).
+ * - `supp_mod` applies an additional phase constraint based on `extra_constraint`.
+ *
+ * Available `extra_constraint` options:
+ * - `NO_EXTRA_CONSTRAINT`: No modification (`supp_mod = 1`).
+ * - `LEFT_SEMIPLANE`: Enforces `Re(b) > 0`.
+ * - `RIGHT_SEMIPLANE`: Enforces `Re(b) < 0`.
+ * - `TOP_SEMIPLANE`: Enforces `Im(b) > 0`.
+ * - `BOTTOM_SEMIPLANE`: Enforces `Im(b) < 0`.
+ * - `FIRST_QUADRANT`: Enforces `Re(b) > 0` and `Im(b) > 0`.
+ * - `SECOND_QUADRANT`: Enforces `Re(b) < 0` and `Im(b) > 0`.
+ * - `THIRD_QUADRANT`: Enforces `Re(b) < 0` and `Im(b) < 0`.
+ * - `FOURTH_QUADRANT`: Enforces `Re(b) > 0` and `Im(b) < 0`.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`), modified in-place.
+ * @param b Pointer to the input complex array (`cufftComplex`).
+ * @param c Pointer to the binary support mask (`uint8_t`), where 1 indicates inclusion in the support.
+ * @param extra_constraint Integer flag specifying the additional phase constraint.
+ * @param perGPUDim The number of elements assigned to this GPU.
+ *
+ * @note The kernel is optimized for multi-GPU execution, assuming data partitioning across multiple devices.
+ */
 
     const size_t index = blockIdx.x*blockDim.x + threadIdx.x;
   
@@ -358,7 +546,6 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
       // project onto the support AND the extra phase constraint 
       a[index].x = b[index].x*supp*supp_mod + a[index].x*(1.0f - supp*supp_mod);
       a[index].y = b[index].y*supp*supp_mod + a[index].y*(1.0f - supp*supp_mod);
-
 
   }
 }
@@ -694,9 +881,26 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
                          uint8_t *b,
                          float *m,
                          int dimension){
-    //
-    // a = m * exp(1j * b) : m is real
-    //
+/**
+ * @brief Initializes a complex array `a` using a magnitude `m` and phase `b`.
+ *
+ * This CUDA kernel computes the complex values as:
+ *      a[index] = m[index] * exp(1j * b[index])
+ * where:
+ * - `m[index]` is a real-valued magnitude.
+ * - `b[index]` is a phase value in radians, stored as an 8-bit integer (`uint8_t`).
+ * - The kernel computes `cos(b[index])` and `sin(b[index])` using `__sincosf` for efficiency.
+ *
+ * Each thread is responsible for computing a single element of `a` using its unique `(x, y, z)` coordinates.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`).
+ * @param b Pointer to the phase values (`uint8_t`), interpreted as radians.
+ * @param m Pointer to the magnitude values (`float`).
+ * @param dimension The size of the 3D grid along each axis.
+ *
+ * @note The kernel assumes `b[index]` is already in the correct scale for `sincosf`.
+ */
+
     float sin, cos, theta;
     const int threadIDx = blockIdx.x*blockDim.x + threadIdx.x;
     const int threadIDy = blockIdx.y*blockDim.y + threadIdx.y;
@@ -714,15 +918,32 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
     }
   }
 
-
-  // for multiple GPU 
+ 
   __global__ void set_dx_mgpu(cufftComplex *a,
                               uint8_t *b,
                               float *m,
                               size_t perGPUDim){
-    //
-    // a = m * exp(1j * b) : m is real
-    //
+/**
+ * @brief Initializes a complex array `a` using a magnitude `m` and phase `b` for a multi-GPU setup.
+ *
+ * This CUDA kernel computes the complex values as:
+ *      a[index] = m[index] * exp(1j * b[index])
+ * where:
+ * - `m[index]` is a real-valued magnitude.
+ * - `b[index]` is a phase value in radians, stored as an 8-bit integer (`uint8_t`).
+ * - The kernel computes `cos(b[index])` and `sin(b[index])` using `__sincosf` for efficiency.
+ *
+ * Each thread is responsible for computing a single element of `a`, processing a portion of the total work 
+ * (determined by `perGPUDim`), which allows this kernel to be executed in a multi-GPU setup.
+ *
+ * @param a Pointer to the output complex array (`cufftComplex`).
+ * @param b Pointer to the phase values (`uint8_t`), interpreted as radians.
+ * @param m Pointer to the magnitude values (`float`).
+ * @param perGPUDim The total number of elements processed by each GPU in the multi-GPU setup.
+ *
+ * @note The kernel assumes `b[index]` is already in the correct scale for `sincosf`.
+ */
+
 
     float sin, cos, theta;
     const size_t index = blockIdx.x*blockDim.x + threadIdx.x;
@@ -829,22 +1050,6 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
     }
   }
 
-  /*
-  __global__ void get_support_mgpu(uint8_t *m,
-                                   uint8_t *a,
-                                   size_t perGPUDim){
-      //
-      // m = a 
-      //
-    const size_t index = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    if (index < perGPUDim ){
-      m[index] = a[index];
-    }
-  }
-  */
-  
-
 
   __global__ void gaussian1(cufftComplex *d_gaussian,
                             float sigma,
@@ -887,16 +1092,8 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
     }
   }
 
-
-
-
-
-
-
-
-
-
-
+ 
+ 
   __global__ void gaussian1_mgpu(cufftComplex *d_x,
                                  float sigma,
                                  int dimension,
@@ -957,15 +1154,7 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
     int iz;
   }index3;
 
-  // __device__ index3 get3Dindex(const size_t index,
-  //                              const int ndimy,
-  //                              const int ndimz){
-  //   index3 id3;
-  //   id3.ix = index/ndimy/ndimz;
-  //   id3.iy = (index - id3.ix*ndimy*ndimz)/ndimz;
-  //   id3.iz = index - id3.ix*ndimy*ndimz - id3.iy*ndimz;   
-  //   return id3;
-  // }
+ 
 
   __device__ index3 get3Dindex(const size_t index,
                              const int ndimy,
@@ -1016,9 +1205,6 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
     const int ndimz = dimension;
     const size_t perGPUDim = (size_t) ndimx * ndimy * ndimz;
 
-    // it was like that 
-    // const float a = 1.0;
-    // const float delta = (2.0*a)/(dimension-1);
     const float a     = 1.0;
     const float wc    = (float) dimension/(4*a); //nyquist
     const float delta = (2.0*wc)/(dimension);
@@ -1063,8 +1249,7 @@ __global__ void update_extra_constraint_mgpu(cufftComplex *a,
             x = -wc + ii.ix * delta;
             y = -wc + ii.iy * delta;
             z = -wc + ii.iz * delta;
-              
-            // d_x[index].x = exp( -( (x * x + y * y + z * z) * ( 2 * PI_F * sigma * sigma) ) );
+               
             d_x[index].x = exp((-1/(2*PI_F*sigma*sigma))*(x*x + y*y + z*z)) * (1/(sigma*sqrt(2*PI_F)));
             d_x[index].y = 0.0f;
           }

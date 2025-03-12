@@ -6,15 +6,7 @@
 #include "gpus.h"
 #include "pwutils.h"
 
-// #include <cstddef>
-// #include <stdio.h> 
-// #include <stddef.h>
-// #include <algorithm>
-// #include <cuda_runtime.h>
-
-
-
-
+  
 extern "C"{
 
 
@@ -22,8 +14,9 @@ extern "C"{
     *max = arr[0];
 
     for (int i=1; i<n; i++){
-      if (arr[i] > *max)
+      if (arr[i] > *max){
         *max = arr[i];
+      }
     }
   }
 
@@ -31,8 +24,9 @@ extern "C"{
     *min = arr[0];
 
     for (int i=1; i<n; i++){
-      if (arr[i] <*min)
+      if (arr[i] <*min){
         *min = arr[i];
+      }
     }
   }
  
@@ -580,98 +574,6 @@ extern "C"{
 
   
   
-
-      // if (params->swap_d_x==false){ 
-      //   int threadsPerBlock_ = 256;
-      //   int blocksPerGrid = (perGPUDim + threadsPerBlock_ - 1) / threadsPerBlock_;
-
-        
-        
-        // Copy from d_signal (float) to d_z (cufftComplex) in bulk on each GPU
-        // for (int i = 0; i < n_gpus; i++) {
-        //   floatToCufftComplex<<<blocksPerGrid, threadsPerBlock_>>>(
-        //     workspace->mgpu.d_signal[i], 
-        //     (cufftComplex*)workspace->mgpu.d_y->descriptor->data[i], 
-        //     perGPUDim);
-        //   checkCudaErrors(cudaGetLastError());  // Check for kernel launch errors
-        // }
-        // for (int i=0; i<n_gpus; i++){
-        //       checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-        //       checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
-        // }
-        // Iterate over each GPU
-        // for (int i=0; i<n_gpus; i++) {
-        //   // Iterate over each element for the current GPU
-        //   for (int j=0; j<perGPUDim; j++) {
-        //     float real_value;
-            
-        //     // Copy the cufftComplex value from device to host
-        //     checkCudaErrors(cudaMemcpy((void*) &real_value, 
-        //                                (void*) &workspace->mgpu.d_signal[i][j],  // Source: cufftComplex device pointer
-        //                                sizeof(float),     
-        //                                cudaMemcpyDeviceToHost));  // Copy from device to host
-            
-        //     // Extract the real part (assuming the imaginary part is zero)
-        //     cufftComplex complex_value = {real_value, 0.0f};
-
-        //     // Copy the float value to the destination float array on the device
-        //     checkCudaErrors(cudaMemcpy((void*)((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i] + j), 
-        //                                (void*) &complex_value, 
-        //                                sizeof(cufftComplex),    
-        //                                cudaMemcpyHostToDevice));  // Copy from host to device
-        //   }
-        // }
-
-
-        // workspace->mgpu.d_z->subFormat = CUFFT_XT_FORMAT_INPLACE_SHUFFLED;
-        // workspace->mgpu.d_y->subFormat = CUFFT_XT_FORMAT_INPLACE;
-        // checkCudaErrors(cufftXtMemcpy(workspace->plan_C2C,
-        //                               workspace->mgpu.d_y,
-        //                               workspace->mgpu.d_z,
-        //                               CUFFT_COPY_DEVICE_TO_DEVICE));
-        
-        // workspace->mgpu.d_y->subFormat = CUFFT_XT_FORMAT_INPLACE;
-        // workspace->mgpu.d_z->subFormat = CUFFT_XT_FORMAT_INPLACE;
-
-        // // Iterate over each GPU
-        // for (int i=0; i<n_gpus; i++) {
-        //   // Iterate over each element for the current GPU
-        //   for (int j=0; j<perGPUDim; j++) {
-        //     cufftComplex complex_value;
-            
-        //     // Copy the cufftComplex value from device to host
-        //     checkCudaErrors(cudaMemcpy((void*)&complex_value, 
-        //                                (void*)((cufftComplex*)workspace->mgpu.d_y->descriptor->data[i] + j),  // Source: cufftComplex device pointer
-        //                                sizeof(cufftComplex),     
-        //                                cudaMemcpyDeviceToHost));  // Copy from device to host
-            
-        //     // Extract the real part (assuming the imaginary part is zero)
-        //     float real_value = complex_value.x;
-
-        //     // Copy the float value to the destination float array on the device
-        //     checkCudaErrors(cudaMemcpy((void*)&workspace->mgpu.d_signal[i][j], 
-        //                                (void*)&complex_value, 
-        //                                sizeof(float),    
-        //                                cudaMemcpyHostToDevice));  // Copy from host to device
-        //   }
-        // }
-        // Copy back from d_y (cufftComplex) to d_signal (float) in bulk on each GPU
-        // for (int i = 0; i < n_gpus; i++) {
-        //   cufftComplexToFloat<<<blocksPerGrid, threadsPerBlock_>>>(
-        //       (cufftComplex*)workspace->mgpu.d_y->descriptor->data[i], 
-        //       workspace->mgpu.d_signal[i], 
-        //       perGPUDim);
-        //   checkCudaErrors(cudaGetLastError());  // Check for kernel launch errors
-        // }
-        // for (int i=0; i<n_gpus; i++){
-        //   checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-        //   checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
-        // }
-      // }
-
-      // return;
-
- 
     
       //-----------------------------------------------------------
       // start iterations
@@ -690,20 +592,6 @@ extern "C"{
         }
 
  
-        
-        // this will use one implementation or another depending if a host swap variable was allocated or not
-        // if (params->swap_d_x==true){
-        //   m_projection_M(workspace->plan_C2C,
-        //                  workspace->mgpu.d_y,
-        //                  workspace->mgpu.d_x,  
-        //                  workspace->mgpu.d_signal,
-        //                  params->eps_zeroamp,
-        //                  dim,
-        //                  perGPUDim,
-        //                  workspace->gpus,
-        //                  workspace->host_swap,                     // host swap
-        //                  workspace->timing);
-        // }else{
         m_projection_M_shuffleddata(workspace->plan_C2C,
                                     workspace->mgpu.d_y,
                                     workspace->mgpu.d_x,  
@@ -712,9 +600,7 @@ extern "C"{
                                     dim,
                                     perGPUDim,
                                     workspace->gpus,
-                                    // workspace->mgpu.d_z,          // device swap  
                                     workspace->timing);
-        // }
 
         if (workspace->timing){  
           cudaEventRecord(stop);
@@ -758,8 +644,7 @@ extern "C"{
         }
          
         // compute the projection
-        if (iter%extra_constraint_subiter==0 && iter>initial_extra_constraint_subiter){
-        // if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
+        if (iter%extra_constraint_subiter==0 && iter>initial_extra_constraint_subiter){ 
           // extra_constraint is applied inside projection_S
           m_projection_S(workspace->mgpu.d_x, //  
                          workspace->mgpu.d_y,              
@@ -807,23 +692,15 @@ extern "C"{
             // note that this copy is done directly on the content.
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
-              checkCudaErrors(cudaMemcpy(workspace->mgpu.d_z->descriptor->data[i],          //Async
+              checkCudaErrors(cudaMemcpy(workspace->mgpu.d_z->descriptor->data[i],           
                                               workspace->mgpu.d_x->descriptor->data[i],
                                               perGPUDim*sizeof(cufftComplex), 
-                                              cudaMemcpyDeviceToDevice));
-                                              // workspace->gpus->streams[i]));
+                                              cudaMemcpyDeviceToDevice)); 
             }     
             for (int i=0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
               checkCudaErrors(cudaStreamSynchronize(workspace->gpus->streams[i]));
             }
-            // or this 
-            // checkCudaErrors(cufftXtMemcpy(workspace->plan_C2C,
-            //   workspace->mgpu.d_z,
-            //   workspace->mgpu.d_x,
-            //   CUFFT_COPY_DEVICE_TO_DEVICE));
-
-            // choose how the iteration variable is handled during the filtering operation
 
             // create shifted Gaussian directly 
             for(int i=0; i<n_gpus; i++){
@@ -1066,7 +943,6 @@ extern "C"{
         
 
             // compute convolution(d_x, gaussian)
-         
             // create shifted Gaussian directly 
             for(int i = 0; i<n_gpus; i++){
               checkCudaErrors(cudaSetDevice(workspace->gpus->gpus[i]));
@@ -1115,10 +991,6 @@ extern "C"{
    
             // ds = FFT(ds) : after FFT forward, ds is in natural order
             checkCudaErrors(cufftXtExecDescriptorC2C(workspace->plan_C2C, workspace->mgpu.d_x, workspace->mgpu.d_x, CUFFT_FORWARD));    
-
-            // permuted2natural(workspace->mgpu.d_y, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
-            // permuted2natural(workspace->mgpu.d_z, workspace->plan_C2C, workspace->nvoxels, workspace->host_swap);
-   
    
             // This performs the convolution of d_y in with the blurring kernel as a multiplication
             // in the Fourier domain. The multiplication can be performed by using both real and
@@ -1249,7 +1121,6 @@ extern "C"{
                          cudaMemcpyDeviceToHost);
 
               minvalue[i] = sqrtf(powf(fabs(cminvalue[i].x),2.0) + powf(fabs(cminvalue[i].y),2.0));
-              // fprintf(stdout, "ssc-cdi: (%lf) ",minvalue[i]);
 
             }
         
@@ -1298,7 +1169,7 @@ extern "C"{
             }
 
 
-            //  update sigma 
+            // update sigma 
             sigma = sigma_mult * sigma;
             
             
