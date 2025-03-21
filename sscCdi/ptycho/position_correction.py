@@ -7,140 +7,132 @@
 # For the complete LICENSE description see LICENSE file available within the root directory of this project.
 ##################################################################################################################################################################
 
-
-
 import numpy as np
+import sys
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
-""" UNDER DEVELOPMENT: Position Correction """
-
-def update_beta(positions1,positions2, beta):
+def position_correction_python(diffraction_patterns, recon_positions, recon_object, recon_probe, inputs):
     
-    k = np.corrcoef(positions1,positions2)[0,1]
+    ## Array to store cropped diffraction patterns
+    cut_obj = np.zeros((recon_positions.shape[0], recon_probe.shape[1], recon_probe.shape[2])) + 1j*np.zeros((recon_positions.shape[0], recon_probe.shape[1], recon_probe.shape[2]))
+    cut_obj_off = np.zeros((recon_positions.shape[0], recon_probe.shape[1], recon_probe.shape[2])) + 1j*np.zeros((recon_positions.shape[0], recon_probe.shape[1], recon_probe.shape[2]))
 
-    if np.isnan(k).any():
-        print('Skipping')
-    else:
-        threshold1 = +0.3
-        threshold2 = -0.3
+    ## Use randomized arrays
+    random_searches = False
+    
+    ## Variable to store annealing radii
+    radius_begin = 0
+    radius_end = 5
+    
+    ## Array to store offsets, in pixels, to try
+    pos_offx_original = init_offsets(radius_end)[0]
+    pos_offy_original = init_offsets(radius_end)[1] 
+    
+    ## Array to store final error for each position
+    error = np.zeros(cut_obj.shape[0])
+
+    ## Run the following loop for each measured position
+    for i in range(cut_obj.shape[0]):
+
+        ## First calculate the FFT and error for the current position
+        ## Define limits to crop a window with the probe size around a measured position
+        x_window_begin = int(recon_positions[i,1])
+        x_window_end = int(recon_positions[i,1] + recon_probe.shape[2])
+        y_window_begin = int(recon_positions[i,0])
+        y_window_end = int(recon_positions[i,0] + recon_probe.shape[1])
+
+        ## Cut the regions delimitated
+        cut_obj[i] = recon_obj[y_window_begin:y_window_end,x_window_begin:x_window_end]
+
+        ## Find the spectrum of the window
+        obj_propagated = np.fft.fft2(cut_obj[i]*np.sum(recon_probe,0))
+        obj_propagated = np.fft.fftshift(obj_propagated)
+
+        ## Calculate the error (r-factor)
+        error_original = np.sqrt(np.sum((np.abs(obj_propagated)**2 - diff_patterns[i])**2))
+        error_min = error_original
+        print("Original error:  ", error_original, "Positions:  ", recon_positions[i])
         
-        if k > threshold1:
-            beta = beta*1.1 # increase by 10%
-        elif k < threshold2:
-            beta = beta*0.9 #reduce by 10%
+        ## Defines the number of global iterations of the algorithm (given by the radius decrease in the random case)
+        if random_searches == True:
+            number_of_iterations = radius_end
         else:
-            pass # keep same value
+            number_of_iterations = 1
         
-    return beta
+        ## Decrease radius in each iteration
+        for y in reversed(range(number_of_iterations)):
+            
+            if random_searches == True:
+                ## Create random offsets array from shuffling and cropping the original array
+                indexes = np.arange(0,len(pos_offx_original[radius_begin:1+8*radius_end]),1)
+                permutated_indexes = np.random.permutation(indexes)
+                permutated_indexes = radius_begin*np.ones(len(permutated_indexes)) + permutated_indexes
+                pos_offx = np.concatenate([pos_offx_original[int(i)] for i in permutated_indexes])
+                pos_offy = np.concatenate([pos_offy_original[int(i)] for i in permutated_indexes])
+            else:
+                ## Use the whole array in order
+                pos_offx = pos_offx_original
+                pos_offy = pos_offy_original
 
-def get_illuminated_mask(probe,probe_threshold):
-    probe = np.abs(probe)
-    mask = np.where(probe > np.max(probe)*probe_threshold, 1, 0)
-    return mask
+            ## Now add small offsets and recalculate the previous variables to check if there is a better position nearby
+            number_of_searches = len(pos_offx) # defines the number of positions to be searched during execution
+            for j in range(number_of_searches):
+                x_window_begin_off = int(recon_positions[i,1] + pos_offx[j])
+                x_window_end_off = int(recon_positions[i,1] + recon_probe.shape[2] + pos_offx[j])
+                y_window_begin_off = int(recon_positions[i,0] + pos_offy[j])
+                y_window_end_off = int(recon_positions[i,0] + recon_probe.shape[1] + pos_offy[j])
 
-def position_correction(i, obj,previous_obj,probe,position_x,position_y, betas, probe_threshold=0.5, upsampling=100):
+                ## Checks if the window is appropriate
+                if (y_window_begin_off < 0 or x_window_begin_off < 0 or y_window_end_off < 0 or x_window_end_off < 0):
+                    continue
 
-    beta_x,beta_y = betas
+                cut_obj_off[i] = recon_obj[y_window_begin_off:y_window_end_off,x_window_begin_off:x_window_end_off]
 
-    illumination_mask = get_illuminated_mask(probe,probe_threshold)
+                obj_propagated_off = np.fft.fft2(cut_obj_off[i]*np.sum(recon_probe,0))
+                obj_propagated_off = np.fft.fftshift(obj_propagated_off)
 
-    obj = obj*illumination_mask
-    previous_obj = previous_obj*illumination_mask
+                error_current = np.sqrt(np.sum((np.abs(obj_propagated_off)**2 - diff_patterns[i])**2))
 
-    relative_shift, error, diffphase = phase_cross_correlation(obj, previous_obj, upsample_factor=upsampling)
+                ## Check whether the new position improves the error metric
+                if (error_current < error_min):
+                    recon_positions[i,1] += pos_offx[j]
+                    recon_positions[i,0] += pos_offy[j]
+                    error_min = error_current
 
-    # if 0 :
-    #     threshold = 5
-    #     if np.abs(beta_y*relative_shift[0]) > threshold or np.abs(beta_x*relative_shift[1]) > threshold:
-    #         new_position = np.array([position_x,position_y])
-    #     else:
-    #         new_position = np.array([position_x + beta_x*relative_shift[1], position_y + beta_y*relative_shift[0]])
-    #         # new_position = np.array([position_x - beta_x*relative_shift[1], position_y - beta_y*relative_shift[0]])
-    # else:
-    
-    # new_position = np.array([position_x + beta_x*relative_shift[1], position_y + beta_y*relative_shift[0]])
-    new_position = np.array([position_x - beta_x*relative_shift[1], position_y - beta_y*relative_shift[0]])
-    # new_position = np.array([position_x + beta_x*relative_shift[0], position_y + beta_y*relative_shift[1]])
+            error[i] = error_min
+            print("Final error:  ", error_min, "Position: ", recon_positions[i])
+            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        
+    return recon_object, recon_probe, error, recon_positions
 
-    if i == 0:
-        print(position_x, beta_x*relative_shift[1],'\t',position_y,beta_y*relative_shift[0],relative_shift)
+## Function to calculate offsets array
+## Copied from ssc-cdi/-/blob/dev-poscor/cuda/src/ptycho/engines_common.cu
+def init_offsets (maximum_n_neighborhoods):
+    
+    n_pos_neighbors = (2*maximum_n_neighborhoods+1)*(2*maximum_n_neighborhoods+1) -1
+    pos_offx = np.zeros((n_pos_neighbors+1,1))
+    pos_offy = np.zeros((n_pos_neighbors+1,1))
 
-    return new_position, relative_shift, illumination_mask
+    idx = 1
+	
+    for curr_amplitude in range(1, maximum_n_neighborhoods+1):
 
-def position_correction2(i,updated_wave,measurement,obj,probe,px,py,offset,betas,experiment_params):
-    """ Position correct of the gradient of intensities """ 
-    
-    beta_x, beta_y = betas
-    
-    
-    # Calculate intensity difference
-    updated_intensity_at_detector = np.abs(updated_wave)**2
-    intensity_diff = (updated_intensity_at_detector-measurement).flatten()
-    
-    # Calculate wavefront gradient
-    obj_dy = np.roll(obj,1,axis=0)
-    obj_dx = np.roll(obj,1,axis=1)
-    
-    obj_box     = obj[py:py+offset[0],px:px+offset[1]]
-    obj_dy_box  = obj_dy[py:py+offset[0],px:px+offset[1]]
-    obj_dx_box  = obj_dx[py:py+offset[0],px:px+offset[1]]
-    
-    wave_at_detector    = propagate_beam(obj_box*probe,    experiment_params,propagator='fourier')
-    wave_at_detector_dy = propagate_beam(obj_dy_box*probe, experiment_params,propagator='fourier')
-    wave_at_detector_dx = propagate_beam(obj_dx_box*probe, experiment_params,propagator='fourier')
+        for j in range(-curr_amplitude, curr_amplitude+1):
+            pos_offx[idx] = -curr_amplitude
+            pos_offy[idx] = j
+            idx = idx + 1
 
-    obj_pxl = experiment_params[0]
-    wavefront_gradient_x = (wave_at_detector-wave_at_detector_dx)/obj_pxl
-    wavefront_gradient_y = (wave_at_detector-wave_at_detector_dy)/obj_pxl
-   
-    # Calculate intensity gradient
-    intensity_gradient_x = 2*np.real(wavefront_gradient_x*np.conj(wave_at_detector))
-    intensity_gradient_y = 2*np.real(wavefront_gradient_y*np.conj(wave_at_detector))
-    
-    
-    # Solve linear system
-    A_matrix = np.column_stack((intensity_gradient_x.flatten(),intensity_gradient_y.flatten()))
-    A_transpose = np.transpose(A_matrix)
-    relative_shift = np.linalg.pinv(A_transpose@A_matrix)@A_transpose@intensity_diff
+        for i in range(-curr_amplitude+1, curr_amplitude):
+            pos_offx[idx] =  i
+            pos_offy[idx] = -curr_amplitude
+            idx = idx + 1
+            pos_offx[idx] =  i
+            pos_offy[idx] = curr_amplitude
+            idx = idx + 1
 
-    # Update positions
-    # new_positions = np.array([px - beta_x*relative_shift[0], py - beta_y*relative_shift[1]])
-    new_positions = np.array([py - beta_y*relative_shift[1],px - beta_x*relative_shift[0]])
-    
-    if i == 0:
-        print(px, beta_x*relative_shift[1],'\t',py,beta_y*relative_shift[0],relative_shift)
-    
-    return new_positions
-
-def plot_positions_and_errors(data_folder,dataname,offset,PIE_positions=[],positions_story=[]):
-    
-    import os, json
-    
-    metadata = json.load(open(os.path.join(data_folder,dataname,'mdata.json')))
-    distance = metadata['/entry/beamline/experiment']['distance']*1e-3
-    energy = metadata['/entry/beamline/experiment']['energy']
-    pixel_size = metadata['/entry/beamline/detector']['pimega']['pixel size']*1e-6
-    wavelength, wavevector = calculate_wavelength(energy)
-    
-    diffraction_patterns = np.load(os.path.join(data_folder,dataname,f"0000_{dataname}_001.hdf5.npy"))
-
-    n_pixels = diffraction_patterns.shape[1]
-    obj_pixel_size = wavelength*distance/(n_pixels*pixel_size)
-    
-    _,_,measured = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}",obj_pixel_size,offset,0)
-    _,_,true = read_probe_positions_in_pxls(os.path.join(data_folder,dataname),f"0000_{dataname}_without_error",obj_pixel_size,offset,0)
-    
-    colors = np.linspace(0,positions.shape[0]-1,positions.shape[0])
-    fig, ax = plt.subplots(dpi=150)
-    ax.legend(["True" , "Measured", "Corrected", "Path"],loc=(1.05,0.84))    
-    ax.scatter(measured[:,1],measured[:,0],marker='o',c='red')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
-    if positions_story != []:
-        for i in range(PIE_positions.shape[0]):
-            y = positions_story[:,i,1]
-            x = positions_story[:,i,0]
-            ax.scatter(y,x,color='blue',s=2,marker=',',alpha=0.2)
-    if PIE_positions != []:
-        ax.scatter(PIE_positions[:,1],PIE_positions[:,0],marker='x',color='blue')#,c=np.linspace(0,positions.shape[0]-1,positions.shape[0]),cmap='jet')
-    ax.scatter(true[:,1],true[:,0],marker='*',color='green')#,c=colors,cmap='jet')
-    ax.set_ylim(ax.get_ylim()[::-1])
-    ax.grid()
-
+        for j in range(-curr_amplitude+1, curr_amplitude+1):
+            pos_offx[idx] = curr_amplitude
+            pos_offy[idx] = j
+            idx = idx + 1
+    return pos_offx, pos_offy
