@@ -119,7 +119,7 @@ def make_SSC_PWCDI_METHOD(tupla):
                           ctypes.c_int(tupla[4]),                      # extra_constraint
                           ctypes.c_int(tupla[5]),                      # extra_constraint_subiter
                           ctypes.c_int(tupla[6]),                      # initial_extra_constraint_subiter 
-                          ctypes.c_float(tupla[7]),                    # shrinkwrap_threshold                 # here 
+                          ctypes.c_float(tupla[7]),                    # shrinkwrap_threshold                  
                           ctypes.c_int(tupla[8]),                      # shrinkwrap_iter_filter
                           ctypes.c_int(tupla[9]),                      # shrinkwrap_mask_multiply
                           ctypes.c_bool(tupla[10]),                    # shrinkwrap_fftshift_gaussian 

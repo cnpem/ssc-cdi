@@ -3,7 +3,7 @@
 #include <stdint.h>  // For uint8_t
 
 #include "pwcdi.h"
-#include "fft.h"
+#include "compute.h"
 #include "gpus.h"
 
 extern "C" {
@@ -11,6 +11,34 @@ extern "C" {
                        ssc_pwcdi_params *params,
                        int *gpus,
                        int ngpu){
+  /**
+   * @brief Allocates memory for the workspace and sets up GPU configurations for the ssc-pwcdi plan.
+   *
+   * This function allocates and initializes the necessary memory and GPU resources required 
+   * for the ssc_pwcdi_plan plan. It sets up the3D workspace, allocates memory for various data 
+   * arrays on the GPU, and creates a CUDA plan  for FFT operations using cuFFT. 
+   *
+   * The allocation process includes setting up workspace parameters, creating a cuFFT plan, 
+   * allocating device memory for support and measured data, and setting timing flags for performance profiling.
+   *
+   * @param workspace Pointer to the `ssc_pwcdi_plan` structure, which will store the allocated workspace 
+   *        information, including device memory allocations and FFT plan.
+   * @param params Pointer to the `ssc_pwcdi_params` structure containing configuration parameters 
+   *        such as grid size (N), GPU memory mapping options, and timing settings.
+   * @param gpus Pointer to an array of GPU IDs used for multi-GPU processing.
+   * @param ngpu The number of GPUs available for the computation. It can be 1 or more.
+   *
+   * @note 
+   * - The function assumes that the workspace and parameter structures are properly initialized before calling.
+   * - Memory for support arrays (`d_support`) and signal data (`d_x`, `d_y`) is allocated on the GPU.
+   * - cuFFT plan is created to optimize 3D FFT operations on the allocated workspace.
+   * - The timing flag is set based on the `params->timing` value, enabling performance profiling if needed.
+   * 
+   * @pre The number of available GPUs should be checked and provided in the `gpus` array.
+   * @post After successful execution, the workspace will be fully allocated and ready for use in the 
+   *       ssc-pwcdi algorithm.
+   */
+
                                  
     const char *BSTATE = "before allocation";
     const char *ASTATE = "after allocation";
@@ -278,6 +306,34 @@ extern "C" {
   
   void free_workspace(ssc_pwcdi_plan *workspace,
                       ssc_pwcdi_params *params){
+    /**
+     * @brief Frees the allocated memory and releases GPU resources for the ssc_pwcdi_plan variable.
+     *
+     * This function frees the memory allocated for the workspace and associated data arrays, 
+     * as well as releasing GPU resources that were used in the ssc_pwcdi_plan plan.
+     * It ensures proper cleanup by releasing both host and device memory depending on the memory mapping settings.
+     * The function supports single GPU execution, handling memory deallocation for variables such as support arrays, 
+     * measured data, and auxiliary variables.
+     *
+     * The function performs the following tasks:
+     * - Frees memory allocated for the support array (`d_support`), signal data (`d_signal`), and other workspace variables.
+     * - Releases GPU memory used for intermediate arrays such as `d_x`, `d_y`, `d_x_swap`, and `d_gaussian`.
+     * - Cleans up resources based on the parameters set in the `params` structure, such as whether data is mapped to host memory or not.
+     *
+     * @param workspace Pointer to the `ssc_pwcdi_plan` structure, which holds the allocated workspace information 
+     *        and GPU memory references that need to be freed.
+     * @param params Pointer to the `ssc_pwcdi_params` structure containing configuration parameters 
+     *        that dictate how memory should be deallocated, such as memory mapping and variable options.
+     *
+     * @note 
+     * - The function checks the `params` structure to determine if the memory is mapped to the host or device and frees accordingly.
+     * - It ensures that all GPU memory allocations (including temporary arrays) are properly freed to avoid memory leaks.
+     * - If the `params->swap_d_x` or `params->err_type` flags are set, corresponding arrays (`d_x_swap`, `d_x_lasterr`) are also freed.
+     * 
+     * @pre The function assumes that the workspace was properly allocated using `alloc_workspace`.
+     * @post After successful execution, all memory used by the ssc-pwcdi plan is released, and GPU resources are cleaned up.
+     */
+
 
     printf("ssc-cdi: freeing enviroment.\n");
     if (workspace->gpus->ngpus==1){
@@ -414,8 +470,42 @@ extern "C" {
                           float x0, 
                           float y0, 
                           float z0){
-
-    // this will be depracted and implemented in GPU in a future version. 
+  /**
+   * @brief Generates a 3D support array based on an Lp-norm distance constraint in CPU.
+   *
+   * This function synthesizes a 3D support array by evaluating each voxel in a cubic grid to determine 
+   * whether it lies within a support region defined by an Lp-norm distance constraint. The distance is computed 
+   * relative to a specified center `(x0, y0, z0)` with a given radius, and each voxel is assigned a value of 
+   * `1` if it falls within the support region and `0` otherwise. The function supports both Euclidean (p=2) 
+   * and general Lp-norm distance computations. Data is generated in host device, and should be copied to 
+   * GPU afterwards. 
+   *
+   * The function works as follows:
+   * - For `p = 2`, the function computes the squared Euclidean distance between each voxel and the center, 
+   *   setting the voxel to `1` if the squared distance is less than `radius^2`.
+   * - For general `p`, the function computes the Lp-norm using the formula:
+   *    norm = |x - x0|^p + |y - y0|^p + |z - z0|^p
+   *   If the norm is less than `radius^p`, the voxel is set to `1`; otherwise, it is set to `0`.
+   *
+   * The grid is generated by iterating over each voxel in a 3D grid with dimensions specified by `dimension`, 
+   * where the coordinates of each voxel are computed relative to the center and the size of the grid.
+   *
+   * @param support Pointer to the output support array (`uint8_t`), where each element is either `1` (inside) or `0` (outside).
+   * @param dimension Size of the 3D grid in each dimension.
+   * @param p Power parameter for the Lp-norm computation.
+   * @param radius Radius of the support region in Lp-norm.
+   * @param x0 X-coordinate of the support center.
+   * @param y0 Y-coordinate of the support center.
+   * @param z0 Z-coordinate of the support center.
+   *
+   * @note 
+   * - This function is currently implemented on the CPU and will be deprecated in future versions when a GPU implementation is available.
+   * - The computation assumes that the support array is preallocated, and it iterates over all voxels in the 3D grid to compute the support region.
+   * - This function will be deprecated in the future to generate the data in GPU directly.
+   * 
+   * @pre The `support` array must be preallocated with a size of `dimension^3`.
+   * @post The `support` array is populated with `1` for voxels inside the support region and `0` for those outside.
+   */
 
     if (p==2){
       const float rp = radius*radius;
@@ -526,6 +616,33 @@ extern "C" {
                  ssc_pwcdi_params *params,
                  float *input,
                  cufftComplex *obj_input){
+
+    /**
+     * @brief Initializes the input object and support variables for the computational workspace (ssc_pwcdi_plan).
+     *
+     * This function sets up the complex object and support variables for the algorithm. It copies the input  
+     * to the GPU memory and creates or loads the initial support data, depending on the provided parameters. 
+     * The support data can either be synthesized using a specified norm and radius or loaded from pre-existing input.
+     * 
+     * The function operates in single- or Multi GPU setups.support data is transferred to the GPU memory after creation 
+     * or loading. Additionally, timing is performed to track the memory transfer operations if needed. 
+     *
+     * @param workspace Pointer to the `ssc_pwcdi_plan` structure, which contains information about the computational workspace, 
+     *        including GPU memory allocations.
+     * @param params Pointer to the `ssc_pwcdi_params` structure, which contains parameters such as the synthetic support data, 
+     *        norm type (Lp-norm), and radius for the support creation.
+     * @param input Pointer to the host array containing the input signal data (floats).
+     * @param obj_input Pointer to the object input data (cufftComplex), which will be used during the algorithm (currently not used in this function).
+     *
+     * @note 
+     * - The function assumes that all variables are 3D arrays with dimensions defined by `workspace->dimension`.
+     * - The synthetic support is created using the `synth_support_data` function when no initial support data is provided. 
+     *   The synthetic support is created based on the `pnorm` and `radius` values passed in `params`.
+     * - If the initial support data is provided in `params->sup_data`, it is directly loaded into the support array.
+     * - The support data is copied to GPU memory for subsequent algorithm computations.
+     * 
+     * @pre The `workspace->gpus->ngpus` should be correctly configured.
+     */
  
     // single GPU case 
     if (workspace->gpus->ngpus==1){ 
@@ -877,10 +994,34 @@ extern "C" {
                   ssc_pwcdi_plan *workspace,
                   int variable,
                   int complex_part){
-    //
-    // GPU operation: 
-    // moving workspace->dx to host "result"
-    //
+/**
+ * @brief Transfers the computed variable (either the iterated object or support) from the GPU to the host and saves it.
+ *
+ * This function copies the result of a computational variable (either the iterated object `d_x` or the support data `d_support`) 
+ * from the GPU to the host. Depending on the specified `variable` type, it handles two different types of data: complex-valued data 
+ * (for the object) or binary support data. The transfer is performed using CUDA memory copy functions.
+ *
+ * The function supports both single-GPU and multi-GPU setups. In the single-GPU case, data is copied directly from GPU memory to host 
+ * memory. In the multi-GPU case, the data is divided across multiple GPUs and copied to the host sequentially.
+ *
+ * After the data is copied, the function optionally saves the result to a specified output path if a corresponding file saving operation 
+ * is implemented (though this part is not shown in the provided code).
+ *
+ * @param outpath Path to the output file where the result will be saved (not used in the provided code, but typically intended for saving results).
+ * @param params Pointer to the `ssc_pwcdi_params` structure, which contains algorithm parameters, including information about the variable to be transferred.
+ * @param workspace Pointer to the `ssc_pwcdi_plan` structure, which contains the workspace and GPU memory allocations.
+ * @param variable The type of variable to be transferred: `SSC_VARIABLE_ITER` for the iterated object `d_x`, or `SSC_VARIABLE_SUPP` for the support data `d_support`.
+ * @param complex_part An integer indicating which part of the complex result to use (not utilized in the provided code).
+ *
+ * @note 
+ * - The function supports both single-GPU and multi-GPU configurations. In the multi-GPU case, data is transferred from each GPU sequentially.
+ * - Timing for the memory transfer is recorded using CUDA events, allowing for performance monitoring of the transfer process.
+ * - The resulting data is copied to either the `result_c` (complex data) or `result_s` (support data) arrays, depending on the type of variable.
+ * - The result is stored in host memory after the transfer and is intended to be saved or processed further.
+ * 
+ * @pre The `workspace` should have valid pointers to the GPU memory (`sgpu.d_x` or `sgpu.d_support`), and the `variable` parameter should specify the correct variable.
+ * @post The GPU data (either the iterated object or support) is copied to the host memory, and the resulting data is ready for further use or saving.
+ */
 
     float time;
     cudaEvent_t start, stop;
@@ -1027,18 +1168,12 @@ extern "C" {
     }
 
     //
-    // Saving output
-    //
-
+    // Saving output 
     clock_gettime(CLOCK, &TimeStart);
- 
-    
     FILE *fp = fopen(outpath, "w");
- 
+
     fwrite( output, sizeof(float), workspace->nvoxels, fp);
- 
     clock_gettime(CLOCK, &TimeEnd);
- 
     fprintf(stdout,"ssc-cdi: saving output (fwrite) - %lf s\n",TIME(TimeEnd,TimeStart));
 
     fclose(fp);

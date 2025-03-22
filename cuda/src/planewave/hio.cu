@@ -2,9 +2,9 @@
 #include <math.h> 
 
 #include "pwcdi.h"
-#include "fft.h"
+#include "compute.h"
 #include "gpus.h"
-#include "pwutils.h"
+#include "util.h"
 
   
 extern "C"{
@@ -47,6 +47,28 @@ extern "C"{
            float beta,
            float beta_update,
            int beta_reset_subiter){
+
+    /**
+     * @brief Executes the Hybrid Input-Output (HIO) algorithm for PWCDI with appended shrink-wrap operation.
+     *
+     * This function implements the HIO (Hybrid Input-Output) algorithm for Plane Wave CDI. The algorithm iterates over a series of updates 
+     * to the object and support, using both the  measured diffraction data and the phase retrieval constraints. 
+     * The function supports both single-GPU and multi-GPU configurations, ensuring flexibility in different computational environments.
+     *
+     * Additionally, the function incorporates the option to apply shrink-wrap, a technique used to refine the support based on the object 
+     * updates during the phase retrieval process. The shrink-wrap operation can be enabled and controlled through several parameters, 
+     * allowing for fine-grained control over the refinement process.
+
+    * @param workspace Pointer to the `ssc_pwcdi_plan` structure containing the workspace and GPU memory allocations.
+    * @param params Pointer to the `ssc_pwcdi_params` structure.
+
+    * @note The parameter definitions can be found in the python wrapper with the same names. 
+    * 
+    * @pre The `workspace` and `params` structures must be properly initialized and contain valid pointers to GPU memory.
+    * @post The phase retrieval process will be performed with the specified parameters, and the object and support allocated in 
+    * the workspace variable will be updated accordingly.
+    */
+
 
     if (workspace->gpus->ngpus == 1){
       // SINGLE-GPU VERSION
@@ -111,7 +133,6 @@ extern "C"{
 
         // operate projection_S
         if (iter%extra_constraint_subiter==0 && iter>initial_extra_constraint_subiter){
-        // if (extra_constraint_subiter<=0 && iter>initial_extra_constraint_subiter){
           // extra_constraint is applied inside projection_S
           s_projection_S(workspace->plan_C2C,
                          workspace->sgpu.d_x,
@@ -348,9 +369,11 @@ extern "C"{
           
           global_min = sqrtf(powf(fabs(cglobal_min.x),2.0) + powf(fabs(cglobal_min.y),2.0));
           cublasDestroy(handle_min);
-    
-          printf("ssc-cdi: global_max (single gpu, cublasIcamin) = %lf \n", global_max);
-          printf("ssc-cdi: global_min (single gpu, cublasIcamin) = %lf \n", global_min);
+          
+          if (workspace->timing){
+            fprintf(stdout, "ssc-cdi: global_max (single gpu, cublasIcamin) = %lf \n", global_max);
+            fprintf(stdout, "ssc-cdi: global_min (single gpu, cublasIcamin) = %lf \n", global_min);
+          }
 
           // dsupp = abs( dy ) > (threshold/100) * Max ( abs(dy) )
           //
@@ -382,8 +405,10 @@ extern "C"{
           sigma = sigma_mult*sigma;
         
           // debug new values for beta and sigma  
-          printf("ssc-cdi: new sigma = %lf \n",sigma);
-          printf("ssc-cdi: new beta = %lf \n",beta);
+          if (workspace->timing){
+            fprintf(stdout, "ssc-cdi: new sigma = %lf \n",sigma);
+            fprintf(stdout, "ssc-cdi: new beta = %lf \n",beta);
+          }
 
 
           cudaEventRecord(stop);
@@ -486,8 +511,9 @@ extern "C"{
               cublasDestroy(handle) ;
 
               // debug computed norm
-              fprintf(stdout, "ssc-cdi: Computed norm (iter_diff) at iteration %d = %f\n", iter, iter_diff_norm);
-
+              if (workspace->timing){
+                fprintf(stdout, "ssc-cdi: Computed norm (iter_diff) at iteration %d = %f\n", iter, iter_diff_norm);
+              }
 
 
             }else{
@@ -868,7 +894,7 @@ extern "C"{
                          cudaMemcpyDeviceToHost);
 
               maxvalue[i] = sqrtf(powf(fabs(cmaxvalue[i].x),2.0) + powf(fabs(cmaxvalue[i].y), 2.0));
-              // fprintf(stdout, "ssc-cdi: (%lf) ",maxvalue[i] );
+              // fprintf(stdout, "ssc-cdi: (%lf) ",maxvalue[i] ); DEBUG 
 
 
               cudaMemcpy(&cminvalue[i],
@@ -877,7 +903,7 @@ extern "C"{
                          cudaMemcpyDeviceToHost);
 
               minvalue[i] = sqrtf(powf(fabs(cminvalue[i].x),2.0) + powf(fabs(cminvalue[i].y), 2.0));
-              // fprintf(stdout, "ssc-cdi: (%lf) ",minvalue[i]);
+              // fprintf(stdout, "ssc-cdi: (%lf) ",minvalue[i]); DEBUG 
 
             }
         
@@ -893,8 +919,10 @@ extern "C"{
             }
 
             // debug 
-            fprintf(stdout,"ssc-cdi: global_max:= %lf\n", global_max);     
-            fprintf(stdout,"ssc-cdi: global_min:= %lf\n", global_min);     
+            if (workspace->timing){
+              fprintf(stdout,"ssc-cdi: global_max:= %lf\n", global_max);     
+              fprintf(stdout,"ssc-cdi: global_min:= %lf\n", global_min); 
+            }    
 
 
             // update support 
@@ -1112,7 +1140,7 @@ extern "C"{
                          cudaMemcpyDeviceToHost);
 
               maxvalue[i] = sqrtf(powf(fabs(cmaxvalue[i].x),2.0) + powf(fabs(cmaxvalue[i].y), 2.0));
-              // fprintf(stdout, "ssc-cdi: (%lf) ",maxvalue[i] );
+              // fprintf(stdout, "ssc-cdi: (%lf) ",maxvalue[i] ); DEBUG 
 
 
               cudaMemcpy(&cminvalue[i],
@@ -1129,9 +1157,10 @@ extern "C"{
             cublasDestroy(handle_min);
             smallest (&global_min, minvalue, n_gpus);
 
-
-            fprintf(stdout,"ssc-cdi: computed global_max:= %lf\n", global_max);     
-            fprintf(stdout,"ssc-cdi: computed global_min:= %lf\n", global_min);     
+            if (workspace->timing){
+              fprintf(stdout,"ssc-cdi: computed global_max:= %lf\n", global_max);     
+              fprintf(stdout,"ssc-cdi: computed global_min:= %lf\n", global_min); 
+            }    
 
             // sync all gpus
             for(int i=0; i<n_gpus; i++){

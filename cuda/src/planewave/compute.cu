@@ -1,6 +1,6 @@
 #include <stdint.h>  // For uint8_t
 
-#include "fft.h"
+#include "compute.h"
 #include "pwcdi.h"
 
 extern "C" {

@@ -2,7 +2,7 @@
 #include "hio.h"
 #include "er.h"
 #include "gpus.h"
-#include "pwutils.h"
+#include "util.h"
 
 #include <stdio.h>
 #include <math.h>
