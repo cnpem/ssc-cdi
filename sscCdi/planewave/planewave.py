@@ -265,8 +265,8 @@ def pwcdi3d(data, dic):
       # fftshifted, which means we don't need to fftshift it before using it. I'm also making this 
       # hard coded False because it is not completely tested. it can be done in the future 
       # for an optimized execution shrinkwrap_fftshift_gaussian = dic['method'][k].get('shrinkwrap_fftshift_gaussian', True)
-      shrinkwrap_fftshift_gaussian = False
-      
+      shrinkwrap_fftshift_gaussian = dic["method"][k].get("shrinkwrap_fftshift_gaussian", False)
+        
       # append to the sequence
       SEQ.append(make_SSC_PWCDI_METHOD((name, 
                                         iteration, 
