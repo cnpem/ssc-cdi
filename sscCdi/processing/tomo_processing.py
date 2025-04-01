@@ -1,8 +1,8 @@
 # Academic License Agreement:
 #
 # This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and #Materials (CNPEM) (hereafter "LICENSOR")
-#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE") 
-# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM"). 
+#  will grant you (hereafter "LICENSEE") a royalty-free, non-exclusive license for #academic, non-commercial purposes only (hereafter "LICENSE")
+# to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter "PROGRAM").
 #
 # For the complete LICENSE description see LICENSE file available within the root directory of this project.
 ##################################################################################################################################################################
@@ -26,7 +26,7 @@ from .unwrap import remove_phase_gradient, unwrap_in_parallel
 
 def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath=''):
     """
-     
+
     Sorting script to reorder sinogram frames by angle, instead of acquisition order
 
     Args:
@@ -39,7 +39,7 @@ def sort_sinogram_by_angle(object, angles,object_savepath='',angles_savepath='')
         sorted_object
         sorted_angles
 
-    """    
+    """
 
     if len(angles.shape) == 1:
         numbering = np.linspace(0,angles.shape[0]-1,angles.shape[0])
@@ -71,7 +71,7 @@ def remove_frames_from_sinogram(sinogram,angles,list_of_bad_frames,updated_objec
         ordered_object_filepath (str, optional): Path to hdf5 file in which new sinogram will be saved. Defaults to ''.
         ordered_angles_filepath (str, optional): Path to hdf5 file in which new angles will be saved. Defaults to ''.
 
-    """    
+    """
 
 
     print('Original shape: ',sinogram.shape)
@@ -98,15 +98,15 @@ def sort_angles(angles):
         angles (array): angle array in sorted from smallest to highest angle
     """
     angles = np.asarray(angles)
-    
+
     angles[:,0] = np.asarray([ i for i in range(angles.shape[0])]) # make sure numbering is from 0 to N
 
     sorted_angles = angles[angles[:,1].argsort(axis=0)]
-    return sorted_angles 
+    return sorted_angles
 
 def reorder_slices_low_to_high_angle(object, rois):
-    """ 
-    
+    """
+
     Reorder sinogram according to the sorted angles array
 
     Args:
@@ -141,11 +141,11 @@ def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepat
         crop_mode (int, optional): Crop mode == 0 means each crop will be like [:,top_crop:-bottom_crop,left_crop:-right_crop]. Mode ==1 means [:,top_crop:bottom_crop,left_crop:right_crop]. Defaults to 0.
 
     Returns:
-        cropped volume 
+        cropped volume
 
-    """    
+    """
 
-    
+
     start = time.time()
     if crop_mode == 0:
         volume = volume[:,top_crop:-bottom_crop,left_crop:-right_crop] # Crop frame
@@ -165,7 +165,7 @@ def crop_volume(volume,top_crop,bottom_crop,left_crop,right_crop,cropped_savepat
 ######################### UNWRAP #################################################
 
 def unwrap_sinogram(sinogram,unwrapped_savepath=''):
-    """ 
+    """
     Calls unwrapping algorithms in multiple processes for the sinogram frames
     """
     start = time.time()
@@ -175,7 +175,7 @@ def unwrap_sinogram(sinogram,unwrapped_savepath=''):
         print('Saving unwrapped volume..')
         open_or_create_h5_dataset(unwrapped_savepath,'entry','data',sinogram,create_group=True)
         print('Saved unwrapped sinogram at: ',unwrapped_savepath)
- 
+
     print(f'Time elapsed: {time.time() - start:.2f} s' )
     return sinogram
 
@@ -209,7 +209,7 @@ def tomo_equalize3D(tomo,remove_outliers=3,threshold=20,local_offset=[],mask=[],
     """
     start = time.time()
 
-    dic = {} 
+    dic = {}
     dic["tomo_remove_outliers"] = remove_outliers
     dic["tomo_threshold"] = threshold
     dic["tomo_local_offset"] = local_offset # [top,bottom,left,right, axis]
@@ -240,7 +240,7 @@ def remove_outliers(data,sigma):
 
     Returns:
         data (array): sinogram slice with filtered values
-    
+
     """
 
     mean, std = np.mean(data), np.std(data)
@@ -285,11 +285,11 @@ def equalize_frame(dic,frame):
         else:
             mask = np.zeros_like(frame,dtype=bool)
             mask[dic["equalize_ROI"][0]:dic["equalize_ROI"][1],dic["equalize_ROI"][2]:dic["equalize_ROI"][3]] = True
-        
+
         if "equalize_remove_phase_gradient_iterations" in dic:
             iterations = dic["equalize_remove_phase_gradient_iterations"]
         else:
-            iterations = 5 
+            iterations = 5
         frame = remove_phase_gradient(frame, mask,loop_count_limit=iterations)
 
     # Check for NaNs
@@ -315,14 +315,14 @@ def equalize_frame(dic,frame):
         frame = np.where(frame<dic["equalize_set_min_max"][0],0,np.where(frame>dic["equalize_set_min_max"][1],0,frame))
 
 
-    if dic["equalize_non_negative"]:    
+    if dic["equalize_non_negative"]:
         frame = np.where(frame<0,0,frame) # put remaining negative values to zero
 
     return frame
 
 def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,roi=[],cpus=1,iterations=1,min_max=(),remove_negative_values=False,remove_offset=False):
-    """ 
-    
+    """
+
     Calls function equalize_frame in parallel at multiple threads for each frameo of the sinogram
 
     Args:
@@ -342,7 +342,7 @@ def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,ro
     dic["equalize_ROI"] = roi                   # region of interest of null region around the sample used for phase ramp and offset corrections
     dic["equalize_remove_phase_gradient"] = remove_phase_gradient            # if empty and equalize_ROI = [], will subtract best plane fit from whole image
     dic["equalize_remove_phase_gradient_iterations"] = iterations    # number of times the gradient fitting is performed
-    dic["equalize_local_offset"] = remove_offset                     # remove offset of each frame from the mean of ROI 
+    dic["equalize_local_offset"] = remove_offset                     # remove offset of each frame from the mean of ROI
     dic["equalize_set_min_max"]= min_max                         # [minimum,maximum] threshold values for whole volume
     dic["equalize_non_negative"] = remove_negative_values                    # turn any remaining negative values to zero
 
@@ -379,18 +379,18 @@ def equalize_frames_parallel(sinogram,invert=False,remove_phase_gradient=True,ro
     return equalized_sinogram
 
 def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2)):
-    
+
     def equalization_cost_function(params,img,mask,x,y):
         a, b, c = params
         return np.linalg.norm(mask*(img- (a*x+b*y+c)))**2
-    
+
     if img.shape != mask.shape:
         sys.exit('Image and Mask do not have the same shape')
 
-    y, x = np.indices(img.shape)
-    
+    x, y = np.indices(img.shape)
+
     for i in range(0,max_iter):
-    
+
         result = scipy.optimize.minimize(equalization_cost_function, initial_guess, args=(img,mask,x,y),method=method)
 
         success = result.success
@@ -403,9 +403,9 @@ def equalize_scipy_optimization(mask,img,initial_guess=(1,1,1),method='Nelder-Me
         a,b,c = result.x
         plane = a*x+b*y+c
         img = img - plane
-    
+
     return img, plane, (a,b,c)
-    
+
 def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),method='Nelder-Mead',max_iter = 1,stop_criteria=(1e-5,1e-5,1e-2),processes=10):
 
     equalize_scipy_optimization_partial = partial(equalize_scipy_optimization, mask,initial_guess=initial_guess,method=method,max_iter = max_iter,stop_criteria=stop_criteria)
@@ -415,26 +415,26 @@ def equalize_scipy_optimization_parallel(sinogram,mask,initial_guess=(0,0,0),met
         results = list(tqdm(executor.map(equalize_scipy_optimization_partial,sinogram),total=n_frames,desc='Equalizing frames'))
         for counter, result in tqdm(enumerate(results),desc="Populating result matrix"):
             equalized_sinogram[counter,:,:] = result[0]
-            
+
     return equalized_sinogram
 
 
 def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_size=1e-6, initial_guess = (0,0,0)):
-    
+
     init_a, init_b, init_c = initial_guess
-    
+
     step_a = step_b = step_c = step_size
-    
+
     equalized_volume = np.empty_like(volume)
     sizey, sizex = volume[0].shape
-    
+
     Y, X = np.indices((sizey,sizex))
     Y = Y - sizey//2
     Y = Y/np.max(Y)
     X = X - sizex//2
     X = X/np.max(X)
-    
-    
+
+
     if mask is None:
         mask = np.ones_like(X)
 
@@ -463,7 +463,7 @@ def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_si
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [ executor.submit(process_slice, volume[i], X, Y, mask, iterations, step_a, step_b, step_c, init_a, init_b, init_c) for i in range(volume.shape[0])  ]
-        
+
         for i, future in enumerate(tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc=f"Processing slices with {executor._max_workers} workers")):
             a,b,c = future.result()
             fitted_coefficients[i] = a,b,c
@@ -473,8 +473,8 @@ def equalize_parallel_gradient_descent(volume, iterations=50, mask=None, step_si
 
 
 def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,bkg_window=[]):
-    """ 
-    
+    """
+
     Filters outliers in the tomogram
 
     Args:
@@ -489,7 +489,7 @@ def equalize_tomogram(equalized_tomogram,mean,std,remove_outliers=0,threshold=0,
         equalized_tomogram (array): 3D equalized tomogram
 
     """
-    
+
     if threshold != 0:
         equalized_tomogram = np.where( np.abs(equalized_tomogram) > threshold,0,equalized_tomogram)
 
