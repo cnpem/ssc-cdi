@@ -1,6 +1,6 @@
-#include <cmath> 
+#include <cmath>
 #include <common/types.hpp>
-#include <common/logger.hpp> 
+#include <common/logger.hpp>
 #include <cstddef>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
@@ -9,77 +9,51 @@
 #include "engines_common.hpp"
 
 
-constexpr int maximum_n_neighborhoods = 3; 
-constexpr int n_pos_neighbors = (2*maximum_n_neighborhoods+1)*(2*maximum_n_neighborhoods+1) -1 ;
+constexpr int max_dist = 3;
+constexpr int n_pos_neighbors = max_dist * 8 + 1;
 
- 
-float pos_offx[n_pos_neighbors + 1]; 
-float pos_offy[n_pos_neighbors + 1];  
-__device__ float d_pos_offx[n_pos_neighbors + 1]; 
-__device__ float d_pos_offy[n_pos_neighbors + 1]; 
- 
- 
-void init_offsets(){ 
-	int idx = 1;
-	
-    for (int curr_amplitude=1; curr_amplitude<=maximum_n_neighborhoods; curr_amplitude++){
-	// store the upper row
-        for (int j=-curr_amplitude; j<=curr_amplitude; j++){
-			pos_offx[idx] = (float) -curr_amplitude;
-			pos_offy[idx] = (float) j;
-			
-			idx++;
-		}
-	
-		// store the two side columns and store them row major
-		for (int i=-curr_amplitude+1; i<curr_amplitude; i++){
-			// left column
-			pos_offx[idx] = (float) i;
-			pos_offy[idx] = (float) -curr_amplitude;			
-			idx++;
-			
-			// right column
-			pos_offx[idx] = (float) i;
-			pos_offy[idx] = (float) curr_amplitude;
-			d_pos_offx[idx] = (float) i;
-			d_pos_offy[idx] = (float) curr_amplitude;
-			idx++;
-		}
-	
-		// store the bottom row
-		for (int j=-curr_amplitude; j<=curr_amplitude; j++){
-			pos_offx[idx] = (float) curr_amplitude;
-			pos_offy[idx] = (float) j;
-			idx++;
-		}
-	}	
-	
+__device__ float d_pos_offx[n_pos_neighbors + 1];
+__device__ float d_pos_offy[n_pos_neighbors + 1];
+
+void init_offsets() {
+
+    float pos_offx[n_pos_neighbors + 1];
+    float pos_offy[n_pos_neighbors + 1];
+
+    const int off_x[] = {-1, +0, +1, -1, +1, -1, +0, +1};
+    const int off_y[] = {-1, -1, -1, +0, +0, +1, +1, +1};
+
+    for (int idx = 1, dist = 1; dist<=max_dist; dist++) {
+        for (int i = 0; i < 8; ++i) {
+            pos_offx[idx] = off_x[i] * dist;
+            pos_offy[idx] = off_y[i] * dist;
+            ++idx;
+        }
+	}
+
     // Copy directly to __device__ variables
     cudaMemcpyToSymbol(d_pos_offx, pos_offx, (n_pos_neighbors + 1) * sizeof(float));
     cudaMemcpyToSymbol(d_pos_offy, pos_offy, (n_pos_neighbors + 1) * sizeof(float));
-
 }
 
- 
-
-__global__ void KSideExitwave(GArray<complex> exitwave, 
-                              const GArray<complex> probe, 
-                              const GArray<complex> object, 
-                              const GArray<Position> positions, 
-                              float offx, 
+__global__ void KOffsetSideExitwave(GArray<complex> exitwave,
+                              const GArray<complex> probe,
+                              const GArray<complex> object,
+                              const GArray<Position> positions,
+                              float offx,
                               float offy)
 {
-    int idx = blockIdx.x*blockDim.x + threadIdx.x;
+    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
     if(idx >= probe.shape.x)
         return;
 
-    int idy = blockIdx.y*blockDim.y + threadIdx.y;
-    int idz = blockIdx.z;
+    const int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    const int idz = blockIdx.z;
 
-    int objposx = idx + (int)positions(idz, 0, 0).x + (int) offx;
-    int objposy = idy + (int)positions(idz, 0, 0).y + (int) offy;
+    const int objposx = idx + (int)positions(idz, 0, 0).x + offx;
+    const int objposy = idy + (int)positions(idz, 0, 0).y + offy;
 
-    if (objposx < 0 || objposx >= object.shape.x || objposy < 0 || objposy >= object.shape.y){
+    if (objposx < 0 || objposx >= object.shape.x || objposy < 0 || objposy >= object.shape.y) {
         return;
     }
 
@@ -87,20 +61,22 @@ __global__ void KSideExitwave(GArray<complex> exitwave,
 
     // for each incoherent mode
     for(size_t m=0; m<probe.shape.z; m++){
-        exitwave(m + probe.shape.z*blockIdx.z, idy, idx) = obj*probe(m, idy, idx);
+        exitwave(m + probe.shape.z*blockIdx.z, idy, idx) = obj * probe(m, idy, idx);
     }
 }
- 
-__global__ void KComputeError(float* errors, 
-                              const GArray<complex> exitwave, 
-                              const GArray<float> diffraction_patterns, 
-                              const float* background, 
+
+__global__ void KComputeError(float* errors,
+                              const GArray<complex> exitwave,
+                              const GArray<float> diffraction_patterns,
+                              const float* background,
                               size_t nummodes){
 
-    __shared__ float shared_error_error_rfactor[64]; 
+    __shared__ float shared_error_rfactor[64];
+    __shared__ int shared_error_count[64];
 
-    if(threadIdx.x<64){
-        shared_error_error_rfactor[threadIdx.x] = 0; 
+    if(threadIdx.x < 64){
+        shared_error_rfactor[threadIdx.x] = 0;
+        shared_error_count[threadIdx.x] = 0;
     }
     __syncthreads();
 
@@ -108,39 +84,38 @@ __global__ void KComputeError(float* errors,
     size_t idy = blockIdx.y; //threadIdx.y + blockIdx.y * blockDim.y;   // <-
     size_t idz = blockIdx.z;
 
-    // halo regions
-    if(idx >= diffraction_patterns.shape.x){
+    if(idx >= diffraction_patterns.shape.x) {
         return;
     }
 
-    bool bApplyBkg = background != nullptr;
-    float diff_pattern = diffraction_patterns(idz, idy, idx);
+    const float diff_pattern = diffraction_patterns(idz, idy, idx);
 
-    if(diff_pattern >= 0){
+    if(diff_pattern >= 0) {
         float wabs2 = 0.0f;
-        if(bApplyBkg){
-            wabs2 = sq(background[idy*diffraction_patterns.shape.x+idx]);
-        }
 
         for(int m=0; m<nummodes; m++){
             wabs2 += exitwave(idz*nummodes + m, idy, idx).abs2();
         }
-        
-        // Compute r-factor error
-        float error_rfactor = sq(sqrtf(diff_pattern) - sqrtf(wabs2));
 
-        // increment 
-        atomicAdd(shared_error_error_rfactor + threadIdx.x%64, error_rfactor);
+        // Compute r-factor error
+        const float error_rfactor = sq(sqrtf(diff_pattern) - sqrtf(wabs2));
+        //const float error_rfactor = sq(diff_pattern - wabs2);
+
+        atomicAdd(shared_error_count + threadIdx.x%64, 1);
+        atomicAdd(shared_error_rfactor + threadIdx.x%64, error_rfactor);
     }
     __syncthreads();
 
-    Reduction::KSharedReduce(shared_error_error_rfactor, 64); 
+    Reduction::KSharedReduce(shared_error_rfactor, 64);
+    Reduction::KSharedReduce(shared_error_count, 64);
 
-    if(threadIdx.x==0){
-        atomicAdd(errors + idz, shared_error_error_rfactor[0]); 
+    if(threadIdx.x==0) {
+        //const float error_count = diffraction_patterns.shape.y * diffraction_patterns.shape.x * diffraction_patterns.shape.z;
+        const float error_count = shared_error_count[0];
+        atomicAdd(errors + idz, shared_error_rfactor[0] / error_count);
     }
-} 
- 
+}
+
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe, 
                                    complex* probe_acc, 
@@ -493,11 +468,11 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
     ptycho.errorcounter->SetGPUToZero();
 
     const dim3 difpadshape = ptycho.diff_pattern_shape;
-    rMImage cur_difpad(difpadshape.x, 
-                       difpadshape.y, 
+    rMImage cur_difpad(difpadshape.x,
+                       difpadshape.y,
                        ptycho.multibatchsize,
-                       false, 
-                       ptycho.gpus, 
+                       false,
+                       ptycho.gpus,
                        MemoryType::EAllocGPU);
 
     const size_t batchsize = ptycho.positions[0]->arrays[0]->sizez;
@@ -519,25 +494,25 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                     dim3 thr = ptycho.wavefront->ShapeThread();
 
                     Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
-                    KSideExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g],  
-                                                *ptycho.probe->arrays[g], 
-                                                *ptycho.object->arrays[g], 
-                                                ptr_roi, 
-                                                d_pos_offx[k], 
+                    KOffsetSideExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g],
+                                                *ptycho.probe->arrays[g],
+                                                *ptycho.object->arrays[g],
+                                                ptr_roi,
+                                                d_pos_offx[k],
                                                 d_pos_offx[k]);
                     //cudaDeviceSynchronize(); // <-
 
-                    ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,  
-                                                    ptycho.wavefront->arrays[g]->gpuptr,  
-                                                    ptycho.wavefront->arrays[g]->Shape(), 
+                    ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,
+                                                    ptycho.wavefront->arrays[g]->gpuptr,
+                                                    ptycho.wavefront->arrays[g]->Shape(),
                                                     1);
-                    
-                    // compute errors 
-                    KComputeError<<<blk, thr>>>(ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
-                                                *ptycho.wavefront->arrays[g], 
-                                                *cur_difpad.arrays[g],
-                                                nullptr,
-                                                ptycho.probe->sizez);
+                    // compute errors
+                    KComputeError<<<blk, thr>>>(
+                            ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
+                            *ptycho.wavefront->arrays[g],
+                            *cur_difpad.arrays[g],
+                            nullptr,
+                            ptycho.probe->sizez);
                     //cudaDeviceSynchronize();    // <-
                 }
             }
@@ -551,7 +526,6 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                     ptycho.errorcounter->arrays[g]->gpuptr,
                     ptycho.positions[d][0][g].gpuptr, batchsize,
                     ptycho.object->Shape(), ptycho.probe->Shape());
-                
                 //cudaDeviceSynchronize(); // <-
             }
         }
@@ -773,14 +747,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->probe_num = new cMImage(ptycho->probe->Shape(), true, gpus);
 
 
-    // init shifts 
+    // init shifts
     init_offsets();
-    
-    // show all possible shifts 
-    printf("----------------------------------------------------------------------\n");
-    for (int i=0; i<=n_pos_neighbors; i++){
-    	printf("pos_offx,y = (%f, %f) \n", pos_offx[i], pos_offy[i]);
-    }
 
     return ptycho;
 }
