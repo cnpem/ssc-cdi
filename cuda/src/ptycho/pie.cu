@@ -234,12 +234,13 @@ void PieRun(Pie& pie, int iterations) {
 
             ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGrad);
 
-            *wavefront /= float(probeshape.x * probeshape.y);
+            //*wavefront /= float(probeshape.x * probeshape.y);
 
-            const float probe_abs2_max = probe->maxAbs2();
-            const dim3 pos_offset(pie.ptycho->cpupositions[random_pos_idx].x,
-                    pie.ptycho->cpupositions[random_pos_idx].y, 0);
+            pie.ptycho->positions[random_pos_idx]->LoadFromGPU();
+            const Position off = pie.ptycho->positions[random_pos_idx]->arrays[0]->cpuptr[0];
+            const dim3 pos_offset(off.x, off.y, 0);
             obj->CopyRoiTo(obj_box, pos_offset, roishape);
+            const float probe_abs2_max = probe->maxAbs2();
             const float obj_abs2_max = obj_box.maxAbs2();
 
             //get max without going to CPU (will we need this to achieve full scalar???)
@@ -265,8 +266,8 @@ void PieRun(Pie& pie, int iterations) {
         if (pie.ptycho->poscorr_iter &&
                 (iter + 1) % pie.ptycho->poscorr_iter == 0)
             ApplyPositionCorrection(*pie.ptycho);
-        
-        // reduce errors 
+
+        // reduce errors
         pie.ptycho->cpuerror_rfactor[iter] = sqrtf(pie.ptycho->error_rfactor->SumGPU());
         pie.ptycho->cpuerror_llk[iter] = pie.ptycho->error_llk->SumGPU();
         pie.ptycho->cpuerror_mse[iter] = pie.ptycho->error_mse->SumGPU();

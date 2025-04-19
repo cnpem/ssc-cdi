@@ -11,7 +11,7 @@
 #endif
 
 #include <string>
-
+#include <cuda.h>
 #include "complex.hpp"
 
 //#define SyncDebug cudaDeviceSynchronize()
@@ -284,7 +284,7 @@ inline __global__ void KGlobalReduce(float* out, const float* in, size_t size)
                 out[blockIdx.x] = intermediate[0];
 } */
 template <typename Type>
-inline __device__ void KSharedReduce32(Type* intermediate) {
+__forceinline__ __device__ void KSharedReduce32(Type* intermediate) {
     if (threadIdx.x < 16) {
         for (int group = 16; group > 0; group /= 2) {
             if (threadIdx.x < group) {
@@ -296,7 +296,7 @@ inline __device__ void KSharedReduce32(Type* intermediate) {
 }
 
 template <typename Type>
-inline __device__ void KSharedReduce(Type* intermediate, int size) {
+__forceinline__ __device__ void KSharedReduce(Type* intermediate, int size) {
     if (threadIdx.x < 32) {
         Type s {0};
         for (int idx = threadIdx.x; idx < size; idx += 32) s += intermediate[threadIdx.x];
