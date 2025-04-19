@@ -1,155 +1,179 @@
-#include <cmath>
-#include <common/types.hpp>
-#include <common/logger.hpp>
-#include <cstddef>
+#include <cstdio>
 #include <cuda_runtime_api.h>
+#include <curand_mtgp32_kernel.h>
 #include <driver_types.h>
+
+#include <cmath>
+#include <common/logger.hpp>
+#include <common/types.hpp>
+#include <cstddef>
+#include <string>
 
 #include "complex.hpp"
 #include "engines_common.hpp"
-
+#include "operations.hpp"
+#include "spdlog/fmt/bundled/core.h"
 
 constexpr int max_dist = 3;
-constexpr int n_pos_neighbors = max_dist * 8 + 1;
+constexpr int n_pos_neighbors = max_dist * 8;
 
+float pos_offx[n_pos_neighbors + 1] = {0};
+float pos_offy[n_pos_neighbors + 1] = {0};
 __device__ float d_pos_offx[n_pos_neighbors + 1];
 __device__ float d_pos_offy[n_pos_neighbors + 1];
 
 void init_offsets() {
 
-    float pos_offx[n_pos_neighbors + 1];
-    float pos_offy[n_pos_neighbors + 1];
-
     const int off_x[] = {-1, +0, +1, -1, +1, -1, +0, +1};
     const int off_y[] = {-1, -1, -1, +0, +0, +1, +1, +1};
 
-    for (int idx = 1, dist = 1; dist<=max_dist; dist++) {
+    pos_offx[0] = pos_offy[0] = 0.0f;
+
+    for (int idx = 1, dist = 1; dist <= max_dist; ++dist) {
         for (int i = 0; i < 8; ++i) {
             pos_offx[idx] = off_x[i] * dist;
             pos_offy[idx] = off_y[i] * dist;
             ++idx;
         }
-	}
+    }
 
     // Copy directly to __device__ variables
-    cudaMemcpyToSymbol(d_pos_offx, pos_offx, (n_pos_neighbors + 1) * sizeof(float));
-    cudaMemcpyToSymbol(d_pos_offy, pos_offy, (n_pos_neighbors + 1) * sizeof(float));
+    cudaMemcpyToSymbol(d_pos_offx, pos_offx,
+                       (n_pos_neighbors + 1) * sizeof(float));
+    cudaMemcpyToSymbol(d_pos_offy, pos_offy,
+                       (n_pos_neighbors + 1) * sizeof(float));
 }
 
 __global__ void KOffsetSideExitwave(GArray<complex> exitwave,
-                              const GArray<complex> probe,
-                              const GArray<complex> object,
-                              const GArray<Position> positions,
-                              float offx,
-                              float offy)
-{
-    const int idx = blockIdx.x*blockDim.x + threadIdx.x;
-    if(idx >= probe.shape.x)
-        return;
+                                    const GArray<complex> probe,
+                                    const GArray<complex> object,
+                                    const GArray<Position> positions,
+                                    float offx, float offy) {
+    const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= probe.shape.x) return;
 
-    const int idy = blockIdx.y*blockDim.y + threadIdx.y;
+    const int idy = blockIdx.y * blockDim.y + threadIdx.y;
     const int idz = blockIdx.z;
 
     const int objposx = idx + (int)positions(idz, 0, 0).x + offx;
     const int objposy = idy + (int)positions(idz, 0, 0).y + offy;
 
-    if (objposx < 0 || objposx >= object.shape.x || objposy < 0 || objposy >= object.shape.y) {
-        return;
+    //const int objposx = int(round(idx + positions(idz, 0, 0).x + offx));
+    //const int objposy = int(round(idy + positions(idz, 0, 0).y + offy));
+
+    complex obj = complex(0.0);
+    if (objposx >= 0 && objposx < object.shape.x && objposy >= 0 &&
+        objposy < object.shape.y) {
+        obj = object(objposy, objposx);
     }
 
-    const complex& obj = object(objposy, objposx);
-
     // for each incoherent mode
-    for(size_t m=0; m<probe.shape.z; m++){
-        exitwave(m + probe.shape.z*blockIdx.z, idy, idx) = obj * probe(m, idy, idx);
+    for (size_t m = 0; m < probe.shape.z; m++) {
+        exitwave(m + probe.shape.z * blockIdx.z, idy, idx) =
+            obj * probe(m, idy, idx);
     }
 }
 
-__global__ void KComputeError(float* errors,
-                              const GArray<complex> exitwave,
+__global__ void KComputeError(float* errors, const GArray<complex> exitwave,
                               const GArray<float> diffraction_patterns,
-                              const float* background,
-                              size_t nummodes){
+                              const float* background, size_t nummodes, int k) {
+    const size_t sherror_size = 64;
+    __shared__ float shared_error_rfactor[sherror_size];
+    //__shared__ int shared_error_count[64];
 
-    __shared__ float shared_error_rfactor[64];
-    __shared__ int shared_error_count[64];
-
-    if(threadIdx.x < 64){
+    if (threadIdx.x < sherror_size) {
         shared_error_rfactor[threadIdx.x] = 0;
-        shared_error_count[threadIdx.x] = 0;
+        //shared_error_count[threadIdx.x] = 0;
     }
     __syncthreads();
 
-    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    size_t idy = blockIdx.y; //threadIdx.y + blockIdx.y * blockDim.y;   // <-
-    size_t idz = blockIdx.z;
+    const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    const size_t idy = blockIdx.y;  // threadIdx.y + blockIdx.y * blockDim.y;   // <-
+    const size_t idz = blockIdx.z;
 
-    if(idx >= diffraction_patterns.shape.x) {
+    if (idx >= diffraction_patterns.shape.x) {
         return;
     }
 
-    const float diff_pattern = diffraction_patterns(idz, idy, idx);
+    const double diff_pattern = (double) diffraction_patterns(idz, idy, idx);
 
-    if(diff_pattern >= 0) {
-        float wabs2 = 0.0f;
+    if (diff_pattern >= 0) {
+        double wabs2 = 0.0f;
 
-        for(int m=0; m<nummodes; m++){
-            wabs2 += exitwave(idz*nummodes + m, idy, idx).abs2();
+        for (int m = 0; m < nummodes; m++) {
+            wabs2 += (double) exitwave(idz * nummodes + m, idy, idx).abs2();
         }
 
         // Compute r-factor error
-        const float error_rfactor = sq(sqrtf(diff_pattern) - sqrtf(wabs2));
-        //const float error_rfactor = sq(diff_pattern - wabs2);
+        //const float error_rfactor = sq(sqrtf(diff_pattern- sqrtf(wabs2)));
+        //const float error_rfactor = wabs2;
+        //const double diff = sqrt(double(diff_pattern)) - sqrt(double(wabs2));
+        //const float error_rfactor = float(diff * diff);
+        const float error_rfactor = sq(diff_pattern - wabs2);
 
-        atomicAdd(shared_error_count + threadIdx.x%64, 1);
-        atomicAdd(shared_error_rfactor + threadIdx.x%64, error_rfactor);
+        //printf("KComputeError: %d %lu %lu => %f <==> %f = %f\n",
+                //k, idx, idy, diff_pattern, wabs2, error_rfactor);
+
+        //atomicAdd(shared_error_count + threadIdx.x % 64, 1);
+        atomicAdd(shared_error_rfactor + threadIdx.x % sherror_size, error_rfactor);
     }
     __syncthreads();
 
-    Reduction::KSharedReduce(shared_error_rfactor, 64);
-    Reduction::KSharedReduce(shared_error_count, 64);
-
-    if(threadIdx.x==0) {
-        //const float error_count = diffraction_patterns.shape.y * diffraction_patterns.shape.x * diffraction_patterns.shape.z;
-        const float error_count = shared_error_count[0];
-        atomicAdd(errors + idz, shared_error_rfactor[0] / error_count);
+    //parallel sweep reduction
+    for (size_t s = sherror_size / 2; s > 0; s /= 2) {
+        if (threadIdx.x < s)
+            shared_error_rfactor[threadIdx.x] += shared_error_rfactor[threadIdx.x + s];
+        __syncthreads();
     }
+
+    //Reduction::KSharedReduce(shared_error_rfactor, sherror_size);
+
+    if (threadIdx.x == 0)
+        atomicAdd(errors + idz, shared_error_rfactor[0]);
+
+    //if (threadIdx.x == 0) {
+        //double s = 0.0;
+        //for (int i = 0; i < sherror_size; ++i) {
+            //s += shared_error_rfactor[i];
+        //}
+        //atomicAdd(errors + idz, s);
+    //}
 }
 
-
-__global__ void KProjectPhiToProbe(const GArray<complex> probe, 
-                                   complex* probe_acc, 
-                                   float* probe_div,
-                                   const GArray<complex> object, 
-                                   const GArray<complex> exitwave, 
+__global__ void KProjectPhiToProbe(const GArray<complex> probe,
+                                   complex* probe_acc, float* probe_div,
+                                   const GArray<complex> object,
+                                   const GArray<complex> exitwave,
                                    const GArray<Position> positions,
-                                   bool bFTNorm, 
-                                   bool isGrad) {
+                                   bool bFTNorm, bool isGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (idx >= probe.shape.x){
+    if (idx >= probe.shape.x) {
         return;
     }
 
     complex pacc = complex(0);
     float pdiv = 0;
 
-    for (size_t pos = 0; pos < positions.shape.z; pos++){
+    for (size_t pos = 0; pos < positions.shape.z; pos++) {
         // for each flyscan point
-        for (int p = 0; p < positions.shape.x; p++){
+        for (int p = 0; p < positions.shape.x; p++) {
             int objposx = idx + (int)positions(pos, 0, p).x;
             int objposy = idy + (int)positions(pos, 0, p).y;
 
             complex obj = object(objposy, objposx);
-            complex ew = exitwave((pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx);
+            complex ew = exitwave(
+                (pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy,
+                idx);
 
             pacc += ew * obj.conj();
             pdiv += obj.abs2();
         }
     }
 
-    size_t index = blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
+    size_t index =
+        blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
 
     if (bFTNorm) pacc /= (float)(probe.shape.x * probe.shape.y);
     if (!isGrad) pacc -= probe[index] * pdiv;
@@ -158,39 +182,42 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe,
     probe_div[index] += pdiv;
 }
 
-// the kernel code is replicated for complex16, for some reason cuda was not playing well with explicit instantiation on gpu kernels
-__global__ void KProjectPhiToProbe(const GArray<complex> probe, 
-                                   complex* probe_acc, 
-                                   float* probe_div,
-                                   const GArray<complex> object, 
-                                   const GArray<complex16> exitwave, 
+// the kernel code is replicated for complex16, for some reason cuda was not
+// playing well with explicit instantiation on gpu kernels
+__global__ void KProjectPhiToProbe(const GArray<complex> probe,
+                                   complex* probe_acc, float* probe_div,
+                                   const GArray<complex> object,
+                                   const GArray<complex16> exitwave,
                                    const GArray<Position> positions,
                                    bool bFTNorm, bool isGrad) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t idy = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (idx >= probe.shape.x){
+    if (idx >= probe.shape.x) {
         return;
     }
 
     complex pacc = complex(0);
     float pdiv = 0;
 
-    for (size_t pos = 0; pos < positions.shape.z; pos++){
+    for (size_t pos = 0; pos < positions.shape.z; pos++) {
         // for each flyscan point
-        for (int p = 0; p < positions.shape.x; p++){
+        for (int p = 0; p < positions.shape.x; p++) {
             int objposx = idx + (int)positions(pos, 0, p).x;
             int objposy = idy + (int)positions(pos, 0, p).y;
 
             complex obj = object(objposy, objposx);
-            complex ew = complex(exitwave((pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy, idx));
+            complex ew = complex(exitwave(
+                (pos * positions.shape.x + p) * probe.shape.z + blockIdx.z, idy,
+                idx));
 
             pacc += ew * obj.conj();
             pdiv += obj.abs2();
         }
     }
 
-    size_t index = blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
+    size_t index =
+        blockIdx.z * probe.shape.x * probe.shape.y + idy * probe.shape.x + idx;
 
     if (bFTNorm) pacc /= (float)(probe.shape.x * probe.shape.y);
     if (!isGrad) pacc -= probe[index] * pdiv;
@@ -200,8 +227,8 @@ __global__ void KProjectPhiToProbe(const GArray<complex> probe,
 }
 
 template <typename dtype>
-void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool bNormalizeFFT, bool isGrad,
-        cudaStream_t stream) {
+void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi,
+                       bool bNormalizeFFT, bool isGrad, cudaStream_t stream) {
     dim3 blk = pt.probe->ShapeBlock();
     dim3 thr = pt.probe->ShapeThread();
 
@@ -209,167 +236,170 @@ void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi, bool b
         SetDevice(pt.gpus, g);
 
         KProjectPhiToProbe<<<blk, thr, 0, stream>>>(
-                pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
-                pt.object->arrays[g][0], Phi.arrays[g][0], pt.positions[section]->arrays[g][0],
-                bNormalizeFFT, isGrad);
+            pt.probe->arrays[g][0], pt.probe_num->Ptr(g), pt.probe_div->Ptr(g),
+            pt.object->arrays[g][0], Phi.arrays[g][0],
+            pt.positions[section]->arrays[g][0], bNormalizeFFT, isGrad);
     }
 }
 
 template void ProjectPhiToProbe<complex>(Ptycho& pt, int section,
-        const cMImage& Phi, bool bNormalizeFFT, bool isGrad, cudaStream_t st);
+                                         const cMImage& Phi, bool bNormalizeFFT,
+                                         bool isGrad, cudaStream_t st);
 
 template void ProjectPhiToProbe<complex16>(Ptycho& pt, int section,
-        const hcMImage& Phi, bool bNormalizeFFT, bool isGrad, cudaStream_t st);
+                                           const hcMImage& Phi,
+                                           bool bNormalizeFFT, bool isGrad,
+                                           cudaStream_t st);
 
 extern "C" {
-    void EnablePeerToPeer(const std::vector<int>& gpus);
-    void DisablePeerToPeer(const std::vector<int>& gpus);
+void EnablePeerToPeer(const std::vector<int>& gpus);
+void DisablePeerToPeer(const std::vector<int>& gpus);
 
-    __global__ void KProjectReciprocalSpace(GArray<complex> exitwave,  
-                                            const GArray<float> diffraction_patterns, 
-                                            float* error_error_rfactor, 
-                                            float* error_error_llk,
-                                            float* error_error_mse,
-                                            size_t upsample, 
-                                            size_t nummodes,  
-                                            bool isGrad) {
+__global__ void KProjectReciprocalSpace(
+    GArray<complex> exitwave, const GArray<float> diffraction_patterns,
+    float* error_error_rfactor, float* error_error_llk, float* error_error_mse,
+    size_t upsample, size_t nummodes, bool isGrad) {
+    __shared__ float shared_error_error_rfactor[64];
+    __shared__ float shared_error_error_llk[64];
+    __shared__ float shared_error_error_mse[64];
 
-        __shared__ float shared_error_error_rfactor[64];
-        __shared__ float shared_error_error_llk[64];
-        __shared__ float shared_error_error_mse[64];
+    if (threadIdx.x < 64) {
+        shared_error_error_rfactor[threadIdx.x] = 0;
+        shared_error_error_llk[threadIdx.x] = 0;
+        shared_error_error_mse[threadIdx.x] = 0;
+    }
 
-        if (threadIdx.x < 64){
-            shared_error_error_rfactor[threadIdx.x] = 0;
-            shared_error_error_llk[threadIdx.x] = 0;
-            shared_error_error_mse[threadIdx.x] = 0;
-        }
+    __syncthreads();
 
-        __syncthreads();
+    const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    const size_t idy = blockIdx.y;
+    const size_t idz = blockIdx.z;
 
-        const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-        const size_t idy = blockIdx.y;
-        const size_t idz = blockIdx.z;
+    if (idx >= diffraction_patterns.shape.x) return;
 
-        if (idx >= diffraction_patterns.shape.x) return;
+    const float diff_pattern = diffraction_patterns(idz, idy, idx);
+    const float sqrt_difpad = sqrtf(diff_pattern);
 
-        const float diff_pattern = diffraction_patterns(idz, idy, idx);
-        const float sqrt_difpad = sqrtf(diff_pattern);
+    float exit_wave_factor = 1.0f;
+    float exit_wave_addend = 0.0f;
 
-        float exit_wave_factor = 1.0f;
-        float exit_wave_addend = 0.0f;
-
-        if (diff_pattern >= 0) {
-            float wabs2 = 0.0f;
-            float wabs = 0.0f;
-            const float eps = 1e-3f;
-
-            for (int m = 0; m < nummodes; m++)
-                for (int v = 0; v < upsample; v++)
-                    for (int u = 0; u < upsample; u++)
-                        wabs2 += exitwave(idz * nummodes + m,  v + idy * upsample,  u + idx * upsample).abs2();
-
-            wabs = sqrtf(wabs2) / upsample; // can we kill upsample? not sure it is necessary anymore.
-
-            // compute rfactor error 
-            atomicAdd(shared_error_error_rfactor + threadIdx.x % 64, sq(sqrt_difpad - wabs));
-
-            // poisson negative log-likelihood 
-            float llk =  + wabs2 - diff_pattern * logf(wabs2 + eps); 
-
-            // // this constant term does not depend on wabs2, so it is not actually useful to see the
-            // // general behavior of the negative log-likelihood curve. You can remove it, but then the 
-            // // error curve will probably assume negative values. Also, the correct constant would be
-            // // log(diff_pattern!), but the factorial is too expensive, so we approximate
-            // llk = llk + diff_pattern*logf(diff_pattern + eps) 
-            //           - diff_pattern 
-            //           + 0.5*logf(2*3.141592*diff_pattern + eps);
-
-            // compute negative llk error 
-            atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
-
-            // compute mse 
-            float mse = fabs(diff_pattern - wabs2)/(eps + diffraction_patterns.shape.x*diffraction_patterns.shape.y);
-            atomicAdd(shared_error_error_mse + threadIdx.x % 64, mse);
-
-            // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew + ew_a
-            if (wabs > 0.0f && isGrad) {  //AP
-                exit_wave_factor = (sqrt_difpad / wabs - 1); // why -1 for AP and not for RAAR?
-                exit_wave_addend = 0.0f;
-            }
-            else if (wabs > 0.0f && !isGrad) { //RAAR
-                exit_wave_factor = sqrt_difpad / wabs; // why -1 for AP and not for RAAR?
-                exit_wave_addend = 0.0f;
-            } else { // wabs <= 0.0f
-                exit_wave_addend = sqrt_difpad;
-                exit_wave_factor = 0.0f;
-            }
-
-        } else if (isGrad) { // if diff_pattern < 0 and isGrad. Make invalid points to be zero in the wavefront
-            exit_wave_factor = 0.0f;
-            exit_wave_addend = 0.0f;
-        }
+    if (diff_pattern >= 0) {
+        float wabs2 = 0.0f;
+        float wabs = 0.0f;
+        const float eps = 1e-3f;
 
         for (int m = 0; m < nummodes; m++)
             for (int v = 0; v < upsample; v++)
-                for (int u = 0; u < upsample; u++) {
-                    complex ew = exitwave(idz * nummodes + m,  v + idy * upsample,   u + idx * upsample);
+                for (int u = 0; u < upsample; u++)
+                    wabs2 += exitwave(idz * nummodes + m, v + idy * upsample,
+                                      u + idx * upsample)
+                                 .abs2();
 
-                    // application of the measured intensity to the exitwave (projection in reciprocal space)
-                    ew = ew * exit_wave_factor + exit_wave_addend; 
-                    exitwave(idz * nummodes + m,  v + idy * upsample,   u + idx * upsample) = ew;
-                }
+        wabs = sqrtf(wabs2) / upsample;  // can we kill upsample? not sure it is
+                                         // necessary anymore.
 
-        __syncthreads();
+        // compute rfactor error
+        atomicAdd(shared_error_error_rfactor + threadIdx.x % 64,
+                  sq(sqrt_difpad - wabs));
 
-        // reduce errors 
-        Reduction::KSharedReduce(shared_error_error_rfactor, 64);
-        Reduction::KSharedReduce(shared_error_error_llk, 64);
-        Reduction::KSharedReduce(shared_error_error_mse, 64);
+        // poisson negative log-likelihood
+        float llk = +wabs2 - diff_pattern * logf(wabs2 + eps);
 
-        if (threadIdx.x == 0){
-            atomicAdd(error_error_rfactor + blockIdx.y, shared_error_error_rfactor[0]);
-            atomicAdd(error_error_llk + blockIdx.y, shared_error_error_llk[0]);
-            atomicAdd(error_error_mse + blockIdx.y, shared_error_error_mse[0]);
+        // // this constant term does not depend on wabs2, so it is not actually
+        // useful to see the
+        // // general behavior of the negative log-likelihood curve. You can
+        // remove it, but then the
+        // // error curve will probably assume negative values. Also, the
+        // correct constant would be
+        // // log(diff_pattern!), but the factorial is too expensive, so we
+        // approximate llk = llk + diff_pattern*logf(diff_pattern + eps)
+        //           - diff_pattern
+        //           + 0.5*logf(2*3.141592*diff_pattern + eps);
+
+        // compute negative llk error
+        atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
+
+        // compute mse
+        float mse =
+            fabs(diff_pattern - wabs2) /
+            (eps + diffraction_patterns.shape.x * diffraction_patterns.shape.y);
+        atomicAdd(shared_error_error_mse + threadIdx.x % 64, mse);
+
+        // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew +
+        // ew_a
+        if (wabs > 0.0f && isGrad) {  // AP
+            exit_wave_factor =
+                (sqrt_difpad / wabs - 1);  // why -1 for AP and not for RAAR?
+            exit_wave_addend = 0.0f;
+        } else if (wabs > 0.0f && !isGrad) {  // RAAR
+            exit_wave_factor =
+                sqrt_difpad / wabs;  // why -1 for AP and not for RAAR?
+            exit_wave_addend = 0.0f;
+        } else {  // wabs <= 0.0f
+            exit_wave_addend = sqrt_difpad;
+            exit_wave_factor = 0.0f;
         }
 
+    } else if (isGrad) {  // if diff_pattern < 0 and isGrad. Make invalid points
+                          // to be zero in the wavefront
+        exit_wave_factor = 0.0f;
+        exit_wave_addend = 0.0f;
+    }
+
+    for (int m = 0; m < nummodes; m++)
+        for (int v = 0; v < upsample; v++)
+            for (int u = 0; u < upsample; u++) {
+                complex ew = exitwave(idz * nummodes + m, v + idy * upsample,
+                                      u + idx * upsample);
+
+                // application of the measured intensity to the exitwave
+                // (projection in reciprocal space)
+                ew = ew * exit_wave_factor + exit_wave_addend;
+                exitwave(idz * nummodes + m, v + idy * upsample,
+                         u + idx * upsample) = ew;
+            }
+
+    __syncthreads();
+
+    // reduce errors
+    Reduction::KSharedReduce(shared_error_error_rfactor, 64);
+    Reduction::KSharedReduce(shared_error_error_llk, 64);
+    Reduction::KSharedReduce(shared_error_error_mse, 64);
+
+    if (threadIdx.x == 0) {
+        atomicAdd(error_error_rfactor + blockIdx.y,
+                  shared_error_error_rfactor[0]);
+        atomicAdd(error_error_llk + blockIdx.y, shared_error_error_llk[0]);
+        atomicAdd(error_error_mse + blockIdx.y, shared_error_error_mse[0]);
     }
 }
+}
 
-
-void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, cImage* wavefront, int g, bool isGrad, cudaStream_t stream) {
-
+void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, cImage* wavefront,
+                            int g, bool isGrad, cudaStream_t stream) {
     SetDevice(pt.gpus, g);
 
     complex* ewave = wavefront->gpuptr;
 
     int upsample = wavefront->sizex / diff_pattern->sizex;
 
-    if (upsample>1){
-        printf("Upsample factor >1: ", upsample);
+    if (upsample > 1) {
+        printf("Upsample factor >1: %d", upsample);
     }
 
     pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), 1, stream);
 
-    wavefront->FFTShift2(stream);
-
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(*wavefront, 
-                                                                                                    *diff_pattern, 
-                                                                                                    pt.error_rfactor->Ptr(g), 
-                                                                                                    pt.error_llk->Ptr(g),
-                                                                                                    pt.error_mse->Ptr(g),
-                                                                                                    upsample,  
-                                                                                                    pt.probe->sizez, 
-                                                                                                    isGrad);
-
-    wavefront->FFTShift2(stream);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(),
+                              diff_pattern->ShapeThread(), 0, stream>>>(
+        *wavefront, *diff_pattern,
+        pt.error_rfactor->Ptr(g), pt.error_llk->Ptr(g), pt.error_mse->Ptr(g),
+        upsample, pt.probe->sizez, isGrad);
 
     pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), -1, stream);
-
 }
 
-
-void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad, cudaStream_t stream) {
-
+void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, int g,
+                            bool isGrad, cudaStream_t stream) {
     SetDevice(pt.gpus, g);
 
     complex* ewave = pt.wavefront->Ptr(g);
@@ -378,155 +408,216 @@ void ProjectReciprocalSpace(Ptycho &pt, rImage* diff_pattern, int g, bool isGrad
 
     pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), 1, stream);
 
-    pt.wavefront->arrays[g]->FFTShift2(stream);
+    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(),
+                              diff_pattern->ShapeThread(), 0, stream>>>(
+        pt.wavefront->arrays[g][0], *diff_pattern, pt.error_rfactor->Ptr(g),
+        pt.error_llk->Ptr(g), pt.error_mse->Ptr(g), upsample, pt.probe->sizez,
+        isGrad);
 
-    KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(), diff_pattern->ShapeThread(), 0, stream>>>(pt.wavefront->arrays[g][0], 
-                                                                                                    *diff_pattern, 
-                                                                                                    pt.error_rfactor->Ptr(g), 
-                                                                                                    pt.error_llk->Ptr(g),
-                                                                                                    pt.error_mse->Ptr(g),
-                                                                                                    upsample, 
-                                                                                                    pt.probe->sizez, 
-                                                                                                    isGrad);
-
-    pt.wavefront->arrays[g]->FFTShift2(stream); 
-
-    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1, stream);
-
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1,
+                                stream);
 }
 
 void ApplyProbeSupport(Ptycho& pt) {
     SetDevice(pt.gpus, 0);
     const dim3 shape = dim3(pt.probe->sizex, pt.probe->sizey, pt.probe->sizez);
-    complex *probe_ptr = pt.probe->arrays[0]->gpuptr;
+    complex* probe_ptr = pt.probe->arrays[0]->gpuptr;
     if (pt.distance_m > 0)
-        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape, +pt.distance_m);
+        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape,
+                                      +pt.distance_m);
 
     pt.probe->arrays[0][0] *= pt.probesupport->arrays[0][0];
 
     if (pt.distance_m > 0)
-        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape, -pt.distance_m);
+        pt.probepropagator->Propagate(probe_ptr, probe_ptr, shape,
+                                      -pt.distance_m);
 
     pt.probe->BroadcastSync();
 }
 
-
-void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize, float momentum, float epsilon) {
-
+void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize,
+                      float momentum, float epsilon) {
     if (momentum < 0 | stepsize < 0) return;
 
     SetDevice(pt.gpus, 0);
 
-    pt.probe->WeightedLerpSync(*(pt.probe_num), *(pt.probe_div), stepsize, momentum, velocity, epsilon);
+    pt.probe->WeightedLerpSync(*(pt.probe_num), *(pt.probe_div), stepsize,
+                               momentum, velocity, epsilon);
 
     if (pt.probesupport != nullptr) {
         ApplyProbeSupport(pt);
     }
 }
 
-__global__ void KPositionCorrection(float* errorcounter, 
-                                    Position* positions,
-                                    const size_t batchsize,
-                                    const dim3 objshape, 
+__global__ void KPositionCorrection(float* errorcounter, Position* positions,
+                                    const size_t batchsize, const dim3 objshape,
                                     const dim3 probeshape) {
+    const int z = blockIdx.x * blockDim.x + threadIdx.x;
 
-    const int z = blockIdx.x*blockDim.x + threadIdx.x;
-
-    if (z >= batchsize){
+    if (z >= batchsize) {
         return;
     }
 
-    float* error = errorcounter + z;
-    float minerror = error[0];
+    const float* error = errorcounter + z;
+    float minerror = sqrtf(error[0]);
     int minidx = 0;
 
-    for(int k = 1; k <= n_pos_neighbors; k++) {
-        if(error[batchsize*k]<minerror && error[batchsize*k]>0.0f) {
-            minerror = error[batchsize*k];
+    for (int k = 1; k <= n_pos_neighbors; k++) {
+        const float cur_error = sqrtf(error[batchsize * k]);
+        if (minerror > cur_error) {
+            minerror = cur_error;
             minidx = k;
         }
     }
 
     const float x = positions[z].x;
     const float y = positions[z].y;
-    positions[z].x = fminf(fmaxf(x+d_pos_offx[minidx],1.1f),
-            objshape.x - probeshape.x-3);
-    positions[z].y = fminf(fmaxf(y+d_pos_offy[minidx],1.1f),
-            objshape.y - probeshape.y-3);
+    //positions[z].x = fminf(fmaxf(x + d_pos_offx[minidx], 1.1f),
+                           //objshape.x - probeshape.x - 3);
+    //positions[z].y = fminf(fmaxf(y + d_pos_offy[minidx], 1.1f),
+                           //objshape.y - probeshape.y - 3);
 
-    // <-
-    //const float x = positions[z].x;
-    //const float y = positions[z].y;
-    //positions[z].x = fminf(fmaxf(x+d_pos_offx[minidx], 0.0f), (float) objshape.x-probeshape.x-1);
-    //positions[z].y = fminf(fmaxf(y+d_pos_offy[minidx], 0.0f), (float) objshape.y-probeshape.y-1);
+    if (minidx > 0) {
+        printf("\n\n\n errors = %f <> %f\n", error[0], error[batchsize * minidx]);
+        printf("\n(%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f)",
+                d_pos_offx[0], d_pos_offy[0], d_pos_offx[1], d_pos_offy[1], d_pos_offx[2], d_pos_offy[2], d_pos_offx[3], d_pos_offy[3], d_pos_offx[4], d_pos_offy[4], d_pos_offx[5], d_pos_offy[5], d_pos_offx[6], d_pos_offy[6], d_pos_offx[7], d_pos_offy[7], d_pos_offx[8], d_pos_offy[8]);
+        printf("\nz = %d => %d (%f, %f)\n", z, minidx, d_pos_offx[minidx], d_pos_offy[minidx]);
+    }
+    //minidx = 0;
+
+    positions[z].x = clamp(x + d_pos_offx[minidx], 0.0f, objshape.x);
+    positions[z].y = clamp(y + d_pos_offy[minidx], 0.0f, objshape.y);
 
     __syncthreads();
 }
 
 void ApplyPositionCorrection(Ptycho& ptycho) {
 
-    ptycho.errorcounter->SetGPUToZero();
-
     const dim3 difpadshape = ptycho.diff_pattern_shape;
-    rMImage cur_difpad(difpadshape.x,
-                       difpadshape.y,
-                       ptycho.multibatchsize,
-                       false,
-                       ptycho.gpus,
-                       MemoryType::EAllocGPU);
+    rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
+                       false, ptycho.gpus, MemoryType::EAllocCPUGPU);
+
+    {
+        const auto& a = ptycho.cpu_diff_pattern;
+        const string fname = format("difpad_all_{}x{}x{}_float32.raw", 100, 128, 128);
+        FILE* f = fopen(fname.c_str(), "wb");
+        fwrite(a, sizeof(float),
+                100 * 128 * 128,
+                f);
+        fclose(f);
+    }
 
     const size_t batchsize = ptycho.positions[0]->arrays[0]->sizez;
     const size_t num_batches = PtychoNumBatches(ptycho);
     const size_t ngpus = PtychoNumGpus(ptycho);
-    for(int d = 0; d < num_batches; d++) {
+    for (int d = 0; d < num_batches; d++) {
+        ptycho.errorcounter->SetGPUToZero();
+
         const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, d);
         const size_t difpad_idx = d * PtychoBatchSize(ptycho);
 
         cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
-        cur_difpad.LoadToGPU(ptycho.cpu_diff_pattern + difpad_idx * difpadshape.x * difpadshape.y);
-        for(int g = 0; g < ngpus; g++) {
-            for(int k = 0; k <= n_pos_neighbors; k++) {
-                SetDevice(ptycho.gpus, g);
+        cur_difpad.LoadToGPU(ptycho.cpu_diff_pattern +
+                             (difpad_idx * difpadshape.x * difpadshape.y));
+        printf("###################### d = %d difpad_idx = %lu pointer = %p sum = %f\n",
+                d, difpad_idx,
+                ptycho.cpu_diff_pattern + difpad_idx * difpadshape.x * difpadshape.y,
+                cur_difpad.SumGPU());
+        for (int g = 0; g < ngpus; g++) {
+            SetDevice(ptycho.gpus, g);
+            for (int k = 0; k <= n_pos_neighbors; k++) {
                 const size_t difpadsizez = ptycho.positions[d][0][g].sizez;
-                if(difpadsizez > 0) {
+                if (difpadsizez > 0) {
                     dim3 blk = ptycho.wavefront->ShapeBlock();
                     blk.z = difpadsizez;
                     dim3 thr = ptycho.wavefront->ShapeThread();
 
                     Image<Position>& ptr_roi = *ptycho.positions[d]->arrays[g];
-                    KOffsetSideExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g],
-                                                *ptycho.probe->arrays[g],
-                                                *ptycho.object->arrays[g],
-                                                ptr_roi,
-                                                d_pos_offx[k],
-                                                d_pos_offx[k]);
-                    //cudaDeviceSynchronize(); // <-
+                    KOffsetSideExitwave<<<blk, thr>>>(
+                        *ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g],
+                        *ptycho.object->arrays[g], ptr_roi, pos_offx[k],
+                        pos_offy[k]);
+                     cudaDeviceSynchronize(); // <-
 
-                    ptycho.propagator[g]->Propagate(ptycho.wavefront->arrays[g]->gpuptr,
-                                                    ptycho.wavefront->arrays[g]->gpuptr,
-                                                    ptycho.wavefront->arrays[g]->Shape(),
-                                                    1);
+                    ptycho.object->LoadFromGPU();
+                    ptycho.probe->LoadFromGPU();
+                    cur_difpad.LoadFromGPU();
+                    ptycho.wavefront->LoadFromGPU();
+
+                    {
+                        const auto& a = ptycho.wavefront;
+                        const string fname = format("wf_{:03d}_{:02d}_{}x{}x{}_complex64.raw", d, k,
+                                a->sizex, a->sizey, a->sizez);
+                        FILE* f = fopen(fname.c_str(), "wb");
+                        fwrite(a->arrays[0]->cpuptr, 2 * sizeof(float),
+                                a->sizex * a->sizey * a->sizez,
+                                f);
+                        fclose(f);
+                    }
+
+                    ptycho.propagator[g]->Propagate(
+                        ptycho.wavefront->arrays[g]->gpuptr,
+                        ptycho.wavefront->arrays[g]->gpuptr,
+                        ptycho.wavefront->arrays[g]->Shape(), 1);
+
+                    ptycho.wavefront->LoadFromGPU();
+
+                    //double mean_wf_x = 0;
+                    //double mean_wf_y = 0;
+
+                    //for (int i = 0; i < 128 * 128; ++i) {
+                        ////printf("\t[%d] = (%lf, %lf)\n", i,
+                                ////ptycho.wavefront->arrays[g]->cpuptr[i].x,
+                                ////ptycho.wavefront->arrays[g]->cpuptr[i].y);
+                        //mean_wf_x += (ptycho.wavefront->arrays[g]->cpuptr[i].x) / (128 * 128);
+                        //mean_wf_y += (ptycho.wavefront->arrays[g]->cpuptr[i].y) / (128 * 128);
+                    //}
+
+                    //const complex mean_wf = complex(mean_wf_x, mean_wf_y);
+                    //const double mean_wf_abs2 = mean_wf.abs2();
+
+
+                    //const complex single_wf = ptycho.wavefront->arrays[g]->cpuptr[0];
+
+                    //printf("\n\n?????????????? (%ld, %ld, %ld)\n\n\n", ptycho.wavefront->sizex, ptycho.wavefront->sizey, ptycho.wavefront->sizez);
+
+                    //const double single_abs2_wf = single_wf.abs2();
+                    //const double mean_difpad = cur_difpad.SumGPU() / (cur_difpad.sizex * cur_difpad.sizey);
+
+                    //printf("\n\n+++++++++++++++++ (%lf %lf) %lf %lf\n", mean_wf.x, mean_wf.y, mean_wf_abs2, mean_difpad);
+                    //printf(">>>>>>>>>>>>>>>>> (%lf %lf) %lf %lf\n\n", single_wf.x, single_wf.y, single_abs2_wf, mean_difpad);
+
                     // compute errors
                     KComputeError<<<blk, thr>>>(
-                            ptycho.errorcounter->arrays[g]->gpuptr + batchsize*k,
-                            *ptycho.wavefront->arrays[g],
-                            *cur_difpad.arrays[g],
-                            nullptr,
-                            ptycho.probe->sizez);
-                    //cudaDeviceSynchronize();    // <-
+                        ptycho.errorcounter->arrays[g]->gpuptr + batchsize * k,
+                        *ptycho.wavefront->arrays[g], *cur_difpad.arrays[g],
+                        nullptr, ptycho.probe->sizez, k);
+                     cudaDeviceSynchronize();    // <-
+
+
+                    ptycho.errorcounter->LoadFromGPU();
                 }
+
             }
         }
 
-        for(int g = 0; g < ngpus; g++){
+        ptycho.errorcounter->LoadFromGPU();
+        //printf("error computed: ");
+        //for (int i = 0; i < ptycho.errorcounter->size; ++i) {
+            //printf("%f ", ptycho.errorcounter->arrays[0]->cpuptr[i]);
+        //}
+        //fmt::print("\n");
+
+        for (int g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             const size_t batch_size = PtychoCurBatchGpuZsize(ptycho, d, g);
             if (batch_size > 0) {
-                KPositionCorrection<<<batchsize / 256 + (batchsize % 256 > 0), 256>>>(
+                KPositionCorrection<<<batchsize / 256 + (batchsize % 256 > 0),
+                                      256>>>(
                     ptycho.errorcounter->arrays[g]->gpuptr,
                     ptycho.positions[d][0][g].gpuptr, batchsize,
                     ptycho.object->Shape(), ptycho.probe->Shape());
-                //cudaDeviceSynchronize(); // <-
+                 cudaDeviceSynchronize(); // <-
             }
         }
     }
@@ -544,7 +635,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.probe_num) delete ptycho.probe_num;
     ptycho.probe_num = nullptr;
 
-    //cudaFreeHost(ptycho.cpu_diff_pattern);
+    // cudaFreeHost(ptycho.cpu_diff_pattern);
     cudaHostUnregister(ptycho.cpu_diff_pattern);
 
     sscDebug("Deallocating base algorithm.");
@@ -562,17 +653,16 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     ptycho.object->CopyTo(ptycho.cpuobject);
 
     sscDebug("Positions D2H");
-    int64_t offset = 0;
-    for (auto& position_array : ptycho.positions){
-        if (position_array){
-            // copy the data to dest
+    size_t offset = 0;
+    for (auto& position_array : ptycho.positions) {
+        if (position_array) {
             position_array->CopyTo(ptycho.cpupositions + offset);
 
-            // calculate the total size to copy for the current MImage
-            int64_t current_size = position_array->sizex*position_array->sizey*position_array->sizez;
+            size_t current_size = position_array->sizex *
+                                   position_array->sizey *
+                                   position_array->sizez;
 
-            // update offset. multiply by 2 becase each Position is {x, y}  
-            offset += current_size; 
+            offset += current_size;
         }
     }
 
@@ -610,14 +700,15 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     ptycho_ref = nullptr;
 }
 
-Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, const dim3& probeshape,
-                     complex* _object, const dim3& objshape, Position* positions, int numrois, int batchsize,
-                     float* _rfact, float* _llk, float* _mse, const std::vector<int>& gpus, float* _objectsupport, 
-                     float* _probesupport, int numobjsupp,  float wavelength_m, float pixelsize_m, float distance_m,
-                     int poscorr_iter,
-                     float step_obj, float step_probe,
-                     float reg_obj, float reg_probe) {
-
+Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
+                     const dim3& probeshape, complex* _object,
+                     const dim3& objshape, Position* positions, int numrois,
+                     int batchsize, float* _rfact, float* _llk, float* _mse,
+                     const std::vector<int>& gpus, float* _objectsupport,
+                     float* _probesupport, int numobjsupp, float wavelength_m,
+                     float pixelsize_m, float distance_m, int poscorr_iter,
+                     float step_obj, float step_probe, float reg_obj,
+                     float reg_probe) {
     Ptycho* ptycho = new Ptycho;
     ptycho->gpus = gpus;
 
@@ -651,18 +742,23 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
         ptycho->singlebatchsize = (numrois + ngpus - 1) / ngpus;
         batchsize = ptycho->multibatchsize = ptycho->singlebatchsize * ngpus;
     }
-    sscDebug(format("Batches: {} {}", ptycho->singlebatchsize, ptycho->multibatchsize));
+    sscDebug(format("Batches: {} {}", ptycho->singlebatchsize,
+                    ptycho->multibatchsize));
 
     ptycho->total_num_rois = numrois;
 
     ptycho->cpu_diff_pattern = _difpads;
 
-    size_t difpad_size = ptycho->diff_pattern_shape.x * ptycho->diff_pattern_shape.y * ptycho->diff_pattern_shape.z;
-    //cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
-    //cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size * sizeof(float), cudaMemcpyHostToHost);
+    size_t difpad_size = ptycho->diff_pattern_shape.x *
+                         ptycho->diff_pattern_shape.y *
+                         ptycho->diff_pattern_shape.z;
+    // cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
+    // cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size *
+    // sizeof(float), cudaMemcpyHostToHost);
 
     ptycho->cpu_diff_pattern = _difpads;
-    cudaHostRegister(ptycho->cpu_diff_pattern, difpad_size * sizeof(float), cudaHostRegisterDefault);
+    cudaHostRegister(ptycho->cpu_diff_pattern, difpad_size * sizeof(float),
+                     cudaHostRegisterDefault);
 
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;
@@ -676,31 +772,37 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     sscDebug("Alloc obj");
     ptycho->object = new cMImage(_object, objshape, true, gpus);
     sscDebug("Alloc EW");
-    ptycho->wavefront = new cMImage(probeshape.x, probeshape.y,
-            ptycho->singlebatchsize * probeshape.z, true, gpus);
+    ptycho->wavefront =
+        new cMImage(probeshape.x, probeshape.y,
+                    ptycho->singlebatchsize * probeshape.z, true, gpus);
 
     sscDebug("Alloc Supports");
 
     if (numobjsupp > 0 && _objectsupport != nullptr) {
-        ptycho->objectsupport = new rMImage(_objectsupport, dim3(objshape.x, objshape.y, numobjsupp), true, ptycho->gpus);
+        ptycho->objectsupport = new rMImage(
+            _objectsupport, dim3(objshape.x, objshape.y, numobjsupp), true,
+            ptycho->gpus);
         ptycho->SupportSizes = std::vector<float>();
         for (int i = 0; i < numobjsupp; i++) {
             float s = 0;
-            for (int j = 0; j < objshape.x * objshape.y; j++) s += _objectsupport[j + i * objshape.x * objshape.y];
+            for (int j = 0; j < objshape.x * objshape.y; j++)
+                s += _objectsupport[j + i * objshape.x * objshape.y];
             ptycho->SupportSizes.push_back(s);
         }
     } else
         ptycho->objectsupport = nullptr;
 
     if (_probesupport != nullptr)
-        ptycho->probesupport = new rMImage(_probesupport, dim3(probeshape.x, probeshape.y, probeshape.z), true, ptycho->gpus);
+        ptycho->probesupport = new rMImage(
+            _probesupport, dim3(probeshape.x, probeshape.y, probeshape.z), true,
+            ptycho->gpus);
     else
         ptycho->probesupport = nullptr;
 
     sscDebug("Alloc r-factor error");
     ptycho->error_rfactor = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
     ptycho->error_rfactor->SetGPUToZero();
-    
+
     sscDebug("Alloc Poisson Log-Likelihood");
     ptycho->error_llk = new rMImage(difshape.y, 1, 1, true, ptycho->gpus);
     ptycho->error_llk->SetGPUToZero();
@@ -710,22 +812,25 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
     ptycho->error_mse->SetGPUToZero();
 
     sscDebug("Alloc error counter for position correction");
-    ptycho->errorcounter = new rMImage(n_pos_neighbors + 1, 1, batchsize, true, ptycho->gpus);
+    ptycho->errorcounter =
+        new rMImage(n_pos_neighbors + 1, 1, batchsize, true, ptycho->gpus);
     ptycho->errorcounter->SetGPUToZero();
 
     printf("batchsize = %d\n", batchsize);
-
 
     SetDevice(ptycho->gpus, 0);
     ptycho->roibatch_offset = std::vector<int>();
 
     for (size_t n = 0; n < numrois; n += batchsize) {
-        sscDebug(format("Creating DPGroup at: {} of {} at step {}" , n, numrois, batchsize));
+        sscDebug(format("Creating DPGroup at: {} of {} at step {}", n, numrois,
+                        batchsize));
         if (numrois - n < batchsize)  // last batch
         {
-            ptycho->positions.push_back(new PositionArray(positions + n, 1, 1, numrois - n, false, gpus));
+            ptycho->positions.push_back(new PositionArray(
+                positions + n, 1, 1, numrois - n, false, gpus));
         } else {
-            ptycho->positions.push_back(new PositionArray(positions + n, 1, 1, batchsize, false, gpus));
+            ptycho->positions.push_back(
+                new PositionArray(positions + n, 1, 1, batchsize, false, gpus));
         }
         ptycho->roibatch_offset.push_back(n / ngpus);
     }
@@ -745,7 +850,6 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe, con
 
     ptycho->probe_div = new rMImage(ptycho->probe->Shape(), true, gpus);
     ptycho->probe_num = new cMImage(ptycho->probe->Shape(), true, gpus);
-
 
     // init shifts
     init_offsets();

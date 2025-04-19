@@ -129,10 +129,14 @@ void APRun(AP& ap, int iterations) {
                   dim3 thr = ptycho.wavefront->ShapeThread();
 
                   Image<Position>& ptr_roi = *ptycho.positions[batch_idx]->arrays[g];
-                  
+
                   KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi);
 
                   ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGrad);
+
+                  //for some reason AP is the only method requiring this
+                  //if we remove this, and remove the division on KAPPs, the method might not converge
+                  *ptycho.wavefront->arrays[g] *= float(ptycho.probe->sizex * ptycho.probe->sizey);
 
                   KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],  *ptycho.object_num->arrays[g], *ptycho.object_div->arrays[g], *ptycho.wavefront->arrays[g], ptr_roi);
         }
