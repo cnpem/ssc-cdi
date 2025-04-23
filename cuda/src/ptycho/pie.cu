@@ -2,6 +2,7 @@
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <cuda_device_runtime_api.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
@@ -194,13 +195,6 @@ void PieRun(Pie& pie, int iterations) {
 
     auto time0 = sscTime();
 
-    //float *obj_abs2_max;
-    //float *probe_abs2_max;
-
-    //cudaMalloc((void**)&obj_abs2_max, sizeof(float));
-    //cudaMalloc((void**)&probe_abs2_max, sizeof(float));
-
-    // when (batchsize == 1) => (num_batches == num_rois)
     const size_t num_rois = PtychoNumBatches(*pie.ptycho);
     int random_idx[num_rois];
     rangeArray(random_idx, num_rois);
@@ -234,18 +228,14 @@ void PieRun(Pie& pie, int iterations) {
 
             ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGrad);
 
-            //*wavefront /= float(probeshape.x * probeshape.y);
+            if (pie.ptycho->poscorr_iter && iter % pie.ptycho->poscorr_iter == 0) //positions were updated
+                pie.ptycho->positions[random_pos_idx]->LoadFromGPU();
 
-            pie.ptycho->positions[random_pos_idx]->LoadFromGPU();
             const Position off = pie.ptycho->positions[random_pos_idx]->arrays[0]->cpuptr[0];
             const dim3 pos_offset(off.x, off.y, 0);
             obj->CopyRoiTo(obj_box, pos_offset, roishape);
             const float probe_abs2_max = probe->maxAbs2();
             const float obj_abs2_max = obj_box.maxAbs2();
-
-            //get max without going to CPU (will we need this to achieve full scalar???)
-            //maxAbs2<<<(obj_box.size + 1024 - 1) / 1024, 1024>>>(obj_box.gpuptr, obj_abs2_max, obj_box.size);
-            //maxAbs2<<<(probe->size + 1024 - 1) / 1024, 1024>>>(probe->gpuptr, probe_abs2_max, probe->size);
 
             kPieUpdateObject<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
@@ -277,9 +267,6 @@ void PieRun(Pie& pie, int iterations) {
                         iter, iterations, pie.ptycho->cpuerror_rfactor[iter], pie.ptycho->cpuerror_llk[iter], pie.ptycho->cpuerror_mse[iter]));
         }
     }
-
-    //cudaFree(obj_abs2_max);
-    //cudaFree(probe_abs2_max);
 
     auto time1 = sscTime();
     sscInfo(format("End PIE iteration: {} ms", sscDiffTime(time0, time1)));
