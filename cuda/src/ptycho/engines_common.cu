@@ -7,15 +7,14 @@
 #include <common/logger.hpp>
 #include <common/types.hpp>
 #include <cstddef>
-#include <string>
 
 #include "complex.hpp"
 #include "engines_common.hpp"
 #include "operations.hpp"
 #include "spdlog/fmt/bundled/core.h"
 
-constexpr int max_dist = 3;
-constexpr int n_pos_neighbors = max_dist * 8;
+const int max_dist = 3;
+const int n_pos_neighbors = max_dist * 8;
 
 float pos_offx[n_pos_neighbors + 1] = {0};
 float pos_offy[n_pos_neighbors + 1] = {0};
@@ -58,9 +57,6 @@ __global__ void KOffsetSideExitwave(GArray<complex> exitwave,
     const int objposx = idx + (int)positions(idz, 0, 0).x + offx;
     const int objposy = idy + (int)positions(idz, 0, 0).y + offy;
 
-    //const int objposx = int(round(idx + positions(idz, 0, 0).x + offx));
-    //const int objposy = int(round(idy + positions(idz, 0, 0).y + offy));
-
     complex obj = complex(0.0);
     if (objposx >= 0 && objposx < object.shape.x && objposy >= 0 &&
         objposy < object.shape.y) {
@@ -79,16 +75,14 @@ __global__ void KComputeError(float* errors, const GArray<complex> exitwave,
                               const float* background, size_t nummodes, int k) {
     const size_t sherror_size = 64;
     __shared__ float shared_error_rfactor[sherror_size];
-    //__shared__ int shared_error_count[64];
 
     if (threadIdx.x < sherror_size) {
         shared_error_rfactor[threadIdx.x] = 0;
-        //shared_error_count[threadIdx.x] = 0;
     }
     __syncthreads();
 
     const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    const size_t idy = blockIdx.y;  // threadIdx.y + blockIdx.y * blockDim.y;   // <-
+    const size_t idy = blockIdx.y;
     const size_t idz = blockIdx.z;
 
     if (idx >= diffraction_patterns.shape.x) {
@@ -99,22 +93,10 @@ __global__ void KComputeError(float* errors, const GArray<complex> exitwave,
 
     if (diff_pattern >= 0) {
         double wabs2 = 0.0f;
-
         for (int m = 0; m < nummodes; m++) {
             wabs2 += (double) exitwave(idz * nummodes + m, idy, idx).abs2();
         }
-
-        // Compute r-factor error
-        //const float error_rfactor = sq(sqrtf(diff_pattern- sqrtf(wabs2)));
-        //const float error_rfactor = wabs2;
-        //const double diff = sqrt(double(diff_pattern)) - sqrt(double(wabs2));
-        //const float error_rfactor = float(diff * diff);
         const float error_rfactor = sq(diff_pattern - wabs2);
-
-        //printf("KComputeError: %d %lu %lu => %f <==> %f = %f\n",
-                //k, idx, idy, diff_pattern, wabs2, error_rfactor);
-
-        //atomicAdd(shared_error_count + threadIdx.x % 64, 1);
         atomicAdd(shared_error_rfactor + threadIdx.x % sherror_size, error_rfactor);
     }
     __syncthreads();
@@ -126,18 +108,8 @@ __global__ void KComputeError(float* errors, const GArray<complex> exitwave,
         __syncthreads();
     }
 
-    //Reduction::KSharedReduce(shared_error_rfactor, sherror_size);
-
     if (threadIdx.x == 0)
         atomicAdd(errors + idz, shared_error_rfactor[0]);
-
-    //if (threadIdx.x == 0) {
-        //double s = 0.0;
-        //for (int i = 0; i < sherror_size; ++i) {
-            //s += shared_error_rfactor[i];
-        //}
-        //atomicAdd(errors + idz, s);
-    //}
 }
 
 __global__ void KProjectPhiToProbe(const GArray<complex> probe,
@@ -259,14 +231,15 @@ __global__ void KProjectReciprocalSpace(
     GArray<complex> exitwave, const GArray<float> diffraction_patterns,
     float* error_error_rfactor, float* error_error_llk, float* error_error_mse,
     size_t upsample, size_t nummodes, bool isGrad) {
-    __shared__ float shared_error_error_rfactor[64];
-    __shared__ float shared_error_error_llk[64];
-    __shared__ float shared_error_error_mse[64];
+    const size_t sh_error_size = 64;
+    __shared__ float shared_error_rfactor[sh_error_size];
+    __shared__ float shared_error_llk[sh_error_size];
+    __shared__ float shared_error_mse[sh_error_size];
 
-    if (threadIdx.x < 64) {
-        shared_error_error_rfactor[threadIdx.x] = 0;
-        shared_error_error_llk[threadIdx.x] = 0;
-        shared_error_error_mse[threadIdx.x] = 0;
+    if (threadIdx.x < sh_error_size) {
+        shared_error_rfactor[threadIdx.x] = 0;
+        shared_error_llk[threadIdx.x] = 0;
+        shared_error_mse[threadIdx.x] = 0;
     }
 
     __syncthreads();
@@ -299,7 +272,7 @@ __global__ void KProjectReciprocalSpace(
                                          // necessary anymore.
 
         // compute rfactor error
-        atomicAdd(shared_error_error_rfactor + threadIdx.x % 64,
+        atomicAdd(shared_error_rfactor + threadIdx.x % sh_error_size,
                   sq(sqrt_difpad - wabs));
 
         // poisson negative log-likelihood
@@ -317,13 +290,13 @@ __global__ void KProjectReciprocalSpace(
         //           + 0.5*logf(2*3.141592*diff_pattern + eps);
 
         // compute negative llk error
-        atomicAdd(shared_error_error_llk + threadIdx.x % 64, llk);
+        atomicAdd(shared_error_llk + threadIdx.x % sh_error_size, llk);
 
         // compute mse
         float mse =
             fabs(diff_pattern - wabs2) /
             (eps + diffraction_patterns.shape.x * diffraction_patterns.shape.y);
-        atomicAdd(shared_error_error_mse + threadIdx.x % 64, mse);
+        atomicAdd(shared_error_mse + threadIdx.x % sh_error_size, mse);
 
         // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew +
         // ew_a
@@ -361,16 +334,19 @@ __global__ void KProjectReciprocalSpace(
 
     __syncthreads();
 
-    // reduce errors
-    Reduction::KSharedReduce(shared_error_error_rfactor, 64);
-    Reduction::KSharedReduce(shared_error_error_llk, 64);
-    Reduction::KSharedReduce(shared_error_error_mse, 64);
+    for (size_t s = sh_error_size / 2; s > 0; s /= 2) {
+        if (threadIdx.x < s) {
+            shared_error_rfactor[threadIdx.x] += shared_error_rfactor[threadIdx.x + s];
+            shared_error_llk[threadIdx.x] += shared_error_llk[threadIdx.x + s];
+            shared_error_mse[threadIdx.x] += shared_error_mse[threadIdx.x + s];
+        }
+        __syncthreads();
+    }
 
     if (threadIdx.x == 0) {
-        atomicAdd(error_error_rfactor + blockIdx.y,
-                  shared_error_error_rfactor[0]);
-        atomicAdd(error_error_llk + blockIdx.y, shared_error_error_llk[0]);
-        atomicAdd(error_error_mse + blockIdx.y, shared_error_error_mse[0]);
+        atomicAdd(error_error_rfactor + blockIdx.y, shared_error_rfactor[0]);
+        atomicAdd(error_error_llk + blockIdx.y, shared_error_llk[0]);
+        atomicAdd(error_error_mse + blockIdx.y, shared_error_mse[0]);
     }
 }
 }
@@ -470,23 +446,11 @@ __global__ void KPositionCorrection(float* errorcounter, Position* positions,
         }
     }
 
-    const float x = positions[z].x;
-    const float y = positions[z].y;
-    //positions[z].x = fminf(fmaxf(x + d_pos_offx[minidx], 1.1f),
-                           //objshape.x - probeshape.x - 3);
-    //positions[z].y = fminf(fmaxf(y + d_pos_offy[minidx], 1.1f),
-                           //objshape.y - probeshape.y - 3);
+    const float x = positions[z].x, y = positions[z].y;
+    const float offx = d_pos_offx[minidx], offy = d_pos_offy[minidx];
 
-    if (minidx > 0) {
-        printf("\n\n\n errors = %f <> %f\n", error[0], error[batchsize * minidx]);
-        printf("\n(%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f), (%f, %f)",
-                d_pos_offx[0], d_pos_offy[0], d_pos_offx[1], d_pos_offy[1], d_pos_offx[2], d_pos_offy[2], d_pos_offx[3], d_pos_offy[3], d_pos_offx[4], d_pos_offy[4], d_pos_offx[5], d_pos_offy[5], d_pos_offx[6], d_pos_offy[6], d_pos_offx[7], d_pos_offy[7], d_pos_offx[8], d_pos_offy[8]);
-        printf("\nz = %d => %d (%f, %f)\n", z, minidx, d_pos_offx[minidx], d_pos_offy[minidx]);
-    }
-    //minidx = 0;
-
-    positions[z].x = clamp(x + d_pos_offx[minidx], 0.0f, objshape.x);
-    positions[z].y = clamp(y + d_pos_offy[minidx], 0.0f, objshape.y);
+    positions[z].x = clamp(x + offx, 0.0f, objshape.x);
+    positions[z].y = clamp(y + offy, 0.0f, objshape.y);
 
     __syncthreads();
 }
@@ -495,17 +459,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
 
     const dim3 difpadshape = ptycho.diff_pattern_shape;
     rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
-                       false, ptycho.gpus, MemoryType::EAllocCPUGPU);
-
-    {
-        const auto& a = ptycho.cpu_diff_pattern;
-        const string fname = format("difpad_all_{}x{}x{}_float32.raw", 100, 128, 128);
-        FILE* f = fopen(fname.c_str(), "wb");
-        fwrite(a, sizeof(float),
-                100 * 128 * 128,
-                f);
-        fclose(f);
-    }
+                false, ptycho.gpus, MemoryType::EAllocCPUGPU);
 
     const size_t batchsize = ptycho.positions[0]->arrays[0]->sizez;
     const size_t num_batches = PtychoNumBatches(ptycho);
@@ -519,10 +473,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
         cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
         cur_difpad.LoadToGPU(ptycho.cpu_diff_pattern +
                              (difpad_idx * difpadshape.x * difpadshape.y));
-        printf("###################### d = %d difpad_idx = %lu pointer = %p sum = %f\n",
-                d, difpad_idx,
-                ptycho.cpu_diff_pattern + difpad_idx * difpadshape.x * difpadshape.y,
-                cur_difpad.SumGPU());
+
         for (int g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             for (int k = 0; k <= n_pos_neighbors; k++) {
@@ -537,89 +488,39 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                         *ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g],
                         *ptycho.object->arrays[g], ptr_roi, pos_offx[k],
                         pos_offy[k]);
-                     cudaDeviceSynchronize(); // <-
-
-                    ptycho.object->LoadFromGPU();
-                    ptycho.probe->LoadFromGPU();
-                    cur_difpad.LoadFromGPU();
-                    ptycho.wavefront->LoadFromGPU();
-
-                    {
-                        const auto& a = ptycho.wavefront;
-                        const string fname = format("wf_{:03d}_{:02d}_{}x{}x{}_complex64.raw", d, k,
-                                a->sizex, a->sizey, a->sizez);
-                        FILE* f = fopen(fname.c_str(), "wb");
-                        fwrite(a->arrays[0]->cpuptr, 2 * sizeof(float),
-                                a->sizex * a->sizey * a->sizez,
-                                f);
-                        fclose(f);
-                    }
 
                     ptycho.propagator[g]->Propagate(
                         ptycho.wavefront->arrays[g]->gpuptr,
                         ptycho.wavefront->arrays[g]->gpuptr,
                         ptycho.wavefront->arrays[g]->Shape(), 1);
 
-                    ptycho.wavefront->LoadFromGPU();
-
-                    //double mean_wf_x = 0;
-                    //double mean_wf_y = 0;
-
-                    //for (int i = 0; i < 128 * 128; ++i) {
-                        ////printf("\t[%d] = (%lf, %lf)\n", i,
-                                ////ptycho.wavefront->arrays[g]->cpuptr[i].x,
-                                ////ptycho.wavefront->arrays[g]->cpuptr[i].y);
-                        //mean_wf_x += (ptycho.wavefront->arrays[g]->cpuptr[i].x) / (128 * 128);
-                        //mean_wf_y += (ptycho.wavefront->arrays[g]->cpuptr[i].y) / (128 * 128);
-                    //}
-
-                    //const complex mean_wf = complex(mean_wf_x, mean_wf_y);
-                    //const double mean_wf_abs2 = mean_wf.abs2();
-
-
-                    //const complex single_wf = ptycho.wavefront->arrays[g]->cpuptr[0];
-
-                    //printf("\n\n?????????????? (%ld, %ld, %ld)\n\n\n", ptycho.wavefront->sizex, ptycho.wavefront->sizey, ptycho.wavefront->sizez);
-
-                    //const double single_abs2_wf = single_wf.abs2();
-                    //const double mean_difpad = cur_difpad.SumGPU() / (cur_difpad.sizex * cur_difpad.sizey);
-
-                    //printf("\n\n+++++++++++++++++ (%lf %lf) %lf %lf\n", mean_wf.x, mean_wf.y, mean_wf_abs2, mean_difpad);
-                    //printf(">>>>>>>>>>>>>>>>> (%lf %lf) %lf %lf\n\n", single_wf.x, single_wf.y, single_abs2_wf, mean_difpad);
-
                     // compute errors
                     KComputeError<<<blk, thr>>>(
                         ptycho.errorcounter->arrays[g]->gpuptr + batchsize * k,
                         *ptycho.wavefront->arrays[g], *cur_difpad.arrays[g],
                         nullptr, ptycho.probe->sizez, k);
-                     cudaDeviceSynchronize();    // <-
-
-
-                    ptycho.errorcounter->LoadFromGPU();
                 }
 
             }
         }
 
-        ptycho.errorcounter->LoadFromGPU();
-        //printf("error computed: ");
-        //for (int i = 0; i < ptycho.errorcounter->size; ++i) {
-            //printf("%f ", ptycho.errorcounter->arrays[0]->cpuptr[i]);
-        //}
-        //fmt::print("\n");
+        for (int g = 0; g < ngpus; ++g) {
+            SetDevice(ptycho.gpus, g);
+            cudaDeviceSynchronize();
+        }
 
         for (int g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             const size_t batch_size = PtychoCurBatchGpuZsize(ptycho, d, g);
             if (batch_size > 0) {
-                KPositionCorrection<<<batchsize / 256 + (batchsize % 256 > 0),
-                                      256>>>(
+                KPositionCorrection<<<batchsize / 256 + (batchsize % 256 > 0), 256>>>(
                     ptycho.errorcounter->arrays[g]->gpuptr,
                     ptycho.positions[d][0][g].gpuptr, batchsize,
                     ptycho.object->Shape(), ptycho.probe->Shape());
-                 cudaDeviceSynchronize(); // <-
+                cudaDeviceSynchronize();
             }
         }
+
     }
 }
 
@@ -635,7 +536,6 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     if (ptycho.probe_num) delete ptycho.probe_num;
     ptycho.probe_num = nullptr;
 
-    // cudaFreeHost(ptycho.cpu_diff_pattern);
     cudaHostUnregister(ptycho.cpu_diff_pattern);
 
     sscDebug("Deallocating base algorithm.");
