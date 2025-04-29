@@ -308,9 +308,6 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGrad); // propagate, apply measured intensity and unpropagate
 
-                    //normalize inverse cufft output
-                    *current_exit_wave /= float(probeshape.x * probeshape.y);
-
                     k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *previous_exit_wave, ptr_roi, raar.beta);
 
                 }
