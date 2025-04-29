@@ -44,8 +44,8 @@ bool dim3EQ(const dim3& d1, const dim3& d2) {
     return d1.x == d2.x && d1.y == d2.y && d1.z == d2.z;
 }
 
-void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape,
-                            float amount, cudaStream_t stream) {
+void Fraunhoffer::FFT(complex* owave, complex* iwave,
+        dim3 shape, float amount, cudaStream_t stream) {
     std::vector<dim3>& dims = st_dims[stream];
     std::vector<cufftHandle>& plans = st_plans[stream];
 
@@ -65,6 +65,22 @@ void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape,
         plan = plans.back();
     }
     sscCufftCheck(cufftExecC2C(plan, iwave, owave, dir));
+}
+
+void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape,
+                            float amount, cudaStream_t stream) {
+    const dim3 blk((shape.x + 127) / 128, shape.y, shape.z);
+    const dim3 thr(128, 1, 1);
+
+    if (amount < 0) { // backward
+        BasicOps::KFFTshift2<<<blk, thr, 0, stream>>>(iwave, shape.x, shape.y);
+        FFT(owave, iwave, shape, amount, stream);
+        BasicOps::KB_Div<<<blk, thr, 0, stream>>>(owave, float(shape.x) * float(shape.y),
+            size_t(shape.x) * size_t(shape.y) * size_t(shape.z));
+    } else if (amount > 0) { // forward
+        FFT(owave, iwave, shape, amount, stream);
+        BasicOps::KFFTshift2<<<blk, thr, 0, stream>>>(owave, shape.x, shape.y);
+    }
 }
 
 Fraunhoffer::~Fraunhoffer() {
@@ -94,17 +110,29 @@ __global__ void KApplyASM(complex* wave, float fresnel_number, dim3 shape) {
         float(shape.x * shape.y);
 }
 
-ASM::ASM(float wavelength, float pixelsize_m)
-    : wavelength_m(wavelength_m), pixelsize_m(pixelsize_m) {}
+__global__ void KApplyPhaseShift(complex* wave, float distance_m, float wavelength_m, dim3 shape) {
+    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    size_t idy = blockIdx.y;
+    size_t idz = blockIdx.z;
+
+    if (idx >= shape.x) return;
+
+    const float k = (M_2_PI / wavelength_m);
+    wave[idz * shape.y * shape.x + idy * shape.x + idx] *= complex::exp1j(k * distance_m);
+}
+
+ASM::ASM(float _wavelength_m, float _pixelsize_m)
+    : wavelength_m(_wavelength_m), pixelsize_m(_pixelsize_m) {}
 
 void ASM::Propagate(complex* owave, complex* iwave, dim3 shape,
                     float distance_m, cudaStream_t stream) {
-    const float fresnel_number =
-        (pixelsize_m * pixelsize_m) / wavelength_m / distance_m;
-    Fraunhoffer::Propagate(owave, iwave, shape, 1, stream);
+    const float fresnel_number = float(pixelsize_m * pixelsize_m) / float(wavelength_m * distance_m);
     const dim3 blk((shape.x + 127) / 128, shape.y, shape.z);
     const dim3 thr(128, 1, 1);
+
+    FFT(owave, iwave, shape, 1, stream);
     KApplyASM<<<blk, thr, 0, stream>>>(owave, fresnel_number, shape);
-    Fraunhoffer::Propagate(owave, owave, shape, -1, stream);
+    FFT(owave, owave, shape, -1, stream);
+    KApplyPhaseShift<<<blk, thr, 0, stream>>>(owave, distance_m, wavelength_m, shape);
 }
 }

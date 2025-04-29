@@ -1154,9 +1154,9 @@ struct MImage : public MultiGPU {
         return s;
     }
 
-    void FFTShift1() { MGPULOOP(arrays[g]->FFTShift1();); }
-    void FFTShift2() { MGPULOOP(arrays[g]->FFTShift2();); }
-    void FFTShift3() { MGPULOOP(arrays[g]->FFTShift3();); }
+    void FFTShift1(cudaStream_t st = 0) { MGPULOOP(arrays[g]->FFTShift1(st);); }
+    void FFTShift2(cudaStream_t st = 0) { MGPULOOP(arrays[g]->FFTShift2(st);); }
+    void FFTShift3(cudaStream_t st = 0) { MGPULOOP(arrays[g]->FFTShift3(st);); }
 
     Type max() {
         Type m = std::numeric_limits<Type>::lowest();

@@ -37,6 +37,9 @@ public:
     std::unordered_map<cudaStream_t, std::vector<dim3>> st_dims;
     std::unordered_map<cudaStream_t, std::vector<cufftHandle>> st_plans;
 
+    void FFT(complex* owave, complex* iwave,
+        dim3 shape, float amount, cudaStream_t stream);
+
     virtual void Propagate(complex* owave, complex* iwave,
             dim3 shape, float amount, cudaStream_t st = 0) override;
 
