@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog version 0.Y.Z &mdash; ssc-cdi 0.14.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/my_theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="prev" title="4. Changelog" href="../changelog.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ssc-cdi
+          </a>
+              <div class="version">
+                0.14.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">1. Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">2. Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api.html">3. API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../changelog.html">4. Changelog</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../changelog.html#version-0-14-2-2024-12-17">Version 0.14.2 - 2024-12-17</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../changelog.html#version-0-14-1-2024-11-26">Version 0.14.1 - 2024-11-26</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../changelog.html#previous-releases">Previous releases</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Changelog version 0.Y.Z</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-14-0-2024-10-23">Version 0.14.0 - 2024-10-23</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-5-2024-10-01">Version 0.13.5 - 2024-10-01</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-4-2024-09-27">Version 0.13.4 - 2024-09-27</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-3-2024-09-26">Version 0.13.3 - 2024-09-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-2-2024-09-26">Version 0.13.2 - 2024-09-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-1-2024-09-20">Version 0.13.1 - 2024-09-20</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-13-0-2024-09-19">Version 0.13.0 - 2024-09-19</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-12-0-2024-09-19">Version 0.12.0 - 2024-09-19</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-11-2-2024-08-27">Version 0.11.2 - 2024-08-27</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-11-1-2024-08-01">Version 0.11.1 - 2024-08-01</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-11-0-2024-07-31">Version 0.11.0 - 2024-07-31</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-10-2-2024-07-18">Version 0.10.2 - 2024-07-18</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-10-1-2024-06-28">Version 0.10.1 - 2024-06-28</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-10-0-2024-06-20">Version 0.10.0 - 2024-06-20</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-6-2024-05-29">Version 0.9.6 - 2024-05-29</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-5-2024-05-29">Version 0.9.5 - 2024-05-29</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-4-2024-05-16">Version 0.9.4 - 2024-05-16</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-3-2024-05-08">Version 0.9.3 - 2024-05-08</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-2-2024-05-02">Version 0.9.2 - 2024-05-02</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1">Version 0.9.2 - 2024-05-02</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-1-2024-04-08">Version 0.9.1 - 2024-04-08</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-9-0-2024-04-05">Version 0.9.0 - 2024-04-05</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-8-10-2024-03-26">Version 0.8.10 - 2024-03-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-17-2024-03-26">Version 0.7.17 - 2024-03-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-16-2024-03-26">Version 0.7.16 - 2024-03-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-15-2024-03-26">Version 0.7.15 - 2024-03-26</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-14-2024-03-01">Version 0.7.14 - 2024-03-01</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-13-2024-02-21">Version 0.7.13 - 2024-02-21</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-12-2024-02-21">Version 0.7.12 - 2024-02-21</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-11-2024-02-19">Version 0.7.11 - 2024-02-19</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-1-2024-02-09">Version 0.7.1 - 2024-02-09</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-7-0-2024-02-08">Version 0.7.0 - 2024-02-08</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-39-2024-01-16">Version 0.6.39 - 2024-01-16</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-38-2024-01-05">Version 0.6.38 - 2024-01-05</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-37-2023-12-06">Version 0.6.37 - 2023-12-06</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-36-2023-11-28">Version 0.6.36 - 2023-11-28</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-35-2023-11-22">Version 0.6.35 - 2023-11-22</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-34-2023-11-17">Version 0.6.34 - 2023-11-17</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-33-2023-11-10">Version 0.6.33 - 2023-11-10</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-32-2023-08-31">Version 0.6.32 - 2023-08-31</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-31-2023-08-30">Version 0.6.31 - 2023-08-30</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-30-2023-08-28">Version 0.6.30 - 2023-08-28</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-29-2023-08-25">Version 0.6.29 - 2023-08-25</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-28-2023-08-22">Version 0.6.28 - 2023-08-22</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-27-2023-08-22">Version 0.6.27 - 2023-08-22</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-26-2023-08-21">Version 0.6.26 - 2023-08-21</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-25-2023-08-08">Version 0.6.25 - 2023-08-08</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-24-2023-08-08">Version 0.6.24 - 2023-08-08</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-23-2023-08-02">Version 0.6.23 - 2023-08-02</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-22-2023-07-24">Version 0.6.22 - 2023-07-24</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-21-2023-07-19">Version 0.6.21 - 2023-07-19</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-20-2023-07-11">Version 0.6.20 - 2023-07-11</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-19-2023-07-07">Version 0.6.19 - 2023-07-07</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-18-2023-07-05">Version 0.6.18 - 2023-07-05</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-17-2023-07-03">Version 0.6.17 - 2023-07-03</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-16-2023-06-29">Version 0.6.16 - 2023-06-29</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-15-2023-06-22">Version 0.6.15 - 2023-06-22</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-14-2023-06-21">Version 0.6.14 - 2023-06-21</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-13-2023-06-16">Version 0.6.13 - 2023-06-16</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-12-2023-06-07">Version 0.6.12 - 2023-06-07</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-11-2023-06-06">Version 0.6.11 - 2023-06-06</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-6-10-2023-06-05">Version 0.6.10 - 2023-06-05</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-5-13-2023-05-29">Version 0.5.13 - 2023-05-29</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-5-12-2023-05-29">Version 0.5.12 - 2023-05-29</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-5-11-2023-05-25">Version 0.5.11 - 2023-05-25</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-5-10-2023-05-16">Version 0.5.10 - 2023-05-16</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-4-16-2023-03-07">Version 0.4.16 - 2023-03-07</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#version-0-4-15-2023-03-06">Version 0.4.15 - 2023-03-06</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ssc-cdi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../changelog.html"><span class="section-number">4. </span>Changelog</a></li>
+      <li class="breadcrumb-item active">Changelog version 0.Y.Z</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/source/previous_versions/changelog_v0.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="changelog-version-0-y-z">
+<span id="logv0"></span><h1>Changelog version 0.Y.Z<a class="headerlink" href="#changelog-version-0-y-z" title="Permalink to this heading"></a></h1>
+<section id="version-0-14-0-2024-10-23">
+<h2>Version 0.14.0 - 2024-10-23<a class="headerlink" href="#version-0-14-0-2024-10-23" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Bug fixes for use of different initial guesses for object and probe</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Renamed Python function in ptycho engines for better understanding</p></li>
+<li><p>Variable renaming in python codes and input dictionary</p></li>
+<li><p>Variable renaming in CUDA codes for better understanding</p></li>
+<li><p>Python and CUDA modules renamed to follow a similar standard</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>New RAAR option in CUDA storing temporary wavefront in CPU when not enough VRAM is available</p></li>
+<li><p>New loglikelihood and MSE error metrics in Python engines</p></li>
+<li><p>Added Fourier Power Bound variable to Ptycho python engines</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-5-2024-10-01">
+<h2>Version 0.13.5 - 2024-10-01<a class="headerlink" href="#version-0-13-5-2024-10-01" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Bug fix of slice_visualizer for jupyter notebooks. Vmax and Vmin inputs should be working as well as the colorbar</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-4-2024-09-27">
+<h2>Version 0.13.4 - 2024-09-27<a class="headerlink" href="#version-0-13-4-2024-09-27" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added creation of hdf5 output folder path if needed</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-3-2024-09-26">
+<h2>Version 0.13.3 - 2024-09-26<a class="headerlink" href="#version-0-13-3-2024-09-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added functions to check data types before ptychography</p></li>
+<li><p>Added function to randomly remove scan points from positions and data arrays if wanted</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-2-2024-09-26">
+<h2>Version 0.13.2 - 2024-09-26<a class="headerlink" href="#version-0-13-2-2024-09-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Refactor of CUDA codes. Removed unused varialbes, renamed variables to more intuitive names and merged some functionality.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bugs when calling main ptychography function in Python</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added functions to bin data in the ptychography pipeline.</p></li>
+<li><p>Added function to check input dictionary for missing keys and use default values for them, if needed</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-1-2024-09-20">
+<h2>Version 0.13.1 - 2024-09-20<a class="headerlink" href="#version-0-13-1-2024-09-20" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Changed cupy dependency to be cupy==12.0</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-13-0-2024-09-19">
+<h2>Version 0.13.0 - 2024-09-19<a class="headerlink" href="#version-0-13-0-2024-09-19" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Initial merge of the 3d planewave CDI code.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-12-0-2024-09-19">
+<h2>Version 0.12.0 - 2024-09-19<a class="headerlink" href="#version-0-12-0-2024-09-19" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Removed restoration module and beamline specific codes (pipelines) from sscCdi. These are now part of the ssc-cdi-apps package.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-11-2-2024-08-27">
+<h2>Version 0.11.2 - 2024-08-27<a class="headerlink" href="#version-0-11-2-2024-08-27" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for PIE when considering incoherent_modes <code class="docutils literal notranslate"><span class="pre">&gt;</span> <span class="pre">1</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-11-1-2024-08-01">
+<h2>Version 0.11.1 - 2024-08-01<a class="headerlink" href="#version-0-11-1-2024-08-01" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for corrected positions coming out of AP_CUDA engine</p></li>
+<li><p>Temporary fix for missing source_distance key in input dictionary</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-11-0-2024-07-31">
+<h2>Version 0.11.0 - 2024-07-31<a class="headerlink" href="#version-0-11-0-2024-07-31" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added Maximum likelihood algorithm for Ptychography in python using Cupy. It optimizes either with gradient descent or conjugate gradient.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-10-2-2024-07-18">
+<h2>Version 0.10.2 - 2024-07-18<a class="headerlink" href="#version-0-10-2-2024-07-18" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Changed slice visualizer function for CAT tomo pipeline</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-10-1-2024-06-28">
+<h2>Version 0.10.1 - 2024-06-28<a class="headerlink" href="#version-0-10-1-2024-06-28" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Removed Sigmask parameter</p></li>
+<li><p>Removed Background paramater</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-10-0-2024-06-20">
+<h2>Version 0.10.0 - 2024-06-20<a class="headerlink" href="#version-0-10-0-2024-06-20" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added option for initial guess using model of a Fresnel Zone Plate</p></li>
+<li><p>A module of user friendly plots has been added to Ptychography</p></li>
+<li><p>Added option to use restored flatfield and mask in CAT ptycho pipeline</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>New version of input dictionary. Calls have been organized and simplified</p></li>
+<li><p>Unification of Python and CUDA algorithms</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Documentation</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Part of the documentation has been updated</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-6-2024-05-29">
+<h2>Version 0.9.6 - 2024-05-29<a class="headerlink" href="#version-0-9-6-2024-05-29" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added optional input to cat_restoration, to choose the scaling parameter for the PIMEGA detector.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-5-2024-05-29">
+<h2>Version 0.9.5 - 2024-05-29<a class="headerlink" href="#version-0-9-5-2024-05-29" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added simple interactive function in misc for selecting equalization mask</p></li>
+<li><p>Added equalization by gradient descent method</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Refactored tomo processing functions, mostly changing the calls from a dic input to a direct input call</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-4-2024-05-16">
+<h2>Version 0.9.4 - 2024-05-16<a class="headerlink" href="#version-0-9-4-2024-05-16" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Prototype for using probe from previous ptycho run in new one to improve reconstruction</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-3-2024-05-08">
+<h2>Version 0.9.3 - 2024-05-08<a class="headerlink" href="#version-0-9-3-2024-05-08" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Changed the routine for reading probe positions in EMA pipeline</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-2-2024-05-02">
+<h2>Version 0.9.2 - 2024-05-02<a class="headerlink" href="#version-0-9-2-2024-05-02" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Alternative method for equalization using non-continuos mask</p></li>
+<li><p>Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="id1">
+<h2>Version 0.9.2 - 2024-05-02<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Alternative method for equalization using non-continuos mask</p></li>
+<li><p>Calculation of phase derivative via hilbert transform for Backprojection without phase unwrapping</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-1-2024-04-08">
+<h2>Version 0.9.1 - 2024-04-08<a class="headerlink" href="#version-0-9-1-2024-04-08" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed initial guess for probe modes for RAAR_python. Secondary modes are random arrays between 0 and 1.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-9-0-2024-04-05">
+<h2>Version 0.9.0 - 2024-04-05<a class="headerlink" href="#version-0-9-0-2024-04-05" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>New nearfield ptychography pipeline for Mogno</p></li>
+<li><p>C++/CUDA codes from sscPtycho were migrated to sscCdi</p></li>
+<li><p>CUDA implementation of ePIE algorithm (single GPU only)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Bug fixes for Fresnel Ptychography python codes</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-8-10-2024-03-26">
+<h2>Version 0.8.10 - 2024-03-26<a class="headerlink" href="#version-0-8-10-2024-03-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Documentation</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Releasing new major version due to reestructuring of package from version 0.7.15</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-17-2024-03-26">
+<h2>Version 0.7.17 - 2024-03-26<a class="headerlink" href="#version-0-7-17-2024-03-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed missing imports of CNB pipeline after refactoring in version 0.7.15</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-16-2024-03-26">
+<h2>Version 0.7.16 - 2024-03-26<a class="headerlink" href="#version-0-7-16-2024-03-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed ePIE and RAAR python wrappers for correct algorithm call with new Fresnel propagator</p></li>
+<li><p>Fixed missing imports after refactoring in version 0.7.15</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-15-2024-03-26">
+<h2>Version 0.7.15 - 2024-03-26<a class="headerlink" href="#version-0-7-15-2024-03-26" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Restructured package modules, separating beamline specific code into the beamline modules</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Removed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Removed dependencies of ssc packages that are pipeline specific. The only dependency that remains in from sscPtycho, which shall be incorporated into sscCdi into the future.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-14-2024-03-01">
+<h2>Version 0.7.14 - 2024-03-01<a class="headerlink" href="#version-0-7-14-2024-03-01" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Removed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Removed CI/CD for power architecture</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added fresnel cone-beam propagator to Python version of RAAR. Fresnel ptychography working in this cases for simulated samples.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-13-2024-02-21">
+<h2>Version 0.7.13 - 2024-02-21<a class="headerlink" href="#version-0-7-13-2024-02-21" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Removed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Remove dev alignment files</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-12-2024-02-21">
+<h2>Version 0.7.12 - 2024-02-21<a class="headerlink" href="#version-0-7-12-2024-02-21" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added EMA crop routine</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-11-2024-02-19">
+<h2>Version 0.7.11 - 2024-02-19<a class="headerlink" href="#version-0-7-11-2024-02-19" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added upgrades to CAT tomography pipeline.</p></li>
+<li><p>The alignment functions (Cross corerlation and Vertical mass fluctuation) were removed from ssc-cdi and transferred to ssc-raft.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-1-2024-02-09">
+<h2>Version 0.7.1 - 2024-02-09<a class="headerlink" href="#version-0-7-1-2024-02-09" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Reading probe positions bug fixed</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-7-0-2024-02-08">
+<h2>Version 0.7.0 - 2024-02-08<a class="headerlink" href="#version-0-7-0-2024-02-08" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Python implementation of ePie and RAAR algorithms in cupy</p></li>
+<li><p>EMA beamline pipeline implementation</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-39-2024-01-16">
+<h2>Version 0.6.39 - 2024-01-16<a class="headerlink" href="#version-0-6-39-2024-01-16" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Rectangular final object</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-38-2024-01-05">
+<h2>Version 0.6.38 - 2024-01-05<a class="headerlink" href="#version-0-6-38-2024-01-05" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Optimized combine and save final file routines</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-37-2023-12-06">
+<h2>Version 0.6.37 - 2023-12-06<a class="headerlink" href="#version-0-6-37-2023-12-06" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Option to use initial probes and objects from previous ptychography</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-36-2023-11-28">
+<h2>Version 0.6.36 - 2023-11-28<a class="headerlink" href="#version-0-6-36-2023-11-28" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Add option to do not use gradient when using alignment variance field</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-35-2023-11-22">
+<h2>Version 0.6.35 - 2023-11-22<a class="headerlink" href="#version-0-6-35-2023-11-22" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed initial object does not need to be frame zero and supressed output for corrected positions from ptycho function and save volumes function</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-34-2023-11-17">
+<h2>Version 0.6.34 - 2023-11-17<a class="headerlink" href="#version-0-6-34-2023-11-17" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed incoherent modes bug</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Save final positions when using position correction algorithm</p></li>
+<li><p>New function to remove bad frames anywhere in tomography pipeline</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-33-2023-11-10">
+<h2>Version 0.6.33 - 2023-11-10<a class="headerlink" href="#version-0-6-33-2023-11-10" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed wrong file index when running ptycho for selected projections</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-32-2023-08-31">
+<h2>Version 0.6.32 - 2023-08-31<a class="headerlink" href="#version-0-6-32-2023-08-31" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added scripts for tomo and tif convertion for running with sbatch</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-31-2023-08-30">
+<h2>Version 0.6.31 - 2023-08-30<a class="headerlink" href="#version-0-6-31-2023-08-30" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Required installation packages and update of documentation</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-30-2023-08-28">
+<h2>Version 0.6.30 - 2023-08-28<a class="headerlink" href="#version-0-6-30-2023-08-28" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Documentation</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Updated documentation pages</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-29-2023-08-25">
+<h2>Version 0.6.29 - 2023-08-25<a class="headerlink" href="#version-0-6-29-2023-08-25" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Documentation</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added missing documentation</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-28-2023-08-22">
+<h2>Version 0.6.28 - 2023-08-22<a class="headerlink" href="#version-0-6-28-2023-08-22" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for missing save folder path when performing restoration via IO mode</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-27-2023-08-22">
+<h2>Version 0.6.27 - 2023-08-22<a class="headerlink" href="#version-0-6-27-2023-08-22" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for correcting file reading when performing restoration via IO mode</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-26-2023-08-21">
+<h2>Version 0.6.26 - 2023-08-21<a class="headerlink" href="#version-0-6-26-2023-08-21" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for correcting DP dimension when performing restoration via IO mode</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-25-2023-08-08">
+<h2>Version 0.6.25 - 2023-08-08<a class="headerlink" href="#version-0-6-25-2023-08-08" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for correctly saving ordered angles file</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-24-2023-08-08">
+<h2>Version 0.6.24 - 2023-08-08<a class="headerlink" href="#version-0-6-24-2023-08-08" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug when reading angles indices for the cases where ptychography had to be restarted from an intermediate frames</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added new alignment options (Cross Correlation and Vertical Mass Fluctuation) for tomography pipeline, according to <a class="reference external" href="https://doi.org/10.1364/OE.27.036637">https://doi.org/10.1364/OE.27.036637</a></p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-23-2023-08-02">
+<h2>Version 0.6.23 - 2023-08-02<a class="headerlink" href="#version-0-6-23-2023-08-02" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug when reading files for specific projections in restoration and ptycho routines</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-22-2023-07-24">
+<h2>Version 0.6.22 - 2023-07-24<a class="headerlink" href="#version-0-6-22-2023-07-24" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Commented PtyPy imports for now. Need to update Python version to 3.9 in all cluster machines before making it fully available.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-21-2023-07-19">
+<h2>Version 0.6.21 - 2023-07-19<a class="headerlink" href="#version-0-6-21-2023-07-19" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Changes to tomo_processing for using new version 2.2.0 of sscRaft with FBP and EM without regular angles</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed angle conversion for degrees to radians for tomography</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-20-2023-07-11">
+<h2>Version 0.6.20 - 2023-07-11<a class="headerlink" href="#version-0-6-20-2023-07-11" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Included wrapper and script for running reconstruction with Ptypy using Caterete data. Only single 2D reconstruction possible for now.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-19-2023-07-07">
+<h2>Version 0.6.19 - 2023-07-07<a class="headerlink" href="#version-0-6-19-2023-07-07" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed count of files when doing ptycho from multiple datafolders for determining sinogram dimension</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-18-2023-07-05">
+<h2>Version 0.6.18 - 2023-07-05<a class="headerlink" href="#version-0-6-18-2023-07-05" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added option to skip cropping of the diffraction pattern when restoring DP without CUDA</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-17-2023-07-03">
+<h2>Version 0.6.17 - 2023-07-03<a class="headerlink" href="#version-0-6-17-2023-07-03" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added new dynamic plotting function to preview both magnitude and phase</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Saving also angles, positions and errors after each iteration and combining them into single volume at output hdf5 file at the end.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-16-2023-06-29">
+<h2>Version 0.6.16 - 2023-06-29<a class="headerlink" href="#version-0-6-16-2023-06-29" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added new feature to load already restored .npy flatfield. It also does the forward restoration of the flatfield.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-15-2023-06-22">
+<h2>Version 0.6.15 - 2023-06-22<a class="headerlink" href="#version-0-6-15-2023-06-22" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug when for correctly determining sinogram size when running ptycho reconstructions for all frames, that is, with projections = []</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-14-2023-06-21">
+<h2>Version 0.6.14 - 2023-06-21<a class="headerlink" href="#version-0-6-14-2023-06-21" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added binning strategies after restoration for CATERETE</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-13-2023-06-16">
+<h2>Version 0.6.13 - 2023-06-16<a class="headerlink" href="#version-0-6-13-2023-06-16" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for clearing multiple open hdf5 files that were not correctly closed by the Pimega backend via h5clear -s command</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-12-2023-06-07">
+<h2>Version 0.6.12 - 2023-06-07<a class="headerlink" href="#version-0-6-12-2023-06-07" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bug for correctly counting number of frames when doing ptychography for CAT using multiple data folders</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-11-2023-06-06">
+<h2>Version 0.6.11 - 2023-06-06<a class="headerlink" href="#version-0-6-11-2023-06-06" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Restructured functions in files for unified restoration between CNB and CAT</p></li>
+<li><p>Added option for subtraction mask</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Fixed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Fixed bugs in restoration functions</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-6-10-2023-06-05">
+<h2>Version 0.6.10 - 2023-06-05<a class="headerlink" href="#version-0-6-10-2023-06-05" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Merged codes for Ptychography both at CATERETE and CARNAUBA beamlines</p></li>
+<li><p>Changed input options for probe support</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-5-13-2023-05-29">
+<h2>Version 0.5.13 - 2023-05-29<a class="headerlink" href="#version-0-5-13-2023-05-29" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added option to apply flatfield in CAT ptycho after restoration</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-5-12-2023-05-29">
+<h2>Version 0.5.12 - 2023-05-29<a class="headerlink" href="#version-0-5-12-2023-05-29" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Added system call to h5clear hdf5 file prior to restoration call</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-5-11-2023-05-25">
+<h2>Version 0.5.11 - 2023-05-25<a class="headerlink" href="#version-0-5-11-2023-05-25" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Fixed</p></li>
+</ul>
+<ul class="simple">
+<li><p>Fixed bug for reading username from system when sending jobs to cluster</p></li>
+</ul>
+</section>
+<section id="version-0-5-10-2023-05-16">
+<h2>Version 0.5.10 - 2023-05-16<a class="headerlink" href="#version-0-5-10-2023-05-16" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Refactored code with new folder structure and modules</p></li>
+<li><p>Major changes to functions and code cleanup</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p>Added</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>CUDA restoration for single and multiple acquisitions</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="version-0-4-16-2023-03-07">
+<h2>Version 0.4.16 - 2023-03-07<a class="headerlink" href="#version-0-4-16-2023-03-07" title="Permalink to this heading"></a></h2>
+<ul class="simple">
+<li><p>Added variable to input that can increase ptycho object size by padding</p></li>
+<li><p>Bugfixes</p></li>
+</ul>
+</section>
+<section id="version-0-4-15-2023-03-06">
+<h2>Version 0.4.15 - 2023-03-06<a class="headerlink" href="#version-0-4-15-2023-03-06" title="Permalink to this heading"></a></h2>
+<ul>
+<li><p>Changed</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Changed number of possible GPUs for CAT interfaces for 5 at Cluster and 6 at Local since restructuring of the machines</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../changelog.html" class="btn btn-neutral float-left" title="4. Changelog" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sirius Scientific Computing Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

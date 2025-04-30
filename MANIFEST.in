@@ -1,5 +1,6 @@
 include sscCdi/*
-recursive-include cuda *.*
+recursive-include cuda/ * #on source dist
 recursive-include docs *.txt
 include *.txt
+include *.rst
 

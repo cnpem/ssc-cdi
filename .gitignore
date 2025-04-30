@@ -1,12 +1,5 @@
 *.whl
 *.so
-docs/*
-!docs/doxyconf
-!docs/io.log
-!docs/Makefile
-!docs/README.md
-!docs/source/
-!docs/requirements.txt
 **/__pycache__/
 dist/*
 build/*

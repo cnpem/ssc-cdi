@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>1. Install &mdash; ssc-cdi 0.14.2 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/my_theme.css" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="2. Usage" href="tutorial.html" />
+    <link rel="prev" title="Welcome to sscCdi documentation!" href="../index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ssc-cdi
+          </a>
+              <div class="version">
+                0.14.2
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">1. Install</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#github">GITHUB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#source-code-from-zenodo">Source code from Zenodo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pip">PIP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gitlab">GITLAB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory">Memory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uninstall">Uninstall</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">2. Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">3. API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">4. Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ssc-cdi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">1. </span>Install</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/source/install.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="install">
+<h1><span class="section-number">1. </span>Install<a class="headerlink" href="#install" title="Permalink to this heading"></a></h1>
+<p>This package uses <code class="docutils literal notranslate"><span class="pre">C</span></code>, <code class="docutils literal notranslate"><span class="pre">C++</span></code>, <code class="docutils literal notranslate"><span class="pre">CUDA</span></code> and <code class="docutils literal notranslate"><span class="pre">Python3</span></code>.
+Before installation, you will need the following packages installed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">10.0.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C++</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">&gt;=</span> <span class="pre">3.8.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PIP</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">libcurl4-openssl-dev</span></code></p></li>
+</ul>
+<p>This package supports nvidia <code class="docutils literal notranslate"><span class="pre">GPUs</span></code> with capabilities <code class="docutils literal notranslate"><span class="pre">7.0</span></code> or superior and a compiler with support to <code class="docutils literal notranslate"><span class="pre">c++17</span></code>.</p>
+<p>See bellow for build requirements and dependencies.</p>
+<p>The library sscCdi can be installed from the source code at <a class="reference external" href="https://zenodo.org/">zenodo website</a>, by our public github or by <code class="docutils literal notranslate"><span class="pre">pip</span></code>/ <code class="docutils literal notranslate"><span class="pre">gitlab</span></code>
+if inside the CNPEM network. More information on the <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> package on
+<a class="reference external" href="https://gcc.lnls.br/wiki/docs/ssc-cdi/">sscCdi website</a>
+available inside the CNPEM network.</p>
+<section id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> package information can be found on the <a class="reference external" href="https://gcc.lnls.br/wiki/docs/ssc-cdi/">sscCdi website</a> inside the CNEPM network.
+Also, the <cite>HTML</cite> documentation can be found in the source directory <cite>./docs/build/index.html</cite> and can be opened in your preferred brownser.</p>
+</section>
+<section id="github">
+<h2>GITHUB<a class="headerlink" href="#github" title="Permalink to this heading"></a></h2>
+<p>The latest package version can be cloned from our public <a class="reference external" href="https://github.com/cnpem/ssc-cdi/">github</a> repository and installed locally with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>To install a specific version (<code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code>), one can use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w">  </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>Example, to install version 0.14.2:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+</section>
+<section id="source-code-from-zenodo">
+<h2>Source code from Zenodo<a class="headerlink" href="#source-code-from-zenodo" title="Permalink to this heading"></a></h2>
+<p>The source code can be downloaded from <a class="reference external" href="https://zenodo.org/">zenodo website</a> under the
+DOI: <a class="reference external" href="https://doi.org/10.5281/zenodo.13693177">10.5281/zenodo.13693177</a>. On the left panel, one can find
+the available versions. Select the version want and download the <code class="docutils literal notranslate"><span class="pre">ssc-cdi.tar.gz</span></code> with the source files,
+one can decompress by</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>-xvf<span class="w"> </span>ssc-cdi.tar.gz
+</pre></div>
+</div>
+<p>To compile the source files, enter the following command inside the folder</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+</section>
+<section id="pip">
+<h2>PIP<a class="headerlink" href="#pip" title="Permalink to this heading"></a></h2>
+<p>One can install the latest version of sscCdi directly from our <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">server</span></code> inside the CNPEM network.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This installation option is available only inside the CNPEM network.</p>
+</div>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">sscCdi</span><span class="o">==</span>version<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
+</pre></div>
+</div>
+<p>Where <code class="docutils literal notranslate"><span class="pre">version</span></code> is the version number of the <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code>. Example:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">sscCdi</span><span class="o">==</span><span class="m">0</span>.14.2<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
+</pre></div>
+</div>
+</section>
+<section id="gitlab">
+<h2>GITLAB<a class="headerlink" href="#gitlab" title="Permalink to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>For this installation option is available only inside the CNPEM network.</p>
+</div>
+<p>The latest package version can be cloned from CNPEM’s <a class="reference external" href="https://gitlab.cnpem.br/">gitlab</a> and installed locally with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/GCC/ssc-cdi.git
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>To install a specific version (<code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code>), one can use:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w">  </span>https://gitlab.cnpem.br/GCC/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>Example, to install version 0.14.2:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/GCC/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+</section>
+<section id="memory">
+<h2>Memory<a class="headerlink" href="#memory" title="Permalink to this heading"></a></h2>
+<p>Be careful using GPU functions due to memory allocation.</p>
+</section>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this heading"></a></h2>
+<p>Before installation, you will need to have the following packages installed:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">10.0.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C++</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">&gt;=</span> <span class="pre">3.8.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PIP</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">libcurl4-openssl-dev</span></code></p></li>
+</ul>
+<p>The build requirements are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CUBLAS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CUFFT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PTHREADS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE&gt;=3.10</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scikit-build&gt;=0.17.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">setuptools&gt;=64.0.0</span></code></p></li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">Python3</span></code> dependencies are:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">numpy</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scikit-image</span> <span class="pre">&gt;=0.19.3</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scipy</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">matplotlib</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uuid</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">h5py</span></code></p></li>
+</ul>
+</section>
+<section id="uninstall">
+<h2>Uninstall<a class="headerlink" href="#uninstall" title="Permalink to this heading"></a></h2>
+<p>To uninstall <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> use the command</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>uninstall<span class="w"> </span>sscCdi
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to sscCdi documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tutorial.html" class="btn btn-neutral float-right" title="2. Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sirius Scientific Computing Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
