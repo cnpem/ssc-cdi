@@ -12,7 +12,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../..')) # add scripts folder
+sys.path.insert(0, os.path.abspath('../')) # add scripts folder
 
 
 # -- Project information -----------------------------------------------------
@@ -21,9 +21,6 @@ project = 'ssc-cdi'
 copyright = '2024, Sirius Scientific Computing Group'
 author = 'Sirius Scientific Computing Group'
 
-# The full version, including alpha/beta/rc tags
-release = '0.10.0'
-
 # -- General configuration ---------------------------------------------------
 
 autodoc_mock_imports = [
@@ -31,6 +28,13 @@ autodoc_mock_imports = [
     "SharedArray", "numpy", "h5py", "tqdm", "matplotlib",
     "IPython", "scipy", "skimage", "sscRaft"
 ] # Add any other dependencies causing issues
+
+env = {}
+with open('../sscCdi/_version.py') as f:
+    # far from ideal solution, but works as long as _version is a simple assignment script
+    exec(f.read(), env)
+
+version = release = env['__version__']
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -48,10 +52,14 @@ breathe: used together with doxygen. After using doxygen for generate
 documentation in xml for other languages rather than python, breathe reads
 the xml files and generates the project documentation.
 """
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon',
-'sphinx_rtd_theme',
-# 'breathe', # problem when compiling using breathe!
-# 'exhale'
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',
+    'sphinx_rtd_theme',
+    'myst_parser'
+    # 'breathe', # problem when compiling using breathe!
+    # 'exhale'
 ]
 
 
@@ -102,10 +110,11 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = 'sphinx_rtd_theme'
+html_style = 'css/my_theme.css'
 # html_theme = 'alabaster'
 
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ['_static']
