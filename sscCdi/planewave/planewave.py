@@ -5,49 +5,49 @@ import time
 import ctypes
 from   ctypes import c_void_p  as void_p
 
-from ..cditypes_planewave import *
+from ..cditypes import *
 
 
 def subformat_shuffle(data, num_gpus):
-  """
-  @brief Rearranges a 2D array `data` by splitting along the second axis and stacking 
-  the segments along the first axis.  It splits `data` into `num_gpus` segments along 
-  the columns (axis 1) and then concatenates these segments along the rows (axis 0).
-  
-  This function is designed to rearrange data in a way that when it is redistributed
-  to multiple GPUs in a CUDA cudaLibXtDesc *data pointer, its cufftXtSubFormat subformat 
-  variable is exactly CUFFT_XT_FORMAT_INPLACE_SHUFFLED. This is the subformat that a 
-  given CUFFT_XT_FORMAT_INPLACE subformatted volume becomes after an FFT execution with 
-  th cufftXt library. This function is applied to the measured data in pwCDI just 
-  before the ctypes wrapper is called, and by doing this, we can multiply the shuffled
-  measured data directly with the Fourier domain volumes that are obtained in shuffled 
-  subformat during the iterations. A more detailed explanation can be found in this 
-  presentation: https://cnpemcamp.sharepoint.com/:p:/r/sites/GCC-ScientificComputing/Documentos%20Partilhados/Shared%20material/Apresenta%C3%A7%C3%B5es/2024%20-%20performance%20updates%203dpwcdi%20(mauro).pptx?d=w19683560326d4650adc6947174f69cb5&csf=1&web=1&e=vxogDb
+    """
+    @brief Rearranges a 2D array `data` by splitting along the second axis and stacking 
+    the segments along the first axis.  It splits `data` into `num_gpus` segments along 
+    the columns (axis 1) and then concatenates these segments along the rows (axis 0).
+    
+    This function is designed to rearrange data in a way that when it is redistributed
+    to multiple GPUs in a CUDA cudaLibXtDesc *data pointer, its cufftXtSubFormat subformat 
+    variable is exactly CUFFT_XT_FORMAT_INPLACE_SHUFFLED. This is the subformat that a 
+    given CUFFT_XT_FORMAT_INPLACE subformatted volume becomes after an FFT execution with 
+    th cufftXt library. This function is applied to the measured data in pwCDI just 
+    before the ctypes wrapper is called, and by doing this, we can multiply the shuffled
+    measured data directly with the Fourier domain volumes that are obtained in shuffled 
+    subformat during the iterations. A more detailed explanation can be found in this 
+    presentation: https://cnpemcamp.sharepoint.com/:p:/r/sites/GCC-ScientificComputing/Documentos%20Partilhados/Shared%20material/Apresenta%C3%A7%C3%B5es/2024%20-%20performance%20updates%203dpwcdi%20(mauro).pptx?d=w19683560326d4650adc6947174f69cb5&csf=1&web=1&e=vxogDb
 
-  Note that only setting the subformat variable in the struct type cudaLibXtDesc is 
-  obviously not enough to actually change the data format. One has to actively 
-  rearrange the voxels to obtain the matching subformat. In principle, that subformat 
-  change could be done with some cudaMemcpy calls, but I never managed to make it work.
-  Be very careful to modify this. 
+    Note that only setting the subformat variable in the struct type cudaLibXtDesc is 
+    obviously not enough to actually change the data format. One has to actively 
+    rearrange the voxels to obtain the matching subformat. In principle, that subformat 
+    change could be done with some cudaMemcpy calls, but I never managed to make it work.
+    Be very careful to modify this. 
 
-  The transformation can be represented as:
-  
-    Given an input array of shape (M, N),
-    - It is split into `num_gpus` parts along the column dimension (axis 1).
-    - The resulting parts are stacked along the row dimension (axis 0).
-  
-  @param data        Input 2D NumPy array of shape (M, N) to be shuffled.
-  @param num_gpus    Number of GPUs to split the data for.
-  
-  @return           A reshaped NumPy array with shuffled dimensions.
-  
-  @note This function assumes `num_gpus` is a valid divisor of `data.shape[1]` to ensure 
-  equal splits.
-  """
-  M = data.shape[0]
-  split_data_x = np.array_split(data, num_gpus, axis=1)
-  final_data = np.concatenate(split_data_x, axis=0)
-  return final_data
+    The transformation can be represented as:
+    
+        Given an input array of shape (M, N),
+        - It is split into `num_gpus` parts along the column dimension (axis 1).
+        - The resulting parts are stacked along the row dimension (axis 0).
+    
+    @param data        Input 2D NumPy array of shape (M, N) to be shuffled.
+    @param num_gpus    Number of GPUs to split the data for.
+    
+    @return           A reshaped NumPy array with shuffled dimensions.
+    
+    @note This function assumes `num_gpus` is a valid divisor of `data.shape[1]` to ensure 
+    equal splits.
+    """
+    M = data.shape[0]
+    split_data_x = np.array_split(data, num_gpus, axis=1)
+    final_data = np.concatenate(split_data_x, axis=0)
+    return final_data
 
 
  
@@ -170,13 +170,13 @@ def pwcdi3d(data, dic):
         raise ValueError("sup_data must have the same shape as the object")
       if sup_data.dtype != np.uint8:
         sup_data = sup_data.astype(np.uint8)
-    sup_data = getPointer(sup_data.flatten(), dtype=np.uint8).ctypes.data_as(ctypes.POINTER(ctypes.c_ubyte)) 
+    sup_data = CNICE(sup_data.flatten(), dtype=np.uint8).ctypes.data_as(ctypes.POINTER(ctypes.c_ubyte)) 
   
   # handle extra parameters 
   sthreads      = dic.get('sthreads',1) 
   b_ngpu        = ctypes.c_int(ngpus)
   b_gpus        = np.array(gpus, dtype=np.intc).ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-  b_data        = getPointer(data.flatten(), dtype=np.float32).ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+  b_data        = CNICE(data.flatten(), dtype=np.float32).ctypes.data_as(ctypes.POINTER(ctypes.c_float))
       
   # handle err parameters 
   err_type = dic.get("err_type",None)
@@ -290,7 +290,7 @@ def pwcdi3d(data, dic):
 
 
   # call the main pwcdi function   
-  libssccdi.pwcdi(obj_output,       
+  libcdi.pwcdi(obj_output,       
                   finsup_output,   
                   b_data,
                   obj_input_ptr, 

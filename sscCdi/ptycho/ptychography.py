@@ -22,7 +22,10 @@ from .pie import PIE_python
 from .raar import RAAR_python
 from .ML import ML_cupy
 
-from .ptycho_plots import plot_ptycho_scan_points, plot_probe_modes, get_extent_from_pixel_size, plot_iteration_error, plot_amplitude_and_phase, get_plot_extent_from_positions, plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum
+from .ptycho_plots import (plot_ptycho_scan_points, plot_probe_modes, 
+                           get_extent_from_pixel_size, plot_iteration_error, 
+                           plot_amplitude_and_phase, get_plot_extent_from_positions, 
+                           plot_probe_support,plot_ptycho_corrected_scan_points,plot_object_spectrum)
 
 random.seed(0)
 
@@ -163,8 +166,6 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
     if plot:
         plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2, extent=get_plot_extent_from_positions(positions))
-
-
 
     if np.any(probe_positions < 0):
         raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")

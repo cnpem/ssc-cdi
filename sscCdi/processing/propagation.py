@@ -23,7 +23,7 @@ def fresnel_propagator(wavefront, wavelength, pixel_size, sample_to_detector_dis
         wavefront: 2d array containing your wavefront/beam
         wavelength: wavelength in meters
         pixel_size: matrix pixel size in meters
-        sample_to_detector_distance: distance between sample and detectior in meters.
+        sample_to_detector_distance: distance between sample and detector in meters.
         source_to_sample_distance (float, optional): distance between source and sample in meters. Defaults to 0.
 
     Returns:

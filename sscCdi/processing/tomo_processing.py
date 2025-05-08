@@ -7,8 +7,6 @@
 # For the complete LICENSE description see LICENSE file available within the root directory of this project.
 ##################################################################################################################################################################
 
-
-
 import os, sys, time, ast, h5py
 import numpy as np
 import matplotlib.pyplot as plt
