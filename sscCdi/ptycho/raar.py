@@ -13,6 +13,20 @@ from .engines_common import update_exit_wave, apply_probe_support, create_random
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
+    """RAAR engine in Python, using CPU or GPU through CuPy.
+
+    *WARNING:* This function is a test engine and is still in development. Use RAAR ``CUDA`` engine.
+
+    Args:
+        diffraction_patterns (ndarray): _description_
+        positions (ndarray): _description_
+        obj (ndarray): _description_
+        probe (ndarray): _description_
+        inputs (dict): _description_
+
+    Returns:
+        tuple: (obj (ndarray), probe_modes (ndarray), error (ndarray)).
+    """    
 
     try:
         import cupy as cp

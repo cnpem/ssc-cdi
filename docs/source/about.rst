@@ -12,7 +12,7 @@ For further information on the ``ssc-cdi`` package, visit the `website <https://
 (needs to be inside the CNPEM network to access the website).
 
 Publications
-*************
+************
 
 * Tonin, Y.R. and Peixinho, A.Z. and Brandao-Junior, M.L and Ferraz, P. and Miqueles, E.X. (2024). *ssc-cdi: A Memory-Efficient, Multi-GPU Package for Ptychography with Extreme Data*. Journal of Imaging, 10(11) p. 286. DOI: `10.1007/978-3-031-80084-9_18 <https://doi.org/10.1007/978-3-031-80084-9_18>`_.
 * Baraldi, G.L. and Dias, C.S. and Silva, F.M. and Tolentino, H.C. and Miqueles, E.X. (2020).*Fast reconstruction tools for ptychography at Sirius, the fourth-generation Brazilian synchrotron*. Applied Crystallography, 53(6) p. 1550-1558. DOI: `10.1107/S1600576720013886 <https://doi.org/10.1107/S1600576720013886>`_.

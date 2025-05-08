@@ -29,7 +29,6 @@ authors = [
 ]
 
 maintainers = [
-  {name = "Eduardo X. Miqueles", email = "eduardo.miqueles@lnls.br"},
   {name = "Leonardo M. Corrêa", email = "leonardo.correa@lnls.br"},
   {name = "Lucas Antonio Pelike", email = "lucas.pelike@lnls.br"},
   {name = "Alan Peixinho", email = "alan.peixinho@lnls.br"},
