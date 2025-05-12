@@ -30,24 +30,23 @@ from .ptycho_plots import (plot_ptycho_scan_points, plot_probe_modes,
 random.seed(0)
 
 def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_probe=None,plot=True):
-        
-    """This function creates the object and probe, converts the positions in SI units to pixel  then  calls the engines utilized to perform the Ptychography reconstruction [1]. 
+    """This function creates the object and probe, converts the positions in SI units to pixel then  
+    calls the engines utilized to perform the Ptychography reconstruction [1]. 
 
     Args:
         input_dict (dict): Dictionary with the experiment info and reconstruction parameters.
         DPs (ndarray): Measured diffraction patterns organize in dimensions: (DPs index/number, DPs y-size, DPs x-size).
-        positions (ndarray_): Measured positions in metric units (m, mm, um) or pixel, organized in (y,x) list.  
+        positions (ndarray): Measured positions in metric units (m, mm, um) or pixel, organized in (y,x) list.  
         initial_obj (ndarray): Initial approximation for the object, see the dictionaty for the options. [default: None].
         initial_probe (ndarray, optional): Initial approximation for the probe, see the dictionaty for the options. [default: None].
         plot (bool, optional): Option to plot initial object and probe, input positions, object during all called engines and final object, probe, positions. [default: True].
-    
-    Returns:
-        ndarray: Reconstructed complex object (amplitude and phase).
-        ndarray: Reconstructed complex probe (amplitude and phase) for all the incoherent modes organized in (mode index, probe).
-        ndarray: Final positions. Same as input without the position correction and the optimized positions with position correction.
-        dict:  Dictionary with the utilized parameters. 
-        ndarray: Reconstruction errors (r_factor: r-factor or residue, mse: normalized mean square, llk: log-likehood ) for all the iterations, organized in (iteration, r-factor, mse, llk).
 
+    Returns: 
+        obj (ndarray): Reconstructed complex object (amplitude and phase).
+        probe (ndarray): Reconstructed complex probe (amplitude and phase) for all the incoherent modes organized in (mode index, probe).
+        corrected_positions (ndarray): Final positions. Same as input without the position correction and the optimized positions with position correction.
+        input_dict (dict):  Dictionary with the utilized parameters. 
+        error (ndarray): Reconstruction errors (r_factor: r-factor or residue, mse: normalized mean square, llk: log-likehood ) for all the iterations, organized in (iteration, r-factor, mse, llk).
 
     Dictionary parameters:
         
@@ -66,47 +65,61 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         * ``input_dict['clip_object_magnitude']`` (bool, optional): Clips the object amplitude between 0 and 1 [default: False]
         * ``input_dict['distance_sample_focus']`` (float, optional): Distance between the incident beam focus and sample (Near-Field only) [default: 0]
         * ``input_dict['probe_support']`` (dict, optional): Mask utilized as support for the probe projection in real space [default: {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0}]
-            #. ``Circular``: {"type": "circular",  "radius": float, "center_y": int, "center_x": int}.
-            #. ``Cross``:    {"type": "cross",  "center_width": int, "cross_width": int, "border_padding": int }.
-            #. ``Numpy array``:  {"type": "array",  "data": myArray}.
+
+            #. Circular probe support: ``input_dict['probe_support'] = {\"type\": \"circular\", \"radius\": float, \"center_y\": int, \"center_x\": int}``.
+            #. Cross probe support: ``input_dict['probe_support'] = {\"type\": \"cross\", \"center_width\": int, \"cross_width\": int, \"border_padding\": int }``.
+            #. Numpy array probe support: ``input_dict['probe_support'] = {"type": "array", "data": myArray}``.
+        
         * ``input_dict['initial_obj']`` (dict): Initial guess for the object if initial_obj = None [required]
+            
             #. ``Random``:  {"obj": 'random'}.
             #. ``Constant 1s matrix``: {"obj": 'constant'}.
             #. ``Numpy array``: {"obj": my2darray}.
             #. ``Load numpy array``: {"obj": 'path/to/numpyFile.npy'}.
             #. ``Load hdf5 recon``: {"obj": 'path/to/hdf5File.h5'}, reconstructed object must be in 'recon/object', as default in ssc-cdi.
-        *``input_dict['initial_probe']`` (dict) Initial guess for the probe if initial_probe = None [required]
+        
+        * ``input_dict['initial_probe']`` (dict) Initial guess for the probe if initial_probe = None [required]
+            
             #.  ``Mean diffraction FFT inverse``: {"probe": 'inverse'}.
-            #.  ``Fresnel zone plate``: {"probe": 'fzp', 'beam_type': 'disc' or 'gaussian', 'distance_sample_fzpf': distance in meters,'fzp_diameter': diameter in meters, 
-                                        'fzp_outer_zone_width': zone width in meters, 'beamstopper_diameter': diameter in meters (0 if no beamstopper used), 
-                                        'probe_diameter': diameter, 'probe_normalize': boolean}
+            #.  ``Fresnel zone plate``: {"probe": 'fzp', 'beam_type': 'disc' or 'gaussian', 'distance_sample_fzpf': distance in meters,'fzp_diameter': diameter in meters,
+                'fzp_outer_zone_width': zone width in meters, 'beamstopper_diameter': diameter in meters (0 if no beamstopper used), 
+                'probe_diameter': diameter, 'probe_normalize': boolean}
             #.  ``Circular``: {"probe": 'circular', "radius": int, "distance": float}. 
             #.  ``Randon values between 0 and 1``: {"probe": 'random'}.
             #.  ``Constant 1s matrix``: {"probe": 'constant'}.
             #.  ``Load numpy array``: {"probe": 'path/to/numpyFile.npy'}.
             #.   ``Load hdf5 recon``: {"probe": 'path/to/hdf5File.h5'}, reconstructed probe must be in 'recon/probe', as default in ssc-cdi.
-        *``input_dict['algorithms']['number']`` (dict) Algorithms utilized in the reconstruction and their sequence [0,1,2,...,number][required]
+        
+        * ``input_dict['algorithms']['number']`` (dict) Algorithms utilized in the reconstruction and their sequence [0,1,2,...,number][required]
+            
             #. ``PIE (Ptychographic Iterative Engine)``: {'name': 'PIE', 'iterations': int, 'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
-                                                         'regularization_object': float (min: 0, max: 1), 'regularization_probe': float ((min: 0, max: 1)
-                                                         'momentum_obj': float (if > 0, uses mPIE with the given friction value) , momentum_probe': float (if > 0, uses mPIE with the given friction value), 
-                                                         'position_correction': int (0: no correction, N: performs correction every N iterations)}
+               'regularization_object': float (min: 0, max: 1), 'regularization_probe': float ((min: 0, max: 1)
+               'momentum_obj': float (if > 0, uses mPIE with the given friction value) , momentum_probe': float (if > 0, uses mPIE with the given friction value), 
+               'position_correction': int (0: no correction, N: performs correction every N iterations)}
+            
             #. ``AP (Alternating Projections)``: {'name': 'AP', 'iterations': int, batch: int (define the number of positions to fit into the GPU),
-                                                 'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
-                                                 'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
-                                                 'momentum_obj': float , momentum_probe': float, 
-                                                'position_correction': (0: no correction, N: performs correction every N iterations)}
+               'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
+               'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
+               'momentum_obj': float , momentum_probe': float, 
+               'position_correction': (0: no correction, N: performs correction every N iterations)}
+            
             #. ``RAAR (Relaxed Averaged Alternating Reflections)``: {'name': 'RAAR', 'iterations': int, batch: int (define the number of positions to fit into the GPU),
-                                                                    'beta': float (wavefront update relaxation, if 1 utilizes DM: Differential Mapping)
-                                                                    'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
-                                                                    'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
-                                                                    'momentum_obj': float , momentum_probe': float, 
-                                                                    'position_correction': (0: no correction, N: performs correction every N iterations)}
-            # ``Test Engine: PIE_python``: {'name': 'rPIE_python', 'iterations': int, 'step_object': float,  'step_probe': float, 'regularization_object': float,
-                                           'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
-            # ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
-            # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+               'beta': float (wavefront update relaxation, if 1 utilizes DM: Differential Mapping)
+               'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
+               'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
+               'momentum_obj': float , momentum_probe': float, 
+               'position_correction': (0: no correction, N: performs correction every N iterations)}
+            
+            #. ``Test Engine: PIE_python``: {'name': 'rPIE_python', 'iterations': int, 'step_object': float,  'step_probe': float, 'regularization_object': float,
+               'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
+            
+            #. ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
+            
+            #. ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
+            
+            #. ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
+            
+            #. ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
      
     """  
 
@@ -219,6 +232,8 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, initial_probe=None, plot=True):
 
     """This function calls all ptychography engines
+    
+    :meta private:
 
     Args:
         input_dict (dict): Dictionary with the experiment info and reconstruction parameters.
@@ -566,6 +581,8 @@ def check_for_nans(*arrays):
 
     Raises:
     ValueError: If any NaN values are found in the arrays.
+
+    :meta private:
     """
     for idx, array in enumerate(arrays):
         if not isinstance(array, np.ndarray):
@@ -586,6 +603,8 @@ def check_shape_of_inputs(DPs,positions,initial_probe):
     Raises:
         ValueError: If the number of positions is different from the number of diffraction patterns. 
         ValueError: If the X, Y dimensions of the probe is different from the diffractions patterns one.
+    
+    :meta private:
     """    
     
     if DPs.shape[0] != positions.shape[0]:
@@ -610,6 +629,8 @@ def remove_positions_randomly(arr1, arr2, R):
     Returns:
         (ndarray): Reduced array
         (ndarray): Reduced array
+    
+    :meta private:
     """
 
     
@@ -699,6 +720,8 @@ def check_and_set_defaults(input_dict):
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+    
+    :meta private:
     """    
     
     # Define the default values
@@ -747,6 +770,18 @@ def check_and_set_defaults(input_dict):
     return input_dict
 
 def check_dtypes(DPs,initial_obj,initial_probe):
+    """_summary_
+
+    Args:
+        DPs (_type_): _description_
+        initial_obj (_type_): _description_
+        initial_probe (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    
+    :meta private:
+    """
     if DPs.dtype != np.float32:
         print('WARNING: Diffraction patterns dtype is not np.float32. Converting to np.float32...')
         DPs = DPs.astype(np.float32)
@@ -770,6 +805,8 @@ def create_parent_folder(file_path):
 
     Args:
         file_path (str): The path of the file for which to create the parent directory.
+
+    :meta private:
     """
     parent_folder = os.path.dirname(file_path)
     if not os.path.exists(parent_folder):
@@ -851,6 +888,8 @@ def save_h5_output(input_dict,obj, probe, positions, error,initial_obj=None,init
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+    
+    :meta private:
     """    
 
     with  h5py.File(input_dict["hdf5_output"], "w") as h5file:
@@ -939,6 +978,7 @@ def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
     Returns:
         (ndarray): Probe positions in pixel unit.
 
+    :meta private:
     """
 
     probe_positions[:, 0] -= np.min(probe_positions[:, 0]) # Subtract the probe positions minimum to start at 0
@@ -957,6 +997,8 @@ def check_consecutive_keys(algorithms):
     
     Returns:
         (bool): True for consecutive integers and False if not. 
+    
+    :meta private:
     """
     
     keys = list(map(int, algorithms.keys()))
@@ -975,6 +1017,8 @@ def bin_volume(volume, downsampling_factor):
 
     Returns:
         (ndarray): Downsampled volume, organized in a 3D numpy array of shape (N, Y//downsampling_factor, X//downsampling_factor).
+    
+    :meta private:
     """
 
     print('Binning data...')
@@ -1014,6 +1058,8 @@ def bin_volume(volume, downsampling_factor):
 
         Returns:
             (ndarray): Downsampled, or binned, data.
+        
+        :meta private:
         """        
         N, Y, X = volume.shape
         new_shape = (N, Y // downsampling_factor, downsampling_factor, X // downsampling_factor, downsampling_factor)
@@ -1042,6 +1088,8 @@ def binning_G(binning,DP):
 
     Returns:
         (ndarray): Binned diffraction pattern, with (X/binning, Y/binning) dimensions.
+    
+    :meta private:
     """    
 
     if binning % 2 != 0: # no binning
@@ -1100,6 +1148,8 @@ def binning_G_parallel(DPs,binning, processes):
 
     Returns:
         (ndarray): Binned diffraction pattern, with (X/binning, Y/binning) dimensions.
+    
+    :meta private:
     """    
  
     # def call_binning_parallel(DP):
@@ -1134,6 +1184,8 @@ def append_ones(probe_positions):
 
     Returns:
         probe_positions (ndarray): Rearranged probe positions array.
+    
+    :meta private:
     """
     zeros = np.zeros((probe_positions.shape[0],1))
     probe_positions = np.concatenate((probe_positions,zeros),axis=1)
@@ -1214,6 +1266,8 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+    
+    :meta private:
     """    
     print('Creating initial probe of type: ',input_dict['initial_probe']["probe"])
 
@@ -1228,6 +1282,8 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
 
         Returns:
             (ndarray): Probe with all modes.
+        
+        :meta private:    
         """        
         mode = probe.shape[0]
 
@@ -1319,6 +1375,8 @@ def detect_variable_type_of_guess(variable):
 
     Returns:
         (str): String that defines the variable type defined as path ("path"), string("standard") or array("array").
+    
+    :meta private:
     """    
     if isinstance(variable, str):
         if os.path.isfile(variable):
@@ -1404,6 +1462,8 @@ def set_initial_object(input_dict,DPs, probe, obj_shape):
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+    
+    :meta private:
     """    
     print('Creating initial object of type: ', input_dict['initial_obj']["obj"])
 
@@ -1508,6 +1568,8 @@ def get_probe_support(input_dict,probe_shape):
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
             # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
+    
+    :meta private:
     """
 
     print('Setting probe support...')
@@ -1546,6 +1608,8 @@ def create_circular_mask(mask_shape, radius):
 
     Returns:
         (ndarray): Circular mask of 1s and 0s.
+    
+    :meta private:
     """
 
 
@@ -1567,6 +1631,8 @@ def create_cross_mask(mask_shape, cross_width_y=15, border=3, center_square_side
 
     Returns:
        (ndarray): Cross mask of 1s and 0s.
+    
+    :meta private:
     """
 
     if cross_width_x == 0: cross_width_x = cross_width_y
@@ -1607,6 +1673,7 @@ def set_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP
     Returns:
         (float): Calculated object pixel size in meters.
 
+    :meta private:
     """
 
     object_pixel_size = calculate_object_pixel_size(wavelength, detector_distance, detector_pixel_size, DP_size)
@@ -1626,6 +1693,8 @@ def set_object_shape(object_padding, DP_shape, probe_positions):
 
     Returns:
         (tuple): Object shape (Y,X).
+    
+    :meta private:
     """
 
     offset_bottomright = object_padding
@@ -1672,6 +1741,8 @@ def probe_model_fzp(wavelength,
          
     Returns:
         (ndarray): The initial probe after applying the FZP and beamstopper.
+    
+    :meta private:
     """
 
     # FZP focus
