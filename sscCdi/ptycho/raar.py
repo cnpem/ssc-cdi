@@ -18,15 +18,18 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     *WARNING:* This function is a test engine and is still in development. Use RAAR ``CUDA`` engine.
 
     Args:
-        diffraction_patterns (ndarray): _description_
-        positions (ndarray): _description_
-        obj (ndarray): _description_
-        probe (ndarray): _description_
-        inputs (dict): _description_
+        diffraction_patterns (ndarray): Diffraction patterns, organized in (index, Y, X).
+        positions (ndarray): Position in pixels, otganized in (Y, X).
+        obj (ndarray): Initial object.
+        probe (ndarray): Initial probe. 
+        inputs (dict):  Dictionary with the experiment info and reconstruction parameters.
 
     Returns:
-        tuple: (obj (ndarray), probe_modes (ndarray), error (ndarray)).
-    """    
+        tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray).
+    """
+    for m in range(15):
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
+        print("*WARNING:* This function is a test engine and is still in development. Use RAAR ``CUDA`` engine.")
 
     try:
         import cupy as cp
