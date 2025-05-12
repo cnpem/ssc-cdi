@@ -70,7 +70,8 @@ def update_parameters(obj, probe, gradient_o, gradient_p, direction_o, direction
 
 def ML_cupy(data, positions, initial_obj, initial_probe, algo_inputs):
     """
-    Performs the ML (Maximum Likelihood) algorithm using CuPy for accelerated computation.
+    Performs the ML (Maximum Likelihood) algorithm using CuPy for accelerated computation.  
+    *WARNING:* This function is a test engine and is still in development. 
 
     Args:
         data (array-like): The measured data.
@@ -91,6 +92,12 @@ def ML_cupy(data, positions, initial_obj, initial_probe, algo_inputs):
         ValueError: If the error increases by a factor of 1000.
 
     """
+
+
+    for m in range(15):
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
+        print("*WARNING:* This function is a test engine and is still in development.")
+        
     data = cp.array(data) 
     positions = cp.array(positions)
     initial_obj = cp.array(initial_obj)
