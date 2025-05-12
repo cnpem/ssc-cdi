@@ -62,9 +62,11 @@ extensions = [
     # 'exhale'
 ]
 
+# breathe_projects = { "proj": "xml/" }
+# breathe_default_project = "proj"
 
-breathe_projects = { "proj": "xml/" }
-breathe_default_project = "proj"
+napoleon_custom_sections = [('Returns', 'params_style')]
+
 
 """
 Breathe does not support cuda C++, then cuda special words used in function
@@ -73,7 +75,7 @@ C++.
 """
 # cpp_index_common_prefix = ['_Complex', 'cufftComplex']
 # cpp_id_attributes = ['__global__', '__device__', '_Complex', 'cufftComplex', '__restrict__', 'restrict']
-cpp_id_attributes = ['_Complex', '__global__', 'restrict', '__device__', '__host__', '__hevice']
+# cpp_id_attributes = ['_Complex', '__global__', 'restrict', '__device__', '__host__', '__hevice']
 # cpp_paren_attributes = ['restrict', '__restrict__']
 
 # Setup the exhale extension
@@ -98,7 +100,7 @@ cpp_id_attributes = ['_Complex', '__global__', 'restrict', '__device__', '__host
 # highlight_language = 'cpp'
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+# templates_path = ['_templates']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

@@ -1,23 +1,19 @@
 <!DOCTYPE html>
-<html class="writer-html5" lang="en">
+<html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Documentation &mdash; ssc-cdi 0.14.2 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-      <link rel="stylesheet" type="text/css" href="_static/css/my_theme.css" />
-
-  
+  <title>Documentation &mdash; ssc-cdi 0.15.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/my_theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="_static/jquery.js"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/doctools.js"></script>
-        <script src="_static/sphinx_highlight.js"></script>
+        <script src="_static/documentation_options.js?v=ef97403f"></script>
+        <script src="_static/doctools.js?v=9a2dae69"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -28,18 +24,14 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-
-          
-          
-          <a href="index.html" class="icon icon-home">
-            ssc-cdi
+            <a href="index.html" class="icon icon-home"> ssc-cdi
           </a>
               <div class="version">
-                0.14.2
+                0.15.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -66,8 +58,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Documentation</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Documentation</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/README.md.txt" rel="nofollow"> View page source</a>
       </li>
@@ -78,11 +70,11 @@
            <div itemprop="articleBody">
              
   <section id="documentation">
-<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this heading"></a></h1>
+<h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h1>
 <p>This repository’s documentation is an <strong>EXAMPLE</strong> of the documentation built using Doxygem, Sphinx and Breathe extension for the <em>ssc-prain</em> code. Both Doxygen and Sphinx are used as documention generators, i.e., they read <a class="reference external" href="https://en.wikipedia.org/wiki/Docstring">docstrings</a> to generate the documentation. The docstring must follow a pattern for Doxygen and another pattern for Sphinx. Breathe extension is used as bridge between Doxygen and Sphinx.</p>
 <p><strong>Add this folder to your code and change the files as necessary to create your own documentation.</strong></p>
 <section id="installation">
-<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading"></a></h2>
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
 <p>First of all, it is necessary to install Doxygen, Sphinx, Read the Docs theme and Breathe. The commands are:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>doxygen
 apt-get<span class="w"> </span>install<span class="w"> </span>python3-sphinx
@@ -92,7 +84,7 @@ pip<span class="w"> </span>install<span class="w"> </span>breathe
 </div>
 </section>
 <section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h2>
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
 <p>Once the docstrings are written, the documentation is generated using the following commands:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>doxygen<span class="w"> </span>doxyconf
 make<span class="w"> </span>html
@@ -107,7 +99,7 @@ make<span class="w"> </span>html
 <p><strong>Note</strong>: To generate the documentation only for Python code, just ignore the steps for Doxygen compilation and documentation</p>
 </section>
 <section id="configuration">
-<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this heading"></a></h2>
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
 <p>Doxygen is used to autogenerate, in xml format, the documentation for CUDA files in <code class="docutils literal notranslate"><span class="pre">source/xml/</span></code> (untracked). Since Doxygen has no support for CUDA, it will be threated as C++. To do so, the Doxygen configuration file <code class="docutils literal notranslate"><span class="pre">doxyconf</span></code> must have some parameters changed as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">GENERATE_XML</span>        <span class="o">=</span> <span class="n">YES</span>
 <span class="n">XML_OUTPUT</span>          <span class="o">=</span> <span class="n">source</span><span class="o">/</span><span class="n">xml</span>     <span class="c1"># create xml/ folder inside source/</span>
@@ -132,12 +124,12 @@ make<span class="w"> </span>html
 </div>
 </section>
 <section id="tips">
-<h2>Tips<a class="headerlink" href="#tips" title="Permalink to this heading"></a></h2>
+<h2>Tips<a class="headerlink" href="#tips" title="Link to this heading"></a></h2>
 <p>We suggest one to use the “Doxygen Documentation Generator” and “Python Docstring Generator” VSCode extensions to type the docstring.</p>
 <p>Some useful spetial commands for Doxygen are <code class="docutils literal notranslate"><span class="pre">\a</span></code> that is used to display the next word in italics. Then it is used to cite parameters. <code class="docutils literal notranslate"><span class="pre">\f$</span></code> has the same meaning as <code class="docutils literal notranslate"><span class="pre">$</span></code> in latex, i.e., it is used to start and finish equations. <code class="docutils literal notranslate"><span class="pre">\note</span></code> is used to write a note. There are <a class="reference external" href="https://www.doxygen.nl/manual/commands.html">more</a> special commands for Doxygen.</p>
 </section>
 <section id="examples-of-doxygen-docstrings-documentation">
-<h2>Examples of Doxygen Docstrings Documentation<a class="headerlink" href="#examples-of-doxygen-docstrings-documentation" title="Permalink to this heading"></a></h2>
+<h2>Examples of Doxygen Docstrings Documentation<a class="headerlink" href="#examples-of-doxygen-docstrings-documentation" title="Link to this heading"></a></h2>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>/* Header */
 /**
 @file prain.h
@@ -173,7 +165,7 @@ void fresnelpropagation(PAR param, cufftComplex *data, cufftComplex *kernel, cuf
 </div>
 </section>
 <section id="examples-of-sphinx-docstrings-documentation">
-<h2>Examples of Sphinx Docstrings Documentation<a class="headerlink" href="#examples-of-sphinx-docstrings-documentation" title="Permalink to this heading"></a></h2>
+<h2>Examples of Sphinx Docstrings Documentation<a class="headerlink" href="#examples-of-sphinx-docstrings-documentation" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">prain_preview</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">preview</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;recov&#39;</span><span class="p">,</span>  <span class="nb">map</span><span class="o">=</span><span class="s1">&#39;gray_r&#39;</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot; Function to save or preview a frame of our volume (recov) of our choosing</span>
 
