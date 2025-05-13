@@ -14,9 +14,24 @@ from .engines_common import update_exit_wave, apply_probe_support, create_random
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, inputs):
-    """"
-    Implementation of rPIE and mPIE algorithms 
+
+    """PIE and mPIE engine in Python, using CPU or GPU through CuPy.
+
+    *WARNING:* This function is a test engine and is still in development. Use PIE``CUDA`` engine.
+
+    Args:
+        diffraction_patterns (ndarray): Diffraction patterns, organized in (index, Y, X).
+        positions (ndarray): Position in pixels, otganized in (Y, X).
+        obj_guess (ndarray): Initial object.
+        probe_guess (ndarray): Initial probe. 
+        inputs (dict):  Dictionary with the experiment info and reconstruction parameters.
+
+    Returns:
+        tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray), Probe positions (ndarray).
     """
+    for m in range(15):
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
+        print("*WARNING:* This function is a test engine and is still in development. Use PIE ``CUDA`` engine.")
 
     r_o = inputs["regularization_object"]
     r_p = inputs["regularization_probe"]

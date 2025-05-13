@@ -3,22 +3,22 @@ variables:
   GIT_SUBMODULE_UPDATE_FLAGS: --remote
 
 stages:
-    - build
-    - deploy
+  - build
+  - deploy
 
 build_dgx:
-    stage: build
-    image: gccdockers/python-builder
-    script:
-        - python3 -m build --wheel
-    tags:
-        - x86_64
-        - cuda11
-        - docker
-    artifacts:
-        paths:
-            - ./dist/*whl
-        expire_in: 1 day
+  stage: build
+  image: gccdockers/python-builder
+  script:
+    - python3 -m build --wheel
+  tags:
+    - x86_64
+    - cuda11
+    - docker
+  artifacts:
+    paths:
+      - ./dist/*whl
+    expire_in: 1 day
 
 build_sdist:
   stage: build
@@ -35,18 +35,18 @@ build_sdist:
     expire_in: 1 day
 
 deploy_dgx:
-    stage: deploy
-    image: gccdockers/python-builder
-    script:
-        - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
-    tags:
-        - x86_64
-        - cuda11
-        - docker
-    dependencies:
-        - build_dgx
-    only:
-        - tags
+  stage: deploy
+  image: gccdockers/python-builder
+  script:
+    - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
+  tags:
+    - x86_64
+    - cuda11
+    - docker
+  dependencies:
+    - build_dgx
+  only:
+    - tags
 
 deploy_sdist:
   stage: deploy
@@ -66,15 +66,15 @@ build_docs:
   image: gccdockers/python-builder
   stage: build
   script:
+    - python3 -m pip install myst-parser
     - cd docs
-    - make html  # Use 'make html' to build HTML documentation
+    - make   
   tags:
     - x86_64
     - docker
   artifacts:
     paths:
       - ./docs/build/
-    expire_in: 1 day
 
 deploy_docs:
   stage: deploy
@@ -85,5 +85,7 @@ deploy_docs:
     - cp -r ./docs/build/html/* /var/www/html/ssc/ssc-cdi/
   tags:
     - wiki
+  dependencies:
+    - build_docs
   only:
     - tags

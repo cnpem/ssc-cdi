@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ptychography engines API &mdash; ssc-cdi 0.15.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/my_theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/documentation_options.js?v=ef97403f"></script>
+        <script src="../../_static/doctools.js?v=9a2dae69"></script>
+        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="4. Changelog" href="../changelog.html" />
+    <link rel="prev" title="3. API Reference" href="../api.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../../index.html" class="icon icon-home"> ssc-cdi
+          </a>
+              <div class="version">
+                0.15.0
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../install.html">1. Install</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">2. Usage</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api.html">3. API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Ptychography engines API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#sscCdi.ptycho.ptychography.call_ptychography"><code class="docutils literal notranslate"><span class="pre">call_ptychography()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog.html">4. Changelog</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">ssc-cdi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="../api.html"><span class="section-number">3. </span>API Reference</a> &raquo;</li>
+      <li>Ptychography engines API</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/source/api/ptycho.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ptychography-engines-api">
+<span id="apiptycho"></span><h1>Ptychography engines API<a class="headerlink" href="#ptychography-engines-api" title="Link to this heading"></a></h1>
+<dl class="py function" id="module-sscCdi.ptycho.ptychography">
+<span id="apicallengines"></span><dt class="sig sig-object py" id="sscCdi.ptycho.ptychography.call_ptychography">
+<span class="sig-prename descclassname"><span class="pre">sscCdi.ptycho.ptychography.</span></span><span class="sig-name descname"><span class="pre">call_ptychography</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">DPs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_obj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_probe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sscCdi.ptycho.ptychography.call_ptychography" title="Link to this definition"></a></dt>
+<dd><p>This function creates the object and probe, converts the positions in SI units to pixel then
+calls the engines utilized to perform the Ptychography reconstruction [1].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_dict</strong> (<em>dict</em>) – Dictionary with the experiment info and reconstruction parameters.</p></li>
+<li><p><strong>DPs</strong> (<em>ndarray</em>) – Measured diffraction patterns organize in dimensions: (DPs index/number, DPs y-size, DPs x-size).</p></li>
+<li><p><strong>positions</strong> (<em>ndarray</em>) – Measured positions in metric units (m, mm, um) or pixel, organized in (y,x) list.</p></li>
+<li><p><strong>initial_obj</strong> (<em>ndarray</em>) – Initial approximation for the object, see the dictionaty for the options. [default: None].</p></li>
+<li><p><strong>initial_probe</strong> (<em>ndarray</em><em>, </em><em>optional</em>) – Initial approximation for the probe, see the dictionaty for the options. [default: None].</p></li>
+<li><p><strong>plot</strong> (<em>bool</em><em>, </em><em>optional</em>) – Option to plot initial object and probe, input positions, object during all called engines and final object, probe, positions. [default: True].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>obj</strong> (<em>ndarray</em>) – Reconstructed complex object (amplitude and phase).</p></li>
+<li><p><strong>probe</strong> (<em>ndarray</em>) – Reconstructed complex probe (amplitude and phase) for all the incoherent modes organized in (mode index, probe).</p></li>
+<li><p><strong>corrected_positions</strong> (<em>ndarray</em>) – Final positions. Same as input without the position correction and the optimized positions with position correction.</p></li>
+<li><p><strong>input_dict</strong> (<em>dict</em>) – Dictionary with the utilized parameters.</p></li>
+<li><p><strong>error</strong> (<em>ndarray</em>) – Reconstruction errors (r_factor: r-factor or residue, mse: normalized mean square, llk: log-likehood ) for all the iterations, organized in (iteration, r-factor, mse, llk).</p></li>
+</ul>
+</dd>
+</dl>
+<p>Dictionary parameters:</p>
+<blockquote>
+<div><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['energy']</span></code> (float, optional): Incident wave energy utilized in experiment in keV [default: 10]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['wavelenght']</span></code> (float, optional): Incident wave wavelenght utilized in experiment in meters. If not in dict will be calculated from the energy value [default: 1.23984e-10]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['detector_distance']</span></code> (float, optional): Distance between sample and detector in meters [default: 10]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['GPUs']</span></code> (ndarray, optional): List of gpus  [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['CPUs']</span></code> (int, optional):  Number of available cpus [default: 32]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['hdf5_output']</span></code> (str, optional): Output .hdf5 file for the results [default: None]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['regime']</span></code> (str, optional ): Diffraction regime for near-field (fresnel) and far-field (fraunhoffer) [default: fraunhoffer]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['binning']</span></code> (int, optional): Binning of the diffraction patterns prior to processing [default: 1]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['n_of_positions_to_remove']</span></code> (int, optional): Number of random positions that will not be included in the reconstruction [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['object_padding']</span></code> (int, optional): Number of pixels that will be included in the edges of the object. Usefull in position correction to extend the original object [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['incoherent_modes']</span></code> (int, optional): Number of incoherent model for the probe [default: 1]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['fourier_power_bound']</span></code> (float, optional): Relaxed the wavefront update, 0 is the standard [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['clip_object_magnitude']</span></code> (bool, optional): Clips the object amplitude between 0 and 1 [default: False]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['distance_sample_focus']</span></code> (float, optional): Distance between the incident beam focus and sample (Near-Field only) [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['probe_support']</span></code> (dict, optional): Mask utilized as support for the probe projection in real space [default: {“type”: “circular”, “radius”: 300, “center_y”: 0, “center_x”: 0}]</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>Circular probe support: <code class="docutils literal notranslate"><span class="pre">input_dict['probe_support']</span> <span class="pre">=</span> <span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;circular&quot;,</span> <span class="pre">&quot;radius&quot;:</span> <span class="pre">float,</span> <span class="pre">&quot;center_y&quot;:</span> <span class="pre">int,</span> <span class="pre">&quot;center_x&quot;:</span> <span class="pre">int}</span></code>.</p></li>
+<li><p>Cross probe support: <code class="docutils literal notranslate"><span class="pre">input_dict['probe_support']</span> <span class="pre">=</span> <span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;cross&quot;,</span> <span class="pre">&quot;center_width&quot;:</span> <span class="pre">int,</span> <span class="pre">&quot;cross_width&quot;:</span> <span class="pre">int,</span> <span class="pre">&quot;border_padding&quot;:</span> <span class="pre">int</span> <span class="pre">}</span></code>.</p></li>
+<li><p>Numpy array probe support: <code class="docutils literal notranslate"><span class="pre">input_dict['probe_support']</span> <span class="pre">=</span> <span class="pre">{&quot;type&quot;:</span> <span class="pre">&quot;array&quot;,</span> <span class="pre">&quot;data&quot;:</span> <span class="pre">myArray}</span></code>.</p></li>
+</ol>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['initial_obj']</span></code> (dict): Initial guess for the object if initial_obj = None [required]</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Random</span></code>:  {“obj”: ‘random’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Constant</span> <span class="pre">1s</span> <span class="pre">matrix</span></code>: {“obj”: ‘constant’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Numpy</span> <span class="pre">array</span></code>: {“obj”: my2darray}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Load</span> <span class="pre">numpy</span> <span class="pre">array</span></code>: {“obj”: ‘path/to/numpyFile.npy’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Load</span> <span class="pre">hdf5</span> <span class="pre">recon</span></code>: {“obj”: ‘path/to/hdf5File.h5’}, reconstructed object must be in ‘recon/object’, as default in ssc-cdi.</p></li>
+</ol>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['initial_probe']</span></code> (dict) Initial guess for the probe if initial_probe = None [required]</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Mean</span> <span class="pre">diffraction</span> <span class="pre">FFT</span> <span class="pre">inverse</span></code>: {“probe”: ‘inverse’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Fresnel</span> <span class="pre">zone</span> <span class="pre">plate</span></code>: {“probe”: ‘fzp’, ‘beam_type’: ‘disc’ or ‘gaussian’, ‘distance_sample_fzpf’: distance in meters,’fzp_diameter’: diameter in meters,
+‘fzp_outer_zone_width’: zone width in meters, ‘beamstopper_diameter’: diameter in meters (0 if no beamstopper used),
+‘probe_diameter’: diameter, ‘probe_normalize’: boolean}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Circular</span></code>: {“probe”: ‘circular’, “radius”: int, “distance”: float}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Randon</span> <span class="pre">values</span> <span class="pre">between</span> <span class="pre">0</span> <span class="pre">and</span> <span class="pre">1</span></code>: {“probe”: ‘random’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Constant</span> <span class="pre">1s</span> <span class="pre">matrix</span></code>: {“probe”: ‘constant’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Load</span> <span class="pre">numpy</span> <span class="pre">array</span></code>: {“probe”: ‘path/to/numpyFile.npy’}.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Load</span> <span class="pre">hdf5</span> <span class="pre">recon</span></code>: {“probe”: ‘path/to/hdf5File.h5’}, reconstructed probe must be in ‘recon/probe’, as default in ssc-cdi.</p></li>
+</ol>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['algorithms']['number']</span></code> (dict) Algorithms utilized in the reconstruction and their sequence [0,1,2,…,number][required]</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PIE</span> <span class="pre">(Ptychographic</span> <span class="pre">Iterative</span> <span class="pre">Engine)</span></code>: {‘name’: ‘PIE’, ‘iterations’: int, ‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
+‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float ((min: 0, max: 1)
+‘momentum_obj’: float (if &gt; 0, uses mPIE with the given friction value) , momentum_probe’: float (if &gt; 0, uses mPIE with the given friction value),
+‘position_correction’: int (0: no correction, N: performs correction every N iterations)}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AP</span> <span class="pre">(Alternating</span> <span class="pre">Projections)</span></code>: {‘name’: ‘AP’, ‘iterations’: int, batch: int (define the number of positions to fit into the GPU),
+‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
+‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float (min: 0, max: 1),
+‘momentum_obj’: float , momentum_probe’: float,
+‘position_correction’: (0: no correction, N: performs correction every N iterations)}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RAAR</span> <span class="pre">(Relaxed</span> <span class="pre">Averaged</span> <span class="pre">Alternating</span> <span class="pre">Reflections)</span></code>: {‘name’: ‘RAAR’, ‘iterations’: int, batch: int (define the number of positions to fit into the GPU),
+‘beta’: float (wavefront update relaxation, if 1 utilizes DM: Differential Mapping)
+‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
+‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float (min: 0, max: 1),
+‘momentum_obj’: float , momentum_probe’: float,
+‘position_correction’: (0: no correction, N: performs correction every N iterations)}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">PIE_python</span></code>: {‘name’: ‘rPIE_python’, ‘iterations’: int, ‘step_object’: float,  ‘step_probe’: float, ‘regularization_object’: float,
+‘regularization_probe’: float,’momentum_obj’: float, ‘momentum_probe’: float, ‘mPIE_momentum_counter’: float}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">RAAR_python</span></code>: {‘name’: ‘RAAR_python’, ‘iterations’: int, ‘beta’: float, ‘regularization_obj’: float ‘regularization_probe’: float}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">AP_python</span></code>: {‘name’: ‘AP_python’, ‘iterations’: int, ‘regularization_obj’: float, ‘regularization_probe’: float}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">DM_python</span></code>: {‘name’: ‘DM_python’, ‘iterations’: int, ‘regularization_obj’: float, ‘regularization_probe’: float}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">ML_python</span></code>: {‘name’: ‘ML_python’, ‘iterations’: int, ‘optimizer’: ‘gradient_descent’, ‘step_object’: float, ‘step_probe’: float}</p></li>
+</ol>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../api.html" class="btn btn-neutral float-left" title="3. API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../changelog.html" class="btn btn-neutral float-right" title="4. Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Sirius Scientific Computing Group.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
