@@ -82,7 +82,7 @@ deploy_docs:
   script:
     - mkdir -p /var/www/html/ssc/ssc-cdi/
     - rm -rf /var/www/html/ssc/ssc-cdi/*
-    - cp -r ./docs/build/html/* /var/www/html/ssc/ssc-cdi/
+    - cp -r ./docs/build/* /var/www/html/ssc/ssc-cdi/
   tags:
     - wiki
   dependencies:
