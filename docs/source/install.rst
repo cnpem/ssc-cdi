@@ -10,6 +10,11 @@ Before installation, you will need the following packages installed:
 * ``Python >= 3.8.0``
 * ``PIP``
 * ``libcurl4-openssl-dev``
+* ``scikit-build>=0.17.0``
+* ``setuptools>=60.0.0``
+* ``ninja==1.11.1.1``
+* ``wheel==0.45.0``
+* ``CMAKE>=3.18``
 
 This package supports nvidia ``GPUs`` with capabilities ``7.0`` or superior and a compiler with support to ``c++17``.
 
@@ -152,19 +157,23 @@ The build requirements are:
 * ``CUBLAS``
 * ``CUFFT``
 * ``PTHREADS``
-* ``CMAKE>=3.10``
 * ``scikit-build>=0.17.0``
-* ``setuptools>=64.0.0``
+* ``setuptools>=60.0.0``
+* ``ninja==1.11.1.1``
+* ``wheel==0.45.0``
+* ``CMAKE>=3.18``
 
 The ``Python3`` dependencies are:
 
-* ``numpy``
-* ``scikit-image >=0.19.3``
+* ``numpy<2.0.0>``
+* ``scikit-image``
 * ``scipy``
 * ``matplotlib``
 * ``SharedArray``
-* ``uuid``
+* ``cupy``
 * ``h5py``
+* ``ipywidgets``
+* ``tqdm``
 
 Uninstall
 *********
