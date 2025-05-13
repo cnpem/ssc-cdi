@@ -11,12 +11,19 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["version"]
 name = "sscCdi"
-license = { file = "LICENSE" }
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+readme = "README.md"
+
 classifiers=[
-    'Development Status :: 4 - Beta', 'License :: OSI Approved :: BSD License',
-    'Intended Audience :: Science/Research', 'Intended Audience :: Education', 'Intended Audience :: Developers',
-    'Natural Language :: English', 'Operating System :: OS Independent', 'Programming Language :: Python',
-    'Programming Language :: Python :: 3.0', 'Programming Language :: C', 'Programming Language :: C++'
+    'Development Status :: 4 - Beta', 
+    'Intended Audience :: Science/Research', 
+    'Intended Audience :: Education', 
+    'Intended Audience :: Developers',
+    'Natural Language :: English', 
+    'Programming Language :: Python',
+    'Programming Language :: C', 
+    'Programming Language :: C++'
 ]
 authors = [
   {name = "Yuri R. Tonin"},
