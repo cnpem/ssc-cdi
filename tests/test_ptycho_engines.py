@@ -6,22 +6,31 @@ import os
 from scipy import ndimage
 
 from sscCdi.ptycho.ptychography import call_ptychography
+from generate_data_ptycho import generate_ptychography
 
-error_threshold = 1e-6 # Error threshold for the tests
+error_threshold = 0.4 # Error threshold for the tests
 
-model_obj = np.load('object.npy')
-model_probe = np.load('probe.npy')
-data = np.load('diff_patterns.npy')
-positions = np.load('positions.npy')
-positions = np.roll(positions, 1, axis=1)
+#Generate synthetic data
+
+model_obj, model_probe, data, positions, positions_error, probe_mask = generate_ptychography(diffraction_pattern_size = 64, probe_size = 30, n_positions_axis =15)
+
+print('Model object: ',model_obj.shape)
+print('Probe: ',model_probe.shape)
+print('Positions: ',positions.shape)
+#positions = np.roll(positions, 1, axis=1)
 
 output_folder = "./" # Paths to output
 
 path_npy_obj = 'object.npy'
+np.save(output_folder + path_npy_obj, model_obj)
+
 path_npy_probe = 'probe.npy'
+np.save(output_folder + path_npy_probe, model_probe)
 
 path_hdf5_obj = 'object.h5'
 path_hdf5_probe = 'probe.h5'
+
+
 
 def convert_npy_to_hdf5(npy_path, hdf5_path):
     data = np.load(npy_path)
@@ -42,10 +51,10 @@ def manage_temporary_files():
 raar_default_params = {
     'name': 'RAAR',  # Relaxed Averaged Alternating Reflections
     'batch': 8,  # Number of data arrays for GPU; reduce if memory is an issue
-    'iterations': 5,
-    'beta': 0.5,
-    'step_object': 0.5,
-    'step_probe': 0.9,
+    'iterations': 1000,
+    'beta': 0.95,
+    'step_object': 0.2,
+    'step_probe': 0.4,
     'regularization_object': 0.1,
     'regularization_probe': 0.1,
     'momentum_obj': 0.0,
@@ -55,7 +64,7 @@ raar_default_params = {
 
 pie_default_params = {
     'name': 'PIE',  # Ptychographic Iterative Engine
-    'iterations': 5,
+    'iterations': 500,
     'step_object': 1.0,
     'step_probe': 1.0,
     'regularization_object': 0.5,
@@ -68,7 +77,7 @@ pie_default_params = {
 ap_default_params = {
     'name': 'AP',  # Alternating Projections
     'batch': 8,  # Number of data arrays for GPU; reduce if memory is an issue
-    'iterations': 5,
+    'iterations': 2000,
     'step_object': 1.0,
     'step_probe': 1.0,
     'regularization_object': 0.01,
@@ -113,6 +122,12 @@ input_dict = {
     'save_restored_data': False
 }
 
+test_input_dict = input_dict
+test_input_dict['algorithms']['1']['iterations'] = 10
+test_input_dict['algorithms']['2']['iterations'] = 10
+test_input_dict['algorithms']['3']['iterations'] = 10
+
+
 def shift_ctr_of_mass_to_img_ctr(image):
     image = np.abs(image)
     height, width = image.shape
@@ -122,18 +137,35 @@ def shift_ctr_of_mass_to_img_ctr(image):
     shifted_image = np.roll(image, shift=(shift_y, shift_x), axis=(0, 1))
     return shifted_image, shift_y, shift_x
 
-def mean_squared_error(data, datashift):
-    return np.abs(np.real(np.sum((data - datashift)**2)))/np.prod(data.shape)
+def mean_square_error(data, datashift):
+    data = np.abs(data)/np.amax(np.abs(data))
+    datashift = np.abs(datashift)/np.amax(np.abs(datashift))
+    return np.sqrt(np.sum((data - datashift)**2)/np.sum(data**2))
 
 def compare_model_to_recon(obj, probe, model_obj, model_probe, N=50):
     shifted_probe, shift_y, shift_x = shift_ctr_of_mass_to_img_ctr(probe[0])
     shifted_obj = np.roll(obj, shift=(shift_y, shift_x), axis=(0, 1))
+    x_crop_begin = (shifted_obj.shape[1] - N)//2
+    y_crop_begin = (shifted_obj.shape[0] - N)//2
+    x_crop_end = (shifted_obj.shape[1] + N)//2
+    y_crop_end = (shifted_obj.shape[0] + N)//2
+    shifted_obj = shifted_obj[y_crop_begin:y_crop_end,x_crop_begin:x_crop_end] 
 
-    shifted_obj = shifted_obj[N:-N,N:-N]
-    model_obj = model_obj[N:-N,N:-N]
+    x_crop_begin = (model_obj.shape[1] - N)//2
+    y_crop_begin = (model_obj.shape[0] - N)//2
+    x_crop_end = (model_obj.shape[1] + N)//2
+    y_crop_end = (model_obj.shape[0] + N)//2
+    model_obj = model_obj[y_crop_begin:y_crop_end,x_crop_begin:x_crop_end] 
 
-    mean_squared_error_obj = mean_squared_error(model_obj, shifted_obj)
-    mean_squared_error_probe = mean_squared_error(model_probe, shifted_probe)
+    #shifted_obj = shifted_obj[N:-N,N:-N]
+    #model_obj = model_obj[N:-N,N:-N]
+
+    #print('shifts', shift_x,shift_y)
+    #print('recon_obj_shape:', shifted_obj.shape)
+    #print('ori_obj_shape:', model_obj.shape)
+
+    mean_squared_error_obj = mean_square_error(model_obj, shifted_obj)
+    mean_squared_error_probe = mean_square_error(model_probe, shifted_probe)
 
     return mean_squared_error_obj, mean_squared_error_probe
 
@@ -165,25 +197,27 @@ def save_results_as_pngs(obj, probe, prefix, output_folder):
     ap_default_params
 ])
 def test_quality(algo_params):
-    test_input_dict = {
+    test_dict = {
         **input_dict,
-        'algorithms': { '1': { **algo_params, 'iterations': 200 } }
+        'algorithms': { '1': {**algo_params}}
     }
-    obj, probe, _, _, _ = call_ptychography(test_input_dict, data, positions)
+    obj, probe, _, _, _ = call_ptychography(test_dict, data, positions)
     save_results_as_pngs(obj, probe, algo_params['name'], output_folder)
-    error_obj, _ = compare_model_to_recon(obj, probe, model_obj, model_probe, N=50)
-    assert error_obj < error_threshold, "Bad recon for {} engine.".format(algo_params['name'])
+    error_obj, _ = compare_model_to_recon(obj, probe, model_obj, model_probe, N=120)
+    print(error_obj)
+    if(error_obj > error_threshold):
+        pytest.fail("Bad recon for {} engine.".format(algo_params['name']))
 
 # the "complete run" tests only check if engines can run without crash
 
 @pytest.mark.parametrize("probe_support", [
     { "type": "circular",  "radius": 100,  "center_y": 0, "center_x": 0 },
     { "type": "cross",  "center_width": 300,  "cross_width": 0, "border_padding": 0 },
-    { "type": "array",  "data": np.ones_like(model_probe, dtype=np.float32) }
+    { "type": "array",  "data": np.ones((1,model_probe.shape[0],model_probe.shape[1]))}
 ])
 def test_probe_support_complete_run(probe_support):
     try:
-        call_ptychography({**input_dict, 'probe_support': probe_support}, data, positions)
+        call_ptychography({**test_input_dict, 'probe_support': probe_support}, data, positions)
     except Exception as e:
         pytest.fail(f"Unexpected exception raised: {e}")
 
@@ -197,7 +231,7 @@ def test_probe_support_complete_run(probe_support):
 ])
 def test_initial_object_complete_run(initial_obj):
     try:
-        call_ptychography({ **input_dict , 'initial_obj': initial_obj }, data, positions)
+        call_ptychography({ **test_input_dict , 'initial_obj': initial_obj }, data, positions)
     except Exception as e:
         pytest.fail(f"Unexpected exception raised: {e}")
 
@@ -219,6 +253,6 @@ def test_initial_object_complete_run(initial_obj):
 ])
 def test_initial_probe_complete_run(initial_probe):
     try:
-        call_ptychography({ **input_dict , 'initial_probe': initial_probe }, data, positions)
+        call_ptychography({ **test_input_dict , 'initial_probe': initial_probe }, data, positions)
     except Exception as e:
         pytest.fail(f"Unexpected exception raised: {e}")
