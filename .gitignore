@@ -5,7 +5,6 @@ dist/*
 build/*
 _skbuild/*
 sscCdi.egg-info/*
-.**
 ._**
 bin/.DS_Store
 bin/._.DS_Store
