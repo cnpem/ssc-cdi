@@ -1,0 +1,32 @@
+name: Publish Zenodo
+on:
+  # Trigger when you publish a release via GitHub's release page
+  release:
+    types:
+      - published
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ZENODO_SANDBOX_ACCESS_TOKEN: ${{ secrets.ZENODO_SANDBOX_ACCESS_TOKEN }}
+  ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Upload Zenodo
+        uses: zenodraft/action@0.13.3
+        with:
+          concept: 13693177 
+          compression: tar.gz
+          metadata: .zenodo.json
+          publish: false
+          sandbox: false 
+          verbose: true
+
+ 
