@@ -1,0 +1,461 @@
+{
+    "version": "0.15.0",
+    "access": {
+        "embargo": {
+            "active": false,
+            "reason": null
+        },
+        "files": "public",
+        "record": "public",
+        "status": "open"
+    },
+    "custom_fields": {
+        "code:developmentStatus": {
+            "id": "wip",
+            "title": {
+                "en": "Wip"
+            }
+        },
+        "code:programmingLanguage": [
+            {
+                "id": "python",
+                "title": {
+                    "en": "Python"
+                }
+            },
+            {
+                "id": "c++",
+                "title": {
+                    "en": "C++"
+                }
+            },
+            {
+                "id": "cuda",
+                "title": {
+                    "en": "Cuda"
+                }
+            },
+            {
+                "id": "jupyter_notebook",
+                "title": {
+                    "en": "Jupyter Notebook"
+                }
+            }
+        ]
+    },
+    "metadata": {
+        "additional_titles": [
+            {
+                "title": "SSC-CDI",
+                "type": {
+                    "id": "alternative-title",
+                    "title": {
+                        "de": "Alternativer Titel",
+                        "en": "Alternative title"
+                    }
+                }
+            },
+            {
+                "title": "sscCdi",
+                "type": {
+                    "id": "alternative-title",
+                    "title": {
+                        "de": "Alternativer Titel",
+                        "en": "Alternative title"
+                    }
+                }
+            }
+        ],
+        "contributors": [
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "X. Miqueles",
+                    "given_name": "Eduardo",
+                    "identifiers": [
+                        {
+                            "identifier": "0000-0001-6576-4288",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "X. Miqueles, Eduardo",
+                    "type": "personal"
+                },
+                "role": {
+                    "id": "projectleader",
+                    "title": {
+                        "de": "ProjektleiterIn",
+                        "en": "Project leader"
+                    }
+                }
+            },
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Rossi Tonin",
+                    "given_name": "Yuri",
+                    "identifiers": [
+                        {
+                            "identifier": "0000-0003-1403-815X",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Rossi Tonin, Yuri",
+                    "type": "personal"
+                },
+                "role": {
+                    "id": "researcher",
+                    "title": {
+                        "de": "WissenschaftlerIn",
+                        "en": "Researcher"
+                    }
+                }
+            },
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Z. Peixinho",
+                    "given_name": "Alan",
+                    "identifiers": [
+                        {
+                            "identifier": "0009-0002-6983-2342",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Z. Peixinho, Alan",
+                    "type": "personal"
+                },
+                "role": {
+                    "id": "researcher",
+                    "title": {
+                        "de": "WissenschaftlerIn",
+                        "en": "Researcher"
+                    }
+                }
+            },
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Ferraz",
+                    "given_name": "Paola",
+                    "identifiers": [
+                        {
+                            "identifier": "0000-0002-1457-705X",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Ferraz, Paola",
+                    "type": "personal"
+                },
+                "role": {
+                    "id": "researcher",
+                    "title": {
+                        "de": "WissenschaftlerIn",
+                        "en": "Researcher"
+                    }
+                }
+            },
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Brandao-Junior",
+                    "given_name": "Mauro L.",
+                    "identifiers": [
+                        {
+                            "identifier": "0000-0001-7737-3575",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Brandao-Junior, Mauro L.",
+                    "type": "personal"
+                },
+                "role": {
+                    "id": "researcher",
+                    "title": {
+                        "de": "WissenschaftlerIn",
+                        "en": "Researcher"
+                    }
+                }
+            }
+        ],
+        "creators": [
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Rossi Tonin",
+                    "given_name": "Yuri",
+                    "identifiers": [
+                        {
+                            "identifier": "0000-0003-1403-815X",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Rossi Tonin, Yuri",
+                    "type": "personal"
+                }
+            },
+            {
+                "affiliations": [
+                    {
+                        "id": "01p6gzq21",
+                        "identifiers": [
+                            {
+                                "identifier": "01p6gzq21",
+                                "scheme": "ror"
+                            },
+                            {
+                                "identifier": "grid.509791.3",
+                                "scheme": "grid"
+                            },
+                            {
+                                "identifier": "0000 0000 9593 7568",
+                                "scheme": "isni"
+                            }
+                        ],
+                        "name": "Brazilian Synchrotron Light Laboratory"
+                    }
+                ],
+                "person_or_org": {
+                    "family_name": "Z. Peixinho",
+                    "given_name": "Alan",
+                    "identifiers": [
+                        {
+                            "identifier": "0009-0002-6983-2342",
+                            "scheme": "orcid"
+                        }
+                    ],
+                    "name": "Z. Peixinho, Alan",
+                    "type": "personal"
+                }
+            },
+            {
+                "person_or_org": {
+                    "family_name": "L. Baraldi",
+                    "given_name": "Giovanni",
+                    "name": "L. Baraldi, Giovanni",
+                    "type": "personal"
+                }
+            }
+        ],
+        "description": "<p><strong>sscCdi</strong> is the Coherent Diffraction Imaging package of the Sirius Scientific Computing (ssc) group.&nbsp;</p>\n<div>It currently performs:</div>\n<div>&nbsp;</div>\n<div>- Ptychography</div>\n<div>&nbsp;</div>\n<div>- Ptycho-tomography pre-processing (sorting, cropping, unwrapping, phase-ramp removal)</div>\n<div>&nbsp;</div>\n<div>High-level level functionality is written in Python. Some of the algorithms are accelerated using C++/CUDA.</div>\n<div>&nbsp;</div>\n<div>If you have any questions, contact: <strong>gcc@lnls.br</strong></div>\n<div>&nbsp;</div>\n<div>&nbsp;</div>\n<div><strong>Usage</strong></div>\n<div>&nbsp;</div>\n<div>See examples folder for Python notebooks that show how to use package.&nbsp;</div>\n<div>&nbsp;</div>\n<p><strong>Acknowledgements</strong></p>\n<p>We would like to acknowledge the Brazilian Ministry of Science, Technology, and Innovation MCTI for supporting this work through the Brazilian Center for Research in Energy and Materials (CNPEM).</p>",
+        "languages": [
+            {
+                "id": "eng",
+                "title": {
+                    "en": "English"
+                }
+            }
+        ],
+        "related_identifiers": [
+            {
+                "identifier": "10.1107/S1600576720013886",
+                "relation_type": {
+                    "id": "isderivedfrom",
+                    "title": {
+                        "de": "Wird abgeleitet von",
+                        "en": "Is derived from"
+                    }
+                },
+                "resource_type": {
+                    "id": "publication",
+                    "title": {
+                        "de": "Publikation",
+                        "en": "Publication"
+                    }
+                },
+                "scheme": "doi"
+            }
+        ],
+        "resource_type": {
+            "id": "software",
+            "title": {
+                "de": "Software",
+                "en": "Software"
+            }
+        },
+        "rights": [
+            {
+                "description": {
+                    "en": "This license agreement sets forth the terms and conditions under which the Brazilian Center for Research in Energy and Materials (CNPEM) (hereafter \"LICENSOR\") will grant you (hereafter \"LICENSEE\") a royalty-free, non-exclusive license for academic, non-commercial purposes only (hereafter \"LICENSE\") to use the ssc-cdi computer software program and associated documentation furnished hereunder (hereafter \"PROGRAM\").\n\n Terms and Conditions of the LICENSE:\n\n1. LICENSOR grants to LICENSEE a royalty-free, non-exclusive license to use the PROGRAM for academic, non-commercial purposes, upon the terms and conditions hereinafter set out and until termination of this license as set forth below.\n\n2. LICENSEE acknowledges that the PROGRAM is a research tool still in the development stage. The PROGRAM is provided without any related services, improvements or warranties from LICENSOR and that the LICENSE is entered into in order to enable others to utilize the PROGRAM in their academic activities. It is the LICENSEE\u2019s responsibility to ensure its proper use and the correctness of the results.\n\n3. THE PROGRAM IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF PERFORMANCE, USE AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL THE LICENSOR, THE AUTHORS OR THE COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DIRECT, INDIRECT OR CONSEQUENTIAL DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR IN CONNECTION WITH THE PROGRAM OR THE USE OF THE PROGRAM.\n\n4. LICENSEE agrees that it will use the PROGRAM and any modifications, improvements, or derivatives of the PROGRAM that the LICENSEE may create (collectively, \"IMPROVEMENTS\") solely for academic, non-commercial purposes and that any copy of the PROGRAM or derivatives thereof shall be distributed only under the same license as the PROGRAM. The terms \"academic, non-commercial\", as used in this Agreement, mean academic or other scholarly research which (a) is not undertaken for profit, or (b) is not intended to produce works, services, or data for commercial use, or (c) is neither conducted, nor funded, by a person or an entity engaged in the commercial use, application or exploitation of works similar to the PROGRAM.\n\n5. LICENSEE agrees that it shall make the following acknowledgement in any publication resulting from the use of the PROGRAM or any translation of the code into another computing language: \"Data processing was carried out using the ssc-cdi reconstruction package (doi: 10.5281/zenodo.10949772).\"\n\n6. Except for the above-mentioned acknowledgment, LICENSEE shall not use the PROGRAM title or the names or logos of LICENSOR, nor any adaptation thereof, nor the names of any of its employees or laboratories, in any advertising, promotional or sales material without prior written consent obtained from the LICENSOR in each case.\n\n7. Ownership of all rights, including copyright in the PROGRAM and in any material associated therewith, shall at all times remain with the LICENSOR, and the LICENSEE agrees to preserve same. LICENSEE agrees not to use any portion of the PROGRAM or of any IMPROVEMENTS in any machine-readable form outside the PROGRAM, nor to make any copies except for its internal use, without prior written consent of the LICENSOR. LICENSEE agrees to place the following copyright notice on any such copies:\n\n\u00a9 All rights reserved. Brazilian Center for Research in Energy and Materials (CNPEM).\n\n8. The LICENSE shall not be construed to confer any rights upon the LICENSEE by implication or otherwise except as specifically set forth herein.\n\n9. LICENSEE SHALL BE AWARE THAT PHASE FOCUS LIMITED OF SHEFFIELD, UK HAS AN INTERNATIONAL PORTFOLIO OF PATENTS AND PENDING APPLICATIONS RELATING TO PTYCHOGRAPHY, AND THAT THE PROGRAM MAY BE CAPABLE OF BEING USED IN CIRCUMSTANCES WHICH MAY FALL WITHIN THE CLAIMS OF ONE OR MORE OF THE PHASE FOCUS PATENTS (SEE HTTPS://WWW.PHASEFOCUS.COM/PATENTS). THE LICENSOR EXPLICITLY DECLARES THAT IT WILL NOT INDEMNIFY THE LICENSEE IN THE EVENT THAT PHASE FOCUS OR ANY OTHER THIRD PARTY INITIATES LEGAL ACTION AGAINST THE LICENSEE DUE TO THE USE OF THE PROGRAM. THE LICENSOR, THE AUTHORS OR THE COPYRIGHT HOLDERS SHALL NOT BE HELD LIABLE FOR ANY CLAIMS, DAMAGES, OR LOSSES ARISING FROM OR RELATED TO DEALINGS INVOLVING THE PROGRAM. THE LICENSOR MAKES NO REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THE MERCHANTABILITY OF THE PROGRAM. THE LICENSEE IS SOLELY RESPONSIBLE FOR ENSURING THAT THEIR USE OF THE PROGRAM DOES NOT INFRINGE ON ANY PATENTS COPYRIGHTS, TRADEMARKS, OR OTHER INTELLECTUAL PROPERTY RIGHTS AND MUST VERIFY AND ADDRESS ANY POTENTIAL PATENT CLAIMS INDEPENDENTLY.\n\n10. This Agreement shall be governed by the material laws of Brazil and any dispute arising out of this Agreement or use of the PROGRAM shall be brought before the courts of Brazil."
+                },
+                "title": {
+                    "en": "Academic License Agreement"
+                }
+            },
+            {
+                "description": {
+                    "en": "Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights."
+                },
+                "id": "gpl-3.0-or-later",
+                "props": {
+                    "scheme": "spdx",
+                    "url": "https://www.gnu.org/licenses/gpl-3.0-standalone.html"
+                },
+                "title": {
+                    "en": "GNU General Public License v3.0 or later"
+                }
+            }
+        ],
+        "subjects": [
+            {
+                "subject": "X-Rays"
+            },
+            {
+                "subject": "Imaging"
+            },
+            {
+                "subject": "Ptychography"
+            },
+            {
+                "subject": "Coherent Diffractive Imaging"
+            },
+            {
+                "subject": "CDI"
+            },
+            {
+                "subject": "Tomography"
+            },
+            {
+                "subject": "Synchrotron"
+            },
+            {
+                "subject": "CUDA"
+            },
+            {
+                "subject": "C++"
+            },
+            {
+                "subject": "Python"
+            },
+            {
+                "subject": "GPU"
+            }
+        ],
+        "title": "ssc-cdi"
+    },
+    "pids": {
+        "doi": {
+            "client": "datacite",
+            "identifier": "10.5281/zenodo.13693178",
+            "provider": "datacite"
+        },
+        "oai": {
+            "identifier": "oai:zenodo.org:13693178",
+            "provider": "oai"
+        }
+    }
+}
