@@ -154,13 +154,16 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
 
-    if "object_pixel" not in input_dict:
-        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
-                                                                 input_dict['detector_distance'],
-                                                                 input_dict['detector_pixel_size'],
-                                                                 DPs.shape[1]) # meters
-
-        print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+    if input_dict["regime"] == 'fraunhoffer':
+        if "object_pixel" not in input_dict:
+            input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
+                                                                    input_dict['detector_distance'], 
+                                                                    input_dict['detector_pixel_size'],
+                                                                    DPs.shape[1]) # meters
+            
+    elif input_dict["regime"] == 'fresnel':
+        if "object_pixel" not in input_dict:
+            input_dict["object_pixel"] = input_dict['detector_pixel_size']
 
     if input_dict['positions_unit'] is None:
         print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")

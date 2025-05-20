@@ -47,7 +47,7 @@ description = "Sirius Coherent Diffraction Imaging Package"
 keywords = ["Ptychography", "Tomography", "Imaging"]
 
 dependencies = [
-    'numpy<2.0',
+    'numpy>=2.0',
     'matplotlib',
     'h5py',
     'scipy',

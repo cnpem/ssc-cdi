@@ -29,7 +29,7 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     Returns:
         tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray), Probe positions (ndarray).
     """
-    for m in range(15):
+    for m in range(3):
         print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
         print("*WARNING:* This function is a test engine and is still in development. Use PIE ``CUDA`` engine.")
 
