@@ -35,6 +35,24 @@ Sirius Scientific Computing Team: [gcc@lnls.br](malito:gcc@lnls.br)
 The package documentation can be found on the GCC website [https://gcc.lnls.br/ssc/ssc-cdi/index.html](https://gcc.lnls.br/ssc/ssc-cdi/index.html) inside the CNPEM network.
 Also, the `HTML` documentation can be found in the source directory `./docs/build/index.html` and can be opened with your preferred brownser.
 
+## Citation
+
+If you use this package in your research, please cite the following publication:
+```
+@Article{jimaging10110286,
+  AUTHOR = {Tonin, Yuri Rossi and Peixinho, Alan Zanoni and Brandao-Junior, Mauro Luiz and Ferraz, Paola and Miqueles, Eduardo Xavier},
+  TITLE = {ssc-cdi: A Memory-Efficient, Multi-GPU Package for Ptychography with Extreme Data},
+  JOURNAL = {Journal of Imaging},
+  VOLUME = {10},
+  YEAR = {2024},
+  NUMBER = {11},
+  ARTICLE-NUMBER = {286},
+  URL = {https://www.mdpi.com/2313-433X/10/11/286},
+  PubMedID = {39590749},
+  ISSN = {2313-433X}
+}
+```
+
 ## Install
 
 This package uses `C`, `C++`, `CUDA` and `Python3`.
