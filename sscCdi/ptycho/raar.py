@@ -9,7 +9,7 @@
 
 
 import cupy as cp
-from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask, soft_clip
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
@@ -63,6 +63,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     free_log_likelihood = inputs['free_log_likelihood']
     propagator = inputs['regime']
     fourier_power_bound = inputs['fourier_power_bound']
+    clip_object_phase = inputs['clip_object_phase']
     clip_object_magnitude = inputs['clip_object_magnitude']
 
     if free_log_likelihood > 0:
@@ -118,8 +119,12 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
 
         probe_modes, single_obj = update_object_and_probe(wavefronts,obj_matrix[0],probe_modes,positions,regularization_obj,regularization_probe) # Update Object and Probe. Projection in Real space (consistency condition)
 
-        if clip_object_magnitude:
-            single_obj = cp.clip(cp.abs(single_obj),0,1)*cp.exp(1j*cp.angle(single_obj))
+        if clip_object_magnitude is not None:
+            if len(clip_object_magnitude) == 2: clip_object_magnitude = [clip_object_magnitude[0], clip_object_magnitude[1], 1]
+            single_obj = soft_clip(np.abs(single_obj),clip_object_magnitude[0],clip_object_magnitude[1],clip_object_magnitude[2]) * cp.exp(1j*cp.angle(single_obj))
+        if clip_object_phase is not None:
+            if len(clip_object_phase) == 2: clip_object_phase = [clip_object_phase[0], clip_object_phase[1], 1]
+            single_obj = cp.abs(single_obj)*cp.exp(1j*soft_clip(cp.angle(single_obj),clip_object_phase[0],clip_object_phase[1],clip_object_phase[2]))            
 
         obj_matrix[:] = single_obj # update all obj slices to be the same;
 

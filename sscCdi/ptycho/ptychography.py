@@ -566,7 +566,6 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
 
-
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
     error_llk = np.concatenate(error_llk).ravel()

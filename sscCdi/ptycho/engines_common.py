@@ -215,3 +215,44 @@ def apply_probe_support(probe_modes,probe_support,distance_focus_sample,waveleng
         for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
             probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,distance_focus_sample)
     return probe_modes
+
+
+def soft_clip(arr, lower, upper, strength=1.0): 
+    """ Apply soft clipping to the input array such that values outside the range [lower, upper] are gradually compressed rather than abruptly clipped.
+
+    For each element x in arr:
+    - If lower <= x <= upper, then soft_clip(x) = x.
+    - If x > upper, then 
+            soft_clip(x) = upper + (x - upper) / (1 + strength * (x - upper))
+    - If x < lower, then 
+            soft_clip(x) = lower + (x - lower) / (1 + strength * (lower - x))
+
+    The parameter 'strength' controls how strongly the clipping is applied:
+        strength = 0       → no clipping (function is identity)
+        strength → ∞       → approaches hard clipping (values are forced to the bounds)
+
+    Parameters:
+    arr      : Input array (or scalar) to be clipped.
+    lower    : Lower bound.
+    upper    : Upper bound.
+    strength : A nonnegative parameter controlling the softness of the clipping.
+
+    Returns:
+    A NumPy array with soft clipping applied elementwise.
+    """
+    # Ensure we are working with a NumPy array
+    arr = cp.asarray(arr)
+    # Copy the array so we can modify only those values that violate the bounds.
+    y = arr.copy()
+
+    # Find indices of values above and below the interval [lower, upper].
+    above = arr > upper
+    below = arr < lower
+
+    # For values above the upper limit
+    y[above] = upper + (arr[above] - upper) / (1 + strength * (arr[above] - upper))
+
+    # For values below the lower limit  
+    y[below] = lower + (arr[below] - lower) / (1 + strength * (lower - arr[below]))
+
+    return y
