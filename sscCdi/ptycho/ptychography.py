@@ -165,6 +165,8 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         if "object_pixel" not in input_dict:
             input_dict["object_pixel"] = input_dict['detector_pixel_size']
 
+    print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+
     if input_dict['positions_unit'] is None:
         print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")
         if plot: plot_ptycho_scan_points(positions,pixel_size=None)
@@ -200,8 +202,6 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                                                                                                    initial_obj=initial_obj,
                                                                                                    initial_probe=initial_probe,
                                                                                                    plot=plot)
-    # print(positions)
-    # print(corrected_positions)
     # input_dict['positions'] = corrected_positions
 
     if plot is True and corrected_positions is not None:
@@ -477,9 +477,11 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            # if algo_inputs["position_correction"] > 0:
-            # corrected_positions = probe_positions
-
+            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
+                corrected_positions = probe_positions
+                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
+            else:
+                corrected_positions = None
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -514,8 +516,11 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            #if algo_inputs["position_correction"] > 0:
-            # corrected_positions = probe_positions
+            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
+                corrected_positions = probe_positions
+                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
+            else:
+                corrected_positions = None
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
@@ -549,8 +554,11 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            #if algo_inputs["position_correction"] > 0:
-            # corrected_positions = probe_positions
+            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
+                corrected_positions = probe_positions
+                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
+            else:
+                corrected_positions = None
 
         else:
             sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
@@ -558,12 +566,6 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
             plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
 
-    # at this point, corrected_position should be holding either the corrected version of the probe_positions or the original one,
-    # depending on whether algo_inputs["position_correction"]>0 or not,
-    corrected_positions = probe_positions
-
-    # change from (Y,X) back to (X,Y) for visualization
-    corrected_positions = np.roll(corrected_positions, shift=1, axis=1)
 
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()

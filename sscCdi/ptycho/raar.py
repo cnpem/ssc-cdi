@@ -27,7 +27,8 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     Returns:
         tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray).
     """
-    for m in range(3):
+    
+    for m in range(1):
         print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
         print("*WARNING:* This function is a test engine and is still in development. Use RAAR ``CUDA`` engine.")
 
@@ -100,8 +101,6 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     print('Diffraction patterns shape:',diffraction_patterns.shape)
     print('Wavefronts shape:',wavefronts.shape)
     print('Positions shape:',positions.shape)
-
-
 
     error = cp.zeros((iterations,4))
     for iteration in range(0,iterations):
