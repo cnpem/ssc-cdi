@@ -28,10 +28,6 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
         tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray).
     """
     
-    for m in range(1):
-        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
-        print("*WARNING:* This function is a test engine and is still in development. Use RAAR ``CUDA`` engine.")
-
     try:
         import cupy as cp
         # Check if a GPU is available
@@ -121,7 +117,7 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
 
         if clip_object_magnitude is not None:
             if len(clip_object_magnitude) == 2: clip_object_magnitude = [clip_object_magnitude[0], clip_object_magnitude[1], 1]
-            single_obj = soft_clip(np.abs(single_obj),clip_object_magnitude[0],clip_object_magnitude[1],clip_object_magnitude[2]) * cp.exp(1j*cp.angle(single_obj))
+            single_obj = soft_clip(cp.abs(single_obj),clip_object_magnitude[0],clip_object_magnitude[1],clip_object_magnitude[2]) * cp.exp(1j*cp.angle(single_obj))
         if clip_object_phase is not None:
             if len(clip_object_phase) == 2: clip_object_phase = [clip_object_phase[0], clip_object_phase[1], 1]
             single_obj = cp.abs(single_obj)*cp.exp(1j*soft_clip(cp.angle(single_obj),clip_object_phase[0],clip_object_phase[1],clip_object_phase[2]))            

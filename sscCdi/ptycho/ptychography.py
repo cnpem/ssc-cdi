@@ -209,7 +209,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     if plot:
         print('Plotting final object and probe...')
-        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+        plot_amplitude_and_phase(obj, extent=get_plot_extent_from_positions(positions))
         plot_object_spectrum(obj,cmap='gray')
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
@@ -340,7 +340,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     if plot:
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
     if plot:
-        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2, extent=get_plot_extent_from_positions(positions))
+        plot_amplitude_and_phase(obj, extent=get_plot_extent_from_positions(positions))
 
     if np.any(probe_positions < 0):
         raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")
@@ -564,7 +564,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
 
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
-            plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+            plot_amplitude_and_phase(obj,extent=get_plot_extent_from_positions(positions))
 
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
