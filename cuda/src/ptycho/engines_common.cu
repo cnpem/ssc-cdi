@@ -363,7 +363,7 @@ void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, cImage* wavefront,
         printf("Upsample factor >1: %d", upsample);
     }
 
-    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), 1, stream);
+    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), +pt.detector_distance_m, stream);
 
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(),
                               diff_pattern->ShapeThread(), 0, stream>>>(
@@ -371,7 +371,7 @@ void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, cImage* wavefront,
         pt.error_rfactor->Ptr(g), pt.error_llk->Ptr(g), pt.error_mse->Ptr(g),
         upsample, pt.probe->sizez, isGrad);
 
-    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), -1, stream);
+    pt.propagator[g]->Propagate(ewave, ewave, wavefront->Shape(), -pt.detector_distance_m, stream);
 }
 
 void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, int g,
@@ -382,7 +382,7 @@ void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, int g,
 
     int upsample = pt.wavefront->sizex / diff_pattern->sizex;
 
-    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), 1, stream);
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), +pt.detector_distance_m, stream);
 
     KProjectReciprocalSpace<<<diff_pattern->ShapeBlock(),
                               diff_pattern->ShapeThread(), 0, stream>>>(
@@ -390,8 +390,7 @@ void ProjectReciprocalSpace(Ptycho& pt, rImage* diff_pattern, int g,
         pt.error_llk->Ptr(g), pt.error_mse->Ptr(g), upsample, pt.probe->sizez,
         isGrad);
 
-    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -1,
-                                stream);
+    pt.propagator[g]->Propagate(ewave, ewave, pt.wavefront->Shape(), -pt.detector_distance_m, stream);
 }
 
 void ApplyProbeSupport(Ptycho& pt) {
@@ -605,8 +604,9 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
                      const dim3& objshape, Position* positions, int numrois,
                      int batchsize, float* _rfact, float* _llk, float* _mse,
                      const std::vector<int>& gpus, float* _objectsupport,
-                     float* _probesupport, int numobjsupp, float wavelength_m,
-                     float pixelsize_m, float distance_m, int poscorr_iter,
+                     float* _probesupport, int numobjsupp, int obj_propagator,
+                     float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
+                     int poscorr_iter,
                      float step_obj, float step_probe, float reg_obj,
                      float reg_probe) {
     Ptycho* ptycho = new Ptycho;
@@ -618,6 +618,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     ptycho->pixelsize_m = pixelsize_m;
     ptycho->wavelength_m = wavelength_m;
     ptycho->distance_m = distance_m;
+    ptycho->detector_distance_m = detector_distance_m;
 
     EnablePeerToPeer(ptycho->gpus);
 
@@ -738,7 +739,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     for (int g = 0; g < gpus.size(); g++) {
         SetDevice(gpus, g);
         sscDebug(format("Creating propagator: {}", g));
-        ptycho->propagator[g] = new Fraunhoffer();
+        ptycho->propagator[g] = obj_propagator == FRAUNHOFFER ?
+            new Fraunhoffer() : new ASM(wavelength_m, pixelsize_m);
     }
 
     sscDebug("Computing I0");

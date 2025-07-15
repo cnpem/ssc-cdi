@@ -461,12 +461,14 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          obj=obj,
                                                          rois=probe_positions,
                                                          probe=probe,
+                                                         obj_propagator=input_dict["regime"],
                                                          probesupp = algo_inputs['probe_support_array'],
                                                          params={'device': input_dict["GPUs"]},
                                                          poscorr_iter=algo_inputs["position_correction"],
                                                          wavelength_m=input_dict["wavelength"],
                                                          pixelsize_m=input_dict["object_pixel"],
-                                                         distance_m=input_dict["distance_sample_focus"])
+                                                         distance_m=input_dict["distance_sample_focus"],
+                                                         detector_distance_m=input_dict["detector_distance"])
 
 
             # error_nmse.append(np.full_like(algo_error, np.nan))
@@ -499,12 +501,14 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
+                                                            obj_propagator=input_dict["regime"],
                                                             probesupp = algo_inputs['probe_support_array'],
                                                             params={'device': input_dict["GPUs"]},
                                                             poscorr_iter=algo_inputs["position_correction"],
                                                             wavelength_m=input_dict["wavelength"],
                                                             pixelsize_m=input_dict["object_pixel"],
-                                                            distance_m=input_dict["distance_sample_focus"])
+                                                            distance_m=input_dict["distance_sample_focus"],
+                                                            detector_distance_m=input_dict["detector_distance"])
 
             error_rfactor.append(algo_error_rfactor)
             # error_nmse.append(np.full_like(algo_error, np.nan))
@@ -535,10 +539,12 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             difpads=DPs,
                                                                                             obj=obj,
                                                                                             probe=probe,
+                                                                                            obj_propagator=input_dict["regime"],
                                                                                             probesupp = algo_inputs['probe_support_array'],
                                                                                             wavelength_m=input_dict["wavelength"],
                                                                                             pixelsize_m=input_dict["object_pixel"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
+                                                                                            detector_distance_m=input_dict["detector_distance"],
                                                                                             params={'device': input_dict["GPUs"][0:1]})
 
             # fill errors
