@@ -6,7 +6,10 @@
 
 #include "types.hpp"
 
-/** @file */
+enum PropagatorType {
+    FRAUNHOFFER = 0,
+    FRESNEL = 1
+};
 
 using std::vector;
 
