@@ -1,5 +1,4 @@
 import numpy as np
-import cupy as cp
 from numpy.fft import fftshift, fft2, ifft2
 import matplotlib.pyplot as plt
 
@@ -76,6 +75,7 @@ def WASP(expt, recon, probe):
 
     # Load variables onto GPU if required
     if recon['gpu']:
+        import cupy as cp
         obj = cp.array(obj, dtype=cp.float32)
         probe = cp.array(probe, dtype=cp.float32)
         expt['dps'] = cp.array(expt['dps'], dtype=cp.float32)

@@ -54,9 +54,11 @@ dependencies = [
     'scikit-image',
     'tqdm',
     'ipywidgets',
-    'SharedArray',
-    'cupy'
+    'SharedArray'
 ]
+
+[project.optional-dependencies]
+dev = ["cupy"]
 
 [tool.setuptools]
 platforms = ["Linux"]

@@ -8,7 +8,6 @@
 ##################################################################################################################################################################
 
 
-import cupy as cp
 from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
