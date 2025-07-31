@@ -7,14 +7,14 @@
 # For the complete LICENSE description see LICENSE file available within the root directory of this project.
 ##################################################################################################################################################################
 
-
-import cupy as cp
 import numpy as np
 import matplotlib.pyplot as plt
 
 from .engines_common import calculate_errors
 
 def calculate_gradients_obj_probe(obj, probe, positions, data):
+    import cupy as cp
+
     gradient_o = cp.zeros_like(obj, dtype=complex)
     gradient_p = cp.zeros_like(probe, dtype=complex)
 
@@ -44,6 +44,9 @@ def calculate_gradients_obj_probe(obj, probe, positions, data):
     return gradient_o, gradient_p, wavefronts
 
 def total_variation_regularization(obj, weight=1e-3, epsilon=1e-8):
+
+    import cupy as cp
+
     grad_x = cp.roll(obj, -1, axis=1) - obj
     grad_y = cp.roll(obj, -1, axis=0) - obj
     grad_magnitude = cp.sqrt(cp.abs(grad_x)**2 + cp.abs(grad_y)**2 + epsilon)
@@ -93,6 +96,7 @@ def ML_cupy(data, positions, initial_obj, initial_probe, algo_inputs):
 
     """
 
+    import cupy as cp
 
     for m in range(15):
         print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    

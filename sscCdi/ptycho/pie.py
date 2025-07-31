@@ -9,7 +9,6 @@
 
 
 import sys
-import cupy as cp
 from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
@@ -155,7 +154,9 @@ def update_object_and_probe(obj,probe_modes,wavefront_modes,updated_wavefront_mo
     s: step constant
     r: regularization constant
     """
-    
+
+    import cupy as cp
+
     def get_denominator_p(obj,reg_p):
         power = cp.abs(obj)**2
         denominator = (1-reg_p)*power+ reg_p*cp.max(power)
