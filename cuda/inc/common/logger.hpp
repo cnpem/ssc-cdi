@@ -12,6 +12,7 @@ using fmt::format;
 
 extern "C" {
 void ssc_log_start(const char* level);
+void ssc_log_level(const char* level);
 void ssc_log_stop();
 }
 

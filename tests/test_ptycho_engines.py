@@ -30,8 +30,6 @@ np.save(output_folder + path_npy_probe, model_probe)
 path_hdf5_obj = 'object.h5'
 path_hdf5_probe = 'probe.h5'
 
-
-
 def convert_npy_to_hdf5(npy_path, hdf5_path):
     data = np.load(npy_path)
     with h5py.File(hdf5_path, 'w') as hdf5_file:

@@ -1,34 +1,41 @@
 #include "logger.hpp"
 
+#include <cstdio>
 #include <pwd.h>
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 #include <sys/stat.h>
-#include <mutex>
 #include <unistd.h>
 #include <csignal>
 #include <string>
 #include <atomic>
 
-std::mutex evt_mutex;
 std::atomic_bool log_active;
 
 void ssc_log_start(const char* level) {
     if (log_active) {
-        sscWarning("Log already started. Ignoring start.");
+        fprintf(stderr, "Log already started. Ignoring start.");
         return;
     }
 
-    // logger
     spdlog::set_pattern("%[%H:%M:%S:%f] %^%g:%! [%l] [thread %t]%$ %v");
     spdlog::set_level(spdlog::level::from_str(level));
 
     log_active = true;
 }
 
+void ssc_log_level(const char* level) {
+    if (!log_active) {
+        fprintf(stderr, "Log not started. Ignoring set level.");
+        return;
+    }
+    spdlog::set_level(spdlog::level::from_str(level));
+}
+
 void ssc_log_stop() {
     if (!log_active) {
-        sscWarning("Log not started. Ignoring stop.");
+        fprintf(stderr, "Log not started. Ignoring stop.");
+        return;
     }
     log_active = false;
     spdlog::drop_all();

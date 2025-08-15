@@ -717,8 +717,6 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
         new rMImage(n_pos_neighbors + 1, 1, batchsize, true, ptycho->gpus);
     ptycho->errorcounter->SetGPUToZero();
 
-    printf("batchsize = %d\n", batchsize);
-
     SetDevice(ptycho->gpus, 0);
     ptycho->roibatch_offset = std::vector<int>();
 
