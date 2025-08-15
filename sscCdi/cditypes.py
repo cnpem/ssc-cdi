@@ -736,5 +736,8 @@ def PosCorrection(obj: np.ndarray,
 def log_start(level="error"):
     libcdi.ssc_log_start(ctypes.c_char_p(level.encode('UTF-8')))
 
+def log_level(level="error"):
+    libcdi.ssc_log_level(ctypes.c_char_p(level.encode('UTF-8')))
+
 def log_stop():
     libcdi.ssc_log_stop()
