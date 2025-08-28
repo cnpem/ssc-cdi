@@ -6,6 +6,34 @@ stages:
   - build
   - deploy
 
+build_sdist:
+  stage: build
+  image: gccdockers/python-builder
+  script:
+    - python3 -m build --sdist
+  tags:
+    - x86_64
+    - cuda11
+    - docker
+  artifacts:
+    paths:
+      - ./dist/*tar.gz
+    expire_in: 1 day
+
+deploy_sdist:
+  stage: deploy
+  image: gccdockers/python-builder
+  script:
+    - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
+  tags:
+    - x86_64
+    - cuda11
+    - docker
+  dependencies:
+    - build_sdist
+  only:
+    - tags
+
 build_dgx:
   stage: build
   image: gccdockers/python-builder
