@@ -109,7 +109,7 @@ void APRun(AP& ap, int iterations) {
           false, ptycho.gpus, MemoryType::EAllocGPU);
 
     const size_t num_batches = PtychoNumBatches(ptycho);
-    for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
+    for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
           const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, batch_idx);
           const size_t difpad_idx = batch_idx * PtychoBatchSize(ptycho);
@@ -119,7 +119,7 @@ void APRun(AP& ap, int iterations) {
           cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
           cur_difpad.LoadToGPU(difpad_batch_ptr);
 
-          for (int g = 0; g < ngpus; g++) {
+          for (size_t g = 0; g < ngpus; g++) {
               const size_t difpadsizez = (*ptycho.positions[batch_idx])[g].sizez;
               if (difpadsizez > 0) {
                   SetDevice(ptycho.gpus, g);
@@ -152,7 +152,7 @@ void APRun(AP& ap, int iterations) {
                 objvelocity, ptycho.objreg);
 
     if (ptycho.objectsupport != nullptr) {
-        for (int g = 0; g < ngpus; g++) {
+        for (size_t g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             ApplySupport(*ptycho.object->arrays[g],
                     *ptycho.objectsupport->arrays[g],

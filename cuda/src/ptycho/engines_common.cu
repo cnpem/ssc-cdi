@@ -204,7 +204,7 @@ void ProjectPhiToProbe(Ptycho& pt, int section, const MImage<dtype>& Phi,
     dim3 blk = pt.probe->ShapeBlock();
     dim3 thr = pt.probe->ShapeThread();
 
-    for (int g = 0; g < pt.gpus.size(); g++) {
+    for (size_t g = 0; g < pt.gpus.size(); g++) {
         SetDevice(pt.gpus, g);
 
         KProjectPhiToProbe<<<blk, thr, 0, stream>>>(
@@ -463,7 +463,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
     const size_t batchsize = ptycho.positions[0]->arrays[0]->sizez;
     const size_t num_batches = PtychoNumBatches(ptycho);
     const size_t ngpus = PtychoNumGpus(ptycho);
-    for (int d = 0; d < num_batches; d++) {
+    for (size_t d = 0; d < num_batches; d++) {
         ptycho.errorcounter->SetGPUToZero();
 
         const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, d);
@@ -473,7 +473,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
         cur_difpad.LoadToGPU(ptycho.cpu_diff_pattern +
                              (difpad_idx * difpadshape.x * difpadshape.y));
 
-        for (int g = 0; g < ngpus; g++) {
+        for (size_t g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             for (int k = 0; k <= n_pos_neighbors; k++) {
                 const size_t difpadsizez = ptycho.positions[d][0][g].sizez;
@@ -503,12 +503,12 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
             }
         }
 
-        for (int g = 0; g < ngpus; ++g) {
+        for (size_t g = 0; g < ngpus; ++g) {
             SetDevice(ptycho.gpus, g);
             cudaDeviceSynchronize();
         }
 
-        for (int g = 0; g < ngpus; g++) {
+        for (size_t g = 0; g < ngpus; g++) {
             SetDevice(ptycho.gpus, g);
             const size_t batch_size = PtychoCurBatchGpuZsize(ptycho, d, g);
             if (batch_size > 0) {
@@ -538,7 +538,7 @@ void DestroyPtycho(Ptycho*& ptycho_ref) {
     cudaHostUnregister(ptycho.cpu_diff_pattern);
 
     sscDebug("Deallocating base algorithm.");
-    for (int g = 0; g < ptycho.gpus.size(); g++) {
+    for (size_t g = 0; g < ptycho.gpus.size(); g++) {
         sscDebug(format("Dealloc propagator: {}", g));
         SetDevice(ptycho.gpus, g);
         delete ptycho.propagator[g];
@@ -686,7 +686,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
         ptycho->SupportSizes = std::vector<float>();
         for (int i = 0; i < numobjsupp; i++) {
             float s = 0;
-            for (int j = 0; j < objshape.x * objshape.y; j++)
+            for (size_t j = 0; j < objshape.x * objshape.y; j++)
                 s += _objectsupport[j + i * objshape.x * objshape.y];
             ptycho->SupportSizes.push_back(s);
         }
@@ -720,10 +720,10 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     SetDevice(ptycho->gpus, 0);
     ptycho->roibatch_offset = std::vector<int>();
 
-    for (size_t n = 0; n < numrois; n += batchsize) {
+    for (int n = 0; n < numrois; n += batchsize) {
         sscDebug(format("Creating DPGroup at: {} of {} at step {}", n, numrois,
                         batchsize));
-        if (numrois - n < batchsize)  // last batch
+        if ((numrois - n) < batchsize) // last batch
         {
             ptycho->positions.push_back(new PositionArray(
                 positions + n, 1, 1, numrois - n, false, gpus));
@@ -734,7 +734,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
         ptycho->roibatch_offset.push_back(n / ngpus);
     }
 
-    for (int g = 0; g < gpus.size(); g++) {
+    for (size_t g = 0; g < gpus.size(); g++) {
         SetDevice(gpus, g);
         sscDebug(format("Creating propagator: {}", g));
         ptycho->propagator[g] = obj_propagator == FRAUNHOFFER ?

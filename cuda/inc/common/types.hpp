@@ -183,7 +183,7 @@ struct Image {
 
     size_t size = 0;  //!< sizex*sizey*sizez
 
-    size_t capacity = 0; //true allocated size,\\
+    size_t capacity = 0; //true allocated size,
                          // any resize should be < capacity
 
     Type* gpuptr = nullptr;  //!< Pointer in GPU Memory.
@@ -207,7 +207,7 @@ struct Image {
      * */
     void SetCPUToZero() {
         assert(cpuptr != nullptr);
-        memset(cpuptr, 0, size * sizeof(Type));
+        memset((void*)cpuptr, 0, size * sizeof(Type));
     }
 
     void SetToZero() {
@@ -224,7 +224,6 @@ struct Image {
      * Get a dim3() object for kernel launch.
      * */
     dim3 ShapeThread() const {
-        dim3 shp = Shape();
         return dim3(blocksize, 1, 1);
     };
     /**
@@ -391,7 +390,7 @@ struct Image {
         if (cpysize == -1) cpysize = this->size;
 
         sscAssert(other != nullptr, "Syncing from empty pointer!");
-        sscAssert(cpysize <= this->size, "Not enough space for sync.!");
+        sscAssert(size_t(cpysize) <= this->size, "Not enough space for sync.!");
         sscAssert(gpuptr || cpuptr, "CopyFrom needs cpuptr or gpuptr to be able to copy.");
 
         void* outptr = gpuptr != nullptr ? gpuptr : cpuptr;
@@ -422,7 +421,7 @@ struct Image {
     }
 
     void CopyRoiTo(Type* outptr, dim3 offset, dim3 roi_size) {
-        cudaMemcpy3DParms params = {0};
+        cudaMemcpy3DParms params = {};
 
         // Set source parameters
         params.srcPtr.ptr = gpuptr + offset.z * sizex * sizey + offset.y * sizex + offset.x;
@@ -612,7 +611,7 @@ struct Image {
      *  */
     Type SumCPU() {
         Type s { 0 };
-        for (int i = 0; i < this->size; i++) s += this->cpuptr[i];
+        for (size_t i = 0; i < this->size; i++) s += this->cpuptr[i];
         return s;
     }
 
@@ -967,7 +966,7 @@ struct MImage : public MultiGPU {
             zstep = 0;
             zdistrib = sizez;
         } else {
-            if (ngpus > sizez)
+            if (size_t(ngpus) > sizez)
                 sscDebug("Warning: More GPUs than slices!");
             zstep = (sizez + ngpus - 1) / ngpus;
             zdistrib = zstep;

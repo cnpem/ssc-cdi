@@ -135,7 +135,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
 
     const size_t num_batches = PtychoNumBatches(*raar->ptycho);
     raar->temp_wavefront.reserve(num_batches);
-    for (int i = 0; i < num_batches; i++) {
+    for (size_t i = 0; i < num_batches; i++) {
         size_t batchsize = raar->ptycho->positions[i]->arrays[0]->sizez;
         auto *newphistack =
             new hcMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,
@@ -172,10 +172,10 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
     dim3 thr = raar.ptycho->object->ShapeThread();
 
     const dim3 probeshape = raar.ptycho->probe->Shape();
-    for (int section = 0; section < raar.ptycho->positions.size(); section++) {
+    for (size_t section = 0; section < raar.ptycho->positions.size(); section++) {
         const size_t cur_batch_zsize = raar.ptycho->positions[section]->sizez;
 
-        for (int g = 0; g < raar.ptycho->gpus.size(); g++) {
+        for (size_t g = 0; g < raar.ptycho->gpus.size(); g++) {
             const int gpu_batch_size = raar.ptycho->positions[section]->arrays[g]->sizez;
             if (gpu_batch_size > 0) {
                 SetDevice(raar.ptycho->gpus, g);
@@ -194,7 +194,7 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
         }
     }
 
-    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div, raar.ptycho->objstep, momentum, velocity, epsilon);
+    raar.ptycho->object->WeightedLerpSync(*raar.ptycho->object_num, *raar.ptycho->object_div, stepsize, momentum, velocity, epsilon);
 }
 
 /**
@@ -208,7 +208,7 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
     const int ngpus = PtychoNumGpus(*raar.ptycho);
     const dim3 probeshape = raar.ptycho->probe->Shape();
     const size_t num_batches = PtychoNumBatches(*raar.ptycho);
-    for (int d = 0; d < num_batches; d++) {
+    for (size_t d = 0; d < num_batches; d++) {
         for (int g = 0; g < ngpus; ++g) {
             SetDevice(raar.ptycho->gpus, g);
             const size_t gpu_batch_zsize = raar.ptycho->positions[d]->arrays[g]->sizez;
@@ -270,7 +270,7 @@ void RAARRun(RAAR& raar, int iterations) {
         raar.ptycho->object_div->SetGPUToZero();
 
         const size_t num_batches = PtychoNumBatches(*raar.ptycho);
-        for (int batch_idx = 0; batch_idx < num_batches; batch_idx++) {
+        for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
             const size_t difpad_batch_zsize = raar.ptycho->positions[batch_idx]->sizez;
             const size_t global_idx = batch_idx * raar.ptycho->multibatchsize;
@@ -281,7 +281,7 @@ void RAARRun(RAAR& raar, int iterations) {
             cur_difpad.LoadToGPU(difpad_batch_ptr);
 
             const size_t ngpus = PtychoNumGpus(*raar.ptycho);
-            for (int gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
+            for (size_t gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
 
                 cImage* current_exit_wave = raar.ptycho->wavefront->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];

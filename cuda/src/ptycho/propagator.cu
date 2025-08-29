@@ -54,7 +54,7 @@ void Fraunhoffer::FFT(complex* owave, complex* iwave,
 
     cufftHandle plan;
 
-    for (int i = 0; i < dims.size(); i++) {
+    for (size_t i = 0; i < dims.size(); i++) {
         if (dim3EQ(shape, dims[i])) {
                 bPlanExists = true;
                 plan = plans[i];
