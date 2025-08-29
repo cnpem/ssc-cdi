@@ -131,7 +131,7 @@ __global__ void kPieUpdateObject(GArray<complex> object, GArray<complex> probe,
 }
 
 void rangeArray(int* data, size_t n) {
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         data[i] = i;
     }
 }
@@ -179,10 +179,9 @@ void PieRun(Pie& pie, int iterations) {
 
     const int batch_size = 1;
 
-    dim3 probeshape = pie.ptycho->probe->Shape();
-    dim3 objectshape = pie.ptycho->object->Shape();
-    dim3 difpadshape = pie.ptycho->diff_pattern_shape;
-    dim3 roishape = dim3(probeshape.x, probeshape.y, 1);
+    const dim3 probeshape = pie.ptycho->probe->Shape();
+    const dim3 difpadshape = pie.ptycho->diff_pattern_shape;
+    const dim3 roishape = dim3(probeshape.x, probeshape.y, 1);
 
     SetDevice(pie.ptycho->gpus, gpu);
 
@@ -206,7 +205,7 @@ void PieRun(Pie& pie, int iterations) {
         pie.ptycho->error_mse->SetGPUToZero();
 
         shuffleArray(random_idx, num_rois);
-        for (int pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
+        for (size_t pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
             const size_t random_pos_idx = random_idx[pos_idx];
 
             float* difpad_batch_ptr = pie.ptycho->cpu_diff_pattern +

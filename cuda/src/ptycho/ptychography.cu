@@ -153,6 +153,7 @@ extern "C"
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probemomentum = probebeta;
+            raar->beta = raarbeta;
 
             RAARRun(*raar, numiter); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
 
@@ -199,6 +200,7 @@ extern "C"
 extern "C"{
     void _fhandler(int signo, siginfo_t *info, void *extra)
     {
+        (void)extra;
         std::cerr << "The process received signal " << signo << " with code " << info->si_code << std::endl;
         abort();
     }
