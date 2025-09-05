@@ -466,7 +466,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          params={'device': input_dict["GPUs"]},
                                                          poscorr_iter=algo_inputs["position_correction"],
                                                          wavelength_m=input_dict["wavelength"],
-                                                         pixelsize_m=input_dict["object_pixel"],
+                                                         pixelsize_m=input_dict["detector_pixel_size"],
                                                          distance_m=input_dict["distance_sample_focus"],
                                                          detector_distance_m=input_dict["detector_distance"])
 
@@ -506,7 +506,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             params={'device': input_dict["GPUs"]},
                                                             poscorr_iter=algo_inputs["position_correction"],
                                                             wavelength_m=input_dict["wavelength"],
-                                                            pixelsize_m=input_dict["object_pixel"],
+                                                            pixelsize_m=input_dict["detector_pixel_size"],
                                                             distance_m=input_dict["distance_sample_focus"],
                                                             detector_distance_m=input_dict["detector_distance"])
 
@@ -542,7 +542,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             obj_propagator=input_dict["regime"],
                                                                                             probesupp = algo_inputs['probe_support_array'],
                                                                                             wavelength_m=input_dict["wavelength"],
-                                                                                            pixelsize_m=input_dict["object_pixel"],
+                                                                                            pixelsize_m=input_dict["detector_pixel_size"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
                                                                                             detector_distance_m=input_dict["detector_distance"],
                                                                                             params={'device': input_dict["GPUs"][0:1]})
