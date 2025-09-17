@@ -229,9 +229,6 @@ void PieRun(Pie& pie, int iterations) {
 
             ProjectReciprocalSpace(*pie.ptycho, difpad, gpu, pie.isGrad);
 
-            if (pie.ptycho->poscorr_iter && iter % pie.ptycho->poscorr_iter == 0) //positions were updated
-                pie.ptycho->positions[random_pos_idx]->LoadFromGPU();
-
             const Position off = pie.ptycho->positions[random_pos_idx]->arrays[0]->cpuptr[0];
             const dim3 pos_offset(off.x, off.y, 0);
             obj->CopyRoiTo(obj_box, pos_offset, roishape);
@@ -255,8 +252,13 @@ void PieRun(Pie& pie, int iterations) {
         }
 
         if (pie.ptycho->poscorr_iter &&
-                (iter + 1) % pie.ptycho->poscorr_iter == 0)
+                (iter + 1) % pie.ptycho->poscorr_iter == 0) {
             ApplyPositionCorrection(*pie.ptycho);
+
+            for (size_t pos = 0; pos < num_rois; ++pos) {
+                pie.ptycho->positions[pos]->LoadFromGPU();
+            }
+        }
 
         // reduce errors
         pie.ptycho->cpuerror_rfactor[iter] = sqrtf(pie.ptycho->error_rfactor->SumGPU());
