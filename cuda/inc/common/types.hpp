@@ -907,6 +907,8 @@ struct MImage : public MultiGPU {
         for (int g = 0; g < this->ngpus; g++) {
             Set(g);
             arrays[g]->CopyFrom(newdata + offsets[g]);
+            if (arrays[g]->bHasAllocCPU())
+                memcpy(arrays[g]->cpuptr, newdata + offsets[g], sizeof(Type) * GetSize());
         }
         sscDebug(format("^ from pointer {}", (void*)newdata));
     }
