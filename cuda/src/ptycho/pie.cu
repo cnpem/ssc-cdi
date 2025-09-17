@@ -255,8 +255,8 @@ void PieRun(Pie& pie, int iterations) {
                 (iter + 1) % pie.ptycho->poscorr_iter == 0) {
             ApplyPositionCorrection(*pie.ptycho);
 
-            for (size_t pos = 0; pos < num_rois; ++pos) {
-                pie.ptycho->positions[pos]->LoadFromGPU();
+            for (size_t pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
+                pie.ptycho->positions[pos_idx]->LoadFromGPU();
             }
         }
 
