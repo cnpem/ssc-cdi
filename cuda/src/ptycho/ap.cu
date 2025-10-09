@@ -189,8 +189,9 @@ void APProjectProbe(AP& ap, int section) {
 AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& probeshape, complex* object,
                  const dim3& objshape, Position* rois, int numrois, int batchsize, float* rfact, float* llk, float* mse,
                  const std::vector<int>& gpus, float* objsupp, float* probesupp, int numobjsupp,
-                 float wavelength_m, float pixelsize_m, float distance_m,
+                 float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
                  int poscorr_iter,
+                 int obj_propagator,
                  float step_obj, float step_probe,
                  float reg_obj, float reg_probe) {
     AP* ap = new AP;
@@ -198,7 +199,8 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
         CreatePtycho(difpads, difshape, probe, probeshape,
                 object, objshape, rois, numrois, batchsize, rfact, llk, mse,
                 gpus, objsupp, probesupp, numobjsupp,
-                wavelength_m, pixelsize_m, distance_m,
+                obj_propagator,
+                wavelength_m, pixelsize_m, distance_m, detector_distance_m,
                 poscorr_iter,
                 step_obj, step_probe,
                 reg_obj, reg_probe);

@@ -1,0 +1,82 @@
+[
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=gnu++17 -o CMakeFiles/ssccdi.dir/cuda/src/common/logger.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/common/logger.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/common/logger.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/common/operations.cu -o CMakeFiles/ssccdi.dir/cuda/src/common/operations.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/common/operations.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/ap.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/ap.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/ap.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/engines_common.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/engines_common.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/engines_common.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/pie.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/pie.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/pie.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/propagator.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/propagator.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/propagator.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/ptychography.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/ptychography.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/ptychography.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/raar.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/raar.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/raar.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/nvcc -forward-unknown-to-host-compiler -DSPDLOG_COMPILED_LIB -Dssccdi_EXPORTS -I../../../cuda/inc -I../../../cuda/inc/common -I../../../cuda/inc/common10 -I../../../cuda/inc/ptycho -I_deps/spdlog-src/include  --expt-extended-lambda -O3 -DNDEBUG --generate-code=arch=compute_70,code=[compute_70,sm_70] -Xcompiler=-fPIC -std=c++17 -x cu -c /home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/radon.cu -o CMakeFiles/ssccdi.dir/cuda/src/ptycho/radon.cu.o",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/cuda/src/ptycho/radon.cu"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/spdlog.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/spdlog.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/spdlog.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/stdout_sinks.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/stdout_sinks.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/stdout_sinks.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/color_sinks.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/color_sinks.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/color_sinks.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/file_sinks.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/file_sinks.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/file_sinks.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/async.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/async.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/async.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/cfg.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/cfg.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/cfg.cpp"
+},
+{
+  "directory": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build",
+  "command": "/usr/bin/c++ -DSPDLOG_COMPILED_LIB -I_deps/spdlog-src/include -O3 -DNDEBUG -fPIC -std=c++17 -o _deps/spdlog-build/CMakeFiles/spdlog.dir/src/bundled_fmtlib_format.cpp.o -c /home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/bundled_fmtlib_format.cpp",
+  "file": "/home/alan.peixinho/Projects/ssc-cdi/_skbuild/linux-x86_64-3.13/cmake-build/_deps/spdlog-src/src/bundled_fmtlib_format.cpp"
+}
+]

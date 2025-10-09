@@ -84,7 +84,8 @@ try:
         c_int, ctypes.c_void_p, c_int, c_int, c_int, c_int, ctypes.c_void_p,
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, c_int,
-        c_float, c_float, c_float,
+        c_float, c_float, c_float, c_float,
+        c_int,
         c_float, c_float, c_float, c_float
     ]
     libcdi.ap_call.restype = None
@@ -94,7 +95,8 @@ try:
         ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, c_float, c_float, c_int, ctypes.c_void_p,
         ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
-        c_float, c_float, c_float, c_float
+        c_int,
+        c_float, c_float, c_float, c_float, c_float
     ]
     libcdi.raarcall.restype = None
     libcdi.piecall.argtypes = [
@@ -103,10 +105,19 @@ try:
         ctypes.c_void_p, c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p,
         ctypes.c_int,
         c_float, c_float, c_float, c_float,
-        c_float, c_float, c_float
+        c_int,
+        c_float, c_float, c_float, c_float
     ]
 
     libcdi.piecall.restype = None
+
+    libcdi.asm_propagator.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        c_int, c_int,
+        c_float, c_float, c_float
+    ]
+    libcdi.asm_propagator.restype = None
 
 except Exception as e:
     print('>>>', e)
@@ -208,6 +219,20 @@ except Exception as e:
 #|     Functions      |#
 ########################
 
+
+def asm_propagator(input_data,
+                   wavelength_m, pixelsize_m, distance_m):
+    input_data, input_ptr, (sizey, sizex) = ctypes_array(input_data.astype('complex64'))
+    output_data, output_ptr, _ = ctypes_array(np.empty_like(input_data))
+
+    print(f'pywavelength = {wavelength_m} pypixel_size = {pixelsize_m} pydistance = {distance_m}')
+
+    libcdi.asm_propagator(input_ptr, output_ptr, sizex, sizey,
+                          ctypes.c_float(wavelength_m), ctypes.c_float(pixelsize_m), ctypes.c_float(distance_m))
+
+    return output_data
+
+
 def CNICE(darray,dtype=np.float32):
     if darray.dtype != dtype:
         return np.ascontiguousarray(darray.astype(dtype))
@@ -215,7 +240,8 @@ def CNICE(darray,dtype=np.float32):
         return np.ascontiguousarray(darray)
     else:
         return darray
-        
+
+
 def ctypes_array(c: np.ndarray) -> Tuple[np.ndarray, c_void_p, list[c_int]]:
     contiguous_array = np.ascontiguousarray(c)
     cptr = contiguous_array.ctypes.data_as(c_void_p)
@@ -253,6 +279,16 @@ def sanitize_rois(rois, obj, difpads, probe) -> np.ndarray:
     return rois
 
 
+def propagator_id(propagator_name: str) -> int:
+    propagator_name = propagator_name.lower()
+    if propagator_name == 'fraunhoffer':
+        return 0
+    elif propagator_name == 'fresnel':
+        return 1
+    else:
+        raise ValueError('Invalid propagator name: {}'.format(propagator_name))
+
+
 def PIE(obj: np.ndarray,
         probe: np.ndarray,
         difpads: np.ndarray,
@@ -264,9 +300,11 @@ def PIE(obj: np.ndarray,
         step_probe: float = 0.5,
         reg_obj: float = 1e-3,
         reg_probe: float = 1e-3,
+        obj_propagator: str = "fraunhoffer",
         wavelength_m: float = 0.0,
         pixelsize_m: float = 0.0,
         distance_m: float = 0.0,
+        detector_distance_m: float = 0.0,
         params: dict = {}):
     """ Ptychography PIE algorithm.
 
@@ -350,7 +388,8 @@ def PIE(obj: np.ndarray,
                    c_int(poscorr_iter),
                    c_float(step_obj), c_float(step_probe),
                    c_float(reg_obj), c_float(reg_probe),
-                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
+                   c_int(propagator_id(obj_propagator)),
+                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m))
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
@@ -372,9 +411,11 @@ def RAAR(obj: np.ndarray,
          reg_obj: float = 1e-3,
          reg_probe: float = 1e-3,
          poscorr_iter: int = 0,
+         obj_propagator: str = "fraunhoffer",
          wavelength_m: float = 0.0,
          pixelsize_m: float = 0.0,
          distance_m: float = 0.0,
+         detector_distance_m: float = 0.0,
          params: dict = {}):
     """ Ptychography RAAR algorithm.
 
@@ -391,7 +432,8 @@ def RAAR(obj: np.ndarray,
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
             pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
-            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
+            distance_m (float, optional): The distance (z1) in meters. Defaults to 0.
+            detector_distance_m (float, optional): The distance (z2) in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -472,7 +514,9 @@ def RAAR(obj: np.ndarray,
                     objsuppptr, probesuppptr, numobjsupport, c_int(poscorr_iter),
                     c_float(step_obj), c_float(step_probe),
                     c_float(reg_obj), c_float(reg_probe),
-                    c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m),
+                    c_int(propagator_id(obj_propagator)),
+                    c_float(wavelength_m), c_float(pixelsize_m),
+                    c_float(distance_m), c_float(detector_distance_m),
                     c_float(beta))
 
     return obj, probe, error_rfactor, error_llk, error_mse, rois
@@ -494,9 +538,11 @@ def AP(obj: np.ndarray,
        reg_obj: float = 1e-3,
        reg_probe: float = 1e-3,
        poscorr_iter: int = 0,
+       obj_propagator: str = "fraunhoffer",
        wavelength_m: float = 0.0,
        pixelsize_m: float = 0.0,
        distance_m: float = 0.0,
+       detector_distance_m: float = 0.0,
        params: dict = {}):
     """ Ptychography Alternate Projections algorithm.
 
@@ -514,7 +560,8 @@ def AP(obj: np.ndarray,
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
             pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
-            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
+            distance_m (float, optional): The distance (z1) in meters. Defaults to 0.
+            detector_distance_m (float, optional): The distance (z2) in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:
@@ -582,7 +629,8 @@ def AP(obj: np.ndarray,
                   c_int(poscorr_iter),
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe),
-                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m))
+                  c_int(propagator_id(obj_propagator)),
+                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m))
 
     return obj, probe, error_rfactor, error_llk, error_mse, rois
 
@@ -621,7 +669,7 @@ def PosCorrection(obj: np.ndarray,
             epsilon (float, optional): Regularization parameter. Defaults to 1E-3.
             wavelength_m (float, optional): The wavelength of the light used in the propagation, in meters. Defaults to 0.
             pixelsize_m (float, optional): The detector pixel size in meters. Defaults to 0.
-            distance_m (float, optional): The distance to the detector in meters. Defaults to 0.
+            distance_m (float, optional): The distance (z1) in meters. Defaults to 0.
             params (dic, optional): Dictionary containing aditional parameters. Defaults to None.
 
         Returns:

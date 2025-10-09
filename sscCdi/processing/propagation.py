@@ -9,7 +9,6 @@
 
 
 import numpy as np
-import cupy as cp
 from tqdm import tqdm
 
 """ Relative imports """
@@ -30,21 +29,25 @@ def fresnel_propagator(wavefront, wavelength, pixel_size, sample_to_detector_dis
         2d array: propagated wave
     """    
 
-    np = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
-    
-    K = 2*np.pi/wavelength # wavenumber
+    try:
+        import cupy as cp
+        cpnp = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
+    except:
+        cpnp = np
+
+    K = 2*cpnp.pi/wavelength # wavenumber
     z2 = sample_to_detector_distance
     
-    FT = np.fft.fftshift(np.fft.fft2(wavefront))
+    FT = cpnp.fft.fftshift(cpnp.fft.fft2(wavefront))
 
     ny, nx = wavefront.shape
-    fx = np.fft.fftshift(np.fft.fftfreq(nx,d = pixel_size))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
-    fy = np.fft.fftshift(np.fft.fftfreq(ny,d = pixel_size))#*2*np.pi
-    FX, FY = np.meshgrid(fx,fy)
+    fx = cpnp.fft.fftshift(cpnp.fft.fftfreq(nx,d = pixel_size))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
+    fy = cpnp.fft.fftshift(cpnp.fft.fftfreq(ny,d = pixel_size))#*2*np.pi
+    FX, FY = cpnp.meshgrid(fx,fy)
     # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
-    kernel = np.exp(-1j*np.pi*wavelength*(z2)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
+    kernel = cpnp.exp(-1j*np.pi*wavelength*(z2)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
 
-    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))*np.exp(1j*K*z2)
+    wave_parallel = cpnp.fft.ifft2(cpnp.fft.ifftshift(FT * kernel))*cpnp.exp(1j*K*z2)
 
     return wave_parallel
 
@@ -62,12 +65,15 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
 
     Returns:
         2d array: propagated wave
-    """    
+    """
 
+    try:
+        import cupy as cp
+        cpnp = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
+    except:
+        cpnp = np
 
-    np = cp.get_array_module(wavefront) # make code agnostic to cupy and numpy
-    
-    K = 2*np.pi/wavelength # wavenumber
+    K = 2*cpnp.pi/wavelength # wavenumber
     z2 = sample_to_detector_distance
     z1 = source_to_sample_distance
     
@@ -76,16 +82,16 @@ def fresnel_propagator_cone_beam(wavefront, wavelength, pixel_size, sample_to_de
     else:
         M = 1
     
-    FT = np.fft.fftshift(np.fft.fft2(wavefront))
+    FT = cpnp.fft.fftshift(cpnp.fft.fft2(wavefront))
 
     ny, nx = wavefront.shape
-    fx = np.fft.fftshift(np.fft.fftfreq(nx,d = pixel_size/M))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
-    fy = np.fft.fftshift(np.fft.fftfreq(ny,d = pixel_size/M))#*2*np.pi
-    FX, FY = np.meshgrid(fx,fy)
+    fx = cpnp.fft.fftshift(cpnp.fft.fftfreq(nx,d = pixel_size/M))#*2*np.pi 2*np.pi factor to calculate angular frequencies 
+    fy = cpnp.fft.fftshift(cpnp.fft.fftfreq(ny,d = pixel_size/M))#*2*np.pi
+    FX, FY = cpnp.meshgrid(fx,fy)
     # kernel = np.exp(-1j*(z2/M)/(2*K)*(FX**2+FY**2)) # if using angular frequencies. Formula as in Paganin equation 1.28
-    kernel = np.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
+    kernel = cpnp.exp(-1j*np.pi*wavelength*(z2/M)*(FX**2+FY**2)) # if using standard frequencies. Formula as in Goodman, Fourier Optics, equation 4.21
 
-    wave_parallel = np.fft.ifft2(np.fft.ifftshift(FT * kernel))*np.exp(1j*K*z2/M)
+    wave_parallel = cpnp.fft.ifft2(cpnp.fft.ifftshift(FT * kernel))*cpnp.exp(1j*K*z2/M)
 
     if z1 != 0:
         # gamma_M = 1 - 1/M

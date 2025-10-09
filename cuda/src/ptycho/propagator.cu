@@ -111,9 +111,9 @@ __global__ void KApplyASM(complex* wave, float fresnel_number, dim3 shape) {
 }
 
 __global__ void KApplyPhaseShift(complex* wave, float distance_m, float wavelength_m, dim3 shape) {
-    size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
-    size_t idy = blockIdx.y;
-    size_t idz = blockIdx.z;
+    const size_t idx = threadIdx.x + blockIdx.x * blockDim.x;
+    const size_t idy = blockIdx.y;
+    const size_t idz = blockIdx.z;
 
     if (idx >= shape.x) return;
 
@@ -133,6 +133,6 @@ void ASM::Propagate(complex* owave, complex* iwave, dim3 shape,
     FFT(owave, iwave, shape, 1, stream);
     KApplyASM<<<blk, thr, 0, stream>>>(owave, fresnel_number, shape);
     FFT(owave, owave, shape, -1, stream);
-    KApplyPhaseShift<<<blk, thr, 0, stream>>>(owave, distance_m, wavelength_m, shape);
+    KApplyPhaseShift<<<blk, thr, 0, stream>>>(owave, fabs(distance_m), wavelength_m, shape);
 }
 }

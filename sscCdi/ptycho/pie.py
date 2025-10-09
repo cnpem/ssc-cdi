@@ -9,8 +9,7 @@
 
 
 import sys
-import cupy as cp
-from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask, soft_clip
+from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 
 def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, inputs):
@@ -29,7 +28,7 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     Returns:
         tuple: Reconstructed Object (ndarray), Reconstructed Probe (ndarray), Errors per interaction (ndarray), Probe positions (ndarray).
     """
-    for m in range(3):
+    for m in range(15):
         print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")    
         print("*WARNING:* This function is a test engine and is still in development. Use PIE ``CUDA`` engine.")
 
@@ -52,7 +51,6 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
     probe_support  = inputs["probe_support_array"] 
     fourier_power_bound = inputs['fourier_power_bound']
     clip_object_magnitude = inputs['clip_object_magnitude']
-    clip_object_phase = inputs['clip_object_phase']
 
     try:
         import cupy as cp
@@ -134,17 +132,9 @@ def PIE_python(diffraction_patterns, positions, object_guess, probe_guess, input
             if f_o == True or f_p == True: # momentum addition                                                                                      
                 momentum_counter,obj_velocity,probe_velocity,temporary_obj,temporary_probe,obj,probe_modes = momentum_addition_multiprobe(momentum_counter,probe_velocity,obj_velocity,temporary_obj,temporary_probe,obj,probe_modes,f_o,f_p,m_counter_limit,momentum_type="")
 
-            if clip_object_magnitude is not None:
-                if len(clip_object_magnitude) == 2: clip_object_magnitude = [clip_object_magnitude[0], clip_object_magnitude[1], 1]
-                obj = soft_clip(cp.abs(obj),clip_object_magnitude[0],clip_object_magnitude[1],clip_object_magnitude[2]) * cp.exp(1j*cp.angle(obj))
-            if clip_object_phase is not None:
-                if len(clip_object_phase) == 2: clip_object_phase = [clip_object_phase[0], clip_object_phase[1], 1]
-                obj = cp.abs(obj)*cp.exp(1j*soft_clip(cp.angle(obj),clip_object_phase[0],clip_object_phase[1],clip_object_phase[2]))            
-
-
         probe_modes = apply_probe_support(probe_modes,probe_support,distance_focus_sample,wavelength,obj_pixel)
 
-        
+
         print('\r', end='')
         print(f'\tIteration {iteration+1}/{iterations} \t Errors: R-factor={error[iteration,0]/error[iteration,1]:.2e}; MSE={error[iteration,2]:.2e}; Poisson LLK={error[iteration,3]:.2e}',end='')
 
@@ -164,7 +154,9 @@ def update_object_and_probe(obj,probe_modes,wavefront_modes,updated_wavefront_mo
     s: step constant
     r: regularization constant
     """
-    
+
+    import cupy as cp
+
     def get_denominator_p(obj,reg_p):
         power = cp.abs(obj)**2
         denominator = (1-reg_p)*power+ reg_p*cp.max(power)

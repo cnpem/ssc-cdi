@@ -8,17 +8,7 @@
 ##################################################################################################################################################################
 
 
-import cupy as cp
 import numpy as np
-#try:
-#    import cupy as cp
-#    # Check if a GPU is available
-#    cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
-#    np = cp  # np will be an alias for cupy
-#except (ImportError, cp.cuda.runtime.CUDARuntimeError):
-#    # Fallback to NumPy if GPU is not available or cupy is not installed
-#    import numpy as np
-
 from ..processing.propagation import fresnel_propagator
 from ..misc import extract_values_from_all_slices
 
@@ -35,6 +25,7 @@ def update_exit_wave(wavefront_modes,measurement,detector_distance,wavelength,de
 
 def propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_pixel_size,propagator='fraunhoffer'):
 
+    import cupy as cp
     if propagator == 'fraunhoffer':
         if detector_distance > 0: 
             wavefront_modes = cp.fft.fftshift(cp.fft.fft2(wavefront_modes,axes=(1,2)),axes=(1,2))
@@ -50,7 +41,8 @@ def propagate_wavefronts(wavefront_modes,detector_distance,wavelength,detector_p
     return wavefront_modes
 
 def update_wavefronts(wavefront_modes,measurement,fourier_power_bound = 0,epsilon=0.001,):
-    
+
+    import cupy as cp
     total_wave_intensity = cp.zeros_like(wavefront_modes[0])
 
     for mode in wavefront_modes:
@@ -71,6 +63,7 @@ def update_wavefronts(wavefront_modes,measurement,fourier_power_bound = 0,epsilo
 
 def calculate_errors(measurement, wavefronts_at_detector,free_data=None, free_data_indices=None):
 
+    import cupy as cp
     intensity_at_detector = cp.abs(wavefronts_at_detector)**2
 
     if free_data is not None:
@@ -128,6 +121,7 @@ def poisson_log_likelihood(y, lambda_pred):
     float
         Negative Poisson log likelihood.
     """
+    import cupy as cp
     np = cp.get_array_module(y)  
 
     # Ensuring y and lambda_pred are numpy arrays
@@ -159,6 +153,7 @@ def gaussian_log_likelihood(y, mu, sigma2=0.1):
         Negative Gaussian log likelihood.
     """
 
+    import cupy as cp
     np = cp.get_array_module(y)  
 
     # Ensure y and mu are numpy arrays
@@ -215,44 +210,3 @@ def apply_probe_support(probe_modes,probe_support,distance_focus_sample,waveleng
         for i, mode in enumerate(probe_modes): # propagate each mode back to sample plane
             probe_modes[i] = propagate_wavefronts(mode,wavelength,obj_pixel,distance_focus_sample)
     return probe_modes
-
-
-def soft_clip(arr, lower, upper, strength=1.0): 
-    """ Apply soft clipping to the input array such that values outside the range [lower, upper] are gradually compressed rather than abruptly clipped.
-
-    For each element x in arr:
-    - If lower <= x <= upper, then soft_clip(x) = x.
-    - If x > upper, then 
-            soft_clip(x) = upper + (x - upper) / (1 + strength * (x - upper))
-    - If x < lower, then 
-            soft_clip(x) = lower + (x - lower) / (1 + strength * (lower - x))
-
-    The parameter 'strength' controls how strongly the clipping is applied:
-        strength = 0       → no clipping (function is identity)
-        strength → ∞       → approaches hard clipping (values are forced to the bounds)
-
-    Parameters:
-    arr      : Input array (or scalar) to be clipped.
-    lower    : Lower bound.
-    upper    : Upper bound.
-    strength : A nonnegative parameter controlling the softness of the clipping.
-
-    Returns:
-    A NumPy array with soft clipping applied elementwise.
-    """
-    # Ensure we are working with a NumPy array
-    arr = cp.asarray(arr)
-    # Copy the array so we can modify only those values that violate the bounds.
-    y = arr.copy()
-
-    # Find indices of values above and below the interval [lower, upper].
-    above = arr > upper
-    below = arr < lower
-
-    # For values above the upper limit
-    y[above] = upper + (arr[above] - upper) / (1 + strength * (arr[above] - upper))
-
-    # For values below the lower limit  
-    y[below] = lower + (arr[below] - lower) / (1 + strength * (lower - arr[below]))
-
-    return y

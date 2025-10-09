@@ -11,8 +11,7 @@ build-backend = "setuptools.build_meta"
 [project]
 dynamic = ["version"]
 name = "sscCdi"
-license = "GPL-3.0-or-later"
-license-files = ["LICENSE"]
+license = { file = "LICENSE" }
 readme = "README.md"
 
 classifiers=[
@@ -47,16 +46,18 @@ description = "Sirius Coherent Diffraction Imaging Package"
 keywords = ["Ptychography", "Tomography", "Imaging"]
 
 dependencies = [
-    'numpy>=2.0',
+    'numpy<2.0',
     'matplotlib',
     'h5py',
     'scipy',
     'scikit-image',
     'tqdm',
     'ipywidgets',
-    'SharedArray',
-    'cupy'
+    'SharedArray'
 ]
+
+[project.optional-dependencies]
+dev = ["cupy"]
 
 [tool.setuptools]
 platforms = ["Linux"]

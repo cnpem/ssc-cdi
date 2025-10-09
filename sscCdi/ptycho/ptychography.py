@@ -154,18 +154,13 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
 
-    if input_dict["regime"] == 'fraunhoffer':
-        if "object_pixel" not in input_dict:
-            input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
-                                                                    input_dict['detector_distance'], 
-                                                                    input_dict['detector_pixel_size'],
-                                                                    DPs.shape[1]) # meters
-            
-    elif input_dict["regime"] == 'fresnel':
-        if "object_pixel" not in input_dict:
-            input_dict["object_pixel"] = input_dict['detector_pixel_size']
+    if "object_pixel" not in input_dict:
+        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
+                                                                 input_dict['detector_distance'],
+                                                                 input_dict['detector_pixel_size'],
+                                                                 DPs.shape[1]) # meters
 
-    print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+        print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
 
     if input_dict['positions_unit'] is None:
         print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")
@@ -202,6 +197,8 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                                                                                                    initial_obj=initial_obj,
                                                                                                    initial_probe=initial_probe,
                                                                                                    plot=plot)
+    # print(positions)
+    # print(corrected_positions)
     # input_dict['positions'] = corrected_positions
 
     if plot is True and corrected_positions is not None:
@@ -209,7 +206,7 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
 
     if plot:
         print('Plotting final object and probe...')
-        plot_amplitude_and_phase(obj, extent=get_plot_extent_from_positions(positions))
+        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
         plot_object_spectrum(obj,cmap='gray')
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
 
@@ -340,7 +337,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     if plot:
         plot_probe_modes(probe,extent=get_extent_from_pixel_size(probe[0].shape,input_dict["object_pixel"]))
     if plot:
-        plot_amplitude_and_phase(obj, extent=get_plot_extent_from_positions(positions))
+        plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2, extent=get_plot_extent_from_positions(positions))
 
     if np.any(probe_positions < 0):
         raise ValueError(f"Positions array cannot have negative values. Min = {probe_positions.min()}")
@@ -464,12 +461,14 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          obj=obj,
                                                          rois=probe_positions,
                                                          probe=probe,
+                                                         obj_propagator=input_dict["regime"],
                                                          probesupp = algo_inputs['probe_support_array'],
                                                          params={'device': input_dict["GPUs"]},
                                                          poscorr_iter=algo_inputs["position_correction"],
                                                          wavelength_m=input_dict["wavelength"],
                                                          pixelsize_m=input_dict["object_pixel"],
-                                                         distance_m=input_dict["distance_sample_focus"])
+                                                         distance_m=input_dict["distance_sample_focus"],
+                                                         detector_distance_m=input_dict["detector_distance"])
 
 
             # error_nmse.append(np.full_like(algo_error, np.nan))
@@ -477,11 +476,9 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
-                corrected_positions = probe_positions
-                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
-            else:
-                corrected_positions = None
+            # if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions
+
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'RAAR':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of RAAR algorithm...")
@@ -504,23 +501,22 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             difpads=DPs,
                                                             obj=obj,
                                                             probe=probe,
+                                                            obj_propagator=input_dict["regime"],
                                                             probesupp = algo_inputs['probe_support_array'],
                                                             params={'device': input_dict["GPUs"]},
                                                             poscorr_iter=algo_inputs["position_correction"],
                                                             wavelength_m=input_dict["wavelength"],
                                                             pixelsize_m=input_dict["object_pixel"],
-                                                            distance_m=input_dict["distance_sample_focus"])
+                                                            distance_m=input_dict["distance_sample_focus"],
+                                                            detector_distance_m=input_dict["detector_distance"])
 
             error_rfactor.append(algo_error_rfactor)
             # error_nmse.append(np.full_like(algo_error, np.nan))
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
-                corrected_positions = probe_positions
-                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
-            else:
-                corrected_positions = None
+            #if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'PIE':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
@@ -543,10 +539,12 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             difpads=DPs,
                                                                                             obj=obj,
                                                                                             probe=probe,
+                                                                                            obj_propagator=input_dict["regime"],
                                                                                             probesupp = algo_inputs['probe_support_array'],
                                                                                             wavelength_m=input_dict["wavelength"],
                                                                                             pixelsize_m=input_dict["object_pixel"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
+                                                                                            detector_distance_m=input_dict["detector_distance"],
                                                                                             params={'device': input_dict["GPUs"][0:1]})
 
             # fill errors
@@ -554,17 +552,21 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-            if algo_inputs["position_correction"] > 0: # check in every function if position was corrected. Otherwise should be None to avoid plotting
-                corrected_positions = probe_positions
-                corrected_positions = np.roll(corrected_positions, shift=1, axis=1)     # change from (Y,X) back to (X,Y) for visualization
-            else:
-                corrected_positions = None
+            #if algo_inputs["position_correction"] > 0:
+            # corrected_positions = probe_positions
 
         else:
             sys.exit('Please select a proper algorithm! Selected: ', input_dict["algorithms"][str(counter)]['name'])
 
         if counter != len(input_dict['algorithms'].keys()) and plot == True:
-            plot_amplitude_and_phase(obj,extent=get_plot_extent_from_positions(positions))
+            plot_amplitude_and_phase(obj, positions=positions+probe.shape[-1]//2,extent=get_plot_extent_from_positions(positions))
+
+    # at this point, corrected_position should be holding either the corrected version of the probe_positions or the original one,
+    # depending on whether algo_inputs["position_correction"]>0 or not,
+    corrected_positions = probe_positions
+
+    # change from (Y,X) back to (X,Y) for visualization
+    corrected_positions = np.roll(corrected_positions, shift=1, axis=1)
 
     error_rfactor =  np.concatenate(error_rfactor).ravel()
     error_nmse = np.concatenate(error_nmse).ravel()
