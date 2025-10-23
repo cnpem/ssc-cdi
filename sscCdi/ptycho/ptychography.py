@@ -466,7 +466,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          params={'device': input_dict["GPUs"]},
                                                          poscorr_iter=algo_inputs["position_correction"],
                                                          wavelength_m=input_dict["wavelength"],
-                                                         pixelsize_m=input_dict["object_pixel"],
+                                                         pixelsize_m=input_dict["detector_pixel_size"],
                                                          distance_m=input_dict["distance_sample_focus"],
                                                          detector_distance_m=input_dict["detector_distance"])
 
@@ -506,7 +506,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             params={'device': input_dict["GPUs"]},
                                                             poscorr_iter=algo_inputs["position_correction"],
                                                             wavelength_m=input_dict["wavelength"],
-                                                            pixelsize_m=input_dict["object_pixel"],
+                                                            pixelsize_m=input_dict["detector_pixel_size"],
                                                             distance_m=input_dict["distance_sample_focus"],
                                                             detector_distance_m=input_dict["detector_distance"])
 
@@ -542,7 +542,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             obj_propagator=input_dict["regime"],
                                                                                             probesupp = algo_inputs['probe_support_array'],
                                                                                             wavelength_m=input_dict["wavelength"],
-                                                                                            pixelsize_m=input_dict["object_pixel"],
+                                                                                            pixelsize_m=input_dict["detector_pixel_size"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
                                                                                             detector_distance_m=input_dict["detector_distance"],
                                                                                             params={'device': input_dict["GPUs"][0:1]})
@@ -1316,7 +1316,7 @@ def set_initial_probe(input_dict, DPs, incoherent_modes):
             cross_width_y, border, center_square_side = input_dict['initial_probe']["cross_width"],input_dict['initial_probe']["border_padding"],input_dict['initial_probe']['center_width']
             probe = create_cross_mask(DP_shape,cross_width_y, border, center_square_side)
         elif input_dict['initial_probe']['probe'] == 'constant':
-            probe = np.ones(DP_shape)
+            probe = np.ones(DP_shape) + 1j*np.ones(DP_shape)
         elif input_dict['initial_probe']['probe'] == 'random':
             probe = np.random.rand(*DP_shape)
         elif input_dict['initial_probe']['probe'] == 'inverse' or input_dict['initial_probe']['probe'] == 'ift':
