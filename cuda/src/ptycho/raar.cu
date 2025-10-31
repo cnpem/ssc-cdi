@@ -141,6 +141,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
             new hcMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,
                     batchsize * raar->ptycho->probe->sizez, true,
                     raar->ptycho->gpus, wf_memtype);
+        if (newphistack->bHasAllocCPU()) newphistack->RegisterHost();
         newphistack->SetToZero();
         raar->temp_wavefront.push_back(newphistack);
     }
@@ -149,6 +150,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
 
 void DestroyRAAR(RAAR *&raar) {
     for (auto *phi : raar->temp_wavefront) {
+        if (phi->bHasAllocCPU()) phi->UnregisterHost();
         delete phi;
     }
     DestroyPtycho(raar->ptycho);
