@@ -286,6 +286,16 @@ struct Image {
         }
     }
 
+    void RegisterHost() {
+        if (cpuptr == nullptr) return;
+        cudaHostRegister(cpuptr, size * sizeof(Type), 0u);
+    }
+
+    void UnregisterHost() {
+        if (cpuptr == nullptr) return;
+        cudaHostUnregister(cpuptr);
+    }
+
     template <typename Type2 = Type>
     bool operator==(const Image<Type2>& other) const {
         if (size != other.size || sizex != other.sizex ||
@@ -996,6 +1006,9 @@ struct MImage : public MultiGPU {
     void SetGPUToZero() { MGPULOOP(arrays[g]->SetGPUToZero();); };
     void SetToZero() { MGPULOOP(arrays[g]->SetToZero();); };
     void Clamp(Type a, Type b) { MGPULOOP(arrays[g]->Clamp(a, b);); }
+
+    void RegisterHost() { MGPULOOP(arrays[g]->RegisterHost();); }
+    void UnregisterHost() { MGPULOOP(arrays[g]->UnregisterHost();); }
 
     template <typename Type2 = Type>
     bool operator==(const MImage<Type2>& other) {
