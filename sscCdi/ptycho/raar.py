@@ -10,7 +10,7 @@
 
 from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
-import cupy as cp
+#import cupy as cp # this may provide an error when calling the raar_ptycho engine
 
 def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     """RAAR engine in Python, using CPU or GPU through CuPy.
