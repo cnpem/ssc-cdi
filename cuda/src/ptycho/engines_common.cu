@@ -440,17 +440,18 @@ __global__ void KPositionCorrection(float* errorcounter, Position* positions,
     for (int k = 1; k <= n_pos_neighbors; k++) {
         const float cur_error = sqrtf(error[batchsize * k]);
         if (minerror > cur_error) {            
-            const float x = positions[z].x, y = positions[z].y;
-            const float offx = d_pos_offx[k], offy = d_pos_offy[k];  
-            if(probeshape.x/2 < x + offx < (objshape.x - probeshape.x/2) && probeshape.y/2 < y + offy < (objshape.y - probeshape.y/2)){
+            float x = positions[z].x, y = positions[z].y;
+            float offx = d_pos_offx[k], offy = d_pos_offy[k];  
+            if((probeshape.x/2 < x + offx) && (x + offx < (objshape.x - probeshape.x/2)) 
+                && (probeshape.y/2 < y + offy) && (y + offy < (objshape.y - probeshape.y/2))){
                 minerror = cur_error;
                 minidx = k;
             }
         }
     }
     if(minidx > 0){
-        const float x = positions[z].x, y = positions[z].y;
-        const float offx = d_pos_offx[minidx], offy = d_pos_offy[minidx];
+        float x = positions[z].x, y = positions[z].y;
+        float offx = d_pos_offx[minidx], offy = d_pos_offy[minidx];
         positions[z].x = x + offx;
         positions[z].y = y + offy;
     }
