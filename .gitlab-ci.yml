@@ -38,7 +38,9 @@ build_dgx:
   stage: build
   image: gccdockers/python-builder
   script:
-    - python3 -m build --wheel
+    - python3.9  -m build --wheel
+    - python3.10 -m build --wheel
+    - python3.11 -m build --wheel
   tags:
     - x86_64
     - cuda11
@@ -46,20 +48,6 @@ build_dgx:
   artifacts:
     paths:
       - ./dist/*whl
-    expire_in: 1 day
-
-build_sdist:
-  stage: build
-  image: gccdockers/python-builder
-  script:
-    - python3 -m build --sdist
-  tags:
-    - x86_64
-    - cuda11
-    - docker
-  artifacts:
-    paths:
-      - ./dist/*tar.gz
     expire_in: 1 day
 
 deploy_dgx:
@@ -73,20 +61,6 @@ deploy_dgx:
     - docker
   dependencies:
     - build_dgx
-  only:
-    - tags
-
-deploy_sdist:
-  stage: deploy
-  image: gccdockers/python-builder
-  script:
-    - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
-  tags:
-    - x86_64
-    - cuda11
-    - docker
-  dependencies:
-    - build_sdist
   only:
     - tags
 
