@@ -13,7 +13,7 @@
 #include "operations.hpp"
 #include "spdlog/fmt/bundled/core.h"
 
-const int max_dist = 3;
+const int max_dist = 5;
 const int n_pos_neighbors = max_dist * 8;
 
 float pos_offx[n_pos_neighbors + 1] = {0};
@@ -439,17 +439,22 @@ __global__ void KPositionCorrection(float* errorcounter, Position* positions,
 
     for (int k = 1; k <= n_pos_neighbors; k++) {
         const float cur_error = sqrtf(error[batchsize * k]);
-        if (minerror > cur_error) {
-            minerror = cur_error;
-            minidx = k;
+        if (minerror > cur_error) {            
+            float x = positions[z].x, y = positions[z].y;
+            float offx = d_pos_offx[k], offy = d_pos_offy[k];  
+            if((probeshape.x/2 < x + offx) && (x + offx < (objshape.x - probeshape.x/2)) 
+                && (probeshape.y/2 < y + offy) && (y + offy < (objshape.y - probeshape.y/2))){
+                minerror = cur_error;
+                minidx = k;
+            }
         }
     }
-
-    const float x = positions[z].x, y = positions[z].y;
-    const float offx = d_pos_offx[minidx], offy = d_pos_offy[minidx];
-
-    positions[z].x = clamp(x + offx, 0.0f, objshape.x);
-    positions[z].y = clamp(y + offy, 0.0f, objshape.y);
+    if(minidx > 0){
+        float x = positions[z].x, y = positions[z].y;
+        float offx = d_pos_offx[minidx], offy = d_pos_offy[minidx];
+        positions[z].x = x + offx;
+        positions[z].y = y + offy;
+    }
 
     __syncthreads();
 }
@@ -491,7 +496,7 @@ void ApplyPositionCorrection(Ptycho& ptycho) {
                     ptycho.propagator[g]->Propagate(
                         ptycho.wavefront->arrays[g]->gpuptr,
                         ptycho.wavefront->arrays[g]->gpuptr,
-                        ptycho.wavefront->arrays[g]->Shape(), 1);
+                        ptycho.wavefront->arrays[g]->Shape(), +ptycho.detector_distance_m);
 
                     // compute errors
                     KComputeError<<<blk, thr>>>(

@@ -11,7 +11,58 @@ import numpy as np
 import sys
 from .engines_common import update_exit_wave, apply_probe_support, create_random_binary_mask
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
+from .ptychography import call_ptychography
 
+def position_correction_fresnel(diffraction_patterns, recon_positions, recon_object, recon_probe, iterations, inputs):
+    import cupy as cp
+    d_DPs = cp.array(diffraction_patterns)
+    corrected_positions  = recon_positions.copy()
+    inputs['algorithms']['1']['iterations'] = 50
+    inputs['n_of_positions_to_remove'] = recon_positions.shape[0]//2
+    inputs['positions_unit'] = 'pixels'
+    inputs['distance_sample_focus'] = 0
+    inputs['magnification'] = 1 
+
+    for iteration in range(iterations):
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+        print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX") 
+        print(f"Iteration {iteration} of {n_iteration}")
+        recon_obj, recon_probe, positions_recon, inputs, error_ite = call_ptychography(inputs, diffraction_patterns, corrected_positions, initial_obj=recon_object, initial_probe=recon_probe,plot=False)
+        error_global = np.append(error_global, error_ite)
+        d_probe = cp.array(recon_probe)
+        corrected_positions = positions_recon.copy()
+        for index_position in range(positions_new.shape[0]):
+            radius_search = int(5*(n_iteration - iteration)/n_iteration) + 1
+            offset_x, offset_y = np.meshgrid(np.arange(-radius_search, radius_search + 1), np.arange(-radius_search, radius_search + 1))
+            offset_x  = offset_x.flatten()
+            offset_y = offset_y.flatten()
+            index_random_positions = np.arange(len(offset_x))
+            np.random.shuffle(index_random_positions)
+            index_random_positions = index_random_positions[:8 + len(offset_x)//4]
+            offset_x  = offset_x[index_random_positions]
+            offset_y = offset_y[index_random_positions]
+
+            xmin = np.repeat(int(corrected_positions[index_position,1]), len(offset_x)) + offset_x 
+            xmax = np.repeat(int(corrected_positions[index_position,1] + recon_probe.shape[2]) , len(offset_x)) + offset_x 
+            ymin = np.repeat(int(corrected_positions[index_position,0]), len(offset_x)) + offset_y 
+            ymax = np.repeat(int(corrected_positions[index_position,0] + recon_probe.shape[1]) , len(offset_x)) + offset_y
+
+            for i in range(len(xmax)):
+                if(xmin[i] > 0 and xmax[i] < obj.shape[1] and ymin[i] > 0 and ymax[i] < obj.shape[0]):
+                    obj_local = cp.array(recon_obj[ymin[i]:ymax[i], xmin[i]:xmax[i]])
+                    wave = obj_local*d_probe
+                    wave = fresnel_propagator(wave, wavelength = inputs["wavelength"] , 
+                                            pixel_size= inputs["detector_pixel_size"], 
+                                            sample_to_detector_distance= inputs["detector_distance"])
+                    wavefront = cp.sum(cp.abs(wave)**2, axis = 0)
+                    error[i] = cp.sqrt(cp.sum((wavefront - d_DPs[index_position])**2)/cp.sum((d_DPs[index_position])**2))
+           
+            index_min = cp.asnumpy(cp.argmin(error))
+            corrected_positions[index_position] = np.array([ymin[index_min], xmin[index_min]])
+
+        mempool = cp.get_default_memory_pool()
+        mempool.free_all_blocks()
+    return recon_object, recon_probe, position
 def position_correction_python(diffraction_patterns, recon_positions, recon_object, recon_probe, inputs):
     
     ## Array to store cropped diffraction patterns

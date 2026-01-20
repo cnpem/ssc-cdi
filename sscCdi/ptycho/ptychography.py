@@ -154,25 +154,41 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         input_dict["wavelength"] = wavelength_meters_from_energy_keV(input_dict['energy'])
         print(f"Wavelength = {input_dict['wavelength']*1e9:.3f} nm")
 
+    if input_dict["regime"] == "fresnel":
+        if('magnification' not in input_dict):
+            if(input_dict['distance_sample_focus'] <= 0):
+                print("WARNING: the distance_sample_focus is zero, assuming magnification = 1")
+                input_dict['magnification'] = 1
+            else:
+                input_dict['magnification'] = (input_dict['detector_distance'] + input_dict['distance_sample_focus'])/input_dict['distance_sample_focus']                
+     
     if "object_pixel" not in input_dict:
-        input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
-                                                                 input_dict['detector_distance'],
-                                                                 input_dict['detector_pixel_size'],
-                                                                 DPs.shape[1]) # meters
+        if input_dict["regime"] == "fraunhoffer":
+            input_dict["object_pixel"] = calculate_object_pixel_size(input_dict['wavelength'],
+                                                                    input_dict['detector_distance'],
+                                                                    input_dict['detector_pixel_size'],
+                                                                    DPs.shape[1]) # meters
+            print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+        if input_dict["regime"] == "fresnel":
+            input_dict["object_pixel"] = input_dict["detector_pixel_size"]/input_dict['magnification']
 
-        print(f"Object pixel = {input_dict['object_pixel']*1e9:.2f} nm")
+    if input_dict["regime"] == "fresnel":
+        input_dict['detector_distance'] = input_dict['detector_distance']/input_dict['magnification']
+        if(input_dict['propagate_probe_to_source'] == False):
+            input_dict['distance_sample_focus'] = 0
+        print(f"The experiment magnification is {input_dict['magnification']}x with a object pixel of {input_dict['object_pixel']*1e9} nm and detector distance of {input_dict['detector_distance']} m")
 
     if input_dict['positions_unit'] is None:
         print("WARNING: assuming positions are in pixels. If not, please set 'positions_unit' in the input dictionary.")
         if plot: plot_ptycho_scan_points(positions,pixel_size=None)
     elif input_dict['positions_unit'] == 'meters' or input_dict['positions_unit'] == 'm':
-        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1)
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1, offset_topleft = input_dict['object_padding'])
         if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'millimeters' or input_dict['positions_unit'] == 'mm':
-        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-3)
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-3, offset_topleft = input_dict['object_padding'])
         if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'microns' or input_dict['positions_unit'] == 'micrometers' or input_dict['positions_unit'] == 'um':
-        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-6)
+        positions = convert_probe_positions_to_pixels(input_dict["object_pixel"], positions,factor=1e-6, offset_topleft = input_dict['object_padding'])
         if plot: plot_ptycho_scan_points(positions,pixel_size=input_dict["object_pixel"])
     elif input_dict['positions_unit'] == 'pixels':
         if plot: plot_ptycho_scan_points(positions,pixel_size=None)
@@ -466,7 +482,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          params={'device': input_dict["GPUs"]},
                                                          poscorr_iter=algo_inputs["position_correction"],
                                                          wavelength_m=input_dict["wavelength"],
-                                                         pixelsize_m=input_dict["detector_pixel_size"],
+                                                         pixelsize_m=input_dict["object_pixel"],
                                                          distance_m=input_dict["distance_sample_focus"],
                                                          detector_distance_m=input_dict["detector_distance"])
 
@@ -506,7 +522,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             params={'device': input_dict["GPUs"]},
                                                             poscorr_iter=algo_inputs["position_correction"],
                                                             wavelength_m=input_dict["wavelength"],
-                                                            pixelsize_m=input_dict["detector_pixel_size"],
+                                                            pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"],
                                                             detector_distance_m=input_dict["detector_distance"])
 
@@ -542,7 +558,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             obj_propagator=input_dict["regime"],
                                                                                             probesupp = algo_inputs['probe_support_array'],
                                                                                             wavelength_m=input_dict["wavelength"],
-                                                                                            pixelsize_m=input_dict["detector_pixel_size"],
+                                                                                            pixelsize_m=input_dict["object_pixel"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
                                                                                             detector_distance_m=input_dict["detector_distance"],
                                                                                             params={'device': input_dict["GPUs"][0:1]})
@@ -973,7 +989,7 @@ def save_h5_output(input_dict,obj, probe, positions, error,initial_obj=None,init
     h5file.close()
     print('Results saved at: ',input_dict["hdf5_output"])
 
-def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
+def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1, offset_topleft = 0):
     """Convert the probe positions measured in metric units (m, mm, um) to pixel and offsets then to the origin.
 
     Args:
@@ -993,6 +1009,8 @@ def convert_probe_positions_to_pixels(pixel_size, probe_positions,factor=1):
     probe_positions[:, 0] = factor * probe_positions[:, 0] / pixel_size  # convert from metric to pixels
     probe_positions[:, 1] = factor * probe_positions[:, 1] / pixel_size
 
+    probe_positions[:, 0] += offset_topleft # shift probe positions to account for the padding
+    probe_positions[:, 1] += offset_topleft 
     return probe_positions
 
 def check_consecutive_keys(algorithms):
