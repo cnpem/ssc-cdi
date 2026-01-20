@@ -62,7 +62,7 @@ def position_correction_fresnel(diffraction_patterns, recon_positions, recon_obj
 
         mempool = cp.get_default_memory_pool()
         mempool.free_all_blocks()
-    return recon_object, recon_probe, positio0pn
+    return recon_object, recon_probe, position
 def position_correction_python(diffraction_patterns, recon_positions, recon_object, recon_probe, inputs):
     
     ## Array to store cropped diffraction patterns
