@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <driver_types.h>
 #include <thrust/functional.h>
+#include <cuda/std/functional>
 #ifdef __CUDACC__
 #define restrict __restrict__
 #else
