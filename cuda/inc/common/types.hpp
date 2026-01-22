@@ -662,7 +662,7 @@ struct Image {
      * Computes the minimum element in array.
      * */
     Type min() {
-        return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, thrust::identity<Type>(),
+        return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, cuda::std::identity(),
                                         std::numeric_limits<Type>::infinity(), thrust::minimum<Type>());
     }
 
@@ -670,7 +670,7 @@ struct Image {
      * Computes the maximum element in array.
      * */
     Type max() {
-        return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, thrust::identity<Type>(),
+        return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size, cuda::std::identity(),
                                         std::numeric_limits<Type>::lowest(), thrust::maximum<Type>());
     }
 
@@ -685,7 +685,7 @@ struct Image {
 
     float maxAbs2() {
          return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
-                 [] __device__(const Type& t) {
+                 [] __device__(const Type& t) -> const float {
                     return t.abs2();
                  },
                  std::numeric_limits<float>::lowest(), thrust::maximum<float>());
