@@ -655,9 +655,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
 
     ptycho->cpu_diff_pattern = _difpads;
 
-    size_t difpad_size = ptycho->diff_pattern_shape.x *
-                         ptycho->diff_pattern_shape.y *
-                         ptycho->diff_pattern_shape.z;
+    const size_t difpad_size = size_t(ptycho->diff_pattern_shape.x) *
+        size_t(ptycho->diff_pattern_shape.y) * size_t(ptycho->diff_pattern_shape.z);
     // cudaMallocHost(&(ptycho->cpu_diff_pattern), difpad_size * sizeof(float));
     // cudaMemcpy(ptycho->cpu_diff_pattern, _difpads, difpad_size *
     // sizeof(float), cudaMemcpyHostToHost);
