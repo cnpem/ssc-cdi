@@ -177,7 +177,7 @@ def save_results_as_pngs(obj, probe, prefix, output_folder):
                  ('Probe Magnitude', np.abs(probe)),
                  ('Probe Phase', np.angle(probe))]
     for i, (title, img) in enumerate(img_plots):
-        img_normalized = (255 * (img - img.min()) / (img.ptp())).astype(np.uint8)
+        img_normalized = (255 * (img - img.min()) / (np.ptp(img))).astype(np.uint8)
         axes[i].imshow(img_normalized, cmap='gray')
         axes[i].set_title(title)
         axes[i].axis('off')
