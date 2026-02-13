@@ -21,7 +21,7 @@ FetchContent_MakeAvailable(spdlog)
 
 find_package(CUDAToolkit REQUIRED)
 
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda --default-stream per-thread")
 
 include_directories(
 ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}

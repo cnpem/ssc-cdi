@@ -5,6 +5,7 @@
 #include <common/logger.hpp>
 #include <common/types.hpp>
 #include <common/utils.hpp>
+#include <cuda_runtime_api.h>
 
 extern "C" {
 
@@ -255,12 +256,13 @@ void RAARRun(RAAR& raar, int iterations) {
 
     const dim3 difpadshape = raar.ptycho->diff_pattern_shape;
 
-    rMImage cur_difpad(difpadshape.x, difpadshape.y, raar.ptycho->multibatchsize,
-            false, raar.ptycho->gpus, MemoryType::EAllocGPU);
-
     hcMImage cur_temp_wavefront(raar.ptycho->probe->sizex, raar.ptycho->probe->sizey,
             raar.ptycho->singlebatchsize * raar.ptycho->probe->sizez, true,
             raar.ptycho->gpus, MemoryType::EAllocGPU);
+
+
+    DifPadBatchLoader* batch_loader = CreateDifPadBatchLoader(raar.ptycho);
+    FetchNextBatchAsync(batch_loader);
 
     for (int iter = 0; iter < iterations; iter++) {
 
@@ -274,13 +276,8 @@ void RAARRun(RAAR& raar, int iterations) {
         const size_t num_batches = PtychoNumBatches(*raar.ptycho);
         for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
-            const size_t difpad_batch_zsize = raar.ptycho->positions[batch_idx]->sizez;
-            const size_t global_idx = batch_idx * raar.ptycho->multibatchsize;
-            float *difpad_batch_ptr = raar.ptycho->cpu_diff_pattern +
-                global_idx * difpadshape.x * difpadshape.y;
-
-            cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
-            cur_difpad.LoadToGPU(difpad_batch_ptr);
+            rMImage* cur_difpad = CurrentBatch(batch_loader);
+            FetchNextBatchAsync(batch_loader);
 
             const size_t ngpus = PtychoNumGpus(*raar.ptycho);
             for (size_t gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
@@ -310,7 +307,7 @@ void RAARRun(RAAR& raar, int iterations) {
 
                     k_RAAR_reflect_Rspace<<<blk, thr>>>(*current_exit_wave, *current_probe, *current_object, *previous_exit_wave, ptr_roi, raar.beta);
 
-                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad.arrays[gpu_idx], gpu_idx, raar.isGrad); // propagate, apply measured intensity and unpropagate
+                    ProjectReciprocalSpace(*raar.ptycho, cur_difpad->arrays[gpu_idx], gpu_idx, raar.isGrad); // propagate, apply measured intensity and unpropagate
 
                     k_RAAR_wavefront_update<<<blk, thr>>>(*current_object, *current_probe,   *current_obj_acc, *current_obj_div,  *current_exit_wave, *previous_exit_wave, ptr_roi, raar.beta);
 
@@ -349,6 +346,8 @@ void RAARRun(RAAR& raar, int iterations) {
         }
 
     }
+
+    DestroyDifPadBatchLoader(batch_loader);
 
     auto time1 = sscTime();
     sscInfo(format("End RAAR iteration: {} ms", sscDiffTime(time0, time1)));

@@ -86,6 +86,9 @@ void APRun(AP& ap, int iterations) {
   const dim3 difpadshape = ptycho.diff_pattern_shape;
   const size_t ngpus = PtychoNumGpus(ptycho);
 
+  DifPadBatchLoader* batch_loader = CreateDifPadBatchLoader(&ptycho);
+  FetchNextBatchAsync(batch_loader);
+
   for (int iter = 0; iter < iterations; iter++) {
 
     const bool bIterProbe = (ptycho.probemomentum >= 0);  // & (iter > iterations/20);
@@ -102,22 +105,14 @@ void APRun(AP& ap, int iterations) {
       probevelocity.SetGPUToZero();
     }
 
-
-    // TODO: improve so we can avoid reallocating arrays every iteration,
-    // if we need a speedup
-    rMImage cur_difpad(difpadshape.x, difpadshape.y, ptycho.multibatchsize,
-          false, ptycho.gpus, MemoryType::EAllocGPU);
-
     const size_t num_batches = PtychoNumBatches(ptycho);
     for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 
           const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, batch_idx);
           const size_t difpad_idx = batch_idx * PtychoBatchSize(ptycho);
-          float *difpad_batch_ptr = ptycho.cpu_diff_pattern +
-              difpad_idx * difpadshape.x * difpadshape.y;
 
-          cur_difpad.Resize(difpadshape.x, difpadshape.y, difpad_batch_zsize);
-          cur_difpad.LoadToGPU(difpad_batch_ptr);
+          rMImage* cur_difpad = CurrentBatch(batch_loader);
+          FetchNextBatchAsync(batch_loader);
 
           for (size_t g = 0; g < ngpus; g++) {
               const size_t difpadsizez = (*ptycho.positions[batch_idx])[g].sizez;
@@ -132,7 +127,7 @@ void APRun(AP& ap, int iterations) {
 
                   KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi);
 
-                  ProjectReciprocalSpace(ptycho, cur_difpad.arrays[g], g, ap.isGrad);
+                  ProjectReciprocalSpace(ptycho, cur_difpad->arrays[g], g, ap.isGrad);
 
                   //for some reason AP is the only method requiring this
                   //if we remove this, and remove the division on KAPPs, the method might not converge
@@ -166,7 +161,7 @@ void APRun(AP& ap, int iterations) {
                 (iter + 1) % ptycho.poscorr_iter == 0)
             ApplyPositionCorrection(ptycho);
 
-    // reduce errors 
+    // reduce errors
     ptycho.cpuerror_rfactor[iter] = sqrtf(ptycho.error_rfactor->SumCPU());
     ptycho.cpuerror_llk[iter] = ptycho.error_llk->SumCPU();
     ptycho.cpuerror_mse[iter] = ptycho.error_mse->SumCPU();
@@ -176,6 +171,8 @@ void APRun(AP& ap, int iterations) {
                 iter, iterations, ptycho.cpuerror_rfactor[iter], ptycho.cpuerror_llk[iter], ptycho.cpuerror_mse[iter]));
     }
   }
+
+  DestroyDifPadBatchLoader(batch_loader);
 
   auto time1 = sscTime();
   sscInfo(format("End AP: {} ms", sscDiffTime(time0, time1)));

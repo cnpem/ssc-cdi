@@ -760,3 +760,73 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
 
     return ptycho;
 }
+
+
+void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices) {
+ const size_t nbatches = PtychoNumBatches(*loader->ptycho);
+    loader->batch_idx = (loader->batch_idx + 1) % nbatches;
+
+    const dim3 shape = loader->ptycho->diff_pattern_shape;
+    const size_t batch_idx = indices == nullptr ? loader->batch_idx : indices[loader->batch_idx];
+
+
+    const size_t difpad_batch_zsize = loader->ptycho->positions[batch_idx]->sizez;
+    const size_t global_idx = batch_idx * loader->ptycho->multibatchsize;
+    float* difpad_batch_ptr = loader->ptycho->cpu_diff_pattern + global_idx * shape.x * shape.y;
+
+    const int buffer_idx = loader->batch_idx % 2;
+    const size_t cur_batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx);
+    loader->mimg_buffer[buffer_idx].Resize(shape.x, shape.y, cur_batch_size);
+
+    const size_t batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx);
+
+    // dispatch next load asynchronously
+    loader->mimg_buffer[buffer_idx].LoadToGPU(difpad_batch_ptr, loader->streams);
+}
+
+DifPadBatchLoader* CreateDifPadBatchLoader(Ptycho* ptycho) {
+    const size_t ngpus = ptycho->gpus.size();
+    cudaStream_t* streams = new cudaStream_t[ngpus];
+
+    for (size_t g = 0; g < ngpus; ++g) {
+        SetDevice(ptycho->gpus, g);
+        cudaStreamCreate(&streams[g]);
+    }
+
+    const dim3 shape = ptycho->diff_pattern_shape;
+    const size_t nbatches = PtychoNumBatches(*ptycho);
+    const size_t batch_size = PtychoCurBatchZsize(*ptycho, 0);
+
+    sscAssert(nbatches >= 1, "The loader should have at least one batch to be run.");
+
+    return new DifPadBatchLoader {
+        .ptycho = ptycho,
+        .batch_idx = nbatches - 1, // start on last (on next fetch we go to first)
+        .streams = streams,
+        .mimg_buffer = {
+            rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU),
+            rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU),
+        }
+    };
+}
+
+rMImage* CurrentBatch(DifPadBatchLoader* loader) {
+    const size_t ngpus = loader->ptycho->gpus.size();
+    for (int g = 0; g < ngpus; ++g) {
+        SetDevice(loader->ptycho->gpus, g);
+        cudaStreamSynchronize(loader->streams[g]);
+    }
+
+    const int buffer_idx = loader->batch_idx % 2;
+    return &loader->mimg_buffer[buffer_idx];
+}
+
+void DestroyDifPadBatchLoader(DifPadBatchLoader*& loader) {
+    const size_t ngpus = loader->ptycho->gpus.size();
+    for (size_t g = 0; g < ngpus; ++g) {
+        SetDevice(loader->ptycho->gpus, g);
+        cudaStreamDestroy(loader->streams[g]);
+    }
+    delete[] loader->streams;
+    loader = nullptr;
+}

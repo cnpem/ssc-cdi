@@ -130,13 +130,13 @@ __global__ void kPieUpdateObject(GArray<complex> object, GArray<complex> probe,
     object(objposy, objposx) += (step_obj * obj_delta) / denominator_o;
 }
 
-void rangeArray(int* data, size_t n) {
+void rangeArray(size_t* data, size_t n) {
     for (size_t i = 0; i < n; ++i) {
         data[i] = i;
     }
 }
 
-void shuffleArray(int *data, size_t n) {
+void shuffleArray(size_t *data, size_t n) {
     std::shuffle(data, data + n, std::default_random_engine());
 }
 
@@ -191,27 +191,27 @@ void PieRun(Pie& pie, int iterations) {
 
     cImage wavefront_prev(*pie.ptycho->wavefront->arrays[0]);
 
-    rMImage cur_difpad(difpadshape.x, difpadshape.y, batch_size,
-            false, pie.ptycho->gpus, MemoryType::EAllocGPU);
-
     auto time0 = sscTime();
 
     const size_t num_rois = PtychoNumBatches(*pie.ptycho);
-    int random_idx[num_rois];
-    rangeArray(random_idx, num_rois);
+    size_t random_indices[num_rois];
+    rangeArray(random_indices, num_rois);
+
+    DifPadBatchLoader* batch_loader = CreateDifPadBatchLoader(pie.ptycho);
+    FetchNextBatchAsync(batch_loader, random_indices);
+
     for (int iter = 0; iter < iterations; ++iter) {
         pie.ptycho->error_rfactor->SetGPUToZero();
         pie.ptycho->error_llk->SetGPUToZero();
         pie.ptycho->error_mse->SetGPUToZero();
 
-        shuffleArray(random_idx, num_rois);
+        shuffleArray(random_indices, num_rois);
+
         for (size_t pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
-            const size_t random_pos_idx = random_idx[pos_idx];
+            const size_t random_pos_idx = random_indices[pos_idx];
 
-            float* difpad_batch_ptr = pie.ptycho->cpu_diff_pattern +
-                random_pos_idx * difpadshape.x * difpadshape.y;
-
-            cur_difpad.LoadToGPU(difpad_batch_ptr);
+            rMImage* cur_difpad = CurrentBatch(batch_loader);
+            FetchNextBatchAsync(batch_loader, random_indices);
 
             dim3 blk = pie.ptycho->wavefront->ShapeBlock();
             blk.z = batch_size;
@@ -221,7 +221,7 @@ void PieRun(Pie& pie, int iterations) {
             cImage* probe = pie.ptycho->probe->arrays[gpu];
             cImage* obj = pie.ptycho->object->arrays[gpu];
             cImage* wavefront = pie.ptycho->wavefront->arrays[gpu];
-            rImage* difpad = cur_difpad.arrays[gpu];
+            rImage* difpad = cur_difpad->arrays[gpu];
 
             kPieWavefrontCalc<<<blk, thr>>>(*wavefront, *probe, *obj, rois);
 
@@ -270,6 +270,8 @@ void PieRun(Pie& pie, int iterations) {
                         iter, iterations, pie.ptycho->cpuerror_rfactor[iter], pie.ptycho->cpuerror_llk[iter], pie.ptycho->cpuerror_mse[iter]));
         }
     }
+
+    DestroyDifPadBatchLoader(batch_loader);
 
     auto time1 = sscTime();
     sscInfo(format("End PIE iteration: {} ms", sscDiffTime(time0, time1)));
