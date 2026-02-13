@@ -1,4 +1,6 @@
+#include "logger.hpp"
 #include <cstddef>
+#include <cuda_runtime_api.h>
 #include <driver_types.h>
 #include <vector>
 
@@ -155,6 +157,23 @@ void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float mo
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
 void ApplyPositionCorrection(Ptycho& ptycho);
 
+
+struct DifPadBatchLoader {
+    Ptycho* ptycho = nullptr;
+    size_t batch_idx = 0;
+    cudaStream_t* streams = nullptr;
+    rMImage mimg_buffer[2];
+};
+
+void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices = nullptr);
+
+DifPadBatchLoader* CreateDifPadBatchLoader(Ptycho* ptycho);
+
+void LoadBatch(DifPadBatchLoader* loader, rMImage& difpad_batch);
+
+rMImage* CurrentBatch(DifPadBatchLoader* loader);
+
+void DestroyDifPadBatchLoader(DifPadBatchLoader*& loader);
 
 /**
  * Implemention of Luke's RAAR algorithm for ptychography: x = (1-beta)Ps(x) + beta/2 (1 + RmRs)(x) with augmented
