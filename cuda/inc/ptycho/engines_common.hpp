@@ -169,6 +169,8 @@ void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices = null
 
 DifPadBatchLoader* CreateDifPadBatchLoader(Ptycho* ptycho);
 
+void ResetBatchLoader(DifPadBatchLoader* loader);
+
 void LoadBatch(DifPadBatchLoader* loader, rMImage& difpad_batch);
 
 rMImage* CurrentBatch(DifPadBatchLoader* loader);

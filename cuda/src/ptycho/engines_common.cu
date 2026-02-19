@@ -810,6 +810,11 @@ DifPadBatchLoader* CreateDifPadBatchLoader(Ptycho* ptycho) {
     };
 }
 
+void ResetBatchLoader(DifPadBatchLoader* loader) {
+    const size_t nbatches = PtychoNumBatches(*loader->ptycho);
+    loader->batch_idx = nbatches - 1;
+}
+
 rMImage* CurrentBatch(DifPadBatchLoader* loader) {
     const size_t ngpus = loader->ptycho->gpus.size();
     for (int g = 0; g < ngpus; ++g) {
