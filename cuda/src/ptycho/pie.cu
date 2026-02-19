@@ -69,12 +69,14 @@ __global__ void kPieWavefrontCalc(GArray<complex> wavefront, const GArray<comple
 __global__ void kPieUpdateProbe(GArray<complex> object_box,
         GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_probe, float step_probe, float obj_abs2_max, const Position* rois) {
+        float reg_probe, float step_probe, const float* d_obj_abs2_max, const Position* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (idx >= probe.shape.x || idy >= probe.shape.y) return;
+
+    const float obj_abs2_max = d_obj_abs2_max[0];
 
     const int num_modes = probe.shape.z;
 
@@ -101,12 +103,14 @@ __global__ void kPieUpdateProbe(GArray<complex> object_box,
 
 __global__ void kPieUpdateObject(GArray<complex> object, GArray<complex> probe,
         GArray<complex> wavefront, GArray<complex> wavefront_prev,
-        float reg_obj, float step_obj, float probe_abs2_max, const Position* rois) {
+        float reg_obj, float step_obj, const float* d_probe_abs2_max, const Position* rois) {
 
     const int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const int idy = blockIdx.y * blockDim.y + threadIdx.y;
 
     if (idx >= probe.shape.x || idy >= probe.shape.y) return;
+
+    const float probe_abs2_max = d_probe_abs2_max[0];
 
     const int num_modes = probe.shape.z;
 
@@ -166,7 +170,7 @@ __global__ void maxAbs2(complex *d_array, float *d_max, size_t size) {
     }
 
     if (tid == 0) {
-        atomicMax(reinterpret_cast<int*>(d_max), __float_as_int(sdata[0]));
+        atomicMax((int*)(d_max), __float_as_int(sdata[0]));
     }
 }
 
@@ -198,7 +202,12 @@ void PieRun(Pie& pie, int iterations) {
     rangeArray(random_indices, num_rois);
 
     DifPadBatchLoader* batch_loader = CreateDifPadBatchLoader(pie.ptycho);
-    FetchNextBatchAsync(batch_loader, random_indices);
+
+    float* d_obj_abs2_max = nullptr;
+    float* d_probe_abs2_max = nullptr;
+
+    cudaMalloc((void**) &d_probe_abs2_max, sizeof(float));
+    cudaMalloc((void**) &d_obj_abs2_max, sizeof(float));
 
     for (int iter = 0; iter < iterations; ++iter) {
         pie.ptycho->error_rfactor->SetGPUToZero();
@@ -206,6 +215,8 @@ void PieRun(Pie& pie, int iterations) {
         pie.ptycho->error_mse->SetGPUToZero();
 
         shuffleArray(random_indices, num_rois);
+        ResetBatchLoader(batch_loader);
+        FetchNextBatchAsync(batch_loader, random_indices);
 
         for (size_t pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
             const size_t random_pos_idx = random_indices[pos_idx];
@@ -232,20 +243,23 @@ void PieRun(Pie& pie, int iterations) {
             const Position off = pie.ptycho->positions[random_pos_idx]->arrays[0]->cpuptr[0];
             const dim3 pos_offset(off.x, off.y, 0);
             obj->CopyRoiTo(obj_box, pos_offset, roishape);
-            const float probe_abs2_max = probe->maxAbs2();
-            const float obj_abs2_max = obj_box.maxAbs2();
+
+            const size_t max_thr = 1024;
+            const size_t max_blk = probe->size / 1024 + probe->size % 1024;
+            maxAbs2<<<max_thr, max_blk>>>(probe->gpuptr, d_probe_abs2_max, probe->size);
+            maxAbs2<<<max_thr, max_blk>>>(obj_box.gpuptr, d_obj_abs2_max, obj_box.size);
 
             kPieUpdateObject<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
                     pie.ptycho->objreg,
                     pie.ptycho->objstep,
-                    probe_abs2_max, rois);
+                    d_probe_abs2_max, rois);
 
             kPieUpdateProbe<<<blk, thr>>>(obj_box, *obj, *probe,
                     *wavefront, wavefront_prev,
                     pie.ptycho->probereg,
                     pie.ptycho->probestep,
-                    obj_abs2_max, rois);
+                    d_obj_abs2_max, rois);
 
             if (pie.ptycho->probesupport != nullptr)
                 ApplyProbeSupport(*pie.ptycho);
@@ -272,6 +286,9 @@ void PieRun(Pie& pie, int iterations) {
     }
 
     DestroyDifPadBatchLoader(batch_loader);
+
+    cudaFree((void*) d_probe_abs2_max);
+    cudaFree((void*) d_obj_abs2_max);
 
     auto time1 = sscTime();
     sscInfo(format("End PIE iteration: {} ms", sscDiffTime(time0, time1)));
