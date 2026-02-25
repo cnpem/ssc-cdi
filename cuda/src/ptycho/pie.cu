@@ -270,6 +270,7 @@ void PieRun(Pie& pie, int iterations) {
             ApplyPositionCorrection(*pie.ptycho);
 
             for (size_t pos_idx = 0; pos_idx < num_rois; ++pos_idx) {
+                // on PIE, the positions array is used in CPU, needs to be reloaded after update
                 pie.ptycho->positions[pos_idx]->LoadFromGPU();
             }
         }
