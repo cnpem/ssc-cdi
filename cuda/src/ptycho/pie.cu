@@ -215,6 +215,7 @@ void PieRun(Pie& pie, int iterations) {
         pie.ptycho->error_mse->SetGPUToZero();
 
         shuffleArray(random_indices, num_rois);
+        // on PIE only, we need to reset every iteration as the order of positions will change, and the previously loaded next batch is now invalid.
         ResetBatchLoader(batch_loader);
         FetchNextBatchAsync(batch_loader, random_indices);
 
