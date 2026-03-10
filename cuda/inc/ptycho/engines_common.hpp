@@ -7,7 +7,6 @@
 #include <common/complex.hpp>
 #include <common/types.hpp>
 
-
 #include <propagator.hpp>
 
 /** @file */

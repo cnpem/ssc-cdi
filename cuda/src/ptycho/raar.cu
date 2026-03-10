@@ -316,7 +316,6 @@ void RAARRun(RAAR& raar, int iterations) {
             raar.temp_wavefront[batch_idx]->CopyFrom(cur_temp_wavefront);
         }
 
-
         sscDebug("Syncing OBJ");
         objvelocity.SetGPUToZero();
         raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_num), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg);
