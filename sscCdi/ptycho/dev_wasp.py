@@ -75,10 +75,24 @@ def WASP(expt, recon, probe):
 
     # Load variables onto GPU if required
     if recon['gpu']:
-        import cupy as cp
-        obj = cp.array(obj, dtype=cp.float32)
-        probe = cp.array(probe, dtype=cp.float32)
-        expt['dps'] = cp.array(expt['dps'], dtype=cp.float32)
+        try:
+            import cupy as cp
+
+            # Check if a GPU is available
+            cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+            print("Using CuPy (GPU)")
+            np = cp  # np will be an alias for cupy
+
+            print('Transfering data to GPU...')
+
+            obj = cp.array(obj, dtype=cp.float32)
+            probe = cp.array(probe, dtype=cp.float32)
+            expt['dps'] = cp.array(expt['dps'], dtype=cp.float32)
+
+        except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+            # Fallback to NumPy if GPU is not available or cupy is not installed
+            import numpy as np
+            print("Using NumPy (CPU)")
 
     for k in range(recon['iters']):
         # Initialize numerator and denominator sums
@@ -120,10 +134,10 @@ def WASP(expt, recon, probe):
 
         # Recenter probe/object using probe intensity center of mass
         absP2 = np.abs(probe)**2
-        cp = np.fix([M, N] / 2 - [M, N] * [np.mean(np.cumsum(np.sum(absP2, axis=1))),
+        cpp = np.fix([M, N] / 2 - [M, N] * [np.mean(np.cumsum(np.sum(absP2, axis=1))),
                                            np.mean(np.cumsum(np.sum(absP2, axis=0)))] / np.sum(absP2) + 1).astype(int)
 
-        if any(cp):
+        if any(cpp):
             probe = np.roll(probe, -cp, axis=(0, 1))
             obj = np.roll(obj, -cp, axis=(0, 1))
 

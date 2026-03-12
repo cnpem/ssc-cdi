@@ -13,9 +13,26 @@ from .engines_common import update_exit_wave, apply_probe_support, create_random
 from ..misc import extract_values_from_all_slices, get_random_2D_indices
 from .ptychography import call_ptychography
 
+# Broken as of 2026-03-12
 def position_correction_fresnel(diffraction_patterns, recon_positions, recon_object, recon_probe, iterations, inputs):
-    import cupy as cp
-    d_DPs = cp.array(diffraction_patterns)
+    try:
+        import cupy as cp
+
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+        np = cp  # np will be an alias for cupy
+
+        print('Transfering data to GPU...')
+
+        d_DPs = cp.array(diffraction_patterns)
+
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as cp
+        import numpy as np
+        print("Using NumPy (CPU)")
+    
     corrected_positions  = recon_positions.copy()
     inputs['algorithms']['1']['iterations'] = 50
     inputs['n_of_positions_to_remove'] = recon_positions.shape[0]//2
@@ -63,6 +80,8 @@ def position_correction_fresnel(diffraction_patterns, recon_positions, recon_obj
         mempool = cp.get_default_memory_pool()
         mempool.free_all_blocks()
     return recon_object, recon_probe, position
+
+# Broken as of 2026-03-12
 def position_correction_python(diffraction_patterns, recon_positions, recon_object, recon_probe, inputs):
     
     ## Array to store cropped diffraction patterns

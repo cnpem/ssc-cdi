@@ -9,7 +9,7 @@
   
 ## Contributors
 
-* Alan Zanoni Peixinho, LNLS/CNPEM
+* Alan Zanoni Peixinho
 * Leonardo M. Corrêa, LNLS/CNPEM
 * Lucas Antonio Pelike, LNLS/CNPEM
 * Paola Ferraz, LNLS/CNPEM
@@ -130,15 +130,15 @@ Where `<version>` is the version number of the `sscCdi`
 One can clone our [gitlab](https://gitlab.cnpem.br/) repository and install the latest version by:
 
 ```bash
-git clone https://gitlab.cnpem.br/GCC/ssc-cdi.git 
-cd ssc-cdi
-make clean && make
+    git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git 
+    cd ssc-cdi
+    make clean && make
 ```
 
 For a specific version, one can use:
 
 ```bash
-    git clone https://gitlab.cnpem.br/GCC/ssc-cdi.git --branch v<version> --single-branch
+    git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git --branch v<version> --single-branch
     cd ssc-cdi 
     make clean && make
 ```
@@ -146,7 +146,7 @@ For a specific version, one can use:
 The `<version>` is the version of the `sscCdi` to be installed. Example, to install version 0.14.2
 
 ```bash
-    git clone https://gitlab.cnpem.br/GCC/ssc-cdi.git --branch v0.14.2 --single-branch
+    git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git --branch v0.14.2 --single-branch
     cd ssc-cdi 
     make clean && make
 ```

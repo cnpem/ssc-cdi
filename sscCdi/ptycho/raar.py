@@ -101,8 +101,6 @@ def RAAR_python(diffraction_patterns,positions,obj,probe,inputs):
     print('Wavefronts shape:',wavefronts.shape)
     print('Positions shape:',positions.shape)
 
-
-
     error = cp.zeros((iterations,4))
     for iteration in range(0,iterations):
         for index, (posx, posy) in enumerate(positions):
@@ -169,6 +167,17 @@ def update_object_and_probe(wavefronts,obj,probes,positions,regularization_obj,r
 
 def update_object(wavefronts, probe, object_shape, positions,epsilon):
 
+    try:
+        import cupy as cp
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as cp
+        print("Using NumPy (CPU)")
+
     modes,m,n = probe.shape
     k,l = object_shape
 
@@ -188,6 +197,17 @@ def update_object(wavefronts, probe, object_shape, positions,epsilon):
 
 def update_probe(wavefronts, obj, probe_shape,positions, epsilon=0.01):
     
+    try:
+        import cupy as cp
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as cp
+        print("Using NumPy (CPU)")
+
     l,m,n = probe_shape
 
     object_sum = cp.zeros((m,n),dtype=complex)

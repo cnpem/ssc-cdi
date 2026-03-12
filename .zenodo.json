@@ -1,7 +1,7 @@
 {
     "upload_type": "software",
     "title": "ssc-cdi",
-    "version": "0.15.0",
+    "version": "0.16.0",
     "access_right": "open",
     "communities": [
     ],
@@ -44,7 +44,7 @@
         },
         {
             "name": "Z. Peixinho, Alan",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
+            "affiliation": "",
             "orcid": "0009-0002-6983-2342"
         },
         {

@@ -40,7 +40,7 @@ Authors and Contributors
       - LNLS/CNPEM
     * - Alan Zanoni Peixinho
       - Contributor
-      - LNLS/CNPEM
+      - 
     * - Leonardo M. Corrêa
       - Contributor
       - LNLS/CNPEM

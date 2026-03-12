@@ -20,7 +20,7 @@ from ..misc import estimate_memory_usage, wavelength_meters_from_energy_keV, cal
 from ..processing.propagation import fresnel_propagator_cone_beam
 from .pie import PIE_python
 from .raar import RAAR_python
-from .ML import ML_cupy
+# from .ML import ML_cupy
 
 from .ptycho_plots import (plot_ptycho_scan_points, plot_probe_modes, 
                            get_extent_from_pixel_size, plot_iteration_error, 
@@ -109,19 +109,17 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
                'momentum_obj': float , momentum_probe': float, 
                'position_correction': (0: no correction, N: performs correction every N iterations)}
-            
-            #. ``Test Engine: PIE_python``: {'name': 'rPIE_python', 'iterations': int, 'step_object': float,  'step_probe': float, 'regularization_object': float,
-               'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
-            
-            #. ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
-            
-            #. ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            
-            #. ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            
-            #. ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
-     
     """  
+    #. ``Test Engine: PIE_python``: {'name': 'rPIE_python', 'iterations': int, 'step_object': float,  'step_probe': float, 'regularization_object': float,
+    #    'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
+    
+    #. ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
+    
+    #. ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
+    
+    #. ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
+    
+    #. ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
 
     input_dict["datetime"] = get_datetime()
 
@@ -322,9 +320,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                            'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
             # ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
             # ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-            # ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
-         
+            # ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}         
 
     """
     # define initial guess probe
@@ -449,12 +445,12 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error[:,1])
             error_llk.append(algo_error[:,2])
 
-        elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
-            obj, new_probe, algo_error = ML_cupy(DPs,positions, obj, probe[0], algo_inputs) #TODO: expand to deal with multiple probe modes
-            probe[0] = new_probe
-            error_rfactor.append(algo_error[:,0])
-            error_nmse.append(algo_error[:,1])
-            error_llk.append(algo_error[:,2])
+        # elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
+        #     obj, new_probe, algo_error = ML_cupy(DPs,positions, obj, probe[0], algo_inputs) #TODO: expand to deal with multiple probe modes
+        #     probe[0] = new_probe
+        #     error_rfactor.append(algo_error[:,0])
+        #     error_nmse.append(algo_error[:,1])
+        #     error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")

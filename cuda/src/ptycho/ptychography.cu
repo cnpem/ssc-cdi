@@ -136,7 +136,7 @@ extern "C"
             int obj_propagator,
             float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m, float raarbeta)
     {
-        sscInfo(format("Starting RAAR - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex,psizex, osizey,osizex, numrois, bsize, numiter));
+        sscInfo(format("Starting RAAR - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex, psizex, osizey, osizex, numrois, bsize, numiter));
         {
             std::vector<int> gpus;
             for(int g=0; g<ngpus; g++)
@@ -162,6 +162,8 @@ extern "C"
             sscInfo("End RAAR.");
         }
     }
+
+    
 
     void asm_propagator(void* in, void* out, int sizex, int sizey,
             float wavelength_m, float pixelsize_m, float distance_m) {
