@@ -113,7 +113,7 @@ The latest package version can be cloned from CNPEM's `gitlab <https://gitlab.cn
 
 .. code-block:: bash
 
-    git clone https://gitlab.cnpem.br/GCC/ssc-cdi.git
+    git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git
     cd ssc-cdi 
     make clean && make
 
@@ -121,7 +121,7 @@ To install a specific version (``<version>``), one can use:
 
 .. code-block:: bash
 
-    git clone  https://gitlab.cnpem.br/GCC/ssc-cdi.git --branch v<version> --single-branch
+    git clone  https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git --branch v<version> --single-branch
     cd ssc-cdi 
     make clean && make
 
@@ -130,7 +130,7 @@ Example, to install version 0.14.2:
 
 .. code-block:: bash
 
-    git clone https://gitlab.cnpem.br/GCC/ssc-cdi.git --branch v0.14.2 --single-branch
+    git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git --branch v0.14.2 --single-branch
     cd ssc-cdi 
     make clean && make
 

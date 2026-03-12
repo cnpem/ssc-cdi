@@ -1,3 +1,17 @@
+Version 0.16.0 - 2026-03-12
+---------------------------
+*Added:*
+    - New ``CUDA`` accelerations on engines: buffers for loading data during iterations.
+
+*Fixed:*
+    - Position correction function on ``CUDA`` engines.
+    - CI/CD ``deploy_docs`` and build.
+    - Minor issues.
+
+*Changed*
+    - Thrust max reduce by our an in-house implemented custom kernel.
+    - ``README.md``.
+
 Version 0.15.0 - 2025-05-13
 ---------------------------
 *Added:*

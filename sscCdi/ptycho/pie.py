@@ -155,7 +155,16 @@ def update_object_and_probe(obj,probe_modes,wavefront_modes,updated_wavefront_mo
     r: regularization constant
     """
 
-    import cupy as cp
+    try:
+        import cupy as cp
+        # Check if a GPU is available
+        cp.cuda.Device(0).compute_capability  # Access the first GPU (0-indexed)
+        print("Using CuPy (GPU)")
+
+    except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+        # Fallback to NumPy if GPU is not available or cupy is not installed
+        import numpy as cp
+        print("Using NumPy (CPU)")
 
     def get_denominator_p(obj,reg_p):
         power = cp.abs(obj)**2
