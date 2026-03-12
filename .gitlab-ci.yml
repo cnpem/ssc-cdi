@@ -78,7 +78,7 @@ deploy_docs:
     - apk add m4 sshpass rsync openssh sshpass
     - mkdir /root/.ssh
     - ssh-keyscan gcc.lnls.br >> /root/.ssh/known_hosts
-    - cat ./docs/assets/index_redirect.html | m4 -DVERSION=$CI_COMMIT_TAG > ./docs/build/index.html
+    # - cat ./docs/assets/index_redirect.html | m4 -DVERSION=$CI_COMMIT_TAG > ./docs/build/index.html
     - sshpass -p "${CI_GCC_VM_PASS}" scp -r ./docs/build/* ci@gcc.lnls.br:/var/www/html/ssc/ssc-cdi/
   tags:
     - docker
