@@ -7,7 +7,7 @@ include(FetchContent)
 set(CMAKE_CUDA_HOST_COMPILER $ENV{CC})
 
 # 2026-04-07 Change the order of this 2 commands, so it can be compiled in mafalda-2
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 70)
 project(sscCdi LANGUAGES CXX CUDA)
 
 #add_definitions(-w)
