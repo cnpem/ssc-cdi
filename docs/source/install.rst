@@ -92,10 +92,10 @@ One can install the latest version of sscCdi directly from our ``pip server`` in
 
 .. code-block:: bash
 
-    pip install sscCdi==version --index-url https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
+    pip install sscCdi --index-url https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
 
 
-Where ``version`` is the version number of the ``sscCdi``. Example:
+Or install a previous version with ``sscCdi==<version>``. Example:
 
 .. code-block:: bash
 
