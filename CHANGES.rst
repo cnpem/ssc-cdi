@@ -1,3 +1,9 @@
+Version 0.16.1 - 2026-04-07
+---------------------------
+*Changed*
+    - ``CMakeLists.txt`` to fix compilation issues in the LNLS cluster.
+    - ``README.md``.
+
 Version 0.16.0 - 2026-03-12
 ---------------------------
 *Added:*

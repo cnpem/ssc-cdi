@@ -2,8 +2,13 @@ cmake_minimum_required(VERSION 3.18)
 
 include(FetchContent)
 
+# Order matter on the CMake file!1
+# 2026-04-07 Necessary for mafalda-2. Needs to be first!
+set(CMAKE_CUDA_HOST_COMPILER $ENV{CC})
+
+# 2026-04-07 Change the order of this 2 commands, so it can be compiled in mafalda-2
+set(CMAKE_CUDA_ARCHITECTURES 80)
 project(sscCdi LANGUAGES CXX CUDA)
-set(CMAKE_CUDA_ARCHITECTURES 70)
 
 #add_definitions(-w)
 #set(CMAKE_BUILD_TYPE Debug)
