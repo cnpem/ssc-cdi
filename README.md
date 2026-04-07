@@ -111,11 +111,11 @@ To compile the source files, enter the following command inside the folder
 One can install the latest version of sscCdi directly from the `pip server`
 
 ```bash
-    pip install sscCdi==<version> --index-url https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
+    pip install sscCdi --index-url https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
 
 ```
 
-Where `<version>` is the version number of the `sscCdi`
+Or install a previous version with ``sscCdi==<version>``. Example:
 
 ```bash
     pip install sscCdi==0.14.2 --index-url https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
