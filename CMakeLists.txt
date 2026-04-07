@@ -37,7 +37,6 @@ include_directories(
     cuda/inc/common
     cuda/inc/common10
     cuda/inc/ptycho
-    cuda/inc/planewave
 )
 
 # suppress annoying warning to allow header function definition
