@@ -247,8 +247,8 @@ void PieRun(Pie& pie, int iterations) {
 
             const size_t max_thr = 1024;
             const size_t max_blk = probe->size / 1024 + probe->size % 1024;
-            maxAbs2<<<max_thr, max_blk>>>(probe->gpuptr, d_probe_abs2_max, probe->size);
-            maxAbs2<<<max_thr, max_blk>>>(obj_box.gpuptr, d_obj_abs2_max, obj_box.size);
+            maxAbs2<<<max_blk, max_thr>>>(probe->gpuptr, d_probe_abs2_max, probe->size);
+            maxAbs2<<<max_blk, max_thr>>>(obj_box.gpuptr, d_obj_abs2_max, obj_box.size);
 
             kPieUpdateObject<<<blk, thr>>>(*obj, *probe,
                     *wavefront, wavefront_prev,
