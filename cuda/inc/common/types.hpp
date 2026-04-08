@@ -920,7 +920,7 @@ struct MImage : public MultiGPU {
             Set(g);
             arrays[g]->CopyFrom(newdata + offsets[g]);
             if (arrays[g]->bHasAllocCPU())
-                memcpy(arrays[g]->cpuptr, newdata + offsets[g], sizeof(Type) * GetSize());
+                memcpy(arrays[g]->cpuptr, newdata + offsets[g], sizeof(Type) * arrays[g]->size);
         }
         sscDebug(format("^ from pointer {}", (void*)newdata));
     }
