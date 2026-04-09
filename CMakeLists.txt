@@ -7,7 +7,7 @@ include(FetchContent)
 set(CMAKE_CUDA_HOST_COMPILER $ENV{CC})
 
 # 2026-04-07Change the order of this 2 commands, so it can be compiled in mafalda-2
-set(CMAKE_CUDA_ARCHITECTURES 80)
+set(CMAKE_CUDA_ARCHITECTURES 70)
 project(sscCdi LANGUAGES CXX CUDA)
 
 #add_definitions(-w)
@@ -29,7 +29,7 @@ find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda --default-stream per-thread")
 
 include_directories(
-${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
 )
 
 include_directories(
@@ -49,15 +49,17 @@ file(GLOB_RECURSE CDI_SRC cuda/src/**/*.c*)
 add_library(ssccdi SHARED ${CDI_SRC})
 
 # ----- Add Cuda library path -------------------------------------
-get_target_property(CUDART_LOCATION CUDA::cudart IMPORTED_LOCATION)
-get_filename_component(CUDA_LIB_DIR ${CUDART_LOCATION} DIRECTORY)
-message(STATUS "CUDA lib dir: ${CUDA_LIB_DIR}")
+message(STATUS "CUDA lib dir: ${CUDAToolkit_LIBRARY_DIR}")
+set(CUDA_LIB_DIR ${CUDAToolkit_LIBRARY_DIR})
 
 set_target_properties(ssccdi PROPERTIES
     INSTALL_RPATH "${CUDA_LIB_DIR}"
 )
 # -----------------------------------------------------------------
 
-target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart m pthread)
+# target_link_libraries(ssccdi PUBLIC ${CUDA_LIBRARIES} spdlog CUDA::cufft CUDA::cudart m pthread)
+
+target_link_libraries(ssccdi spdlog CUDA::cufft CUDA::cudart m pthread)
+
 
 install(TARGETS ssccdi LIBRARY DESTINATION ${PROJECT_NAME}/lib)

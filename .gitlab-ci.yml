@@ -6,19 +6,19 @@ stages:
   - build
   - deploy
 
-build_dgx:
-  stage: build
-  image: gccdockers/python-builder
-  script:
-    - python3.9  -m build --wheel
-    - python3.10 -m build --wheel
-    - python3.11 -m build --wheel
-  tags:
-    - docker
-  artifacts:
-    paths:
-      - ./dist/*whl
-    expire_in: 1 day
+# build_dgx:
+#   stage: build
+#   image: gccdockers/python-builder
+#   script:
+#     - python3.9  -m build --wheel
+#     - python3.10 -m build --wheel
+#     - python3.11 -m build --wheel
+#   tags:
+#     - docker
+#   artifacts:
+#     paths:
+#       - ./dist/*whl
+#     expire_in: 1 day
 
 build_sdist:
   stage: build
@@ -44,17 +44,17 @@ deploy_sdist:
   only:
     - tags
 
-deploy_dgx:
-  stage: deploy
-  image: gccdockers/python-builder
-  script:
-    - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
-  tags:
-    - docker
-  dependencies:
-    - build_dgx
-  only:
-    - tags
+# deploy_dgx:
+#   stage: deploy
+#   image: gccdockers/python-builder
+#   script:
+#     - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
+#   tags:
+#     - docker
+#   dependencies:
+#     - build_dgx
+#   only:
+#     - tags
 
 build_docs:
   stage: build
