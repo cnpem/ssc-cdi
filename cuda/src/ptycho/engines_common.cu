@@ -442,8 +442,8 @@ __global__ void KPositionCorrection(float* errorcounter, Position* positions,
         if (minerror > cur_error) {            
             float x = positions[z].x, y = positions[z].y;
             float offx = d_pos_offx[k], offy = d_pos_offy[k];  
-            if((probeshape.x/2 < x + offx) && (x + offx < (objshape.x - probeshape.x/2)) 
-                && (probeshape.y/2 < y + offy) && (y + offy < (objshape.y - probeshape.y/2))){
+            if((0 < x + offx) && (x + offx < (objshape.x - probeshape.x)) 
+                && (0 < y + offy) && (y + offy < (objshape.y - probeshape.y))){
                 minerror = cur_error;
                 minidx = k;
             }
