@@ -1,88 +1,48 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_UPDATE_FLAGS: --remote
+  RUNNER_TAG: "podman"
 
 stages:
-  - build
-  - deploy
-
-# build_dgx:
-#   stage: build
-#   image: gccdockers/python-builder
-#   script:
-#     - python3.9  -m build --wheel
-#     - python3.10 -m build --wheel
-#     - python3.11 -m build --wheel
-#   tags:
-#     - docker
-#   artifacts:
-#     paths:
-#       - ./dist/*whl
-#     expire_in: 1 day
+- build
+- deploy
+- documentation
 
 build_sdist:
   stage: build
   image: gccdockers/python-builder
   script:
-    - python3 -m build --sdist
+  - python3 -m build --sdist
   tags:
-    - docker
+  - "$RUNNER_TAG"
   artifacts:
     paths:
-      - ./dist/*tar.gz
+    - ./dist/*tar.gz
     expire_in: 1 day
 
 deploy_sdist:
   stage: deploy
   image: gccdockers/python-builder
   script:
-    - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
+  - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
   tags:
-    - docker
+  - docker
   dependencies:
-    - build_sdist
+  - build_sdist
   only:
-    - tags
+  - "$RUNNER_TAG"
 
-# deploy_dgx:
-#   stage: deploy
-#   image: gccdockers/python-builder
-#   script:
-#     - python3 -m twine upload ./dist/*.whl  --repository-url="$GCC_PYPI_HOST"
-#   tags:
-#     - docker
-#   dependencies:
-#     - build_dgx
-#   only:
-#     - tags
-
-build_docs:
-  stage: build
-  image: gccdockers/python-builder
+pages:
+  stage: documentation
+  image: python:3.12
+  before_script:
+  - pip install -r docs/requirements.txt
   script:
-    - python3 -m pip install myst-parser sphinx-multiversion sphinxcontrib-bibtex
-    - cd docs
-    - make
-  tags:
-    - docker
+  - sphinx-build -j $(nproc) -b html docs/ public/
   artifacts:
     paths:
-      - ./docs/build/
+    - public
   only:
-    - tags
-
-deploy_docs:
-  stage: deploy
-  image: alpine:latest
-  script:
-    - apk add m4 sshpass rsync openssh sshpass
-    - mkdir /root/.ssh
-    - ssh-keyscan gcc.lnls.br >> /root/.ssh/known_hosts
-    # - cat ./docs/assets/index_redirect.html | m4 -DVERSION=$CI_COMMIT_TAG > ./docs/build/index.html
-    - sshpass -p "${CI_GCC_VM_PASS}" scp -r ./docs/build/* ci@gcc.lnls.br:/var/www/html/ssc/ssc-cdi/
+  - master
   tags:
-    - docker
-  dependencies:
-    - build_docs
-  only:
-    - tags
+  - "$RUNNER_TAG"
