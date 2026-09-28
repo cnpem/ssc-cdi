@@ -277,9 +277,15 @@ void PieRun(Pie& pie, int iterations) {
         }
 
         // reduce errors
-        pie.ptycho->cpuerror_rfactor[iter] = sqrtf(pie.ptycho->error_rfactor->SumGPU());
-        pie.ptycho->cpuerror_llk[iter] = pie.ptycho->error_llk->SumGPU();
-        pie.ptycho->cpuerror_mse[iter] = pie.ptycho->error_mse->SumGPU();
+        pie.ptycho->cpuerror_rfactor[iter] =
+	    (pie.ptycho->error_rfactor->SumGPU()
+	     / pie.ptycho->total_measured_sqrt_intensity);
+        pie.ptycho->cpuerror_llk[iter] =
+	    (pie.ptycho->error_llk->SumGPU()
+	     / pie.ptycho->total_measured_intensity);
+        pie.ptycho->cpuerror_mse[iter] =
+	    (pie.ptycho->error_mse->SumGPU()
+	     / pie.ptycho->total_measured_sq_intensity);
 
         if (iter % 10 == 0) {
             sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",

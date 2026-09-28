@@ -373,7 +373,6 @@ def RAAR(obj: np.ndarray,
                 * ``mydict['bkg']`` (ndarray): The 2D background retrieved.
 
         """
-
     obj,objptr, (osizey, osizex) = ctypes_array(obj)
     probe, probeptr, (psizez, _, psizex) = ctypes_array(probe)
     difpads, difpadsptr, (*_, dsizex) = ctypes_array(difpads)

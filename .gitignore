@@ -14,3 +14,5 @@ data/dev/*.npy
 examples/output.h5
 tests/*.png
 tests/test_output.h5
+*~
+*.diff

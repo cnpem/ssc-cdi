@@ -75,8 +75,6 @@ void Fraunhoffer::Propagate(complex* owave, complex* iwave, dim3 shape,
     if (amount < 0) { // backward
         BasicOps::KFFTshift2<<<blk, thr, 0, stream>>>(iwave, shape.x, shape.y);
         FFT(owave, iwave, shape, amount, stream);
-        BasicOps::KB_Div<<<blk, thr, 0, stream>>>(owave, float(shape.x) * float(shape.y),
-            size_t(shape.x) * size_t(shape.y) * size_t(shape.z));
     } else if (amount > 0) { // forward
         FFT(owave, iwave, shape, amount, stream);
         BasicOps::KFFTshift2<<<blk, thr, 0, stream>>>(owave, shape.x, shape.y);

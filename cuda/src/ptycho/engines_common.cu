@@ -96,8 +96,12 @@ __global__ void KComputeError(float* errors, const GArray<complex> exitwave,
         for (int m = 0; m < nummodes; m++) {
             wabs2 += (double) exitwave(idz * nummodes + m, idy, idx).abs2();
         }
-        const float error_rfactor = sq(diff_pattern - wabs2);
-        atomicAdd(shared_error_rfactor + threadIdx.x % sherror_size, error_rfactor);
+	const float sqrt_difpad = sqrtf(diff_pattern);
+	const float wabs = sqrtf(wabs2);
+	const float A_residual = sqrt_difpad - wabs;
+        const float r_factor_numerator_addend = fabs(A_residual);
+        atomicAdd(shared_error_rfactor + threadIdx.x % sherror_size,
+		  r_factor_numerator_addend);
     }
     __syncthreads();
 
@@ -271,12 +275,36 @@ __global__ void KProjectReciprocalSpace(
         wabs = sqrtf(wabs2) / upsample;  // can we kill upsample? not sure it is
                                          // necessary anymore.
 
-        // compute rfactor error
-        atomicAdd(shared_error_rfactor + threadIdx.x % sh_error_size,
-                  sq(sqrt_difpad - wabs));
+	const float I_residual = diff_pattern - wabs2;
+	const float A_residual = sqrt_difpad - wabs;
+	const float log_I_ratio = logf(wabs2 / (diff_pattern + eps));
 
-        // poisson negative log-likelihood
-        float llk = +wabs2 - diff_pattern * logf(wabs2 + eps);
+	// Addends for the numerators of the normalized mean-square error
+	// (NMSE), the r-factor, and the generalized KL divergence (GKLD). Note
+	// that the GKLD is equivalent to the negative log-likelihood loss
+	// (NLLL) modulo a constant. Note that the GKLD goes to zero in the
+	// limit of perfect agreement between the measured and the predicted
+	// intensity, unlike the NLLL which doesn't in general. The ``fabs``
+	// operation was added in the GKLD calculation to enforce nonnegativity,
+	// which is expected mathematically.
+	const float nmse_numerator_addend =
+	    I_residual*I_residual;
+	const float r_factor_numerator_addend =
+	    fabs(A_residual);
+	const float gkld_numerator_addend =
+	    fabs(-A_residual - diff_pattern*log_I_ratio);
+
+        // compute mse
+        atomicAdd(shared_error_mse + threadIdx.x % sh_error_size,
+		  nmse_numerator_addend);
+
+	// compute rfactor error
+        atomicAdd(shared_error_rfactor + threadIdx.x % sh_error_size,
+                  r_factor_numerator_addend);
+
+        // compute negative llk error
+        atomicAdd(shared_error_llk + threadIdx.x % sh_error_size,
+		  gkld_numerator_addend);
 
         // // this constant term does not depend on wabs2, so it is not actually
         // useful to see the
@@ -289,25 +317,15 @@ __global__ void KProjectReciprocalSpace(
         //           - diff_pattern
         //           + 0.5*logf(2*3.141592*diff_pattern + eps);
 
-        // compute negative llk error
-        atomicAdd(shared_error_llk + threadIdx.x % sh_error_size, llk);
-
-        // compute mse
-        float mse =
-            fabs(diff_pattern - wabs2) /
-            (eps + diffraction_patterns.shape.x * diffraction_patterns.shape.y);
-        atomicAdd(shared_error_mse + threadIdx.x % sh_error_size, mse);
-
         // Define ew_f and ew_a to be used in the next loop in ew = ew_f * ew +
         // ew_a
-        if (wabs > 0.0f && isGrad) {  // AP
+        if (wabs > 0.0f) {
             exit_wave_factor =
                 (sqrt_difpad / wabs - 1);  // why -1 for AP and not for RAAR?
             exit_wave_addend = 0.0f;
-        } else if (wabs > 0.0f && !isGrad) {  // RAAR
-            exit_wave_factor =
-                sqrt_difpad / wabs;  // why -1 for AP and not for RAAR?
-            exit_wave_addend = 0.0f;
+
+	    if (!isGrad)  // RAAR, otherwise AP.
+		exit_wave_factor += 1;
         } else {  // wabs <= 0.0f
             exit_wave_addend = sqrt_difpad;
             exit_wave_factor = 0.0f;
@@ -422,6 +440,13 @@ void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize,
     if (pt.probesupport != nullptr) {
         ApplyProbeSupport(pt);
     }
+
+    //*
+    SetDevice(pt.gpus, 0);
+    float I0 = pt.I0;
+    float newI0 = pt.probe->arrays[0]->Norm2();
+    *pt.probe *= sqrtf(I0/newI0); 
+    //*/
 }
 
 __global__ void KPositionCorrection(float* errorcounter, Position* positions,
@@ -665,6 +690,36 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     cudaHostRegister(ptycho->cpu_diff_pattern, difpad_size * sizeof(float),
                      cudaHostRegisterDefault);
 
+    ptycho->total_measured_intensity =
+	thrust::transform_reduce(
+	    thrust::host,
+	    ptycho->cpu_diff_pattern,
+	    ptycho->cpu_diff_pattern + difpad_size,
+	    [] __host__ __device__ (float x)
+		{ return (double)fmaxf(x, 0.0f); },
+	    0.0,
+	    thrust::plus<double>());
+
+    ptycho->total_measured_sq_intensity =
+	thrust::transform_reduce(
+	    thrust::host,
+	    ptycho->cpu_diff_pattern,
+	    ptycho->cpu_diff_pattern + difpad_size,
+	    [] __host__ __device__ (float x)
+		{ return x > 0.0f ? (double)x * (double)x : 0.0; },
+	    0.0,
+	    thrust::plus<double>());
+
+    ptycho->total_measured_sqrt_intensity =
+	thrust::transform_reduce(
+	    thrust::host,
+	    ptycho->cpu_diff_pattern,
+	    ptycho->cpu_diff_pattern + difpad_size,
+	    [] __host__ __device__ (float x)
+		{ return x > 0.0f ? sqrt((double)x) : 0.0; },
+	    0.0,
+	    thrust::plus<double>());
+
     ptycho->cpuprobe = _probe;
     ptycho->cpuobject = _object;
     ptycho->cpupositions = positions;
@@ -747,6 +802,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
 
     sscDebug("Computing I0");
     SetDevice(gpus, 0);
+    ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
+
     ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);
 
     ptycho->object_div = new rMImage(ptycho->object->Shape(), true, gpus);
@@ -761,7 +818,6 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     return ptycho;
 }
 
-
 void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices) {
     const size_t nbatches = PtychoNumBatches(*loader->ptycho);
     loader->batch_idx = (loader->batch_idx + 1) % nbatches;
@@ -775,10 +831,10 @@ void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices) {
     float* difpad_batch_ptr = loader->ptycho->cpu_diff_pattern + global_idx * shape.x * shape.y;
 
     const int buffer_idx = loader->batch_idx % 2;
-    const size_t cur_batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx);
+    const size_t cur_batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx); // Same as ``difpad_batch_zsize``.
     loader->mimg_buffer[buffer_idx].Resize(shape.x, shape.y, cur_batch_size);
 
-    const size_t batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx);
+    const size_t batch_size = PtychoCurBatchZsize(*loader->ptycho, batch_idx); // Same as ``cur_batch_size``.
 
     // dispatch next load asynchronously
     loader->mimg_buffer[buffer_idx].LoadToGPU(difpad_batch_ptr, loader->streams);
@@ -801,15 +857,28 @@ DifPadBatchLoader* CreateDifPadBatchLoader(Ptycho* ptycho) {
 
     sscDebug("Create rMimage for mimg_buffer.");
 
-    return new DifPadBatchLoader {
-        .ptycho = ptycho,
-        .batch_idx = nbatches - 1, // start on last (on next fetch we go to first)
-        .streams = streams,
-        .mimg_buffer = {
-            rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU),
-            rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU)
-        }
-    };
+    if (nbatches == 1) {
+	return new DifPadBatchLoader {
+            .ptycho = ptycho,
+	    .batch_idx = nbatches - 1, // start on last (on next fetch we go to first)
+	    .streams = streams,
+	    .mimg_buffer = {
+		rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU),
+		rMImage(1, 1, 1, false, ptycho->gpus, MemoryType::ENoAlloc)
+            }
+        };
+    }
+    else {
+	return new DifPadBatchLoader {
+            .ptycho = ptycho,
+	    .batch_idx = nbatches - 1, // start on last (on next fetch we go to first)
+	    .streams = streams,
+	    .mimg_buffer = {
+		rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU),
+		rMImage(shape.x, shape.y, batch_size, false, ptycho->gpus, MemoryType::EAllocGPU)
+            }
+        };
+    }
 }
 
 void ResetBatchLoader(DifPadBatchLoader* loader) {
