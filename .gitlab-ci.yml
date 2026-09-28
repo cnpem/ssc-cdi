@@ -1,7 +1,7 @@
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_UPDATE_FLAGS: --remote
-  RUNNER_TAG: "docker"
+  RUNNER_TAG: "podman"
 
 stages:
 - build
