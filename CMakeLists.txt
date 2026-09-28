@@ -6,7 +6,7 @@ include(FetchContent)
 
 
 
-# Order matters on the CMake file!1
+# Order matters on the CMake file!
 # 2026-04-07: Necessary for mafalda-2. Needs to be first!
 set(CMAKE_CUDA_HOST_COMPILER $ENV{CC})
 

@@ -13,7 +13,6 @@ extern "C" {
      * CUDA Kernel. Computes the real space reflector.
      * */
     __global__ void k_RAAR_reflect_Rspace(GArray<complex> exitwave, const GArray<complex> probe, const GArray<complex> object,  const GArray<complex> wavefront, const Position *p_rois, float objbeta) {
-
         const int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= probe.shape.x) return;
         const int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -187,7 +186,6 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
                         raar.temp_wavefront[section]->arrays[g][0],
                         raar.ptycho->positions[section]->arrays[g][0],
                         raar.ptycho->object_num->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
-
             }
         }
     }
@@ -245,7 +243,6 @@ void RAARRun(RAAR& raar, int iterations) {
     auto cur_difpad = CurrentBatch(batch_loader);
 
     for (size_t iter = 0; iter < iterations; iter++) {
-
         raar.ptycho->error_rfactor->SetGPUToZero();
         raar.ptycho->error_llk->SetGPUToZero();
         raar.ptycho->error_mse->SetGPUToZero();
@@ -255,7 +252,6 @@ void RAARRun(RAAR& raar, int iterations) {
 
 	const size_t num_batches = PtychoNumBatches(*raar.ptycho);
         for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
-
 	    if (num_batches >= 2) {
 		if ((iter != 0) || (batch_idx != 0)) {
 		    cur_difpad = CurrentBatch(batch_loader);
@@ -265,7 +261,6 @@ void RAARRun(RAAR& raar, int iterations) {
 
             const size_t ngpus = PtychoNumGpus(*raar.ptycho);
             for (size_t gpu_idx = 0; gpu_idx < ngpus; gpu_idx++) {
-
                 cImage* current_exit_wave = raar.ptycho->wavefront->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];
                 cImage* current_probe = raar.ptycho->probe->arrays[gpu_idx];

@@ -818,6 +818,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     return ptycho;
 }
 
+
+
 void FetchNextBatchAsync(DifPadBatchLoader* loader, const size_t* indices) {
     const size_t nbatches = PtychoNumBatches(*loader->ptycho);
     loader->batch_idx = (loader->batch_idx + 1) % nbatches;

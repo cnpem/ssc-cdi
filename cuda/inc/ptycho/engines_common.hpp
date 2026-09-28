@@ -161,6 +161,8 @@ void ApplyProbeUpdate(Ptycho& ptycho, cImage& velocity, float stepsize, float mo
 void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes);
 void ApplyPositionCorrection(Ptycho& ptycho);
 
+
+
 struct DifPadBatchLoader {
     Ptycho* ptycho = nullptr;
     size_t batch_idx = 0;
