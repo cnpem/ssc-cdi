@@ -275,9 +275,12 @@ __global__ void KProjectReciprocalSpace(
         wabs = sqrtf(wabs2) / upsample;  // can we kill upsample? not sure it is
                                          // necessary anymore.
 
+	const float intensity_shift = fminf(diff_pattern, eps);
+	const float shifted_wabs2 = wabs2 + intensity_shift;
+	const float shifted_diff_pattern = diff_pattern + intensity_shift;
+	    
 	const float I_residual = diff_pattern - wabs2;
 	const float A_residual = sqrt_difpad - wabs;
-	const float log_I_ratio = logf(wabs2 / (diff_pattern + eps));
 
 	// Addends for the numerators of the normalized mean-square error
 	// (NMSE), the r-factor, and the generalized KL divergence (GKLD). Note
@@ -287,12 +290,22 @@ __global__ void KProjectReciprocalSpace(
 	// intensity, unlike the NLLL which doesn't in general. The ``fabs``
 	// operation was added in the GKLD calculation to enforce nonnegativity,
 	// which is expected mathematically.
+	
 	const float nmse_numerator_addend =
 	    I_residual*I_residual;
+	
 	const float r_factor_numerator_addend =
 	    fabs(A_residual);
-	const float gkld_numerator_addend =
-	    fabs(-A_residual - diff_pattern*log_I_ratio);
+
+	float gkld_numerator_addend;
+	if (diff_pattern == 0) {
+	    gkld_numerator_addend = wabs2;
+	}
+	else {
+	    const float shifted_I_ratio = shifted_wabs2/shifted_diff_pattern;
+	    const float u = (wabs2 - diff_pattern) / shifted_diff_pattern;
+	    gkld_numerator_addend = shifted_diff_pattern * fabs(u - log1pf(u));
+	}
 
         // compute mse
         atomicAdd(shared_error_mse + threadIdx.x % sh_error_size,
