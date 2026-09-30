@@ -71,7 +71,7 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
     obj = cpnp.asarray(initial_obj, dtype=cpnp.complex64).copy()
     probe = cpnp.asarray(initial_probe, dtype=cpnp.complex64).copy()
     if probe.shape[0] > 1:
-        raise ValueError(f"ML-CG implementation only allows 1 probe mode, current probe has {probe.shape[0]} modes")
+        raise ValueError(f"ML-LSQ implementation only allows 1 probe mode, current probe has {probe.shape[0]} modes")
     ObjH, ObjW = obj.shape
     N, H, W = probe.shape
     npos = int(positions.shape[0])
@@ -128,7 +128,6 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
 
     for it in range(iterations):
 
-
         llk_temp = cpnp.array(0.0, dtype=cpnp.float64)  
         r_factor_temp = cpnp.array(0.0, dtype=cpnp.float64)
         mse_temp = cpnp.array(0.0, dtype=cpnp.float64)
@@ -175,8 +174,9 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
             #print(f"Grads final: {cpnp.amin(gradient_o)}, {cpnp.amin(gradient_p)}")
 
             gradient_o_rois = gather_patches(gradient_o, pos_batch, yy, xx)
-
+            ##################################################################
             #This is the orthogonal probe and object gradients approximation
+            #The code solves the linear system to obtain the steps, maybe can become an option on the future
             # #Step batchs
             # step_o_patch = cpnp.sum(cpnp.real(xi_batch * cpnp.conj(gradient_o_rois * probe[0])), axis = (1,2))
             # step_p_patch =  cpnp.sum(cpnp.real(xi_batch * cpnp.conj(gradient_p * obj_rois)), axis = (1,2))
@@ -191,8 +191,9 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
             # step_o = cpnp.maximum(step_o_patch/(denom_step_o + 1e-6), 0.0)
             # step_p = cpnp.maximum(step_p_patch/(denom_step_p + 1e-6), 0.0)
             # #print(f"Steps final: {cpnp.amin(step_o)}, {cpnp.amin(step_p)}")
+            ########################################################################
 
-            # Generalized version
+            # Generalized step calculation
 
             A1 = cpnp.sum(cpnp.abs(gradient_o_rois*probe[0])**2 + 1e-9 , axis = (1,2))
             A2 = cpnp.sum(cpnp.abs(gradient_p*obj_rois)**2 + 1e-9, axis = (1,2))
@@ -207,13 +208,11 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
             step_p = cpnp.maximum(step_p, 0.0)
             #Updates Object and Probe
             scatter_add_patches(update_o, pos_batch,step_o[:, None, None]*gradient_o_rois*cpnp.abs(probe[0])**2, yy, xx, ObjW)
-            #scatter_add_patches(update_o, pos_batch, 0.01 * gradient_o_rois*cpnp.abs(probe[0])**2, yy, xx, ObjW)
 
             obj -= update_o/(cpnp.real(denom_o) + 1e-9)
             probe -= cpnp.sum(step_p[:, None, None]*gradient_p*cpnp.abs(obj_rois)**2, axis = 0)/(denom_p + 1e-9)
-            #probe -= cpnp.sum(0.001*gradient_p*cpnp.abs(obj_rois)**2, axis = 0)/(denom_p + 1e-9)
-
             probe = probe*probe_support
+
             # error metrics
             llk_temp -= cpnp.sum(w_batch * (n_batch*cpnp.log(intensity) - intensity))
             r_factor_temp += cpnp.sum(w_batch*cpnp.abs(cpnp.sqrt(intensity) - cpnp.sqrt(n_batch))) 
@@ -245,7 +244,6 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
     del obj, probe
     del gradient_o, gradient_p, denom_o, denom_p
     del data_f, positions, weights_f, yy, xx
-    #del step_o, step_p, denom_step_o, denom_step_p
     del step_o, step_p     
     del probe_conj
     del obj_rois, exit_batch, psi_batch, intensity, xi_batch, grad_o_patch, grad_p_patch
@@ -258,12 +256,12 @@ def ML_LSQ_cupy(data, positions, initial_obj, initial_probe, algo_inputs, GPU = 
 
 
 
-
-
 def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU = [0]):
     import gc
+    import numpy as np
     try:
         import cupy as cpnp
+        import cupyx.scipy as scipy 
         #cpnp = cpnp.get_array_module(wavefront) # make code agnostic to cupy and numpy
         cpnp.cuda.runtime.setDevice(GPU[0])
         mempool = cpnp.get_default_memory_pool()
@@ -276,6 +274,8 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
     except:
         print("Could not import cupy, reverting to numpy!")
         cpnp = np
+        import scipy
+
     """
     Performs the ML (Maximum Likelihood) algorithm using CuPy for accelerated computation.  
     *WARNING:* This function is a test engine and is still in development.
@@ -309,7 +309,6 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
                 u = probe_ortho[j]
                 probe_ortho[i] -= u*cpnp.vdot(u, v)/cpnp.vdot(u,u)
         return probe_ortho
-
 
 
     def gather_patches(arr2d, pos_batch, yy, xx):
@@ -351,32 +350,37 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
         return data_f, weights_f
 
 
-
-
     ## Inputs
-
     iterations = int(algo_inputs.get("iterations", 100))
     batch_size = int(algo_inputs.get("batch_size", 64))
     probe_update_start = int(algo_inputs.get("probe_update_start", 1))
     beta_cap = algo_inputs.get("beta_cap", 0.99)
-    restart_if_not_descent = bool(algo_inputs.get("restart_if_not_descent", True))
-    verbose = bool(algo_inputs.get("verbose", False))
-    precond = bool(algo_inputs.get("precond", False))
-    metric = str(algo_inputs.get("metric", "gauss"))
+    force_restart = bool(algo_inputs.get("force_restart", True))
+    verbose = bool(algo_inputs.get("verbose", True))
+    precond = bool(algo_inputs.get("precond", True))
+    metric = str(algo_inputs.get("metric", "poisson"))
     if metric not in ["gauss", "poisson", "amplitude"]:
         raise ValueError("'gauss', 'poisson'  and 'amplitude' are the available metrics")
     probe_support = algo_inputs.get("probe_support_array", None)
     refine_solution = bool(algo_inputs.get("refine_solution", False))
     if probe_support is not None:
         probe_support = cpnp.asarray(probe_support, dtype=cpnp.float32)
+    regularize = float(algo_inputs.get("regularize", 0))
+    
+    # mask data to avoid doing it many times
+    #data_cpu = data_cpu*np.where(data_cpu >= 0, 1, 0)
 
+    #Important constants from data 
+    N_counts = np.sum(data_cpu*np.where(data_cpu >= 0, 1, 0))
+    N_counts_2 = np.sum((data_cpu*np.where(data_cpu >= 0, 1, 0))**2)
+    N_counts_root = np.sum(np.sqrt(data_cpu*np.where(data_cpu >= 0, 1, 0)))
 
+    #This is temporary, the correct threshold value must be determined from profiling (to do)
     if(data_cpu.nbytes/ (1024**2) < 0.25 * free_memory):
         print("Can load all data to GPU, procedding!")
         data_f, weights_f = load_data_GPU(data_cpu, metric)
         del(data_cpu)
         data_load_batch = False
-
     else:
         data_load_batch = True
 
@@ -388,36 +392,51 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
     N_modes, H, W = probe.shape
     npos = int(positions.shape[0])
 
-
-
-    if verbose:
-        # Warmup (useful for consistency when benchmarking)
-        _ = cpnp.fft.fft2(cpnp.zeros((H, W), dtype=cpnp.complex64))
-
+    #This is intended to make the regularization value invariant to the data
+    #Those values do not work, but it is a 1-to-1 of the paper description
+    # if regularize:
+    #     K_reg = (8.0 * (ObjH*ObjW)**2) / (npos *  N_valid * N_counts)
+    #     scale_regularizer = 0.01 /  (K_reg + 1e-9)
+    #     print(K_reg, scale_regularizer)
     
 
+    # Warmup (useful for consistency when benchmarking and the code is slow if you not use it)
+    _ = cpnp.fft.fft2(cpnp.zeros((H, W), dtype=cpnp.complex64))
 
     yy = cpnp.arange(H, dtype=cpnp.int32)[None, :, None]
     xx = cpnp.arange(W, dtype=cpnp.int32)[None, None, :]
 
+    #gradients
     gradient_o = cpnp.zeros_like(obj, dtype=cpnp.complex64)
     gradient_p = cpnp.zeros_like(probe, dtype=cpnp.complex64)
-
     hO = cpnp.zeros_like(obj, dtype=cpnp.complex64)
     hP = cpnp.zeros_like(probe, dtype=cpnp.complex64)
- 
     gradient_o_prev = None
     gradient_p_prev = None
+
+    # error metrics
     llk =  cpnp.empty(iterations, dtype=cpnp.float32)
     mse =  cpnp.empty(iterations, dtype=cpnp.float32)
     r_factor =  cpnp.empty(iterations, dtype=cpnp.float32)
-    #r_factor_norm = cpnp.sum(cpnp.sqrt(data_f))
-    r_factor_norm = 1.0
-    mse_norm = H*W
+    mse_norm = N_counts_2
+    r_factor_norm = N_counts_root
+    llk_norm = N_counts
+
+    #usefull
+    k_probe_start = 0
 
     for it in range(iterations):
         gradient_o.fill(0)
         gradient_p.fill(0)
+        
+        # This is brute force restart of the CG 
+        # It at best help the minimization and at worst do nothing 
+        if(it%100 == 0 and force_restart == True):
+            hO.fill(0)
+            hP.fill(0)
+            gradient_o_prev = None
+            gradient_p_prev = None
+            k_probe_start = 0
 
         if(N_modes > 1):
             probe = probe_orthogonalize(probe)
@@ -460,21 +479,31 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
                 scatter_add_patches(gradient_o, pos_batch, grad_o_patch, yy, xx, ObjW)
                 gradient_p[mode] += cpnp.sum(xi_batch * cpnp.conj(obj_rois), axis=0)
 
-            # error metrics
-            llk_temp -= cpnp.sum(w_batch * (n_batch*cpnp.log(intensity) - intensity))
+            # error metrics 
+            # generalized Kullback-Leibler divergence
+            llk_temp += cpnp.sum(w_batch * ((n_batch   - intensity) - (n_batch + 1e-9)*cpnp.log((intensity + 1e-9)/((n_batch + 1e-9) + cpnp.where(n_batch == 0, 1, 0)))))
+            # r_factor
             r_factor_temp += cpnp.sum(w_batch*cpnp.abs(cpnp.sqrt(intensity) - cpnp.sqrt(n_batch))) 
+            #normalized mean  square error
             mse_temp += cpnp.sum(w_batch*(intensity - n_batch)**2)
             
         r_factor[it] = r_factor_temp
         llk[it] = llk_temp
         mse[it] = mse_temp
 
+        #regularization
+        if (regularize > 0):
+            gradient_o = gradient_o + regularize*scipy.ndimage.laplace(obj)
+
         ## Update probe only if a given number of iters have been calculated
-        if it < probe_update_start:
+        if (k_probe_start < probe_update_start):
             gradient_p.fill(0)
+            k_probe_start += 1
+
         ## Enforce probe support to probe gradient
         if probe_support is not None and it >= probe_update_start:
             gradient_p = gradient_p * probe_support
+
         ## Preconditioning coefficient
         if precond:
             # s^2 = ||gradient_o||^2 / ||gradient_p||^2
@@ -482,6 +511,7 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
             s_sq = cdot(gradient_o,gradient_o) / denom
         else:
             s_sq = cpnp.array(1.0, dtype=cpnp.float32)
+
         ## Beta for Polak–Ribière (with optional preconditioning)
         if gradient_o_prev is None:
             beta = cpnp.array(0.0, dtype=cpnp.float32)
@@ -493,16 +523,19 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
             #beta = beta_num / beta_den
             if beta_cap is not None:
                 beta = cpnp.minimum(beta, beta_cap)
+
         ## Update directions
         hO = beta * hO - gradient_o
         hP = beta * hP - (s_sq * gradient_p)
+
         ## Optional descent restart
-        if restart_if_not_descent:
+        if force_restart:
             dot = cpnp.real(cpnp.vdot(gradient_o.ravel(), hO.ravel()) + cpnp.vdot(gradient_p.ravel(), hP.ravel()))
             if dot.get() > 0:
                 beta = cpnp.array(0.0, dtype=cpnp.float32)
                 hO = -gradient_o
                 hP = -(s_sq * gradient_p)
+
         ## Apply probe support to direction too
         if probe_support is not None and it >= probe_update_start:
             hP = hP * probe_support
@@ -553,6 +586,7 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
 
         gamma  = cpnp.where(cpnp.abs(B2) > 1e-12, -0.5*B1/B2, 0.0) 
         
+        #Optional : Newton-Raphson step
         if refine_solution:
             gamma_trial = gamma.copy()
             L0 = cpnp.inf
@@ -635,7 +669,7 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
             now = datetime.now()
             timestamp = now.strftime("%H:%M:%S") + f":{now.microsecond:06d}"
             error1 = float((r_factor_temp/r_factor_norm).get())
-            error2 = float(llk_temp.get())
+            error2 = float((llk_temp/llk_norm).get())
             error3 = float((mse_temp/mse_norm).get())
             print(f"%[{timestamp}] : iter {it}/{iterations}, r_factor = {error1:.5e}, llk = {error2:.5e}, mse = {error3:.5e}")
 
@@ -646,8 +680,8 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
     result_probe = probe.get()
     result_positions = positions.get()
     r_factor = (r_factor/r_factor_norm).get()
-    llk = llk.get()
-    mse = (mse/(H*W)).get()
+    llk = (llk/llk_norm).get()
+    mse = (mse/(mse_norm)).get()
     
     # Delete GPU arrays
     del obj, probe
