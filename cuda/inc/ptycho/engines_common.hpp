@@ -43,6 +43,11 @@ struct Ptycho {
     rMImage* probesupport = nullptr;   //!< Support for the probe with the same shape as the probe itself.
     std::vector<float> SupportSizes;   //!< Normalization vector for the object support.
 
+    float I0; //!< Initial probe norm ||P||^2
+    float total_measured_intensity; //!< The sum of all the measured DP elements.
+    float total_measured_sq_intensity; //!< The sum of all the squares of the measured DP elements.
+    float total_measured_sqrt_intensity; //!< The sum of all the square roots of the measured DP elements.
+
     Propagator* propagator[16];             //!< List of propagators to be used in the amplitude projection.
     Propagator* probepropagator = nullptr;  //!< Propagator to be used before applying a support to the probe.
 
@@ -157,6 +162,7 @@ void ApplySupport(cImage& img, rImage& support, std::vector<float>& SupportSizes
 void ApplyPositionCorrection(Ptycho& ptycho);
 
 
+
 struct DifPadBatchLoader {
     Ptycho* ptycho = nullptr;
     size_t batch_idx = 0;
@@ -182,7 +188,7 @@ void DestroyDifPadBatchLoader(DifPadBatchLoader*& loader);
  * */
 struct RAAR {
     Ptycho* ptycho = nullptr;
-    std::vector<hcMImage*> temp_wavefront;
+    std::vector<cMImage*> temp_wavefront;
     const bool isGrad = false;
     float beta = 0.9f;
 };
@@ -202,18 +208,18 @@ void DestroyRAAR(RAAR*& raar);
 
 void RAARRun(RAAR& raar, int iter);
 
-void RAARProjectProbe(RAAR& raar, int section, cudaStream_t st = 0);
+void RAARProjectProbe(RAAR& raar, int section);
 
 /**
  * Projects phistack to object subspace and updates the object estimate.
  * */
 void RAARApplyObjectUpdate(RAAR& raar, cImage& velocity,
-        float stepsize, float momentum, float epsilon, hcMImage& cur_temp_wavefront);
+        float stepsize, float momentum, float epsilon);
 /**
  * Projects phistack to the probe subspace and calls Super::ApplyProbeUpdate
  * */
 void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity,
-        float stepsize, float momentum, float epsilon, hcMImage& cur_temp_wavefront);
+        float stepsize, float momentum, float epsilon);
 
 /**
  * Alternated projections with momentum.

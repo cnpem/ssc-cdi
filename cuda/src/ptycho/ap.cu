@@ -86,8 +86,9 @@ void APRun(AP& ap, int iterations) {
   const dim3 difpadshape = ptycho.diff_pattern_shape;
   const size_t ngpus = PtychoNumGpus(ptycho);
 
-  DifPadBatchLoader* batch_loader = CreateDifPadBatchLoader(&ptycho);
+  auto batch_loader = CreateDifPadBatchLoader(&ptycho);
   FetchNextBatchAsync(batch_loader);
+  auto cur_difpad = CurrentBatch(batch_loader);
 
   for (int iter = 0; iter < iterations; iter++) {
 
@@ -111,8 +112,12 @@ void APRun(AP& ap, int iterations) {
           const size_t difpad_batch_zsize = PtychoCurBatchZsize(ptycho, batch_idx);
           const size_t difpad_idx = batch_idx * PtychoBatchSize(ptycho);
 
-          rMImage* cur_difpad = CurrentBatch(batch_loader);
-          FetchNextBatchAsync(batch_loader);
+	  if (num_batches >= 2) {
+	      if ((iter != 0) || (batch_idx != 0)) {
+		  cur_difpad = CurrentBatch(batch_loader);
+	      }
+	      FetchNextBatchAsync(batch_loader);
+	  }
 
           for (size_t g = 0; g < ngpus; g++) {
               const size_t difpadsizez = (*ptycho.positions[batch_idx])[g].sizez;
@@ -128,10 +133,6 @@ void APRun(AP& ap, int iterations) {
                   KAPExitwave<<<blk, thr>>>(*ptycho.wavefront->arrays[g], *ptycho.probe->arrays[g], *ptycho.object->arrays[g], ptr_roi);
 
                   ProjectReciprocalSpace(ptycho, cur_difpad->arrays[g], g, ap.isGrad);
-
-                  //for some reason AP is the only method requiring this
-                  //if we remove this, and remove the division on KAPPs, the method might not converge
-                  *ptycho.wavefront->arrays[g] *= float(ptycho.probe->sizex * ptycho.probe->sizey);
 
                   KAPPs<<<blk, thr>>>(*ptycho.probe->arrays[g],  *ptycho.object_num->arrays[g], *ptycho.object_div->arrays[g], *ptycho.wavefront->arrays[g], ptr_roi);
         }
@@ -162,9 +163,15 @@ void APRun(AP& ap, int iterations) {
             ApplyPositionCorrection(ptycho);
 
     // reduce errors
-    ptycho.cpuerror_rfactor[iter] = sqrtf(ptycho.error_rfactor->SumCPU());
-    ptycho.cpuerror_llk[iter] = ptycho.error_llk->SumCPU();
-    ptycho.cpuerror_mse[iter] = ptycho.error_mse->SumCPU();
+    ptycho.cpuerror_rfactor[iter] =
+	(ptycho.error_rfactor->SumCPU()
+	/ ptycho.total_measured_sqrt_intensity);
+    ptycho.cpuerror_llk[iter] =
+	(ptycho.error_llk->SumCPU()
+	 / ptycho.total_measured_intensity);
+    ptycho.cpuerror_mse[iter] =
+	(ptycho.error_mse->SumCPU()
+	 / ptycho.total_measured_sq_intensity);
 
     if (iter % 10 == 0) {
         sscInfo(format("iter {}/{} r-factor = {}, llk = {}, mse = {}",

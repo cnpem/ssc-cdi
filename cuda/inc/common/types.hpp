@@ -663,7 +663,7 @@ struct Image {
      * */
     Type min() {
         return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
-                [] __device__ (Type& x) -> const Type { return x; },
+                [] __host__ __device__ (Type& x) -> const Type { return x; },
                 std::numeric_limits<Type>::infinity(), thrust::minimum<Type>());
     }
 
@@ -672,14 +672,14 @@ struct Image {
      * */
     Type max() {
         return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
-                [] __device__ (const Type& x) -> const Type { return x; },
+                [] __host__ __device__ (const Type& x) -> const Type { return x; },
                 std::numeric_limits<Type>::lowest(), thrust::maximum<Type>());
     }
 
 
     float minAbs2() {
          return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
-                 [] __device__ (const Type& t) -> const Type {
+                 [] __host__ __device__ (const Type& t) -> const Type {
                     return t.abs2();
                  },
                  std::numeric_limits<float>::infinity(), thrust::minimum<float>());
@@ -687,7 +687,7 @@ struct Image {
 
     float maxAbs2() {
          return thrust::transform_reduce(thrust::device, gpuptr, gpuptr + size,
-                 [] __device__(const Type& t) -> const float {
+                 [] __host__ __device__(const Type& t) -> const float {
                     return t.abs2();
                  },
                  std::numeric_limits<float>::lowest(), thrust::maximum<float>());
