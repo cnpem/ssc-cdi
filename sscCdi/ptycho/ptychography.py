@@ -463,13 +463,17 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_llk.append(algo_error[:,2])
 
         elif input_dict["algorithms"][str(counter)]['name'] == 'ML_python':
-            if(input_dict["algorithms"][str(counter)]['ML_version'] == 'CG' ):
-                obj, new_probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = ML_CG_cupy(DPs,positions, obj, probe, algo_inputs, input_dict["GPUs"]) #TODO: expand to deal with multiple probe modes
-            elif(input_dict["algorithms"][str(counter)]['ML_version'] == 'LSQ'):
-                obj, new_probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = ML_LSQ_cupy(DPs,positions, obj, probe, algo_inputs, input_dict["GPUs"]) #TODO: expand to deal with multiple probe modes
-                #raise ValueError("ML-LSQ not implemented yet!")
-            else:
-                raise ValueError("CG and LSQ are the available options for ML")
+            
+
+            # In the future it may be worth to have the two implementation available
+            # if(input_dict["algorithms"][str(counter)]['ML_version'] == 'CG' ):
+            # elif(input_dict["algorithms"][str(counter)]['ML_version'] == 'LSQ'):
+            #     obj, new_probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = ML_LSQ_cupy(DPs,positions, obj, probe, algo_inputs, input_dict["GPUs"]) #TODO: expand to deal with multiple probe modes
+            #     #raise ValueError("ML-LSQ not implemented yet!")
+            # else:
+            #     raise ValueError("CG and LSQ are the available options for ML")
+            
+            obj, new_probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = ML_CG_cupy(DPs,positions, obj, probe, algo_inputs, input_dict["GPUs"]) #TODO: expand to deal with multiple probe modes
             probe = new_probe
             error_rfactor.append(algo_error_rfactor)
             error_nmse.append(algo_error_mse)

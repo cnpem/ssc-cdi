@@ -352,9 +352,9 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
 
     ## Inputs
     iterations = int(algo_inputs.get("iterations", 100))
-    batch_size = int(algo_inputs.get("batch_size", 64))
+    batch_size = int(algo_inputs.get("batch", 64))
     probe_update_start = int(algo_inputs.get("probe_update_start", 1))
-    beta_cap = algo_inputs.get("beta_cap", 0.99)
+    beta_cap = algo_inputs.get("beta_cap", 10e6)
     force_restart = bool(algo_inputs.get("force_restart", True))
     verbose = bool(algo_inputs.get("verbose", True))
     precond = bool(algo_inputs.get("precond", True))
@@ -481,7 +481,7 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
 
             # error metrics 
             # generalized Kullback-Leibler divergence
-            llk_temp += cpnp.sum(w_batch * ((n_batch   - intensity) - (n_batch + 1e-9)*cpnp.log((intensity + 1e-9)/((n_batch + 1e-9) + cpnp.where(n_batch == 0, 1, 0)))))
+            llk_temp += cpnp.sum(w_batch * ((intensity - n_batch) - (n_batch + 1e-9)*cpnp.log((intensity + 1e-9)/((n_batch + 1e-9) + cpnp.where(n_batch == 0, 1, 0)))))
             # r_factor
             r_factor_temp += cpnp.sum(w_batch*cpnp.abs(cpnp.sqrt(intensity) - cpnp.sqrt(n_batch))) 
             #normalized mean  square error
