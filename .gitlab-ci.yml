@@ -4,45 +4,43 @@ variables:
   RUNNER_TAG: "podman"
 
 stages:
-- build
-- deploy
-- documentation
+  - build
+  - deploy
+  - pages
 
 build_sdist:
   stage: build
   image: gccdockers/python-builder
   script:
-  - python3 -m build --sdist
-  tags:
-  - "$RUNNER_TAG"
+    - python3 -m build --sdist
   artifacts:
     paths:
-    - ./dist/*tar.gz
+      - ./dist/*tar.gz
     expire_in: 1 day
 
 deploy_sdist:
   stage: deploy
   image: gccdockers/python-builder
   script:
-  - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
+    - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
   tags:
-  - docker
+    - docker
   dependencies:
-  - build_sdist
+    - build_sdist
   only:
-  - "$RUNNER_TAG"
+    - tags
 
 pages:
-  stage: documentation
+  stage: pages
   image: python:3.12
   before_script:
-  - pip install -r docs/requirements.txt
+    - pip install -r docs/requirements.txt
   script:
-  - sphinx-build -j $(nproc) -b html docs/ public/
+    - NO_PERSISTENT_LOGS=1 sphinx-build -j $(nproc) -b html docs/ public/
   artifacts:
     paths:
-    - public
-  only:
-  - master
+      - public
   tags:
-  - "$RUNNER_TAG"
+    - docker
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
