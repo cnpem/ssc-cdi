@@ -182,7 +182,7 @@ The following modules are used:
 
 The following `Python3` modules are used:
 
-* `numpy<2.0`
+* `numpy`
 * `scikit-image`
 * `scipy`
 * `matplotlib`
