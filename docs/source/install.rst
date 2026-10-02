@@ -32,35 +32,6 @@ The ``sscCdi`` package information can be found on the `sscCdi website <https://
 Also, the `HTML` documentation can be found in the source directory `./docs/build/index.html` and can be opened in your preferred brownser.
 
 
-GITHUB
-******
-
-The latest package version can be cloned from our public `github <https://github.com/cnpem/ssc-cdi/>`_ repository and installed locally with:
-
-.. code-block:: bash
-
-    git clone https://github.com/cnpem/ssc-cdi.git
-    cd ssc-cdi 
-    make clean && make
-
-To install a specific version (``<version>``), one can use:
-
-.. code-block:: bash
-
-    git clone  https://github.com/cnpem/ssc-cdi.git --branch v<version> --single-branch
-    cd ssc-cdi 
-    make clean && make
-
-
-Example, to install version 0.14.2:
-
-.. code-block:: bash
-
-    git clone https://github.com/cnpem/ssc-cdi.git --branch v0.14.2 --single-branch
-    cd ssc-cdi 
-    make clean && make
-
-
 Source code from Zenodo
 ***********************
 
@@ -99,7 +70,36 @@ Or install a previous version with ``sscCdi==<version>``. Example:
 
 .. warning::
 
-    To install ``sscRaft`` in the Tepui cluster, first one needs to load the modules ``module load cuda/11.2 python3`` on the **mafalda.lnls.br** login node, and ``module load cuda/11.2.2 python/3.11.11 gcc/9.5.0-jld3zdv`` on the **mafalda-2.lnls.br** login node.
+    To install ``sscCdi`` in the Tepui cluster, first one needs to load the modules ``module load cuda/11.2.2 python/3.11.11 gcc/9.5.0-jld3zdv``.
+
+
+GITHUB
+******
+
+The latest package version can be cloned from our public `github <https://github.com/cnpem/ssc-cdi/>`_ repository and installed locally with:
+
+.. code-block:: bash
+
+    git clone https://github.com/cnpem/ssc-cdi.git
+    cd ssc-cdi 
+    make clean && make
+
+To install a specific version (``<version>``), one can use:
+
+.. code-block:: bash
+
+    git clone  https://github.com/cnpem/ssc-cdi.git --branch v<version> --single-branch
+    cd ssc-cdi 
+    make clean && make
+
+
+Example, to install version 0.14.2:
+
+.. code-block:: bash
+
+    git clone https://github.com/cnpem/ssc-cdi.git --branch v0.14.2 --single-branch
+    cd ssc-cdi 
+    make clean && make
 
 
 GITLAB
@@ -134,7 +134,10 @@ Example, to install version 0.14.2:
     cd ssc-cdi 
     make clean && make
 
+.. warning::
 
+    To install ``sscCdi`` in the Tepui cluster, first one needs to load the modules ``module load cuda/11.2.2 python/3.11.11 gcc/9.5.0-jld3zdv``.
+    
 Memory
 ******
 

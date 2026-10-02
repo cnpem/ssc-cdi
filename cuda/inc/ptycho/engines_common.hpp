@@ -79,7 +79,6 @@ struct Ptycho {
     rMImage* probe_div;  //!< Denominator in the probe augmented projector / LS-gradient preconditioner.
     cMImage* probe_num;  //!< Accumulator in the probe augmented projector / LS-gradient preconditioner.
 
-
     float objmomentum = 0.95f;
     float probemomentum = 0.9f;
 
@@ -88,6 +87,9 @@ struct Ptycho {
 
     float probereg = 0.01f;
     float objreg = 0.01f;
+
+    int probe_cycles = 1;
+
 };
 
 inline size_t PtychoNumBatches(Ptycho& ptycho) {
@@ -150,7 +152,7 @@ Ptycho* CreatePtycho(float* difpads, const dim3& difshape, complex* probe, const
                      float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
                      int poscorr_iter,
                      float step_obj, float step_probe,
-                     float reg_obj, float reg_probe);
+                     float reg_obj, float reg_probe, float total_flux);
 
 
 template <typename dtype>
@@ -202,7 +204,7 @@ RAAR* CreateRAAR(float* difpads, const dim3& difshape, complex* probe, const dim
                  float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
                  int poscorr_iter, int obj_propagator,
                  float step_obj, float step_probe,
-                 float reg_obj, float reg_probe);
+                 float reg_obj, float reg_probe, float total_flux);
 
 void DestroyRAAR(RAAR*& raar);
 
@@ -238,7 +240,7 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
                  int poscorr_iter,
                  int obj_propagator,
                  float step_obj, float step_probe,
-                 float reg_obj, float reg_probe);
+                 float reg_obj, float reg_probe, float total_flux);
 
 void DestroyAP(AP*& glim);
 
@@ -261,7 +263,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         int poscorr_iter,
         int obj_propagator,
         float step_object, float step_probe,
-        float reg_obj, float reg_probe);
+        float reg_obj, float reg_probe, float total_flux);
 
 
 void DestroyPie(Pie*& pie);

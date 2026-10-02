@@ -1,19 +1,21 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../../">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ptychography engines API &mdash; ssc-cdi 0.15.0 documentation</title>
-      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../../_static/css/my_theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+  <title>Ptychography engines API &mdash; ssc-cdi 0.17.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/my_theme.css?v=cf47f6b8" />
+
   
-        <script src="../../_static/documentation_options.js?v=ef97403f"></script>
-        <script src="../../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=0c3dd48d"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -26,14 +28,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../../index.html" class="icon icon-home"> ssc-cdi
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            ssc-cdi
           </a>
-              <div class="version">
-                0.15.0
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -51,6 +54,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../changelog.html">4. Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial/references.html">5. References</a></li>
 </ul>
 
         </div>
@@ -66,9 +70,9 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../../index.html" class="icon icon-home"></a> &raquo;</li>
-          <li><a href="../api.html"><span class="section-number">3. </span>API Reference</a> &raquo;</li>
-      <li>Ptychography engines API</li>
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api.html"><span class="section-number">3. </span>API Reference</a></li>
+      <li class="breadcrumb-item active">Ptychography engines API</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../../_sources/source/api/ptycho.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -80,8 +84,8 @@
              
   <section id="ptychography-engines-api">
 <span id="apiptycho"></span><h1>Ptychography engines API<a class="headerlink" href="#ptychography-engines-api" title="Link to this heading"></a></h1>
-<dl class="py function" id="module-sscCdi.ptycho.ptychography">
-<span id="apicallengines"></span><dt class="sig sig-object py" id="sscCdi.ptycho.ptychography.call_ptychography">
+<dl class="py function" id="apicallengines">
+<dt class="sig sig-object py" id="sscCdi.ptycho.ptychography.call_ptychography">
 <span class="sig-prename descclassname"><span class="pre">sscCdi.ptycho.ptychography.</span></span><span class="sig-name descname"><span class="pre">call_ptychography</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">DPs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_obj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_probe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sscCdi.ptycho.ptychography.call_ptychography" title="Link to this definition"></a></dt>
 <dd><p>This function creates the object and probe, converts the positions in SI units to pixel then
 calls the engines utilized to perform the Ptychography reconstruction [1].</p>
@@ -123,6 +127,7 @@ calls the engines utilized to perform the Ptychography reconstruction [1].</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">input_dict['fourier_power_bound']</span></code> (float, optional): Relaxed the wavefront update, 0 is the standard [default: 0]</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">input_dict['clip_object_magnitude']</span></code> (bool, optional): Clips the object amplitude between 0 and 1 [default: False]</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">input_dict['distance_sample_focus']</span></code> (float, optional): Distance between the incident beam focus and sample (Near-Field only) [default: 0]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">input_dict['total_flux']</span></code> (float, optional): Total photon flux. Options: None, ‘initial_probe’ [default: None]</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">input_dict['probe_support']</span></code> (dict, optional): Mask utilized as support for the probe projection in real space [default: {“type”: “circular”, “radius”: 300, “center_y”: 0, “center_x”: 0}]</p>
 <blockquote>
 <div><ol class="arabic simple">
@@ -175,13 +180,8 @@ calls the engines utilized to perform the Ptychography reconstruction [1].</p>
 ‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
 ‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float (min: 0, max: 1),
 ‘momentum_obj’: float , momentum_probe’: float,
-‘position_correction’: (0: no correction, N: performs correction every N iterations)}</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">PIE_python</span></code>: {‘name’: ‘rPIE_python’, ‘iterations’: int, ‘step_object’: float,  ‘step_probe’: float, ‘regularization_object’: float,
-‘regularization_probe’: float,’momentum_obj’: float, ‘momentum_probe’: float, ‘mPIE_momentum_counter’: float}</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">RAAR_python</span></code>: {‘name’: ‘RAAR_python’, ‘iterations’: int, ‘beta’: float, ‘regularization_obj’: float ‘regularization_probe’: float}</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">AP_python</span></code>: {‘name’: ‘AP_python’, ‘iterations’: int, ‘regularization_obj’: float, ‘regularization_probe’: float}</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">DM_python</span></code>: {‘name’: ‘DM_python’, ‘iterations’: int, ‘regularization_obj’: float, ‘regularization_probe’: float}</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Test</span> <span class="pre">Engine:</span> <span class="pre">ML_python</span></code>: {‘name’: ‘ML_python’, ‘iterations’: int, ‘optimizer’: ‘gradient_descent’, ‘step_object’: float, ‘step_probe’: float}</p></li>
+‘position_correction’: (0: no correction, N: performs correction every N iterations),
+‘probe_cycles’: int, object and probe update iterations}</p></li>
 </ol>
 </div></blockquote>
 </li>

@@ -3,24 +3,25 @@
 
 ## Authors
 
-* Eduardo X. Miqueles, LNLS/CNPEM
+* Eduardo X. Miqueles, CNPEM
 * Yuri R. Tonin
 * Giovanni Baraldi
   
 ## Contributors
 
-* Alan Zanoni Peixinho
-* Leonardo M. Corrêa, LNLS/CNPEM
-* Lucas Antonio Pelike, LNLS/CNPEM
-* Paola Ferraz, LNLS/CNPEM
+* Leonardo M. Corrêa, CNPEM
+* Lucas Antonio Pelike, CNPEM
+* Paola Ferraz, CNPEM
+* Matthew R. C. Fitzpatrick
 
 ## Past contributors
 
 * Yuri R. Tonin
 * Giovanni Baraldi
-* Mauro Luiz Brandao-Junior, LNLS/CNPEM
+* Mauro Luiz Brandao-Junior, CNPEM
 * Camila F. A. Lages
 * Julia C. Carvalho
+* Alan Zanoni Peixinho
 
 ## Acknowledgements
 
@@ -60,32 +61,6 @@ See bellow for full requirements.
 
 The library `sscCdi` can be installed with form the source code or by `pip`/`git` if inside the CNPEM network.
 
-### GITHUB
-
-One can clone our public [github](https://github.com/cnpem/ssc-cdi/) repository and install the latest version by:
-
-```bash
-git clone https://github.com/cnpem/ssc-cdi.git 
-cd ssc-cdi
-make clean && make
-```
-
-For a specific version, one can use:
-
-```bash
-    git clone https://github.com/cnpem/ssc-cdi.git --branch v<version> --single-branch
-    cd ssc-cdi 
-    make clean && make
-```
-
-The `<version>` is the version of the `sscCdi` to be installed. Example, to install version 0.14.2
-
-```bash
-    git clone https://github.com/cnpem/ssc-cdi.git --branch v0.14.2 --single-branch
-    cd ssc-cdi 
-    make clean && make
-```
-
 ### Source code from Zenodo
 
 The source code can be downloaded from [zenodo website](https://zenodo.org/) under the DOI:[10.5281/zenodo.13693177](https://doi.org/10.5281/zenodo.13693177).
@@ -105,7 +80,7 @@ To compile the source files, enter the following command inside the folder
 ### PIP
 
 ---
-> **Warning:** This installation option is available only inside the CNPEM network.
+> **Warning:** This installation option is available only inside the CNPEM network. To install ``sscCdi`` in the Tepui cluster, first one needs to load the modules ``module load cuda/11.2.2 python/3.11.11 gcc/9.5.0-jld3zdv``.
 ---
 
 One can install the latest version of sscCdi directly from the `pip server`
@@ -124,7 +99,7 @@ Or install a previous version with ``sscCdi==<version>``. Example:
 ### GITLAB
 
 ---
-> **Warning:** For this installation option is available only inside the CNPEM network.
+> **Warning:** For this installation option is available only inside the CNPEM network. To install ``sscCdi`` in the Tepui cluster, first one needs to load the modules ``module load cuda/11.2.2 python/3.11.11 gcc/9.5.0-jld3zdv``.
 ---
 
 One can clone our [gitlab](https://gitlab.cnpem.br/) repository and install the latest version by:
@@ -147,6 +122,32 @@ The `<version>` is the version of the `sscCdi` to be installed. Example, to inst
 
 ```bash
     git clone https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git --branch v0.14.2 --single-branch
+    cd ssc-cdi 
+    make clean && make
+```
+
+### GITHUB
+
+One can clone our public [github](https://github.com/cnpem/ssc-cdi/) repository and install the latest version by:
+
+```bash
+git clone https://github.com/cnpem/ssc-cdi.git 
+cd ssc-cdi
+make clean && make
+```
+
+For a specific version, one can use:
+
+```bash
+    git clone https://github.com/cnpem/ssc-cdi.git --branch v<version> --single-branch
+    cd ssc-cdi 
+    make clean && make
+```
+
+The `<version>` is the version of the `sscCdi` to be installed. Example, to install version 0.14.2
+
+```bash
+    git clone https://github.com/cnpem/ssc-cdi.git --branch v0.14.2 --single-branch
     cd ssc-cdi 
     make clean && make
 ```

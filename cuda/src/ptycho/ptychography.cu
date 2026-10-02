@@ -61,7 +61,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float* error_errors_llk, float* error_errors_mse, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe,
             int obj_propagator,
-            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m)
+            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m, float total_flux)
     {
         sscInfo(format("Starting AP - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex, psizex,
                     osizey,osizex, numrois, bsize, numiter));
@@ -74,7 +74,7 @@ extern "C"
             AP *ap = CreateAP((float*)cpudif, dim3(dsizex,dsizex,numrois), (complex*)cpuprobe, dim3(psizex,psizex,psizez), (complex*)cpuobj,
                     dim3(osizex, osizey), (Position*)cpurois, numrois, bsize, error_errors_rfactor, error_errors_llk, error_errors_mse, gpus, objsupport, probesupport,
                     numobjsupport,  wavelength_m, pixelsize_m, distance_m, detector_distance_m,
-                    poscorr_iter, obj_propagator, step_obj, step_probe, reg_obj, reg_probe);
+                    poscorr_iter, obj_propagator, step_obj, step_probe, reg_obj, reg_probe, total_flux);
 
             ap->ptycho->objmomentum = objbeta;
             ap->ptycho->probemomentum = probebeta;
@@ -98,7 +98,7 @@ extern "C"
             float step_object, float step_probe,
             float reg_obj, float reg_probe,
             int obj_propagator,
-            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m) {
+            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m, float total_flux) {
 
         sscInfo(format("Starting PIE - Probe: ({},{}), Object: ({},{}), Positions: {}, Iterations: {}",  psizex, psizex, osizey, osizex, numrois, numiter));
 
@@ -123,7 +123,7 @@ extern "C"
                 wavelength_m, pixelsize_m, distance_m, detector_distance_m,
                 poscorr_iter, obj_propagator,
                 step_object, step_probe,
-                reg_obj, reg_probe);
+                reg_obj, reg_probe, total_flux);
 
         PieRun(*pie, numiter);
 
@@ -134,7 +134,7 @@ extern "C"
             int bsize, int numiter, int ngpus, int* cpugpus, float* error_errors_rfactor, float* error_errors_llk, float* error_errors_mse, float objbeta, float probebeta, int psizez,
             float* objsupport, float* probesupport, int numobjsupport, int poscorr_iter, float step_obj, float step_probe, float reg_obj, float reg_probe,
             int obj_propagator,
-            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m, float raarbeta)
+            float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m, float raarbeta, int probe_cycles, float total_flux)
     {
         sscInfo(format("Starting RAAR - Probe: ({},{}), Object: ({},{}), Positions: {}, Batches: {}, Iterations: {}",  psizex, psizex, osizey, osizex, numrois, bsize, numiter));
         {
@@ -149,11 +149,13 @@ extern "C"
                     objsupport, probesupport, numobjsupport,
                     wavelength_m, pixelsize_m, distance_m, detector_distance_m,
                     poscorr_iter, obj_propagator, step_obj,
-                    step_probe, reg_obj, reg_probe);
+                    step_probe, reg_obj, reg_probe, total_flux);
 
             raar->ptycho->objmomentum = objbeta; // why is this not already inside CreateRAAR?
             raar->ptycho->probemomentum = probebeta;
             raar->beta = raarbeta;
+
+            raar->ptycho->probe_cycles = probe_cycles;
 
             RAARRun(*raar, numiter); // perhaps objbeta should also be a  parameter here, since it works like tvmu and epsilon
 

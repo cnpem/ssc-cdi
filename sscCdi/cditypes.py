@@ -86,7 +86,7 @@ try:
         ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         c_int,
-        c_float, c_float, c_float, c_float
+        c_float, c_float, c_float, c_float, c_float
     ]
     libcdi.ap_call.restype = None
     libcdi.raarcall.argtypes = [
@@ -96,7 +96,7 @@ try:
         ctypes.c_void_p, c_int, c_int,
         c_float, c_float, c_float, c_float,
         c_int,
-        c_float, c_float, c_float, c_float, c_float
+        c_float, c_float, c_float, c_float, c_float, c_int, c_float
     ]
     libcdi.raarcall.restype = None
     libcdi.piecall.argtypes = [
@@ -106,7 +106,7 @@ try:
         ctypes.c_int,
         c_float, c_float, c_float, c_float,
         c_int,
-        c_float, c_float, c_float, c_float
+        c_float, c_float, c_float, c_float, c_float
     ]
 
     libcdi.piecall.restype = None
@@ -213,6 +213,7 @@ def PIE(obj: np.ndarray,
         pixelsize_m: float = 0.0,
         distance_m: float = 0.0,
         detector_distance_m: float = 0.0,
+        total_flux: float = -1.0,
         params: dict = {}):
     """ Ptychography PIE algorithm.
 
@@ -297,7 +298,8 @@ def PIE(obj: np.ndarray,
                    c_float(step_obj), c_float(step_probe),
                    c_float(reg_obj), c_float(reg_probe),
                    c_int(propagator_id(obj_propagator)),
-                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m))
+                   c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m),
+                   c_float(total_flux))
 
     print(f"\tDone in: {time()-time0:.2f} seconds")
 
@@ -324,6 +326,8 @@ def RAAR(obj: np.ndarray,
          pixelsize_m: float = 0.0,
          distance_m: float = 0.0,
          detector_distance_m: float = 0.0,
+         total_flux: float = -1.0,
+         probe_cycles: int = 1,
          params: dict = {}):
     """ Ptychography RAAR algorithm.
 
@@ -350,6 +354,7 @@ def RAAR(obj: np.ndarray,
         Dictionary ``param`` input:
 
                 * ``param['device']`` (int list): The list of GPUs. Defaults to [0].
+                * ``param['probecycles']`` (int list): Probe cycles. Defaults to 3.
 
 
         Dictionary ``mydict`` output:
@@ -424,7 +429,7 @@ def RAAR(obj: np.ndarray,
                     c_int(propagator_id(obj_propagator)),
                     c_float(wavelength_m), c_float(pixelsize_m),
                     c_float(distance_m), c_float(detector_distance_m),
-                    c_float(beta))
+                    c_float(beta), c_int(probe_cycles), c_float(total_flux))
 
     return obj, probe, error_rfactor, error_llk, error_mse, rois
 
@@ -450,6 +455,7 @@ def AP(obj: np.ndarray,
        pixelsize_m: float = 0.0,
        distance_m: float = 0.0,
        detector_distance_m: float = 0.0,
+       total_flux: float = -1.0,
        params: dict = {}):
     """ Ptychography Alternate Projections algorithm.
 
@@ -537,7 +543,8 @@ def AP(obj: np.ndarray,
                   c_float(step_obj), c_float(step_probe),
                   c_float(reg_obj), c_float(reg_probe),
                   c_int(propagator_id(obj_propagator)),
-                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m))
+                  c_float(wavelength_m), c_float(pixelsize_m), c_float(distance_m), c_float(detector_distance_m),
+                  c_float(total_flux))
 
     return obj, probe, error_rfactor, error_llk, error_mse, rois
 

@@ -1,3 +1,16 @@
+Version 0.17.0 - 2026-10-02
+---------------------------
+*Added:*
+    - Maximum-Likelihood (ML) in cupy.
+
+*Fixed:*
+    - CPU fallback and re-loading of difpads.
+
+*Changed*
+    - Error functions.
+    - Documentation.
+    - CI/CD ``deploy_docs`` and build.
+
 Version 0.16.1 - 2026-04-07
 ---------------------------
 *Changed*

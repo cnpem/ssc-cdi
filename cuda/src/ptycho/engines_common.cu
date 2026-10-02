@@ -455,10 +455,12 @@ void ApplyProbeUpdate(Ptycho& pt, cImage& velocity, float stepsize,
     }
 
     //*
-    SetDevice(pt.gpus, 0);
-    float I0 = pt.I0;
-    float newI0 = pt.probe->arrays[0]->Norm2();
-    *pt.probe *= sqrtf(I0/newI0); 
+    if ( pt.I0 > 0.0 ){
+        SetDevice(pt.gpus, 0);
+        float I0 = pt.I0;
+        float newI0 = pt.probe->arrays[0]->Norm2();
+        *pt.probe *= sqrtf(I0/newI0); 
+    }
     //*/
 }
 
@@ -651,7 +653,7 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
                      float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
                      int poscorr_iter,
                      float step_obj, float step_probe, float reg_obj,
-                     float reg_probe) {
+                     float reg_probe, float total_flux) {
     Ptycho* ptycho = new Ptycho;
     ptycho->gpus = gpus;
 
@@ -813,9 +815,20 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
             new Fraunhoffer() : new ASM(wavelength_m, pixelsize_m);
     }
 
+    /* I0/total_flux is used on ApplyProbeUpdate() function: 
+    If total_flux == 0.0, it computes ptycho->I0 by the initial probe
+    If total_flux > 0.0, it uses user input as ptycho->I0
+    If total_flux < 0.0, it does not uses ptycho->I0
+    */
     sscDebug("Computing I0");
     SetDevice(gpus, 0);
-    ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
+    if ( total_flux == 0.0 ) {
+        ptycho->I0 = ptycho->probe->arrays[0]->Norm2();
+        // printf("Flux init %e, %e\n",ptycho->I0,total_flux);
+    }else{
+        ptycho->I0 = total_flux;
+        // printf("Flux user %e, %e\n",ptycho->I0,total_flux);
+    }
 
     ptycho->probepropagator = new ASM(wavelength_m, pixelsize_m);
 

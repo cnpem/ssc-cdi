@@ -197,7 +197,7 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
                  int poscorr_iter,
                  int obj_propagator,
                  float step_obj, float step_probe,
-                 float reg_obj, float reg_probe) {
+                 float reg_obj, float reg_probe, float total_flux) {
     AP* ap = new AP;
     ap->ptycho =
         CreatePtycho(difpads, difshape, probe, probeshape,
@@ -207,7 +207,7 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
                 wavelength_m, pixelsize_m, distance_m, detector_distance_m,
                 poscorr_iter,
                 step_obj, step_probe,
-                reg_obj, reg_probe);
+                reg_obj, reg_probe, total_flux);
 
     return ap;
 }

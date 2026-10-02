@@ -64,6 +64,9 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
         * ``input_dict['fourier_power_bound']`` (float, optional): Relaxed the wavefront update, 0 is the standard [default: 0]
         * ``input_dict['clip_object_magnitude']`` (bool, optional): Clips the object amplitude between 0 and 1 [default: False]
         * ``input_dict['distance_sample_focus']`` (float, optional): Distance between the incident beam focus and sample (Near-Field only) [default: 0]
+
+        * ``input_dict['total_flux']`` (float, optional): Total photon flux. Options: None, \'initial_probe\' [default: None]
+
         * ``input_dict['probe_support']`` (dict, optional): Mask utilized as support for the probe projection in real space [default: {"type": "circular", "radius": 300, "center_y": 0, "center_x": 0}]
 
             #. Circular probe support: ``input_dict['probe_support'] = {\"type\": \"circular\", \"radius\": float, \"center_y\": int, \"center_x\": int}``.
@@ -108,19 +111,9 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
                'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
                'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
                'momentum_obj': float , momentum_probe': float, 
-               'position_correction': (0: no correction, N: performs correction every N iterations)}
+               'position_correction': (0: no correction, N: performs correction every N iterations),
+               'probe_cycles': int, object and probe update iterations}
     """  
-    #. ``Test Engine: PIE_python``: {'name': 'rPIE_python', 'iterations': int, 'step_object': float,  'step_probe': float, 'regularization_object': float,
-    #    'regularization_probe': float,'momentum_obj': float, 'momentum_probe': float, 'mPIE_momentum_counter': float} 
-    
-    #. ``Test Engine: RAAR_python``: {'name': 'RAAR_python', 'iterations': int, 'beta': float, 'regularization_obj': float 'regularization_probe': float} 
-    
-    #. ``Test Engine: AP_python``: {'name': 'AP_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-    
-    #. ``Test Engine: DM_python``: {'name': 'DM_python', 'iterations': int, 'regularization_obj': float, 'regularization_probe': float}
-    
-    #. ``Test Engine: ML_python``: {'name': 'ML_python', 'iterations': int, 'optimizer': 'gradient_descent', 'step_object': float, 'step_probe': float}
-
     input_dict["datetime"] = get_datetime()
 
     check_shape_of_inputs(DPs,positions,initial_probe) # check if dimensions are correct; exit program otherwise
@@ -366,6 +359,30 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     else:
         input_dict['fresnel_number'] = input_dict["object_pixel"]**2/(input_dict["wavelength"]*input_dict["distance_sample_focus"])
 
+    # Set total flux
+    # look into types!!
+    total_flux = input_dict.get('total_flux', None)
+
+    if total_flux is None:
+        total_flux = -1.0
+    elif total_flux == 'initial_probe':
+        total_flux = 0.0
+    else:
+        pass
+    
+    print(f'Total flux python: {total_flux}')
+
+    # Default values:
+    mom_obj = algo_inputs.get('momentum_obj',0.0)
+    mom_pro = algo_inputs.get('momentum_probe',0.0)
+    step_obj = algo_inputs.get('step_object',1.0)
+    step_pro = algo_inputs.get('step_probe',1.0)
+    reg_obj = algo_inputs.get('regularization_object',1.0)
+    reg_pro = algo_inputs.get('regularization_probe',1.0)
+    poscorr = algo_inputs.get('position_correction',0)
+    batch = algo_inputs.get('batch',0)
+
+
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Corresponding Fresnel number: {input_dict["fresnel_number"]}')
 
     print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support_array'])[3]:.2f} GBs")
@@ -458,10 +475,6 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             error_nmse.append(algo_error_mse)
             error_llk.append(algo_error_llk)
 
-
-
-
-
         elif input_dict["algorithms"][str(counter)]['name'] == 'AP': # former GL
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of Alternate Projections CUDA algorithm...")
             DPs, obj, probe = check_dtypes(DPs,obj,probe) # check if dtypes are correct; exit program otherwise
@@ -474,7 +487,7 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
             obj, probe, algo_error_rfactor, algo_error_llk, algo_error_mse, probe_positions = AP(iterations=algo_inputs['iterations'],
                                                          objbeta=algo_inputs['momentum_obj'],
                                                          probebeta=algo_inputs['momentum_probe'],
-                                                         batch=algo_inputs['batch'],
+                                                         batch=batch,
                                                          step_obj=algo_inputs['step_object'],
                                                          step_probe=algo_inputs['step_probe'],
                                                          reg_obj=algo_inputs['regularization_object'],
@@ -490,7 +503,8 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                          wavelength_m=input_dict["wavelength"],
                                                          pixelsize_m=input_dict["object_pixel"],
                                                          distance_m=input_dict["distance_sample_focus"],
-                                                         detector_distance_m=input_dict["detector_distance"])
+                                                         detector_distance_m=input_dict["detector_distance"],
+                                                         total_flux = total_flux)
 
 
             # error_nmse.append(np.full_like(algo_error, np.nan))
@@ -530,7 +544,9 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                             wavelength_m=input_dict["wavelength"],
                                                             pixelsize_m=input_dict["object_pixel"],
                                                             distance_m=input_dict["distance_sample_focus"],
-                                                            detector_distance_m=input_dict["detector_distance"])
+                                                            detector_distance_m=input_dict["detector_distance"],
+                                                            total_flux = total_flux,
+                                                            probe_cycles = algo_inputs.get('probe_cycles', 1))
 
             error_rfactor.append(algo_error_rfactor)
             # error_nmse.append(np.full_like(algo_error, np.nan))
@@ -567,7 +583,8 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
                                                                                             pixelsize_m=input_dict["object_pixel"],
                                                                                             distance_m=input_dict["distance_sample_focus"],
                                                                                             detector_distance_m=input_dict["detector_distance"],
-                                                                                            params={'device': input_dict["GPUs"][0:1]})
+                                                                                            params={'device': input_dict["GPUs"][0:1]},
+                                                                                            total_flux = total_flux)
 
             # fill errors
             error_rfactor.append(algo_error_rfactor)

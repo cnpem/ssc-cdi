@@ -1,45 +1,63 @@
 {
     "upload_type": "software",
     "title": "ssc-cdi",
-    "version": "0.16.1",
+    "version": "0.17.0",
     "access_right": "open",
     "communities": [
     ],
     "contributors": [
         {
             "name": "X. Miqueles, Eduardo",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
             "orcid": "0000-0001-6576-4288",
             "type": "projectleader"
         },
         {
-            "name": "Ferraz, Paola",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
-            "orcid": "0000-0002-1457-705X",
-            "type": "researcher"
-        },
-        {
-            "name": "L. Brandao Junior, Mauro",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
-            "orcid": "0000-0001-7737-3575",
-            "type": "researcher"
+            "name": "R. Tonin, Yuri",
+            "affiliation": "Georg-August-Universität Göttingen",
+            "orcid": "0000-0003-1403-815X",
+            "type": "other"
         },
         {
             "name": "M. Correa, Leonardo",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
             "orcid": "0000-0002-0823-4085",
             "type": "researcher"
         },
         {
-            "name": "A. Pelike, Lucas",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
+            "name": "R. C. Fitzpatrick, Matthew",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "orcid": "0000-0001-5347-0629",
             "type": "researcher"
+        },
+        {
+            "name": "Ferraz, Paola",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "orcid": "0000-0002-1457-705X",
+            "type": "researcher"
+        },
+        {
+            "name": "A. Pelike, Lucas",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "type": "researcher"
+        },
+        {
+            "name": "Z. Peixinho, Alan",
+            "affiliation": "",
+            "orcid": "0009-0002-6983-2342",
+            "type": "other"
+        },
+        {
+            "name": "L. Brandao Junior, Mauro",
+            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "orcid": "0000-0001-7737-3575",
+            "type": "other"
         }
     ],
     "creators": [
         {
             "name": "R. Tonin, Yuri",
-            "affiliation": "Brazilian Synchrotron Light Laboratory",
+            "affiliation": "Georg-August-Universität Göttingen",
             "orcid": "0000-0003-1403-815X"
         },
         {

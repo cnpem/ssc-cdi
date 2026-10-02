@@ -12,12 +12,6 @@ all: out html
 out:
 	mkdir -p build
 
-doxygen:
-	doxygen doxyconf
-
-example:
-	cd ../ && python3 setup.py install --user --cuda && cd docs/
-	@for j in example/*.py; do python3 $$j; done
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -29,3 +23,6 @@ help:
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -v -b $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+
+clean:
+	rm -rf "$(BUILDDIR)"

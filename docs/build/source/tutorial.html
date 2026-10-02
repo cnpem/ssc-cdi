@@ -1,23 +1,25 @@
+
+
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" >
+<html class="writer-html5" lang="en" data-content_root="../">
 <head>
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2. Usage &mdash; ssc-cdi 0.15.0 documentation</title>
-      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-      <link rel="stylesheet" href="../_static/css/my_theme.css" type="text/css" />
-  <!--[if lt IE 9]>
-    <script src="../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
+  <title>2. Usage &mdash; ssc-cdi 0.17.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/my_theme.css?v=cf47f6b8" />
+
   
-        <script src="../_static/documentation_options.js?v=ef97403f"></script>
-        <script src="../_static/doctools.js?v=9a2dae69"></script>
-        <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=0c3dd48d"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="3. API Reference" href="api.html" />
+    <link rel="next" title="Dictionary" href="tutorial/dictionary.html" />
     <link rel="prev" title="1. Install" href="install.html" /> 
 </head>
 
@@ -26,14 +28,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="../index.html" class="icon icon-home"> ssc-cdi
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            ssc-cdi
           </a>
-              <div class="version">
-                0.15.0
-              </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -42,11 +45,18 @@
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="install.html">1. Install</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Usage</a><ul class="simple">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/dictionary.html">Dictionary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/pie.html">rPIE Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/ap.html">AP Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/raar.html">RAAR Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/ml.html">ML Engine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/errors.html">Errors</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">3. API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">4. Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/references.html">5. References</a></li>
 </ul>
 
         </div>
@@ -62,8 +72,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li><span class="section-number">2. </span>Usage</li>
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">2. </span>Usage</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/source/tutorial.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -75,26 +85,65 @@
              
   <section id="usage">
 <h1><span class="section-number">2. </span>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
-<p>The <code class="docutils literal notranslate"><span class="pre">ssc-cdi</span></code> algorithm is called as <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> python module.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sscCdi</span>
+<p>The python module is imported <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> and the ptychography algorithms can be called as below.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sscCdi</span>
 
-<span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">Set input data:</span>
+<span class="sd">'''</span>
+<span class="sd">load(difpads)          # Measured diffraction patterns</span>
+<span class="sd">load(positions)        # Measured positions</span>
+<span class="sd">load(initial_object)</span>
+<span class="sd">load(initial_probe)</span>
+<span class="sd">'''</span>
 
-<span class="sd">input1 = ...</span>
-<span class="sd">input2 = ...</span>
+<span class="n">input_dict</span> <span class="o">=</span> <span class="p">{</span>
+<span class="s2">"hdf5_output"</span><span class="p">:</span> <span class="s2">"path/to/output/file.hdf5"</span><span class="p">,</span>
+<span class="s2">"CPUs"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+<span class="s2">"GPUs"</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+<span class="s2">"energy"</span><span class="p">:</span> <span class="n">energy</span><span class="p">,</span> <span class="c1"># keV</span>
+<span class="s2">"detector_distance"</span><span class="p">:</span> <span class="n">dist</span><span class="p">,</span> <span class="c1"># meters</span>
+<span class="s1">'distance_sample_focus'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1"># meters</span>
+<span class="s2">"detector_pixel_size"</span><span class="p">:</span> <span class="n">pixeldet</span><span class="p">,</span> <span class="c1"># meters</span>
+<span class="s2">"binning"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<span class="s2">"object_padding"</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s2">"incoherent_modes"</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+<span class="s2">"initial_obj"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="s2">"initial_probe"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="s2">"probe_support"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+<span class="s2">"positions_unit"</span><span class="p">:</span> <span class="s2">"meters"</span><span class="p">,</span>
+<span class="s1">'regime'</span><span class="p">:</span> <span class="s1">'fraunhoffer'</span><span class="p">,</span>
+<span class="s1">'position_rotation'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s1">'n_of_positions_to_remove'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s1">'clip_object_magnitude'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="s1">'free_log_likelihood'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s1">'fourier_power_bound'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+<span class="s1">'save_restored_data'</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="s2">"algorithms"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"1"</span><span class="p">:</span> <span class="n">engine</span> <span class="o">=</span> <span class="p">{</span>  <span class="s1">'name'</span><span class="p">:</span> <span class="s1">'AP'</span><span class="p">,</span>
+                                <span class="s1">'batch'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>                   <span class="c1"># number of data arrays to fit into the GPU. 0: automatically</span>
+                                <span class="s1">'iterations'</span><span class="p">:</span><span class="mi">400</span><span class="p">,</span>
+                                <span class="s1">'regularization_object'</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="c1"># float (min: 0, max: 1);</span>
+                                <span class="s1">'regularization_probe'</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span>  <span class="c1"># float (min: 0, max: 1);</span>
+                                <span class="s1">'position_correction'</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>      <span class="c1"># 0: no correction. N: performs correction every N iterations</span>
+                            <span class="p">}}</span>
+<span class="p">}</span>
+<span class="n">input_dict</span><span class="p">[</span><span class="s2">"wavelength"</span><span class="p">]</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">wavelength_meters_from_energy_keV</span><span class="p">(</span><span class="n">input_dict</span><span class="p">[</span><span class="s2">"energy"</span><span class="p">])</span>
 
-<span class="sd">Set dictionary parameters:</span>
-
-<span class="sd">dic = {}</span>
-<span class="sd">...</span>
-
-<span class="sd">&#39;&#39;&#39;</span>
-
-<span class="n">output</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">function_name</span><span class="p">(</span><span class="n">input1</span><span class="p">,</span> <span class="n">input2</span><span class="p">,</span> <span class="n">dic</span><span class="p">)</span>
+<span class="n">recon_obj</span><span class="p">,</span> <span class="n">recon_probe</span><span class="p">,</span> <span class="n">recon_positions</span><span class="p">,</span> <span class="n">output_dict</span><span class="p">,</span> <span class="n">recon_error</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">call_ptychography</span><span class="p">(</span><span class="n">input_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                                                                            <span class="n">difpads</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                                                                            <span class="n">positions</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                                                                            <span class="n">initial_obj</span>   <span class="o">=</span> <span class="n">initial_object</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                                                                            <span class="n">initial_probe</span> <span class="o">=</span> <span class="n">initial_probe</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                                                                            <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/dictionary.html">Dictionary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/pie.html">rPIE Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/ap.html">AP Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/raar.html">RAAR Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/ml.html">ML Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/errors.html">Errors</a></li>
+</ul>
 </div>
 </section>
 
@@ -103,7 +152,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="install.html" class="btn btn-neutral float-left" title="1. Install" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="api.html" class="btn btn-neutral float-right" title="3. API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="tutorial/dictionary.html" class="btn btn-neutral float-right" title="Dictionary" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

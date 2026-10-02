@@ -13,6 +13,7 @@ Welcome to sscCdi documentation!
     source/tutorial
     source/api
     source/changelog
+    source/tutorial/references
     
    
 Indices and tables

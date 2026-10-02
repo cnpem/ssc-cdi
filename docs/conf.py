@@ -57,9 +57,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.mathjax',
     'sphinx_rtd_theme',
-    'myst_parser'
-    # 'breathe', # problem when compiling using breathe!
-    # 'exhale'
+    'myst_parser',
+    'sphinxcontrib.bibtex'
 ]
 
 # breathe_projects = { "proj": "xml/" }
@@ -120,3 +119,7 @@ html_style = 'css/my_theme.css'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# -- References -------------------------------------------------
+
+bibtex_bibfiles = ["bibliography.bib"]

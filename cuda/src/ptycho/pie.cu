@@ -24,7 +24,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
         float wavelength_m, float pixelsize_m, float distance_m, float detector_distance_m,
         int poscorr_iter,
         int obj_propagator,
-        float step_object, float step_probe, float reg_obj, float reg_probe) {
+        float step_object, float step_probe, float reg_obj, float reg_probe, float total_flux) {
     Pie* pie = new Pie();
 
     pie->ptycho = CreatePtycho(difpads, difshape,
@@ -38,7 +38,7 @@ Pie* CreatePie(float* difpads, const dim3& difshape,
             wavelength_m, pixelsize_m, distance_m, detector_distance_m,
             poscorr_iter,
             step_object, step_probe,
-            reg_obj, reg_probe);
+            reg_obj, reg_probe, total_flux);
 
     return pie;
 }

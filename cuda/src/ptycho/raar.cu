@@ -109,7 +109,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
         int poscorr_iter,
         int obj_propagator,
         float step_obj, float step_probe,
-        float reg_obj, float reg_probe) {
+        float reg_obj, float reg_probe, float total_flux) {
     RAAR *raar = new RAAR();
 
     raar->ptycho =
@@ -119,7 +119,7 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
                 wavelength_m, pixelsize_m, distance_m, detector_distance_m,
                 poscorr_iter,
                 step_obj, step_probe,
-                reg_obj, reg_probe);
+                reg_obj, reg_probe, total_flux);
 
     const size_t wavefront_size = raar->ptycho->probe->size
         * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
@@ -289,9 +289,9 @@ void RAARRun(RAAR& raar, int iterations) {
             }
         }
 
-	SetDevice(raar.ptycho->gpus, 0);
+	    SetDevice(raar.ptycho->gpus, 0);
 
-	sscDebug("Syncing OBJ");
+	    sscDebug("Syncing OBJ");
         objvelocity.SetGPUToZero();
         raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_num), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg);
 
@@ -299,12 +299,16 @@ void RAARRun(RAAR& raar, int iterations) {
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            RAARApplyProbeUpdate(raar, probevelocity,
-                    raar.ptycho->probestep, raar.ptycho->probemomentum,
-                    raar.ptycho->probereg); // updates in real space
-            RAARApplyObjectUpdate(raar, objvelocity,
-                    raar.ptycho->objstep, raar.ptycho->objmomentum,
-                    raar.ptycho->objreg);
+
+            for(int z = 0; z < raar.ptycho->probe_cycles; z++){
+
+                RAARApplyProbeUpdate(raar, probevelocity,
+                        raar.ptycho->probestep, raar.ptycho->probemomentum,
+                        raar.ptycho->probereg); // updates in real space
+                RAARApplyObjectUpdate(raar, objvelocity,
+                        raar.ptycho->objstep, raar.ptycho->objmomentum,
+                        raar.ptycho->objreg);
+            }
         }
 
         if (raar.ptycho->poscorr_iter &&  (iter + 1) % raar.ptycho->poscorr_iter == 0){

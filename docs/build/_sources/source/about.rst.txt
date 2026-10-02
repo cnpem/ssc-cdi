@@ -3,13 +3,10 @@ The ``ssc-cdi`` package currently performs Ptycography and Ptycho-tomography rec
 Some examples are provided to ease the initial use. Enjoy!
 
 Codes and public prototypes are being increasingly included within this project,
-as long as they are tested and developed by the Scientific Computing Group.  
+as long as they are tested and developed by the Scientific Computing Group at the Brazilian Center for Research in Energy and Materials (CNPEM).  
 
 The ``ssc-cdi`` package source code is available in `zenodo website <https://zenodo.org/>`_ under the 
 DOI: `10.5281/zenodo.13693177 <https://doi.org/10.5281/zenodo.13693177>`_.
-
-For further information on the ``ssc-cdi`` package, visit the `website <https://gcc.lnls.br/wiki/docs/ssc-cdi/>`_ 
-(needs to be inside the CNPEM network to access the website).
 
 Publications
 ************
@@ -37,22 +34,25 @@ Authors and Contributors
       -
     * - Eduardo X. Miqueles
       - Author
-      - LNLS/CNPEM
-    * - Alan Zanoni Peixinho
-      - Contributor
-      - LNLS/CNPEM
+      - CNPEM
     * - Leonardo M. Corrêa
       - Contributor
-      - LNLS/CNPEM
+      - CNPEM
     * - Lucas Antonio Pelike
       - Contributor
-      - LNLS/CNPEM
+      - CNPEM
     * - Paola Ferraz
       - Contributor
-      - LNLS/CNPEM
+      - CNPEM
+    * - Matthew R. C. Fitzpatrick
+      - Contributor
+      - CNPEM
     * - Mauro Luiz Brandao-Junior
       - Past contributor
-      - LNLS/CNPEM
+      - CNPEM
+    * - Alan Zanoni Peixinho
+      - Past contributor
+      - 
     * - Camila F. A. Lages
       - Past contributor
       - 
