@@ -26,11 +26,11 @@ deploy_sdist:
   script:
   - twine upload ./dist/*.tar.gz  --repository-url="$GCC_PYPI_HOST"
   tags:
-  - docker
+  - "$RUNNER_TAG"
   dependencies:
   - build_sdist
   only:
-  - "$RUNNER_TAG"
+  - tags
 
 pages:
   stage: documentation
@@ -43,6 +43,6 @@ pages:
     paths:
     - public
   only:
-  - master
+  - tags
   tags:
   - "$RUNNER_TAG"
