@@ -372,17 +372,6 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
     
     print(f'Total flux python: {total_flux}')
 
-    # Default values:
-    mom_obj = algo_inputs.get('momentum_obj',0.0)
-    mom_pro = algo_inputs.get('momentum_probe',0.0)
-    step_obj = algo_inputs.get('step_object',1.0)
-    step_pro = algo_inputs.get('step_probe',1.0)
-    reg_obj = algo_inputs.get('regularization_object',1.0)
-    reg_pro = algo_inputs.get('regularization_probe',1.0)
-    poscorr = algo_inputs.get('position_correction',0)
-    batch = algo_inputs.get('batch',0)
-
-
     print(f'Distance between sample and focus: {input_dict["distance_sample_focus"]*1e3}mm. Corresponding Fresnel number: {input_dict["fresnel_number"]}')
 
     print(f"Total datapack size: {estimate_memory_usage(obj,probe,probe_positions,DPs,input_dict['probe_support_array'])[3]:.2f} GBs")
@@ -398,6 +387,16 @@ def call_ptychography_engines(input_dict, DPs, positions, initial_obj=None, init
         check_for_nans(obj,probe,DPs) # check if there are NaNs in the input data; exit program otherwise
 
         algo_inputs = {**input_dict, **{ k: v for k,v in input_dict['algorithms'][str(counter)].items() }  }
+
+        # Default values:
+        mom_obj = algo_inputs.get('momentum_obj',0.0)
+        mom_pro = algo_inputs.get('momentum_probe',0.0)
+        step_obj = algo_inputs.get('step_object',1.0)
+        step_pro = algo_inputs.get('step_probe',1.0)
+        reg_obj = algo_inputs.get('regularization_object',1.0)
+        reg_pro = algo_inputs.get('regularization_probe',1.0)
+        poscorr = algo_inputs.get('position_correction',0)
+        batch = algo_inputs.get('batch',0)
 
         if input_dict["algorithms"][str(counter)]['name'] == 'rPIE_python':
             print(f"Calling {input_dict['algorithms'][str(counter)]['iterations'] } iterations of rPIE algorithm...")
