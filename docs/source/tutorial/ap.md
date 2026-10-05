@@ -11,10 +11,13 @@ ap = {
     'batch': 0,                     
     'iterations':50,
     'regularization_object': 1e-3, # float (min: 0, max: 1); 
-    'regularization_probe': 1e-3,  # float (min: 0, max: 1); 
+    'regularization_probe': 1e-3,  # float (min: 0, max: 1);
+    'momentum_obj': 0.0,           # float; 
+    'momentum_probe': 0.0,         # float; 
     'position_correction': 0,      # 0: no correction. N: performs correction every N iterations
 }
 ```
+
 
 | Dictionary Parameters | Default Value | Description | Options | 
 | :--- | :--- | :--- | :--- |
@@ -23,6 +26,8 @@ ap = {
 | `iterations` | 50 | (`int`) Number of iterations | {math}`1,2,\cdots,N` |
 | `regularization_object` | {math}`0.0` | (`float`) Object update preconditioner parameter | {math}`0 \leq \cdot \leq 1` | 
 | `regularization_probe` | {math}`0.0` | (`float`) Probe update preconditioner parameter | {math}`0 \leq \cdot \leq 1` | 
+| `momentum_obj`| {math}`0.0` | (`float`) Object momentum parameter | {math}`\geq 0` | 
+| `momentum_probe` | {math}`0.0` | (`float`) Probe momentum parameter | {math}`\geq 0` | 
 | `position_correction` | 0 (no correction) | (`int`) Performs position correction every N iterations. | {math}`0, 1,2,\cdots,N` |
 
 
@@ -34,23 +39,23 @@ ap = {
     'batch': 0,                    
     'iterations':50,
     'regularization_object': 1e-3, # float (min: 0, max: 1); 
-    'regularization_probe': 1e-3   # float (min: 0, max: 1); 
+    'regularization_probe': 1e-3   # float (min: 0, max: 1);
+    'momentum_obj': 0.0,           # float; 
+    'momentum_probe': 0.0,         # float;  
     'position_correction': 0,      # 0: no correction. N: performs correction every N iterations
 
     # Advanced
     'step_object': 1.0,            # float (min: 0, max: 1); 
     'step_probe': 1.0,             # float (min: 0, max: 1); 
-    'momentum_obj': 0.0,           # float; 
-    'momentum_probe': 0.0,         # float; 
 }
 ```
+
 
 | Advanced Dictionary Parameters | Default Value | Description | Options | 
 | :--- | :--- | :--- | :--- |
 | `step_object` | {math}`1.0` | (`float`) Object gradient descent step | {math}`\geq 0` | 
 | `step_probe` | {math}`1.0` | (`float`) Probe gradient descent step | {math}`\geq 0` | 
-| `momentum_obj`| {math}`0.0` | (`float`) Object momentum parameter | {math}`\geq 0` | 
-| `momentum_probe` | {math}`0.0` | (`float`) Probe momentum parameter | {math}`\geq 0` | 
+
 
 
 ## AP implementation details
