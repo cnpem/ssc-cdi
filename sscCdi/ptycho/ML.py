@@ -339,14 +339,10 @@ def ML_CG_cupy(data_cpu, positions, initial_obj, initial_probe, algo_inputs, GPU
         data_f = cpnp.maximum(data_f, 0.0)
     
         if(metric == 'gauss' or metric == "amplitude"):
-            weights = cpnp.where(data >= 0, 1.0 / (2*(1.0 + data)), 0.0).astype(cpnp.float32)
+            weights = cpnp.where(data >= 0, 1.0 / (1.0 + data), 0.0).astype(cpnp.float32)
         elif(metric == "poisson"):
             weights = cpnp.where(data >= 0, 1, 0).astype(cpnp.int32)
         weights_f = cpnp.fft.ifftshift(weights, axes=(-2, -1))
-        
-        #del(data)
-        #mempool.free_all_blocks()
-
         return data_f, weights_f
 
 
