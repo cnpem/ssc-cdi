@@ -90,6 +90,9 @@ struct Ptycho {
 
     int probe_cycles = 1;
 
+    float gpu_mem_needed_for_fft_in_gb;
+    float approx_size_of_self_in_gb;
+    float approx_initial_gpu_mem_available_in_gb;
 };
 
 inline size_t PtychoNumBatches(Ptycho& ptycho) {
@@ -121,6 +124,8 @@ inline size_t PtychoBatchSize(Ptycho& ptycho) {
 inline size_t PtychoCurBatchGpuZsize(Ptycho& ptycho, size_t batch_idx, size_t gpu_idx) {
     return (*ptycho.positions[batch_idx])[gpu_idx].sizez;
 }
+
+
 
 /**
  * Probe real space project from a given section of the list.
@@ -193,6 +198,7 @@ struct RAAR {
     std::vector<cMImage*> temp_wavefront;
     const bool isGrad = false;
     float beta = 0.9f;
+    bool temp_wavefront_streaming_is_enabled;
 };
 
 /**
@@ -210,18 +216,28 @@ void DestroyRAAR(RAAR*& raar);
 
 void RAARRun(RAAR& raar, int iter);
 
-void RAARProjectProbe(RAAR& raar, int section);
+void RAARProjectProbe(RAAR& raar,
+		      int section,
+		      cMImage& wavefront_buffer);
 
 /**
  * Projects phistack to object subspace and updates the object estimate.
  * */
-void RAARApplyObjectUpdate(RAAR& raar, cImage& velocity,
-        float stepsize, float momentum, float epsilon);
+void RAARApplyObjectUpdate(RAAR& raar,
+			   cImage& velocity,
+			   float stepsize,
+			   float momentum,
+			   float epsilon,
+			   cMImage& wavefront_buffer);
 /**
  * Projects phistack to the probe subspace and calls Super::ApplyProbeUpdate
  * */
-void RAARApplyProbeUpdate(RAAR& raar, cImage& velocity,
-        float stepsize, float momentum, float epsilon);
+void RAARApplyProbeUpdate(RAAR& raar,
+			  cImage& velocity,
+			  float stepsize,
+			  float momentum,
+			  float epsilon,
+			  cMImage& wavefront_buffer);
 
 /**
  * Alternated projections with momentum.

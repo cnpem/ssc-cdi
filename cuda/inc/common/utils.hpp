@@ -19,12 +19,20 @@ inline float sscDiffTime(ssc_timepoint t0, ssc_timepoint t1) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
 }
 
-inline size_t sscGpuAvailableMem() {
+inline size_t sscSingleGpuAvailableMem() {
     size_t free_mem, total_mem;
     cudaError_t err = cudaMemGetInfo(&free_mem, &total_mem);
     return free_mem;
 }
 
+inline size_t sscMultiGpuAvailableMem(const std::vector<int>& gpu_indices) {
+    size_t free_mem = 0;
+    for (int gpu_idx : gpu_indices) {
+	cudaSetDevice(gpu_idx);
+	free_mem += sscSingleGpuAvailableMem();
+    }
+    return free_mem;
+}
 
 inline size_t sscGpuTotalMem() {
     size_t free_mem, total_mem;
