@@ -121,31 +121,76 @@ RAAR *CreateRAAR(float *difpads, const dim3 &difshape, complex *probe, const dim
                 step_obj, step_probe,
                 reg_obj, reg_probe);
 
-    const size_t wavefront_size = raar->ptycho->probe->size
-        * raar->ptycho->total_num_rois * raar->ptycho->gpus.size();
+    const float bytes_per_gb = \
+	1024.0f*1024.0f*1024.0f;
+    const size_t num_batches =
+	PtychoNumBatches(*raar->ptycho);
+    const size_t num_nontrivial_dp_loader_buffers =
+	(num_batches >= 2) ? 2 : 1;
+    const float gpu_mem_needed_for_nontrivial_dp_loader_buffer_data_in_gb =
+	(num_nontrivial_dp_loader_buffers
+	 * raar->ptycho->diff_pattern_shape.x
+	 * raar->ptycho->diff_pattern_shape.y
+	 * raar->ptycho->multibatchsize * sizeof(float) / bytes_per_gb);
+    const float max_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb =
+	((raar->ptycho->total_num_rois + raar->ptycho->multibatchsize)
+	 * raar->ptycho->probe->size * sizeof(complex) / bytes_per_gb);
+    const float min_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb =
+	2 * raar->ptycho->gpu_mem_needed_for_fft_in_gb;
+    const float safety_multiplier =
+	1.15f;
+    const auto approx_gpu_mem_needed_to_avoid_wavefront_streaming_in_gb =
+	(safety_multiplier
+	 * (gpu_mem_needed_for_nontrivial_dp_loader_buffer_data_in_gb
+	    + max_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb
+	    + raar->ptycho->gpu_mem_needed_for_fft_in_gb));
+    const auto approx_min_gpu_mem_required_in_gb =
+	(safety_multiplier
+	 * (gpu_mem_needed_for_nontrivial_dp_loader_buffer_data_in_gb
+	    + min_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb
+	    + raar->ptycho->gpu_mem_needed_for_fft_in_gb));
+
+    SetDevice(gpus, 0);
+
+    if (raar->ptycho->approx_initial_gpu_mem_available_in_gb
+	< approx_min_gpu_mem_required_in_gb) {
+	sscInfo(format("Insufficient memory available on the GPUs requested: "
+		       "approximately {:.2f} GB is required in total but only "
+		       "{:.2f} GB is available.",
+		       approx_min_gpu_mem_required_in_gb,
+		       raar->ptycho->approx_initial_gpu_mem_available_in_gb));
+	exit(EXIT_FAILURE);
+    }
+
+    raar->temp_wavefront_streaming_is_enabled =
+	(raar->ptycho->approx_initial_gpu_mem_available_in_gb
+	 < approx_gpu_mem_needed_to_avoid_wavefront_streaming_in_gb);
 
     MemoryType wf_memtype = MemoryType::EAllocGPU;
 
-    if ( (sscGpuAvailableMem() * 0.9) < (wavefront_size * sizeof(complex)) ) {
-        sscInfo("Not enough memory to store RAAR in GPU, fallback to store data on CPU. "
-                "Expect some slowdown.");
-	// sscWarning("Not enough memory to store RAAR in GPU, fallback to store data on CPU. "
-        //         "Expect some slowdown.");
+    if (raar->temp_wavefront_streaming_is_enabled) {
+	sscInfo(format("Not enough memory to store all temporary wavefront "
+		       "data (~{:.2f} GB) on the GPUs (~{:.2f} GB available): "
+		       "wavefront data data will be streamed in batches. "
+		       "Expect some slowdown.",
+		       approx_gpu_mem_needed_to_avoid_wavefront_streaming_in_gb,
+		       raar->ptycho->approx_initial_gpu_mem_available_in_gb));
         wf_memtype = MemoryType::EAllocCPU;
     }
-
-    const size_t num_batches = PtychoNumBatches(*raar->ptycho);
+    
     raar->temp_wavefront.reserve(num_batches);
+    
     for (size_t i = 0; i < num_batches; i++) {
-        size_t batchsize = raar->ptycho->positions[i]->arrays[0]->sizez;
+        const size_t batch_size = raar->ptycho->positions[i]->arrays[0]->sizez;
         auto *newphistack =
             new cMImage(raar->ptycho->probe->sizex, raar->ptycho->probe->sizey,
-                   batchsize * raar->ptycho->probe->sizez, true,
+                   batch_size * raar->ptycho->probe->sizez, true,
                    raar->ptycho->gpus, wf_memtype);
         if (newphistack->bHasAllocCPU()) newphistack->RegisterHost();
         newphistack->SetToZero();
         raar->temp_wavefront.push_back(newphistack);
     }
+    
     return raar;
 }
 
@@ -158,15 +203,26 @@ void DestroyRAAR(RAAR *&raar) {
     raar = nullptr;
 }
 
-void RAARProjectProbe(RAAR& raar, int section) {
-    ProjectPhiToProbe(*(raar.ptycho), section, *raar.temp_wavefront[section], false, raar.isGrad);
+void RAARProjectProbe(RAAR& raar, int section, cMImage& wavefront_buffer) {
+    const size_t num_batches = PtychoNumBatches(*raar.ptycho);
+    
+    const auto& Phi =
+	(raar.temp_wavefront_streaming_is_enabled)
+	? wavefront_buffer
+	: *raar.temp_wavefront[section];
+    
+    ProjectPhiToProbe(*(raar.ptycho), section, Phi, false, raar.isGrad);
 }
 
 /**
  * Applies KRAAR_ObjPs and updates the object estimate.
  * */
-void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
-        float stepsize, float momentum, float epsilon) {    
+void RAARApplyObjectUpdate(RAAR &raar,
+			   cImage &velocity,
+			   float stepsize,
+			   float momentum,
+			   float epsilon,
+			   cMImage& wavefront_buffer) {
     raar.ptycho->object_num->SetGPUToZero();
     raar.ptycho->object_div->SetGPUToZero();
 
@@ -182,10 +238,27 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
             if (gpu_batch_size > 0) {
                 SetDevice(raar.ptycho->gpus, g);
 
-		KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0], raar.ptycho->probe->arrays[g][0],
-                        raar.temp_wavefront[section]->arrays[g][0],
-                        raar.ptycho->positions[section]->arrays[g][0],
-                        raar.ptycho->object_num->arrays[g][0], raar.ptycho->object_div->arrays[g][0]);
+		if (raar.temp_wavefront_streaming_is_enabled) {
+		    wavefront_buffer.arrays[g]->Resize(probeshape.x,
+						       probeshape.y,
+						       gpu_batch_size * probeshape.z);
+		    raar.temp_wavefront[section]->arrays[g]->CopyTo(*wavefront_buffer.arrays[g]);
+		}
+		
+		const auto& phistack =
+		    (raar.temp_wavefront_streaming_is_enabled)
+		    ? wavefront_buffer
+		    : *raar.temp_wavefront[section];
+
+		KRAAR_ObjPs<<<blk, thr>>>(raar.ptycho->object->arrays[g][0],
+					  raar.ptycho->probe->arrays[g][0],
+					  phistack.arrays[g][0],
+					  raar.ptycho->positions[section]->arrays[g][0],
+					  raar.ptycho->object_num->arrays[g][0],
+					  raar.ptycho->object_div->arrays[g][0]);
+
+		if (raar.temp_wavefront_streaming_is_enabled)
+		    raar.temp_wavefront[section]->arrays[g]->CopyFrom(*wavefront_buffer.arrays[g]);
             }
         }
     }
@@ -196,8 +269,12 @@ void RAARApplyObjectUpdate(RAAR &raar, cImage &velocity,
 /**
  * Projects phistack to the probe subspace and calls Super::ApplyProbeUpdate
  * */
-void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
-        float stepsize, float momentum, float epsilon) {
+void RAARApplyProbeUpdate(RAAR& raar,
+			  cImage &velocity,
+			  float stepsize,
+			  float momentum,
+			  float epsilon,
+			  cMImage& wavefront_buffer) {
     raar.ptycho->probe_num->SetGPUToZero();
     raar.ptycho->probe_div->SetGPUToZero();
 
@@ -205,7 +282,23 @@ void RAARApplyProbeUpdate(RAAR& raar, cImage &velocity,
     const dim3 probeshape = raar.ptycho->probe->Shape();
     const size_t num_batches = PtychoNumBatches(*raar.ptycho);
     for (size_t d = 0; d < num_batches; d++) {
-	RAARProjectProbe(raar, d);
+	if (raar.temp_wavefront_streaming_is_enabled) {
+	    for (int g = 0; g < ngpus; ++g) {
+		SetDevice(raar.ptycho->gpus, g);
+		const size_t gpu_batch_zsize = raar.ptycho->positions[d]->arrays[g]->sizez;
+		wavefront_buffer.arrays[g]->Resize(probeshape.x,
+						   probeshape.y,
+						   gpu_batch_zsize * probeshape.z);
+		raar.temp_wavefront[d]->arrays[g]->CopyTo(*wavefront_buffer.arrays[g]);
+	    }
+	}
+	RAARProjectProbe(raar, d, wavefront_buffer);
+	if (raar.temp_wavefront_streaming_is_enabled) {
+	    for (int g = 0; g < ngpus; ++g) {
+		SetDevice(raar.ptycho->gpus, g);
+		raar.temp_wavefront[d]->CopyFrom(wavefront_buffer);
+	    }
+	}
     }
 
     ApplyProbeUpdate(*raar.ptycho, velocity, stepsize, momentum, epsilon);
@@ -237,10 +330,21 @@ void RAARRun(RAAR& raar, int iterations) {
     auto time0 = sscTime();
 
     const dim3 difpadshape = raar.ptycho->diff_pattern_shape;
+    const size_t num_batches = PtychoNumBatches(*raar.ptycho);
 
-    auto batch_loader = CreateDifPadBatchLoader(raar.ptycho);
+    auto wavefront_buffer =
+	(raar.temp_wavefront_streaming_is_enabled)
+	? cMImage(raar.ptycho->probe->sizex,
+		  raar.ptycho->probe->sizey,
+		  raar.ptycho->singlebatchsize * raar.ptycho->probe->sizez,
+		  true,
+		  raar.ptycho->gpus,
+		  MemoryType::EAllocGPU)
+	: cMImage(1, 1, 1, true, raar.ptycho->gpus, MemoryType::EAllocGPU);
+
+    auto* batch_loader = CreateDifPadBatchLoader(raar.ptycho);
     FetchNextBatchAsync(batch_loader);
-    auto cur_difpad = CurrentBatch(batch_loader);
+    auto* cur_difpad = CurrentBatch(batch_loader);
 
     for (size_t iter = 0; iter < iterations; iter++) {
         raar.ptycho->error_rfactor->SetGPUToZero();
@@ -250,7 +354,6 @@ void RAARRun(RAAR& raar, int iterations) {
         raar.ptycho->object_num->SetGPUToZero();
         raar.ptycho->object_div->SetGPUToZero();
 
-	const size_t num_batches = PtychoNumBatches(*raar.ptycho);
         for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
 	    if (num_batches >= 2) {
 		if ((iter != 0) || (batch_idx != 0)) {
@@ -264,7 +367,6 @@ void RAARRun(RAAR& raar, int iterations) {
                 cImage* current_exit_wave = raar.ptycho->wavefront->arrays[gpu_idx];
                 cImage* current_object = raar.ptycho->object->arrays[gpu_idx];
                 cImage* current_probe = raar.ptycho->probe->arrays[gpu_idx];
-		auto* cur_temp_wavefront = raar.temp_wavefront[batch_idx]->arrays[gpu_idx];
                 rImage* current_obj_div = raar.ptycho->object_div->arrays[gpu_idx];
                 cImage* current_obj_acc = raar.ptycho->object_num->arrays[gpu_idx];
 
@@ -272,6 +374,17 @@ void RAARRun(RAAR& raar, int iterations) {
 
                 if (cur_difpad_zsize > 0) {
                     SetDevice(raar.ptycho->gpus, gpu_idx);
+
+		    auto* cur_temp_wavefront =
+			(raar.temp_wavefront_streaming_is_enabled)
+			? wavefront_buffer.arrays[gpu_idx]
+			: raar.temp_wavefront[batch_idx]->arrays[gpu_idx];
+
+		    if (raar.temp_wavefront_streaming_is_enabled) {
+			wavefront_buffer.arrays[gpu_idx]->Resize(probeshape.x, probeshape.y,
+								 cur_difpad_zsize * probeshape.z);
+			raar.temp_wavefront[batch_idx]->arrays[gpu_idx]->CopyTo(*wavefront_buffer.arrays[gpu_idx]);
+		    }
 
                     dim3 blk = raar.ptycho->wavefront->ShapeBlock();
                     blk.z = cur_difpad_zsize;
@@ -287,10 +400,9 @@ void RAARRun(RAAR& raar, int iterations) {
 
                 }
             }
+	    if (raar.temp_wavefront_streaming_is_enabled)
+		raar.temp_wavefront[batch_idx]->CopyFrom(wavefront_buffer);
         }
-
-	SetDevice(raar.ptycho->gpus, 0);
-
 	sscDebug("Syncing OBJ");
         objvelocity.SetGPUToZero();
         raar.ptycho->object->WeightedLerpSync(*(raar.ptycho->object_num), *(raar.ptycho->object_div), raar.ptycho->objstep, raar.ptycho->objmomentum, objvelocity, raar.ptycho->objreg);
@@ -299,12 +411,18 @@ void RAARRun(RAAR& raar, int iterations) {
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            RAARApplyProbeUpdate(raar, probevelocity,
-                    raar.ptycho->probestep, raar.ptycho->probemomentum,
-                    raar.ptycho->probereg); // updates in real space
-            RAARApplyObjectUpdate(raar, objvelocity,
-                    raar.ptycho->objstep, raar.ptycho->objmomentum,
-                    raar.ptycho->objreg);
+            RAARApplyProbeUpdate(raar,
+				 probevelocity,
+				 raar.ptycho->probestep,
+				 raar.ptycho->probemomentum,
+				 raar.ptycho->probereg,
+				 wavefront_buffer); // updates in real space
+            RAARApplyObjectUpdate(raar,
+				  objvelocity,
+				  raar.ptycho->objstep,
+				  raar.ptycho->objmomentum,
+				  raar.ptycho->objreg,
+				  wavefront_buffer);
         }
 
         if (raar.ptycho->poscorr_iter &&  (iter + 1) % raar.ptycho->poscorr_iter == 0){

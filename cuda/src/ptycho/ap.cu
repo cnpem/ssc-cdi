@@ -86,9 +86,9 @@ void APRun(AP& ap, int iterations) {
   const dim3 difpadshape = ptycho.diff_pattern_shape;
   const size_t ngpus = PtychoNumGpus(ptycho);
 
-  auto batch_loader = CreateDifPadBatchLoader(&ptycho);
+  auto* batch_loader = CreateDifPadBatchLoader(&ptycho);
   FetchNextBatchAsync(batch_loader);
-  auto cur_difpad = CurrentBatch(batch_loader);
+  auto* cur_difpad = CurrentBatch(batch_loader);
 
   for (int iter = 0; iter < iterations; iter++) {
 
@@ -208,6 +208,39 @@ AP* CreateAP(float* difpads, const dim3& difshape, complex* probe, const dim3& p
                 poscorr_iter,
                 step_obj, step_probe,
                 reg_obj, reg_probe);
+
+    const float bytes_per_gb = \
+	1024.0f*1024.0f*1024.0f;
+    const size_t num_batches =
+	PtychoNumBatches(*ap->ptycho);
+    const size_t num_nontrivial_dp_loader_buffers =
+	(num_batches >= 2) ? 2 : 1;
+    const float gpu_mem_needed_for_nontrivial_dp_loader_buffer_data_in_gb =
+	(num_nontrivial_dp_loader_buffers
+	 * ap->ptycho->diff_pattern_shape.x
+	 * ap->ptycho->diff_pattern_shape.y
+	 * ap->ptycho->multibatchsize * sizeof(float) / bytes_per_gb);
+    const float min_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb =
+	ap->ptycho->gpu_mem_needed_for_fft_in_gb;
+    const float safety_multiplier =
+	1.15f;
+    const auto approx_min_gpu_mem_required_in_gb =
+	(safety_multiplier
+	 * (gpu_mem_needed_for_nontrivial_dp_loader_buffer_data_in_gb
+	    + min_gpu_mem_needed_for_nontrivial_wavefront_data_in_gb
+	    + ap->ptycho->gpu_mem_needed_for_fft_in_gb));
+
+    SetDevice(gpus, 0);
+
+    if (ap->ptycho->approx_initial_gpu_mem_available_in_gb
+	< approx_min_gpu_mem_required_in_gb) {
+	sscInfo(format("Insufficient memory available on the GPUs requested: "
+		       "approximately {:.2f} GB is required in total but only "
+		       "{:.2f} GB is available.",
+		       approx_min_gpu_mem_required_in_gb,
+		       ap->ptycho->approx_initial_gpu_mem_available_in_gb));
+	exit(EXIT_FAILURE);
+    }
 
     return ap;
 }

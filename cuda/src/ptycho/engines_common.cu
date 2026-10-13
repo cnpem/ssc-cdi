@@ -6,6 +6,7 @@
 #include <cmath>
 #include <common/logger.hpp>
 #include <common/types.hpp>
+#include <common/utils.hpp>
 #include <cstddef>
 
 #include "complex.hpp"
@@ -739,6 +740,32 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     ptycho->cpuerror_rfactor = _rfact;
     ptycho->cpuerror_llk = _llk;
     ptycho->cpuerror_mse = _mse;
+
+    const float bytes_per_gb = \
+	1024.0f*1024.0f*1024.0f;
+    const float gpu_mem_needed_for_ptycho_wavefront_in_gb =
+	((probeshape.x * probeshape.y * probeshape.z)
+	 * ptycho->multibatchsize * sizeof(complex) / bytes_per_gb);
+    ptycho->gpu_mem_needed_for_fft_in_gb =
+	gpu_mem_needed_for_ptycho_wavefront_in_gb;
+    ptycho->approx_size_of_self_in_gb = \
+	(gpu_mem_needed_for_ptycho_wavefront_in_gb
+	 + ptycho->gpu_mem_needed_for_fft_in_gb);
+    ptycho->approx_initial_gpu_mem_available_in_gb = \
+	sscMultiGpuAvailableMem(gpus) / bytes_per_gb;
+
+    SetDevice(gpus, 0);
+
+    if (ptycho->approx_initial_gpu_mem_available_in_gb
+	< ptycho->approx_size_of_self_in_gb) {
+	sscInfo(format("Insufficient memory available on the GPUs requested: "
+		       "{:.2f} GB is required to perform FFTs on temporary "
+		       "wavefronts temporary wavefront arrays but only {:.2f} "
+		       "GB is available.",
+		       ptycho->approx_size_of_self_in_gb,
+		       ptycho->approx_initial_gpu_mem_available_in_gb));
+	exit(EXIT_FAILURE);
+    }
 
     sscDebug("Alloc probe.");
     ptycho->probe = new cMImage(_probe, probeshape, true, gpus);
