@@ -3,7 +3,7 @@
 **/__pycache__/
 dist/*
 build/*
-docs/build/*
+docs/build/
 _skbuild/*
 sscCdi.egg-info/*
 ._**
