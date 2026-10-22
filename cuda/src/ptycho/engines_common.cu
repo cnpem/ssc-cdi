@@ -680,7 +680,19 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
     ptycho->poscorr_iter = poscorr_iter;
 
     const int ngpus = gpus.size();
+    int device;
+    cudaGetDevice(&device);
+    cudaDeviceProp prop;
+    cudaGetDeviceProperties(&prop, device);
+    const size_t maxGridZ = prop.maxGridSize[2];
+
     if (batchsize > 0) {
+        if(batchsize*probeshape.z > maxGridZ){
+            size_t max_batchsize  = maxGridZ/probeshape.z;
+            sscInfo(format("Provided batchsize {} and probe modes {} excede the GPU limit {}. Setting the batchsize to the maximum allowed {}!", 
+                            batchsize, probeshape.z, maxGridZ, max_batchsize));
+            batchsize = max_batchsize;
+        }
         ptycho->singlebatchsize = batchsize;
         ptycho->multibatchsize = batchsize * ngpus;
 
@@ -689,7 +701,8 @@ Ptycho* CreatePtycho(float* _difpads, const dim3& difshape, complex* _probe,
         ptycho->singlebatchsize = (numrois + ngpus - 1) / ngpus;
         batchsize = ptycho->multibatchsize = ptycho->singlebatchsize * ngpus;
     }
-    sscDebug(format("Batches: {} {}", ptycho->singlebatchsize,
+    
+   sscDebug(format("Batches: {} {}", ptycho->singlebatchsize,
                     ptycho->multibatchsize));
 
     ptycho->total_num_rois = numrois;

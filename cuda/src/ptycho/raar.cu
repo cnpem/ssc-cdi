@@ -411,18 +411,20 @@ void RAARRun(RAAR& raar, int iterations) {
         probevelocity.SetGPUToZero();
 
         if (iter != 0) {
-            RAARApplyProbeUpdate(raar,
-				 probevelocity,
-				 raar.ptycho->probestep,
-				 raar.ptycho->probemomentum,
-				 raar.ptycho->probereg,
-				 wavefront_buffer); // updates in real space
-            RAARApplyObjectUpdate(raar,
-				  objvelocity,
-				  raar.ptycho->objstep,
-				  raar.ptycho->objmomentum,
-				  raar.ptycho->objreg,
-				  wavefront_buffer);
+            for (int z = 0; z < raar.ptycho->probe_cycles; z++){
+                RAARApplyProbeUpdate(raar,
+                    probevelocity,
+                    raar.ptycho->probestep,
+                    raar.ptycho->probemomentum,
+                    raar.ptycho->probereg,
+                    wavefront_buffer); // updates in real space
+                RAARApplyObjectUpdate(raar,
+                    objvelocity,
+                    raar.ptycho->objstep,
+                    raar.ptycho->objmomentum,
+                    raar.ptycho->objreg,
+                    wavefront_buffer);
+            }
         }
 
         if (raar.ptycho->poscorr_iter &&  (iter + 1) % raar.ptycho->poscorr_iter == 0){
