@@ -46,7 +46,7 @@ ml = {
 
 | Advanced Dictionary Parameters | Default Value | Description | Options | 
 | :--- | :--- | :--- | :--- |
-| `beta_cap` | {math}`10e6` | (`float`) Limits the learning rate to reduce the chance of bad object and probe update | {math}`\geq 0` | 
+| `beta_cap` | {math}`10e^{6}` | (`float`) Limits the learning rate to reduce the chance of bad object and probe update | {math}`\geq 0` | 
 | `force_restart` | `True` | (`bool`) True: Restart the conjugate gradient each 100 iterations, can help to avoid stagnation | `True` or `False` | 
 | `verbose`| `True` | (`bool`) False: Do not print errors during optimization | `True` or `False` | 
 | `precond` | `True` | (`bool`) True: Enforce unitary scaling between probe and object gradients to help convergence | `True` or `False` |  

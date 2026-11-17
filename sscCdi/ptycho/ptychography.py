@@ -97,22 +97,32 @@ def call_ptychography(input_dict, DPs, positions, initial_obj=None, initial_prob
             
             #. ``PIE (Ptychographic Iterative Engine)``: {'name': 'PIE', 'iterations': int, 'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
                'regularization_object': float (min: 0, max: 1), 'regularization_probe': float ((min: 0, max: 1)
-               'momentum_obj': float (if > 0, uses mPIE with the given friction value) , momentum_probe': float (if > 0, uses mPIE with the given friction value), 
+               'momentum_obj': float (if > 0, uses mPIE with the given friction value) , 'momentum_probe': float (if > 0, uses mPIE with the given friction value), 
                'position_correction': int (0: no correction, N: performs correction every N iterations)}
             
             #. ``AP (Alternating Projections)``: {'name': 'AP', 'iterations': int, batch: int (define the number of positions to fit into the GPU),
                'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
                'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
-               'momentum_obj': float , momentum_probe': float, 
+               'momentum_obj': float , 'momentum_probe': float, 
                'position_correction': (0: no correction, N: performs correction every N iterations)}
             
             #. ``RAAR (Relaxed Averaged Alternating Reflections)``: {'name': 'RAAR', 'iterations': int, batch: int (define the number of positions to fit into the GPU),
                'beta': float (wavefront update relaxation, if 1 utilizes DM: Differential Mapping)
                'step_object': float (min: 0, max: 1), 'step_probe': float (min: 0, max: 1),
                'regularization_object': float (min: 0, max: 1), 'regularization_probe': float (min: 0, max: 1),
-               'momentum_obj': float , momentum_probe': float, 
+               'momentum_obj': float , 'momentum_probe': float, 
                'position_correction': (0: no correction, N: performs correction every N iterations),
                'probe_cycles': int, object and probe update iterations}
+
+            #. ``ML in cupy (Maximum-Likelihood)``: {'name': 'ML_python', 'iterations': int, batch: int (define the number of positions to fit into the GPU),
+               'metric': str (ML noise metric: 'poisson', 'gauss', 'amplitude'),
+               'regularize': float (Regularization; choose until background or noise is reduced; min: 0, max: 1),
+               'beta_cap': float (Limits the learning rate to reduce the chance of bad object and probe update)
+               'force_restart': bool (True: Restart the conjugate gradient each 100 iterations, can help to avoid stagnation),
+               'verbose': bool (False: Do not print errors during optimization),
+               'precond': bool (True: Enforce unitary scaling between probe and object gradients to help convergence), 
+               'refine_solution': bool (True: perform a Newton-Raphson refinement of the cost function for possible better results at cost of time), 
+               'probe_update_start': int (tarting iteration for probe updates, also applied if 'force_restart' is active)}
     """  
     input_dict["datetime"] = get_datetime()
 

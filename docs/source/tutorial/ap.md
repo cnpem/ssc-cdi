@@ -74,7 +74,7 @@ Partial Gradient descent `rPIE` update for object {math}`\bar{O}^{n+1}` and prob
 ```{math}
 \bar{O}^{n+1} = O^{n} + \alpha_{o} \Delta O, 
 \quad 
-\Delta O = \sum\limits_{j} \frac{ {P^{n}}^{*} \Delta \psi_{j}}{ (1-\gamma_{o})|P^{n}|^{2} + \gamma_{o} |P^{n}|^{2}_{max}} 
+\Delta O = \sum\limits_{j} \frac{ {P^{n}}^{*} \Delta \psi_{j}}{ (1-\gamma_{o})|P^{n}|^{2} + \gamma_{o} |P^{n}|^{2}_{max}} ,
 ```
 
 ```{math} 

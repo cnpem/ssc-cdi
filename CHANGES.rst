@@ -1,3 +1,18 @@
+Version 0.17.1 - 2026-10-22
+---------------------------
+*Added:*
+    - Cupy as a required dependency in build.
+
+*Fixed:*
+    - Bugfix on maximum allowed batchsize.
+    - Stream of wavefront fixed.
+    - ML weights fixed.
+    - ``pyproject.toml``: ``setuptools>=61`` as build requirements, fixing the package name ``UNKNOWN``.
+
+*Changed*
+    - Documentation of ML and RAAR updated.
+    - ``CMakeLists.txt``: ``CMAKE_CUDA_ARCHITECTURES`` (default ``70``) can be overridden by environment or ``-D``.
+
 Version 0.17.0 - 2026-10-02
 ---------------------------
 *Added:*

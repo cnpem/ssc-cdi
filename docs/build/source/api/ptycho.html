@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ptychography engines API &mdash; ssc-cdi 0.17.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+  <title>Ptychography engines API &mdash; ssc-cdi 0.17.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../../_static/css/my_theme.css?v=cf47f6b8" />
 
   
       <script src="../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../../_static/documentation_options.js?v=0c3dd48d"></script>
-      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
-      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../_static/documentation_options.js?v=a8455094"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
@@ -28,6 +28,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
+  
 
           
           
@@ -41,6 +42,10 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+  <p class="version">
+    Version 0.17.1
+  </p>
+
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
@@ -168,20 +173,29 @@ calls the engines utilized to perform the Ptychography reconstruction [1].</p>
 <div><ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">PIE</span> <span class="pre">(Ptychographic</span> <span class="pre">Iterative</span> <span class="pre">Engine)</span></code>: {‘name’: ‘PIE’, ‘iterations’: int, ‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
 ‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float ((min: 0, max: 1)
-‘momentum_obj’: float (if &gt; 0, uses mPIE with the given friction value) , momentum_probe’: float (if &gt; 0, uses mPIE with the given friction value),
+‘momentum_obj’: float (if &gt; 0, uses mPIE with the given friction value) , ‘momentum_probe’: float (if &gt; 0, uses mPIE with the given friction value),
 ‘position_correction’: int (0: no correction, N: performs correction every N iterations)}</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">AP</span> <span class="pre">(Alternating</span> <span class="pre">Projections)</span></code>: {‘name’: ‘AP’, ‘iterations’: int, batch: int (define the number of positions to fit into the GPU),
 ‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
 ‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float (min: 0, max: 1),
-‘momentum_obj’: float , momentum_probe’: float,
+‘momentum_obj’: float , ‘momentum_probe’: float,
 ‘position_correction’: (0: no correction, N: performs correction every N iterations)}</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">RAAR</span> <span class="pre">(Relaxed</span> <span class="pre">Averaged</span> <span class="pre">Alternating</span> <span class="pre">Reflections)</span></code>: {‘name’: ‘RAAR’, ‘iterations’: int, batch: int (define the number of positions to fit into the GPU),
 ‘beta’: float (wavefront update relaxation, if 1 utilizes DM: Differential Mapping)
 ‘step_object’: float (min: 0, max: 1), ‘step_probe’: float (min: 0, max: 1),
 ‘regularization_object’: float (min: 0, max: 1), ‘regularization_probe’: float (min: 0, max: 1),
-‘momentum_obj’: float , momentum_probe’: float,
+‘momentum_obj’: float , ‘momentum_probe’: float,
 ‘position_correction’: (0: no correction, N: performs correction every N iterations),
 ‘probe_cycles’: int, object and probe update iterations}</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ML</span> <span class="pre">in</span> <span class="pre">cupy</span> <span class="pre">(Maximum-Likelihood)</span></code>: {‘name’: ‘ML_python’, ‘iterations’: int, batch: int (define the number of positions to fit into the GPU),
+‘metric’: str (ML noise metric: ‘poisson’, ‘gauss’, ‘amplitude’),
+‘regularize’: float (Regularization; choose until background or noise is reduced; min: 0, max: 1),
+‘beta_cap’: float (Limits the learning rate to reduce the chance of bad object and probe update)
+‘force_restart’: bool (True: Restart the conjugate gradient each 100 iterations, can help to avoid stagnation),
+‘verbose’: bool (False: Do not print errors during optimization),
+‘precond’: bool (True: Enforce unitary scaling between probe and object gradients to help convergence),
+‘refine_solution’: bool (True: perform a Newton-Raphson refinement of the cost function for possible better results at cost of time),
+‘probe_update_start’: int (tarting iteration for probe updates, also applied if ‘force_restart’ is active)}</p></li>
 </ol>
 </div></blockquote>
 </li>

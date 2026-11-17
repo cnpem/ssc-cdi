@@ -1,14 +1,14 @@
 {
     "upload_type": "software",
     "title": "ssc-cdi",
-    "version": "0.17.0",
+    "version": "0.17.1",
     "access_right": "open",
     "communities": [
     ],
     "contributors": [
         {
             "name": "X. Miqueles, Eduardo",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "orcid": "0000-0001-6576-4288",
             "type": "projectleader"
         },
@@ -20,25 +20,25 @@
         },
         {
             "name": "M. Correa, Leonardo",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "orcid": "0000-0002-0823-4085",
             "type": "researcher"
         },
         {
             "name": "R. C. Fitzpatrick, Matthew",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "orcid": "0000-0001-5347-0629",
             "type": "researcher"
         },
         {
             "name": "Ferraz, Paola",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "orcid": "0000-0002-1457-705X",
             "type": "researcher"
         },
         {
             "name": "A. Pelike, Lucas",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "type": "researcher"
         },
         {
@@ -49,8 +49,17 @@
         },
         {
             "name": "L. Brandao Junior, Mauro",
-            "affiliation": "CNPEM - Brazilian Center for Research in Energy and Materials",
+            "affiliation": "CNPEM",
             "orcid": "0000-0001-7737-3575",
+            "type": "other"
+        },
+        {
+            "name": "Lages, Camila F. A.",
+            "orcid": "0000-0002-3426-9636",
+            "type": "other"
+        },
+        {
+            "name": "Carvalho, Julia",
             "type": "other"
         }
     ],

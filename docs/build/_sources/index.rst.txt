@@ -1,8 +1,10 @@
 Welcome to sscCdi documentation!
 ================================
-.. math::
     
-.. include:: source/about.rst
+.. include:: ../README.md
+   :parser: myst_parser.sphinx_
+   :start-after: <!-- about-start -->
+   :end-before: <!-- about-end -->
 
 .. toctree::
     :maxdepth: 1

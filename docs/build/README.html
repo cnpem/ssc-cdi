@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Documentation &mdash; ssc-cdi 0.17.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+  <title>Documentation &mdash; ssc-cdi 0.17.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="_static/css/my_theme.css?v=cf47f6b8" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=0c3dd48d"></script>
-      <script src="_static/doctools.js?v=fd6eb6e6"></script>
-      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/documentation_options.js?v=a8455094"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -26,6 +26,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
+  
 
           
           
@@ -39,6 +40,10 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+  <p class="version">
+    Version 0.17.1
+  </p>
+
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
@@ -119,11 +124,11 @@ make<span class="w"> </span>html
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">source/conf.py</span></code> is the Sphinx configuration file. It has the autodoc, napoleon, Read the Docs theme and Breathe extensions. <a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html">Autodoc</a> is used to write phyton docstring in the documentation. <a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html">Napoleon</a> enables autodoc to read docstrings written in the <a class="reference external" href="https://numpydoc.readthedocs.io/en/latest/format.html">Numpy</a> or <a class="reference external" href="https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings">Google</a> style guide docstrings. Read the Docs theme extension must be added in order to use Read the Docs theme. <a class="reference external" href="https://breathe.readthedocs.io/en/latest/">Breathe</a> reads the files inside <code class="docutils literal notranslate"><span class="pre">source/xml/</span></code> enabling Sphinx to autogenerate documentation from CUDA docstrings, since autodoc can autogenerate documentation only for python. Then, the <code class="docutils literal notranslate"><span class="pre">extensions</span></code> variable in <code class="docutils literal notranslate"><span class="pre">conf.py</span></code> is set as:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'sphinx.ext.autodoc'</span><span class="p">,</span> <span class="s1">'sphinx.ext.napoleon'</span><span class="p">,</span> <span class="s1">'sphinx_rtd_theme'</span><span class="p">,</span> <span class="s1">'breathe'</span><span class="p">]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">extensions</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sphinx.ext.autodoc&#39;</span><span class="p">,</span> <span class="s1">&#39;sphinx.ext.napoleon&#39;</span><span class="p">,</span> <span class="s1">&#39;sphinx_rtd_theme&#39;</span><span class="p">,</span> <span class="s1">&#39;breathe&#39;</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">folder_path</span></code> variable in the configuration file <code class="docutils literal notranslate"><span class="pre">source/conf.py</span></code> must be changed to add <strong>Python</strong> source files folders</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">folder_path</span> <span class="o">=</span> <span class="s1">'../../sscPrain/'</span> <span class="c1">#your source files paths</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">folder_path</span> <span class="o">=</span> <span class="s1">&#39;../../sscPrain/&#39;</span> <span class="c1">#your source files paths</span>
 </pre></div>
 </div>
 </section>
@@ -149,7 +154,7 @@ make<span class="w"> </span>html
 #ifndef PRAIN_H
 #define PRAIN_H
 
-#include "../inc/include.h"
+#include &quot;../inc/include.h&quot;
 
 ...
 
@@ -170,31 +175,31 @@ void fresnelpropagation(PAR param, cufftComplex *data, cufftComplex *kernel, cuf
 </section>
 <section id="examples-of-sphinx-docstrings-documentation">
 <h2>Examples of Sphinx Docstrings Documentation<a class="headerlink" href="#examples-of-sphinx-docstrings-documentation" title="Link to this heading"></a></h2>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">prain_preview</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">preview</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">'recov'</span><span class="p">,</span>  <span class="nb">map</span><span class="o">=</span><span class="s1">'gray_r'</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">""" Function to save or preview a frame of our volume (recov) of our choosing</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">prain_preview</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">preview</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">save</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;recov&#39;</span><span class="p">,</span>  <span class="nb">map</span><span class="o">=</span><span class="s1">&#39;gray_r&#39;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; Function to save or preview a frame of our volume (recov) of our choosing</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        recov (2-dimensional ndarray): Array to plot.</span>
 <span class="sd">        title (str): Title of plot.</span>
 <span class="sd">        preview (bool, optional): Plot preview. Defaults to False.</span>
 <span class="sd">        save (bool, optional): Plot save in *.png file. Defaults to True.</span>
-<span class="sd">        name (str,optional): Name of the file to be saved. Defaults to 'recov'.</span>
-<span class="sd">        map (str, optional): Choose color map. Defaults to 'gray_r'.</span>
+<span class="sd">        name (str,optional): Name of the file to be saved. Defaults to &#39;recov&#39;.</span>
+<span class="sd">        map (str, optional): Choose color map. Defaults to &#39;gray_r&#39;.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        (float): plot</span>
-<span class="sd">    """</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">save</span><span class="p">:</span>
-        <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib</span> 
-        <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">'Agg'</span><span class="p">)</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">'bilinear'</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="nb">map</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="nn">matplotlib</span> 
+        <span class="n">matplotlib</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="nb">map</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">name</span> <span class="o">+</span> <span class="s1">'.png'</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">'png'</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">name</span> <span class="o">+</span> <span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;png&#39;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">clf</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span> 
     <span class="k">elif</span> <span class="n">preview</span><span class="p">:</span>
-        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">'bilinear'</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="nb">map</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">recov</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="nb">map</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">()</span>
         <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>

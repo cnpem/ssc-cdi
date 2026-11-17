@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>1. Install &mdash; ssc-cdi 0.17.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+  <title>1. Install &mdash; ssc-cdi 0.17.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/my_theme.css?v=cf47f6b8" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=0c3dd48d"></script>
-      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/documentation_options.js?v=a8455094"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -28,6 +28,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
+  
 
           
           
@@ -41,15 +42,18 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+  <p class="version">
+    Version 0.17.1
+  </p>
+
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">1. Install</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#documentation">Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pip">Pip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gitlab">Gitlab</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#github">Github</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#source-code-from-zenodo">Source code from Zenodo</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#pip">PIP</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#github">GITHUB</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#gitlab">GITLAB</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#memory">Memory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#uninstall">Uninstall</a></li>
@@ -88,108 +92,78 @@
   <section id="install">
 <h1><span class="section-number">1. </span>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h1>
 <p>This package uses <code class="docutils literal notranslate"><span class="pre">C</span></code>, <code class="docutils literal notranslate"><span class="pre">C++</span></code>, <code class="docutils literal notranslate"><span class="pre">CUDA</span></code> and <code class="docutils literal notranslate"><span class="pre">Python3</span></code>.
-Before installation, you will need the following packages installed:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">10.0.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C++</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">&gt;=</span> <span class="pre">3.8.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">PIP</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">libcurl4-openssl-dev</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">scikit-build&gt;=0.17.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">setuptools&gt;=60.0.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ninja==1.11.1.1</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">wheel==0.45.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE&gt;=3.18</span></code></p></li>
-</ul>
-<p>This package supports nvidia <code class="docutils literal notranslate"><span class="pre">GPUs</span></code> with capabilities <code class="docutils literal notranslate"><span class="pre">7.0</span></code> or superior and a compiler with support to <code class="docutils literal notranslate"><span class="pre">c++17</span></code>.</p>
-<p>See bellow for build requirements and dependencies.</p>
-<p>The library sscCdi can be installed from the source code at <a class="reference external" href="https://zenodo.org/">zenodo website</a>, by our public github or by <code class="docutils literal notranslate"><span class="pre">pip</span></code>/ <code class="docutils literal notranslate"><span class="pre">gitlab</span></code>
-if inside the CNPEM network. More information on the <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> package on
-<a class="reference external" href="https://gcc.lnls.br/wiki/docs/ssc-cdi/">sscCdi website</a>
-available inside the CNPEM network.</p>
-<section id="documentation">
-<h2>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> package information can be found on the <a class="reference external" href="https://gcc.lnls.br/wiki/docs/ssc-cdi/">sscCdi website</a> inside the CNEPM network.
-Also, the <cite>HTML</cite> documentation can be found in the source directory <cite>./docs/build/index.html</cite> and can be opened in your preferred brownser.</p>
-</section>
-<section id="source-code-from-zenodo">
-<h2>Source code from Zenodo<a class="headerlink" href="#source-code-from-zenodo" title="Link to this heading"></a></h2>
-<p>The source code can be downloaded from <a class="reference external" href="https://zenodo.org/">zenodo website</a> under the
-DOI: <a class="reference external" href="https://doi.org/10.5281/zenodo.13693177">10.5281/zenodo.13693177</a>. On the left panel, one can find
-the available versions. Select the version want and download the <code class="docutils literal notranslate"><span class="pre">ssc-cdi.tar.gz</span></code> with the source files,
-one can decompress by</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>-xvf<span class="w"> </span>ssc-cdi.tar.gz
-</pre></div>
-</div>
-<p>To compile the source files, enter the following command inside the folder</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
-</pre></div>
-</div>
-</section>
+See bellow for full requirements.</p>
+<p>The library <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> can be installed from the source code or by <code class="docutils literal notranslate"><span class="pre">pip</span></code> if inside the CNPEM network.</p>
 <section id="pip">
-<h2>PIP<a class="headerlink" href="#pip" title="Link to this heading"></a></h2>
-<p>One can install the latest version of sscCdi directly from our <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">server</span></code> inside the CNPEM network.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sscCdi<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
+<h2>Pip<a class="headerlink" href="#pip" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p><strong>Warning:</strong> This installation option is available only inside the CNPEM network. To install <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> in the Tepui cluster, first one needs to load the modules <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">cuda/11.2.2</span> <span class="pre">python/3.11.11</span> <span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
+</div></blockquote>
+<p>One can install the latest version of sscCdi directly from the <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">server</span></code></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>sscCdi<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
 </pre></div>
 </div>
 <p>Or install a previous version with <code class="docutils literal notranslate"><span class="pre">sscCdi==&lt;version&gt;</span></code>. Example:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">sscCdi</span><span class="o">==</span><span class="m">0</span>.14.2<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
-</pre></div>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>To install <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> in the Tepui cluster, first one needs to load the modules <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">cuda/11.2.2</span> <span class="pre">python/3.11.11</span> <span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
-</div>
-</section>
-<section id="github">
-<h2>GITHUB<a class="headerlink" href="#github" title="Link to this heading"></a></h2>
-<p>The latest package version can be cloned from our public <a class="reference external" href="https://github.com/cnpem/ssc-cdi/">github</a> repository and installed locally with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git
-<span class="nb">cd</span><span class="w"> </span>ssc-cdi
-make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
-</pre></div>
-</div>
-<p>To install a specific version (<code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code>), one can use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w">  </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
-<span class="nb">cd</span><span class="w"> </span>ssc-cdi
-make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
-</pre></div>
-</div>
-<p>Example, to install version 0.14.2:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
-<span class="nb">cd</span><span class="w"> </span>ssc-cdi
-make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="nv">sscCdi</span><span class="o">==</span><span class="m">0</span>.14.2<span class="w"> </span>--index-url<span class="w"> </span>https://gitlab.cnpem.br/api/v4/projects/1875/packages/pypi/simple
 </pre></div>
 </div>
 </section>
 <section id="gitlab">
-<h2>GITLAB<a class="headerlink" href="#gitlab" title="Link to this heading"></a></h2>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>For this installation option is available only inside the CNPEM network.</p>
-</div>
-<p>The latest package version can be cloned from CNPEM’s <a class="reference external" href="https://gitlab.cnpem.br/">gitlab</a> and installed locally with:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git
+<h2>Gitlab<a class="headerlink" href="#gitlab" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p><strong>Warning:</strong> For this installation option is available only inside the CNPEM network. To install <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> in the Tepui cluster, first one needs to load the modules <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">cuda/11.2.2</span> <span class="pre">python/3.11.11</span> <span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
+</div></blockquote>
+<p>One can clone our <a class="reference external" href="https://gitlab.cnpem.br/">gitlab</a> repository and install the latest version by:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git
 <span class="nb">cd</span><span class="w"> </span>ssc-cdi
 make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
 </pre></div>
 </div>
-<p>To install a specific version (<code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code>), one can use:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w">  </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
+<p>For a specific version, one can use:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
 <span class="nb">cd</span><span class="w"> </span>ssc-cdi
 make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
 </pre></div>
 </div>
-<p>Example, to install version 0.14.2:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
+<p>The <code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> is the version of the <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> to be installed. Example, to install version 0.14.2</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://gitlab.cnpem.br/sirius/proc-sim-apps/sci/imaging/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
 <span class="nb">cd</span><span class="w"> </span>ssc-cdi
 make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
 </pre></div>
 </div>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>To install <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> in the Tepui cluster, first one needs to load the modules <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">cuda/11.2.2</span> <span class="pre">python/3.11.11</span> <span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
+</section>
+<section id="github">
+<h2>Github<a class="headerlink" href="#github" title="Link to this heading"></a></h2>
+<p>One can clone our public <a class="reference external" href="https://github.com/cnpem/ssc-cdi/">github</a> repository and install the latest version by:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>For a specific version, one can use:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v&lt;version&gt;<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> is the version of the <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> to be installed. Example, to install version 0.14.2</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/cnpem/ssc-cdi.git<span class="w"> </span>--branch<span class="w"> </span>v0.14.2<span class="w"> </span>--single-branch
+<span class="nb">cd</span><span class="w"> </span>ssc-cdi
+make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
+</div>
+</section>
+<section id="source-code-from-zenodo">
+<h2>Source code from Zenodo<a class="headerlink" href="#source-code-from-zenodo" title="Link to this heading"></a></h2>
+<p>The source code can be downloaded from <a class="reference external" href="https://zenodo.org/">zenodo website</a> under the DOI:<a class="reference external" href="https://doi.org/10.5281/zenodo.13693177">10.5281/zenodo.13693177</a>.
+On the left panel, one can find
+the available versions. Select the version want and download the <code class="docutils literal notranslate"><span class="pre">ssc-cdi.tar.gz</span></code> with the source files, one can decompress by</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>-xvf<span class="w"> </span>ssc-cdi.tar.gz
+</pre></div>
+</div>
+<p>To compile the source files, enter the following command inside the folder</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>make
+</pre></div>
 </div>
 </section>
 <section id="memory">
@@ -198,43 +172,40 @@ make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&a
 </section>
 <section id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading"></a></h2>
-<p>Before installation, you will need to have the following packages installed:</p>
+<p>Before installation, you will need the following packages installed:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">10.0.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">C++</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CUDA</span> <span class="pre">&gt;=</span> <span class="pre">11.0.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">C/C++</span> <span class="pre">&gt;=</span> <span class="pre">9.0.0</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Python</span> <span class="pre">&gt;=</span> <span class="pre">3.8.0</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PIP</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">libcurl4-openssl-dev</span></code></p></li>
-</ul>
-<p>The build requirements are:</p>
-<ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">CUBLAS</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">CUFFT</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PTHREADS</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">scikit-build&gt;=0.17.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">setuptools&gt;=60.0.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ninja==1.11.1.1</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">wheel==0.45.0</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE&gt;=3.18</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CMAKE&gt;=3.24</span></code></p></li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">Python3</span></code> dependencies are:</p>
+<p>This package supports nvidia <code class="docutils literal notranslate"><span class="pre">GPUs</span></code> with capabilities <code class="docutils literal notranslate"><span class="pre">7.0</span></code> or superior and a compiler with support to <code class="docutils literal notranslate"><span class="pre">c++17</span></code>.</p>
+<p>The following <code class="docutils literal notranslate"><span class="pre">Python3</span></code> modules are used:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">numpy&lt;2.0.0&gt;</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">scikit-image</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scikit-build</span> <span class="pre">&gt;=</span> <span class="pre">0.17</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">setuptools</span> <span class="pre">&gt;=</span> <span class="pre">61.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ninja</span> <span class="pre">==</span> <span class="pre">1.11.1.1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wheel</span> <span class="pre">&gt;=</span> <span class="pre">0.45.0</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">numpy</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scikit-image</span> <span class="pre">&gt;=</span> <span class="pre">0.19.3</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">scipy</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">matplotlib</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SharedArray</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">cupy</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">h5py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cupy</span> <span class="pre">&gt;=</span> <span class="pre">14.1.1</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ipywidgets</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">tqdm</span></code></p></li>
 </ul>
 </section>
 <section id="uninstall">
 <h2>Uninstall<a class="headerlink" href="#uninstall" title="Link to this heading"></a></h2>
-<p>To uninstall <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> use the command</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>uninstall<span class="w"> </span>sscCdi
+<p>To uninstall <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> use the command, independent of the instalation method,</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>uninstall<span class="w"> </span>sscCdi
 </pre></div>
 </div>
 </section>

@@ -24,6 +24,3 @@ Generalized Kullback-Leibler divergence (NRGKLD) of the intensity:
 \mathcal{L}_{\text{NRGKLD}} [ \{ \bar{I}_{j',{\bf q'} } \}_{j',{\bf q'} }; \epsilon] = \frac{\sum_{j,{\bf q}} \{ ( \bar{I}_{j,{\bf q} }^{+} - I_{ j,{\bf q} }^{+}) -  I_{ j,{\bf q} }^{+} \, \ln{( \frac{\bar{I}_{j,{\bf q} }^{+} }{ I_{ j,{\bf q} }^{+} + \delta(I_{ j,{\bf q} }) } )} \} }{\sum_{j,{\bf q}} I_{ j,{\bf q} }}
 ```
 
-
-## Previous version error computation
-

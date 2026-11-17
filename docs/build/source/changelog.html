@@ -6,16 +6,16 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>4. Changelog &mdash; ssc-cdi 0.17.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+  <title>4. Changelog &mdash; ssc-cdi 0.17.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
       <link rel="stylesheet" type="text/css" href="../_static/css/my_theme.css?v=cf47f6b8" />
 
   
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=0c3dd48d"></script>
-      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/documentation_options.js?v=a8455094"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
@@ -28,6 +28,7 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
+  
 
           
           
@@ -41,6 +42,10 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+  <p class="version">
+    Version 0.17.1
+  </p>
+
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
@@ -48,6 +53,7 @@
 <li class="toctree-l1"><a class="reference internal" href="tutorial.html">2. Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">3. API Reference</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">4. Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#version-0-17-1-2026-10-22">Version 0.17.1 - 2026-10-22</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#version-0-17-0-2026-10-02">Version 0.17.0 - 2026-10-02</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#version-0-16-1-2026-04-07">Version 0.16.1 - 2026-04-07</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#version-0-16-0-2026-03-12">Version 0.16.0 - 2026-03-12</a></li>
@@ -92,24 +98,40 @@
 <p>All notable changes to this project will be documented in this file.
 The format is based on <a class="reference external" href="https://keepachangelog.com/en/1.0.0/">Keep a Changelog</a>
 and this project adheres to <a class="reference external" href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<section id="version-0-17-1-2026-10-22">
+<h2>Version 0.17.1 - 2026-10-22<a class="headerlink" href="#version-0-17-1-2026-10-22" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt>Types of changes:</dt><dd><ul class="simple">
-<li><p><em>Added</em> for new features.</p></li>
-<li><p><em>Changed</em> for changes in existing functionality.</p></li>
-<li><p><em>Deprecated</em> for soon-to-be removed features.</p></li>
-<li><p><em>Removed</em> for now removed features.</p></li>
-<li><p><em>Fixed</em> for any bug fixes.</p></li>
-<li><p><em>Security</em> in case of vulnerabilities.</p></li>
-<li><p><em>Documentation</em> added or modified documentation</p></li>
+<dt><em>Added:</em></dt><dd><ul class="simple">
+<li><p>Cupy as a required dependency in build.</p></li>
+</ul>
+</dd>
+<dt><em>Fixed:</em></dt><dd><ul class="simple">
+<li><p>Bugfix on maximum allowed batchsize.</p></li>
+<li><p>Stream of wavefront fixed.</p></li>
+<li><p>ML weights fixed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pyproject.toml</span></code>: <code class="docutils literal notranslate"><span class="pre">setuptools&gt;=61</span></code> as build requirements, fixing the package name <code class="docutils literal notranslate"><span class="pre">UNKNOWN</span></code>.</p></li>
+</ul>
+</dd>
+<dt><em>Changed</em></dt><dd><ul class="simple">
+<li><p>Documentation of ML and RAAR updated.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code>: <code class="docutils literal notranslate"><span class="pre">CMAKE_CUDA_ARCHITECTURES</span></code> (default <code class="docutils literal notranslate"><span class="pre">70</span></code>) can be overridden by environment or <code class="docutils literal notranslate"><span class="pre">-D</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
+</section>
 <section id="version-0-17-0-2026-10-02">
 <h2>Version 0.17.0 - 2026-10-02<a class="headerlink" href="#version-0-17-0-2026-10-02" title="Link to this heading"></a></h2>
-<p><em>Added:</em></p>
-<p><em>Fixed:</em></p>
 <dl class="simple">
+<dt><em>Added:</em></dt><dd><ul class="simple">
+<li><p>Engine Maximum-Likelihood (ML) in cupy.</p></li>
+</ul>
+</dd>
+<dt><em>Fixed:</em></dt><dd><ul class="simple">
+<li><p>CPU fallback and re-loading of difpads.</p></li>
+</ul>
+</dd>
 <dt><em>Changed</em></dt><dd><ul class="simple">
+<li><p>Error functions.</p></li>
 <li><p>Documentation.</p></li>
 <li><p>CI/CD <code class="docutils literal notranslate"><span class="pre">deploy_docs</span></code> and build.</p></li>
 </ul>
