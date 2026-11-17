@@ -103,12 +103,12 @@ It can be installed from source code or directly via `pip` (within the CNPEM net
 
 ### Install from Pip
 
-> [!WARNING]
-> **CNPEM Network Required:**
+> [!WARNING] **CNPEM Network Required**
+>
 > This installation method is available only within the CNPEM network.
 
-> [!IMPORTANT]
-> **Tepui Cluster Users:**
+> [!IMPORTANT] **Tepui Cluster Users**
+>
 > Before installing sscCdi, load the required modules: ` cuda/11.2.2`, `python/3.11.11` and `gcc/9.5.0-jld3zdv`.
 
 Install the latest available version:
@@ -129,12 +129,12 @@ Replace `0.14.2` with the desired version number.
 
 ### Install from GitLab
 
-> [!WARNING]
-> **CNPEM Network Required:**
+> [!WARNING] **CNPEM Network Required**
+>
 > This installation method is available only within the CNPEM network.
 
-> [!IMPORTANT]
-> **Tepui Cluster Users:**
+> [!IMPORTANT] **Tepui Cluster Users**
+>
 > Before installing sscCdi, load the required modules: ` cuda/11.2.2`, `python/3.11.11` and `gcc/9.5.0-jld3zdv`.
 
 Clone the repository and install the latest version:
