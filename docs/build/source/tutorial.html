@@ -91,24 +91,26 @@
              
   <section id="usage">
 <h1><span class="section-number">2. </span>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h1>
-<p>The python module is imported <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> and the ptychography algorithms can be called as below.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ssc-cdi</span></code> package is imported as <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code>.</p>
+<p>Ptychographic reconstructions are performed by calling <code class="docutils literal notranslate"><span class="pre">sscCdi.call_ptychography()</span></code> with the experimental data and a configuration dictionary.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sscCdi</span>
 
-<span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">load(difpads)          # Measured diffraction patterns</span>
-<span class="sd">load(positions)        # Measured positions</span>
-<span class="sd">load(initial_object)</span>
-<span class="sd">load(initial_probe)</span>
-<span class="sd">&#39;&#39;&#39;</span>
+<span class="c1"># Load the experimental data</span>
+<span class="n">difpads</span> <span class="o">=</span> <span class="n">load_diffraction_patterns</span><span class="p">()</span>
+<span class="n">positions</span> <span class="o">=</span> <span class="n">load_positions</span><span class="p">()</span>
+
+<span class="c1"># Optional initial estimates</span>
+<span class="n">initial_object</span> <span class="o">=</span> <span class="n">load_initial_object</span><span class="p">()</span>
+<span class="n">initial_probe</span> <span class="o">=</span> <span class="n">load_initial_probe</span><span class="p">()</span>
 
 <span class="n">input_dict</span> <span class="o">=</span> <span class="p">{</span>
 <span class="s2">&quot;hdf5_output&quot;</span><span class="p">:</span> <span class="s2">&quot;path/to/output/file.hdf5&quot;</span><span class="p">,</span>
 <span class="s2">&quot;CPUs&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
 <span class="s2">&quot;GPUs&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-<span class="s2">&quot;energy&quot;</span><span class="p">:</span> <span class="n">energy</span><span class="p">,</span> <span class="c1"># keV</span>
-<span class="s2">&quot;detector_distance&quot;</span><span class="p">:</span> <span class="n">dist</span><span class="p">,</span> <span class="c1"># meters</span>
+<span class="s2">&quot;energy&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span> <span class="c1"># keV</span>
+<span class="s2">&quot;detector_distance&quot;</span><span class="p">:</span> <span class="mf">1..0</span><span class="p">,</span> <span class="c1"># meters</span>
 <span class="s1">&#39;distance_sample_focus&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="c1"># meters</span>
-<span class="s2">&quot;detector_pixel_size&quot;</span><span class="p">:</span> <span class="n">pixeldet</span><span class="p">,</span> <span class="c1"># meters</span>
+<span class="s2">&quot;detector_pixel_size&quot;</span><span class="p">:</span> <span class="mf">55e-6</span><span class="p">,</span> <span class="c1"># meters</span>
 <span class="s2">&quot;binning&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
 <span class="s2">&quot;object_padding&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
 <span class="s2">&quot;incoherent_modes&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
@@ -133,15 +135,17 @@
 <span class="p">}</span>
 <span class="n">input_dict</span><span class="p">[</span><span class="s2">&quot;wavelength&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">wavelength_meters_from_energy_keV</span><span class="p">(</span><span class="n">input_dict</span><span class="p">[</span><span class="s2">&quot;energy&quot;</span><span class="p">])</span>
 
-<span class="n">recon_obj</span><span class="p">,</span> <span class="n">recon_probe</span><span class="p">,</span> <span class="n">recon_positions</span><span class="p">,</span> <span class="n">output_dict</span><span class="p">,</span> <span class="n">recon_error</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">call_ptychography</span><span class="p">(</span><span class="n">input_dict</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-                                                                                            <span class="n">difpads</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-                                                                                            <span class="n">positions</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-                                                                                            <span class="n">initial_obj</span>   <span class="o">=</span> <span class="n">initial_object</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
-                                                                                            <span class="n">initial_probe</span> <span class="o">=</span> <span class="n">initial_probe</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+<span class="n">recon_obj</span><span class="p">,</span> <span class="n">recon_probe</span><span class="p">,</span> <span class="n">recon_positions</span><span class="p">,</span> <span class="n">output_dict</span><span class="p">,</span> <span class="n">recon_error</span> <span class="o">=</span> <span class="n">sscCdi</span><span class="o">.</span><span class="n">call_ptychography</span><span class="p">(</span><span class="n">input_dict</span><span class="p">,</span>
+                                                                                            <span class="n">difpads</span><span class="p">,</span>
+                                                                                            <span class="n">positions</span><span class="p">,</span>
+                                                                                            <span class="n">initial_object</span><span class="p">,</span>
+                                                                                            <span class="n">initial_probe</span><span class="p">,</span>
                                                                                             <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>See the <a class="reference internal" href="tutorial/dictionary.html#dictionary"><span class="std std-ref">Dictionary</span></a> page and <a class="reference internal" href="api/ptycho.html#apicallengines"><span class="std std-ref">API reference</span></a> for a complete description of all available parameters.</p>
 <div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tutorial/dictionary.html">Dictionary</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tutorial/pie.html">rPIE Engine</a></li>

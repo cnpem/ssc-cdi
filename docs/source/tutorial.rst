@@ -1,27 +1,30 @@
 Usage
 =====
 
-The python module is imported ``sscCdi`` and the ptychography algorithms can be called as below.
+The ``ssc-cdi`` package is imported as ``sscCdi``. 
+
+Ptychographic reconstructions are performed by calling ``sscCdi.call_ptychography()`` with the experimental data and a configuration dictionary.
 
 .. code-block:: python
 
     import sscCdi
 
-    '''
-    load(difpads)          # Measured diffraction patterns
-    load(positions)        # Measured positions
-    load(initial_object)
-    load(initial_probe)
-    '''
+    # Load the experimental data
+    difpads = load_diffraction_patterns()
+    positions = load_positions()
+
+    # Optional initial estimates
+    initial_object = load_initial_object()
+    initial_probe = load_initial_probe()
 
     input_dict = {
     "hdf5_output": "path/to/output/file.hdf5", 
     "CPUs": 2,      
     "GPUs": [0], 
-    "energy": energy, # keV
-    "detector_distance": dist, # meters
+    "energy": 12, # keV
+    "detector_distance": 1..0, # meters
     'distance_sample_focus': 0, # meters
-    "detector_pixel_size": pixeldet, # meters
+    "detector_pixel_size": 55e-6, # meters
     "binning": 1,    
     "object_padding": 0,
     "incoherent_modes": 1, 
@@ -46,16 +49,20 @@ The python module is imported ``sscCdi`` and the ptychography algorithms can be 
     }
     input_dict["wavelength"] = sscCdi.wavelength_meters_from_energy_keV(input_dict["energy"])
 
-    recon_obj, recon_probe, recon_positions, output_dict, recon_error = sscCdi.call_ptychography(input_dict.copy(),
-                                                                                                difpads.copy(), 
-                                                                                                positions.copy(), 
-                                                                                                initial_obj   = initial_object.copy(), 
-                                                                                                initial_probe = initial_probe.copy(), 
+    recon_obj, recon_probe, recon_positions, output_dict, recon_error = sscCdi.call_ptychography(input_dict,
+                                                                                                difpads, 
+                                                                                                positions, 
+                                                                                                initial_object, 
+                                                                                                initial_probe, 
                                                                                                 plot=False)
+
+
+See the :ref:`dictionary` page and :ref:`API reference <apicallengines>` for a complete description of all available parameters.
 
 
 .. toctree::
     :maxdepth: 1
+    :caption: Contents
 
     tutorial/dictionary
     tutorial/pie

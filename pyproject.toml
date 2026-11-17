@@ -24,8 +24,7 @@ dependencies = [
   'scikit-image >=0.19.3',
   'tqdm',
   'ipywidgets',
-  'SharedArray',
-  'cupy >= 14.1.1'
+  'SharedArray'
 ]
 
 classifiers=[

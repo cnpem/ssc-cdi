@@ -1,8 +1,5 @@
 Version 0.17.1 - 2026-10-22
 ---------------------------
-*Added:*
-    - Cupy as a required dependency in build.
-
 *Fixed:*
     - Bugfix on maximum allowed batchsize.
     - Stream of wavefront fixed.
