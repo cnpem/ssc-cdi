@@ -3,16 +3,14 @@
 
 <!-- about-start -->
 
-`ssc-cdi` is a collection of coherent diffractive imaging (CDI) tools developed by the Sirius Scientific Computing (SSC) Group at the Brazilian Center for Research in Energy and Materials (CNPEM).
-
-The package currently provides high-performance implementations for Ptychography reconstructions. Additional algorithms and research prototypes are continuously incorporated into the project as they mature and undergo validation by the SSC Group.
+The package `ssc-cdi` is a collection of coherent diffractive imaging (CDI) tools developed by the Sirius Scientific Computing (SSC) Group at the Brazilian Center for Research in Energy and Materials (CNPEM).
+It currently provides high-performance implementations for Ptychography reconstructions. Additional algorithms and research prototypes are continuously incorporated into the project as they mature and undergo validation by the SSC Group.
 
 The source code is publicly archived on Zenodo under DOI [10.5281/zenodo.13693177](https://doi.org/10.5281/zenodo.13693177).
 
 Example scripts are included to help users get started with the package.
 
-> [!TIP]
-> For questions, bug reports, or feature requests, contact the Sirius Scientific Computing Team at **gcc@lnls.br**.
+> 💡 For questions, bug reports, or feature requests, contact the Sirius Scientific Computing Team at **gcc@lnls.br**.
 
 ## Authors and Contributors
 
@@ -96,18 +94,24 @@ docs/build/html/
 
 <!-- installation-start -->
 
-sscCdi requires **C**, **C++**, **CUDA**, **Python 3**, and **CuPy** to be installed before installation. The CuPy package is required to use the Maximum-Likelihood (ML) reconstruction engine.
+The `ssc-cdi` package can be installed from source code or directly via `pip` (within the CNPEM network). 
+
+It requires **C**, **C++**, **CUDA**, **Python**, and **CuPy** to be installed before installation. The CuPy package is required to use the Maximum-Likelihood (ML) reconstruction engine.
 See the [Requirements](#requirements) section for details.
 
-It can be installed from source code or directly via `pip` (within the CNPEM network).
+The `ssc-cdi` package is imported as `sscCdi` in Python 
+
+```python
+import sscCdi
+```
 
 ### Install from Pip
 
-> [!WARNING] CNPEM Network Required
+> ⚠️ **CNPEM Network Required**
 >
 > This installation method is available only within the CNPEM network.
 
-> [!IMPORTANT] Tepui Cluster Users
+> ❗ **Tepui Cluster Users**
 >
 > Before installing sscCdi, load the required modules: ` cuda/11.2.2`, `python/3.11.11` and `gcc/9.5.0-jld3zdv`.
 
@@ -129,11 +133,11 @@ Replace `0.14.2` with the desired version number.
 
 ### Install from GitLab
 
-> [!WARNING] CNPEM Network Required
+> ⚠️ **CNPEM Network Required**
 >
 > This installation method is available only within the CNPEM network.
 
-> [!IMPORTANT] Tepui Cluster Users
+> ❗ **Tepui Cluster Users**
 >
 > Before installing sscCdi, load the required modules: ` cuda/11.2.2`, `python/3.11.11` and `gcc/9.5.0-jld3zdv`.
 
@@ -197,9 +201,7 @@ make clean && make
 
 ### Install from Zenodo Source Code
 
-Source code releases are archived on Zenodo:
-
-DOI: <https://doi.org/10.5281/zenodo.13693177>
+Source code releases are archived on Zenodo: [https://doi.org/10.5281/zenodo.13693177](https://doi.org/10.5281/zenodo.13693177)
 
 Download the desired version of `ssc-cdi.tar.gz` and extract it:
 

@@ -93,17 +93,21 @@
              
   <section id="install">
 <h1><span class="section-number">1. </span>Install<a class="headerlink" href="#install" title="Link to this heading"></a></h1>
-<p>sscCdi requires <strong>C</strong>, <strong>C++</strong>, <strong>CUDA</strong>, <strong>Python 3</strong>, and <strong>CuPy</strong> to be installed before installation. The CuPy package is required to use the Maximum-Likelihood (ML) reconstruction engine.
+<p>The <code class="docutils literal notranslate"><span class="pre">ssc-cdi</span></code> package can be installed from source code or directly via <code class="docutils literal notranslate"><span class="pre">pip</span></code> (within the CNPEM network).</p>
+<p>It requires <strong>C</strong>, <strong>C++</strong>, <strong>CUDA</strong>, <strong>Python</strong>, and <strong>CuPy</strong> to be installed before installation. The CuPy package is required to use the Maximum-Likelihood (ML) reconstruction engine.
 See the <a class="reference internal" href="#requirements"><span class="xref myst">Requirements</span></a> section for details.</p>
-<p>It can be installed from source code or directly via <code class="docutils literal notranslate"><span class="pre">pip</span></code> (within the CNPEM network).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ssc-cdi</span></code> package is imported as <code class="docutils literal notranslate"><span class="pre">sscCdi</span></code> in Python</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sscCdi</span>
+</pre></div>
+</div>
 <section id="install-from-pip">
 <h2>Install from Pip<a class="headerlink" href="#install-from-pip" title="Link to this heading"></a></h2>
 <blockquote>
-<div><p>[!WARNING] CNPEM Network Required</p>
+<div><p>⚠️ <strong>CNPEM Network Required</strong></p>
 <p>This installation method is available only within the CNPEM network.</p>
 </div></blockquote>
 <blockquote>
-<div><p>[!IMPORTANT] Tepui Cluster Users</p>
+<div><p>❗ <strong>Tepui Cluster Users</strong></p>
 <p>Before installing sscCdi, load the required modules: <code class="docutils literal notranslate"> <span class="pre">cuda/11.2.2</span></code>, <code class="docutils literal notranslate"><span class="pre">python/3.11.11</span></code> and <code class="docutils literal notranslate"><span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
 </div></blockquote>
 <p>Install the latest available version:</p>
@@ -121,11 +125,11 @@ See the <a class="reference internal" href="#requirements"><span class="xref mys
 <section id="install-from-gitlab">
 <h2>Install from GitLab<a class="headerlink" href="#install-from-gitlab" title="Link to this heading"></a></h2>
 <blockquote>
-<div><p>[!WARNING] CNPEM Network Required</p>
+<div><p>⚠️ <strong>CNPEM Network Required</strong></p>
 <p>This installation method is available only within the CNPEM network.</p>
 </div></blockquote>
 <blockquote>
-<div><p>[!IMPORTANT] Tepui Cluster Users</p>
+<div><p>❗ <strong>Tepui Cluster Users</strong></p>
 <p>Before installing sscCdi, load the required modules: <code class="docutils literal notranslate"> <span class="pre">cuda/11.2.2</span></code>, <code class="docutils literal notranslate"><span class="pre">python/3.11.11</span></code> and <code class="docutils literal notranslate"><span class="pre">gcc/9.5.0-jld3zdv</span></code>.</p>
 </div></blockquote>
 <p>Clone the repository and install the latest version:</p>
@@ -178,8 +182,7 @@ make<span class="w"> </span>clean<span class="w"> </span><span class="o">&amp;&a
 </section>
 <section id="install-from-zenodo-source-code">
 <h2>Install from Zenodo Source Code<a class="headerlink" href="#install-from-zenodo-source-code" title="Link to this heading"></a></h2>
-<p>Source code releases are archived on Zenodo:</p>
-<p>DOI: <a class="reference external" href="https://doi.org/10.5281/zenodo.13693177">https://doi.org/10.5281/zenodo.13693177</a></p>
+<p>Source code releases are archived on Zenodo: <a class="reference external" href="https://doi.org/10.5281/zenodo.13693177">https://doi.org/10.5281/zenodo.13693177</a></p>
 <p>Download the desired version of <code class="docutils literal notranslate"><span class="pre">ssc-cdi.tar.gz</span></code> and extract it:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>tar<span class="w"> </span>-xvf<span class="w"> </span>ssc-cdi.tar.gz
 </pre></div>
